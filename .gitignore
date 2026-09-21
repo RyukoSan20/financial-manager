@@ -45,3 +45,4 @@ coverage/
 
 # Vercel
 .vercel
+.DS_Store
