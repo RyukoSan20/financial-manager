@@ -16,7 +16,8 @@ import {
   Login,
   Register,
   Settings,
-  MerchantMap
+  MerchantMap,
+  AIAdvisor
 } from './pages';
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
             <Route path="calculators" element={<Calculators />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="map" element={<MerchantMap />} />
+            <Route path="advisor" element={<AIAdvisor />} />
             <Route path="settings" element={<Settings />} />
             <Route path="more" element={<MorePage />} />
           </Route>

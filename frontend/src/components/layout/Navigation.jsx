@@ -21,7 +21,8 @@ import {
   Moon,
   HelpCircle,
   PlusCircle,
-  Map
+  Map,
+  Sparkles
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +38,7 @@ const navItems = [
   { name: 'Calculators', href: '/calculators', icon: Calculator },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Spending Map', href: '/map', icon: Map },
+  { name: 'AI Advisor', href: '/advisor', icon: Sparkles },
 ];
 
 const bottomNavItems = [
@@ -617,6 +619,7 @@ export const MorePage = () => {
     { icon: Calculator, label: 'Calculators', href: '/calculators', color: 'bg-green-100 text-green-600', desc: 'Financial calculators' },
     { icon: BarChart3, label: 'Analytics', href: '/analytics', color: 'bg-pink-100 text-pink-600', desc: 'Insights & trends' },
     { icon: Map, label: 'Spending Map', href: '/map', color: 'bg-red-100 text-red-600', desc: 'Merchant locations & patterns' },
+    { icon: Sparkles, label: 'AI Advisor', href: '/advisor', color: 'bg-cyan-100 text-cyan-600', desc: 'AI-powered financial advice' },
     { icon: User, label: 'Profile', href: '/profile', color: 'bg-indigo-100 text-indigo-600', desc: 'Account settings' },
     { icon: Bell, label: 'Notifications', href: '/notifications', color: 'bg-yellow-100 text-yellow-600', desc: 'Alerts & reminders' },
     { icon: Settings, label: 'Settings', href: '/settings', color: 'bg-gray-100 text-gray-600', desc: 'App configuration' },

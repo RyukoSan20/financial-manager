@@ -12,3 +12,4 @@ export { Login } from './Login';
 export { Register } from './Register';
 export { Settings } from './Settings';
 export { default as MerchantMap } from './MerchantMap';
+export { default as AIAdvisor } from './AIAdvisor';

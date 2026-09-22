@@ -9,7 +9,7 @@ from app.api.routes import (
     accounts, categories, transactions, budgets,
     dashboard, calculators,
     transfers, recurring, goals, debts, analytics,
-    auth, data, parser
+    auth, data, parser, ai_advisor
 )
 
 settings = get_settings()
@@ -52,6 +52,7 @@ app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"]
 app.include_router(calculators.router, prefix="/api/calculators", tags=["Calculators"])
 app.include_router(data.router, prefix="/api/data", tags=["Data"])
 app.include_router(parser.router, prefix="/api/parser", tags=["Parser"])
+app.include_router(ai_advisor.router, prefix="/api/ai", tags=["AI Advisor"])
 
 
 # Root endpoint
