@@ -9,7 +9,7 @@ from app.api.routes import (
     accounts, categories, transactions, budgets,
     dashboard, calculators,
     transfers, recurring, goals, debts, analytics,
-    auth
+    auth, data
 )
 
 settings = get_settings()
@@ -50,6 +50,7 @@ app.include_router(debts.router, prefix="/api/debts", tags=["Debts"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(calculators.router, prefix="/api/calculators", tags=["Calculators"])
+app.include_router(data.router, prefix="/api/data", tags=["Data"])
 
 
 # Root endpoint

@@ -1,38 +1,36 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { setToken, clearToken } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
 
   useEffect(() => {
-    // Check if user is logged in
-    if (token) {
-      fetchUser();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
+    checkAuth();
+  }, []);
 
-  const fetchUser = async () => {
+  const checkAuth = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         const userData = await res.json();
         setUser(userData);
       } else {
-        // Token invalid, clear it
-        logout();
+        clearToken();
       }
     } catch (err) {
-      console.error('Failed to fetch user:', err);
-      logout();
+      console.error('Auth check failed:', err);
+      clearToken();
     } finally {
       setLoading(false);
     }
@@ -51,22 +49,16 @@ export const AuthProvider = ({ children }) => {
     }
     
     const data = await res.json();
-    localStorage.setItem('token', data.access_token);
     setToken(data.access_token);
     setUser(data.user);
     return data;
   };
 
-  const register = async (email, password, username, fullName) => {
+  const register = async (data) => {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        email, 
-        password,
-        username,
-        full_name: fullName 
-      }),
+      body: JSON.stringify(data),
     });
     
     if (!res.ok) {
@@ -74,27 +66,26 @@ export const AuthProvider = ({ children }) => {
       throw new Error(error.detail || 'Registration failed');
     }
     
-    const data = await res.json();
-    localStorage.setItem('token', data.access_token);
-    setToken(data.access_token);
-    setUser(data.user);
-    return data;
+    const result = await res.json();
+    setToken(result.access_token);
+    setUser(result.user);
+    return result;
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
+    clearToken();
     setUser(null);
+    window.location.href = '/login';
   };
 
   const value = {
     user,
-    token,
     loading,
     isAuthenticated: !!user,
     login,
     register,
     logout,
+    checkAuth,
   };
 
   return (

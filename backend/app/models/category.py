@@ -9,6 +9,7 @@ class Category(Base):
     __tablename__ = "categories"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)  # null for shared categories
     name = Column(String(100), nullable=False)
     type = Column(String(20), nullable=False)  # income, expense
     description = Column(Text, nullable=True)
@@ -16,7 +17,7 @@ class Category(Base):
     color = Column(String(20), nullable=True)
     parent_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     is_active = Column(Boolean, default=True)
-    sort_order = Column(Integer, default=0)  # For ordering in UI
+    sort_order = Column(Integer, default=0)
 
     # Self-referential relationship for subcategories
     subcategories = relationship("Category", backref="parent", remote_side=[id])

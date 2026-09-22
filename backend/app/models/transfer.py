@@ -10,6 +10,7 @@ class Transfer(Base):
     __tablename__ = "transfers"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     amount = Column(Numeric(20, 2), nullable=False)
     currency = Column(String(10), default="IDR", nullable=False)
     date = Column(Date, nullable=False, default=datetime.utcnow)

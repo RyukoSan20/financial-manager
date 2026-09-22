@@ -1,29 +1,91 @@
-// API Configuration
+// API Configuration with JWT Interceptor
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
+const TOKEN_KEY = 'token';
+
+// Get token from localStorage
+const getToken = () => localStorage.getItem(TOKEN_KEY);
+
+// Set token
+export const setToken = (token) => {
+  localStorage.setItem(TOKEN_KEY, token);
+};
+
+// Clear token
+export const clearToken = () => {
+  localStorage.removeItem(TOKEN_KEY);
+};
+
+// Check if authenticated
+export const isAuthenticated = () => !!getToken();
+
+// Redirect to login
+const redirectToLogin = () => {
+  clearToken();
+  window.location.href = '/login';
+};
+
+// Base fetch with interceptor
+const fetchWithInterceptor = async (url, options = {}) => {
+  const token = getToken();
+  
+  const config = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers,
+    },
+  };
+
+  try {
+    const response = await fetch(url, config);
+    
+    // Handle 401 Unauthorized
+    if (response.status === 401) {
+      console.warn('401 Unauthorized - clearing token and redirecting');
+      redirectToLogin();
+      throw new Error('Session expired. Please login again.');
+    }
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Request failed' }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+    
+    return response;
+  } catch (error) {
+    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+      throw new Error('Network error. Please check your connection.');
+    }
+    throw error;
+  }
+};
+
 export const api = {
-  // Base fetch wrapper
+  // Base request wrapper
   async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    };
-
     try {
-      const response = await fetch(url, config);
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: 'Request failed' }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
-      }
+      const response = await fetchWithInterceptor(url, options);
       return response.json();
     } catch (error) {
       console.error(`API Error [${endpoint}]:`, error);
       throw error;
     }
+  },
+
+  // Auth
+  auth: {
+    login: (email, password) => api.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+    register: (data) => api.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    me: () => api.request('/auth/me'),
   },
 
   // Accounts
@@ -158,6 +220,11 @@ export const api = {
     compoundInterest: (data) => api.request('/calculators/compound-interest', { method: 'POST', body: JSON.stringify(data) }),
     budgetAllocation: (data) => api.request('/calculators/budget-allocation', { method: 'POST', body: JSON.stringify(data) }),
     affordability: (data) => api.request('/calculators/affordability', { method: 'POST', body: JSON.stringify(data) }),
+  },
+
+  // Data Export
+  data: {
+    export: () => api.request('/data/export'),
   },
 
   // Health check

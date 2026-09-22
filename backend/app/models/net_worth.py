@@ -1,6 +1,6 @@
 """Net worth snapshot model for historical tracking."""
 
-from sqlalchemy import Column, Integer, Numeric, DateTime, Date, String
+from sqlalchemy import Column, Integer, Numeric, DateTime, Date, String, ForeignKey
 from datetime import datetime
 from app.core.database import Base
 
@@ -9,6 +9,7 @@ class NetWorthSnapshot(Base):
     __tablename__ = "net_worth_snapshots"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     date = Column(Date, nullable=False, default=datetime.utcnow)
     currency = Column(String(10), default="IDR", nullable=False)
     

@@ -1,4 +1,4 @@
-"""Recurring Rule API routes."""
+"""Recurring Rule API routes with multi-tenancy."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -7,9 +7,11 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from app.core.database import get_db
+from app.core.security import get_current_user_optional
 from app.models.recurring import RecurringRule
 from app.models.transaction import Transaction
 from app.models.account import Account
+from app.models.user import User
 from app.schemas.recurring import (
     RecurringRuleCreate, RecurringRuleUpdate, RecurringRuleResponse, RecurringRuleWithStats
 )
@@ -32,13 +34,11 @@ def calculate_next_occurrence(rule: RecurringRule, from_date: date = None) -> da
     elif freq == "biweekly":
         return from_date + timedelta(weeks=2 * interval)
     elif freq == "monthly":
-        # Add months
         month = from_date.month + interval
         year = from_date.year
         while month > 12:
             month -= 12
             year += 1
-        # Handle day overflow (e.g., 31st in shorter months)
         day = min(from_date.day, [31, 29 if year % 4 == 0 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
         return date(year, month, day)
     elif freq == "quarterly":
@@ -49,40 +49,48 @@ def calculate_next_occurrence(rule: RecurringRule, from_date: date = None) -> da
     elif freq == "yearly":
         return date(from_date.year + interval, from_date.month, from_date.day)
     else:
-        return from_date + timedelta(days=30)  # Default to monthly
+        return from_date + timedelta(days=30)
 
 
 @router.get("/", response_model=List[RecurringRuleResponse])
 def list_recurring_rules(
     active_only: bool = True,
     type: Optional[str] = None,
+    current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    """List all recurring rules."""
+    """List all recurring rules for current user."""
     query = db.query(RecurringRule)
     if active_only:
         query = query.filter(RecurringRule.is_active == True)
     if type:
         query = query.filter(RecurringRule.type == type)
+    
+    if current_user:
+        query = query.filter(RecurringRule.user_id == current_user.id)
+    
     return query.order_by(RecurringRule.next_occurrence).all()
-
-
-
 
 
 @router.get("/upcoming")
 def get_upcoming_recurring(
     days: int = Query(default=7, ge=1, le=90),
+    current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """Get upcoming recurring transactions within N days."""
     today = date.today()
     end_date = today + timedelta(days=days)
     
-    rules = db.query(RecurringRule).filter(
+    query = db.query(RecurringRule).filter(
         RecurringRule.is_active == True,
         RecurringRule.next_occurrence <= end_date
-    ).all()
+    )
+    
+    if current_user:
+        query = query.filter(RecurringRule.user_id == current_user.id)
+    
+    rules = query.all()
     
     upcoming = []
     for rule in rules:
@@ -101,21 +109,41 @@ def get_upcoming_recurring(
 
 
 @router.get("/{rule_id}", response_model=RecurringRuleResponse)
-def get_recurring_rule(rule_id: int, db: Session = Depends(get_db)):
+def get_recurring_rule(
+    rule_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Get a single recurring rule."""
     rule = db.query(RecurringRule).filter(RecurringRule.id == rule_id).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Recurring rule not found")
+    
+    # Ownership check
+    if current_user and rule.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     return rule
 
 
 @router.post("/", response_model=RecurringRuleResponse, status_code=201)
-def create_recurring_rule(rule: RecurringRuleCreate, db: Session = Depends(get_db)):
+def create_recurring_rule(
+    rule: RecurringRuleCreate,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Create a new recurring rule."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
     # Validate account
     account = db.query(Account).filter(Account.id == rule.account_id).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
+    
+    # Account ownership check
+    if account.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cannot create rule for another user's account")
     
     # Calculate next occurrence
     next_occ = calculate_next_occurrence(
@@ -127,8 +155,11 @@ def create_recurring_rule(rule: RecurringRuleCreate, db: Session = Depends(get_d
         rule.start_date
     )
     
+    rule_data = rule.model_dump()
+    rule_data["user_id"] = current_user.id
+    
     db_rule = RecurringRule(
-        **rule.model_dump(),
+        **rule_data,
         next_occurrence=next_occ
     )
     db.add(db_rule)
@@ -141,12 +172,17 @@ def create_recurring_rule(rule: RecurringRuleCreate, db: Session = Depends(get_d
 def update_recurring_rule(
     rule_id: int,
     rule: RecurringRuleUpdate,
+    current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """Update a recurring rule."""
     db_rule = db.query(RecurringRule).filter(RecurringRule.id == rule_id).first()
     if not db_rule:
         raise HTTPException(status_code=404, detail="Recurring rule not found")
+    
+    # Ownership check
+    if current_user and db_rule.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = rule.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -169,11 +205,19 @@ def update_recurring_rule(
 
 
 @router.delete("/{rule_id}", status_code=204)
-def delete_recurring_rule(rule_id: int, db: Session = Depends(get_db)):
+def delete_recurring_rule(
+    rule_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Delete (deactivate) a recurring rule."""
     db_rule = db.query(RecurringRule).filter(RecurringRule.id == rule_id).first()
     if not db_rule:
         raise HTTPException(status_code=404, detail="Recurring rule not found")
+    
+    # Ownership check
+    if current_user and db_rule.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     db_rule.is_active = False
     db.commit()
@@ -181,11 +225,19 @@ def delete_recurring_rule(rule_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{rule_id}/generate")
-def generate_transaction_from_rule(rule_id: int, db: Session = Depends(get_db)):
+def generate_transaction_from_rule(
+    rule_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Generate a transaction from a recurring rule."""
     db_rule = db.query(RecurringRule).filter(RecurringRule.id == rule_id).first()
     if not db_rule:
         raise HTTPException(status_code=404, detail="Recurring rule not found")
+    
+    # Ownership check
+    if current_user and db_rule.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     if not db_rule.is_active:
         raise HTTPException(status_code=400, detail="Recurring rule is inactive")
@@ -193,7 +245,6 @@ def generate_transaction_from_rule(rule_id: int, db: Session = Depends(get_db)):
     if db_rule.next_occurrence > date.today():
         raise HTTPException(status_code=400, detail="Next occurrence date has not arrived yet")
     
-    # Check if end_date has passed
     if db_rule.end_date and db_rule.end_date < date.today():
         db_rule.is_active = False
         db.commit()
@@ -201,10 +252,8 @@ def generate_transaction_from_rule(rule_id: int, db: Session = Depends(get_db)):
     
     # Create transaction based on type
     if db_rule.type == "transfer":
-        # Create transfer (would need separate logic)
         raise HTTPException(status_code=501, detail="Transfer recurring rules not yet implemented")
     else:
-        # Create income or expense transaction
         tx_type = "income" if db_rule.type == "income" else "expense"
         
         tx = Transaction(
@@ -218,6 +267,7 @@ def generate_transaction_from_rule(rule_id: int, db: Session = Depends(get_db)):
             category_id=db_rule.category_id,
             recurring_rule_id=db_rule.id,
             is_recurring=True,
+            user_id=db_rule.user_id,
         )
         db.add(tx)
         
@@ -250,14 +300,22 @@ def generate_transaction_from_rule(rule_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/generate-all")
-def generate_all_due_transactions(db: Session = Depends(get_db)):
+def generate_all_due_transactions(
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Generate transactions for all rules with due occurrences."""
     today = date.today()
     
-    rules = db.query(RecurringRule).filter(
+    query = db.query(RecurringRule).filter(
         RecurringRule.is_active == True,
         RecurringRule.next_occurrence <= today
-    ).all()
+    )
+    
+    if current_user:
+        query = query.filter(RecurringRule.user_id == current_user.id)
+    
+    rules = query.all()
     
     generated = []
     for rule in rules:
@@ -267,7 +325,7 @@ def generate_all_due_transactions(db: Session = Depends(get_db)):
         
         try:
             if rule.type == "transfer":
-                continue  # Skip transfers for now
+                continue
             
             tx_type = "income" if rule.type == "income" else "expense"
             
@@ -282,6 +340,7 @@ def generate_all_due_transactions(db: Session = Depends(get_db)):
                 category_id=rule.category_id,
                 recurring_rule_id=rule.id,
                 is_recurring=True,
+                user_id=rule.user_id,
             )
             db.add(tx)
             
@@ -321,6 +380,3 @@ def generate_all_due_transactions(db: Session = Depends(get_db)):
         "generated_count": len([g for g in generated if "transaction_id" not in g]),
         "results": generated
     }
-
-
-

@@ -1,4 +1,4 @@
-"""Transfer API routes - Handles account-to-account transfers."""
+"""Transfer API routes with multi-tenancy."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -7,25 +7,26 @@ from datetime import date
 from decimal import Decimal
 
 from app.core.database import get_db
+from app.core.security import get_current_user_optional
 from app.models.transfer import Transfer
 from app.models.transaction import Transaction
 from app.models.account import Account
+from app.models.user import User
 from app.schemas.transfer import TransferCreate, TransferUpdate, TransferResponse, TransferWithTransactions
 
 router = APIRouter()
 
 
 @router.post("/", response_model=TransferWithTransactions, status_code=201)
-def create_transfer(transfer: TransferCreate, db: Session = Depends(get_db)):
-    """
-    Create a transfer between two accounts.
+def create_transfer(
+    transfer: TransferCreate,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Create a transfer between two accounts."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
     
-    This creates TWO linked transactions:
-    - transfer_out from source account (decreases balance)
-    - transfer_in to destination account (increases balance)
-    
-    Transfer is neutral for cash flow calculations (does not affect income/expense).
-    """
     # Validate accounts
     from_account = db.query(Account).filter(Account.id == transfer.from_account_id).first()
     if not from_account:
@@ -34,6 +35,10 @@ def create_transfer(transfer: TransferCreate, db: Session = Depends(get_db)):
     to_account = db.query(Account).filter(Account.id == transfer.to_account_id).first()
     if not to_account:
         raise HTTPException(status_code=404, detail="Destination account not found")
+    
+    # Account ownership check
+    if from_account.user_id != current_user.id or to_account.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cannot transfer from another user's account")
     
     if transfer.from_account_id == transfer.to_account_id:
         raise HTTPException(status_code=400, detail="Cannot transfer to the same account")
@@ -47,11 +52,12 @@ def create_transfer(transfer: TransferCreate, db: Session = Depends(get_db)):
         notes=transfer.notes,
         from_account_id=transfer.from_account_id,
         to_account_id=transfer.to_account_id,
+        user_id=current_user.id,
     )
     db.add(db_transfer)
-    db.flush()  # Get transfer ID
+    db.flush()
     
-    # Create transfer_out transaction (decreases source)
+    # Create transfer_out transaction
     tx_out = Transaction(
         type="transfer_out",
         amount=transfer.amount,
@@ -60,13 +66,14 @@ def create_transfer(transfer: TransferCreate, db: Session = Depends(get_db)):
         description=transfer.description or f"Transfer to {to_account.name}",
         account_id=transfer.from_account_id,
         transfer_id=db_transfer.id,
+        user_id=current_user.id,
     )
     db.add(tx_out)
     
     # Update source account balance
     from_account.balance -= transfer.amount
     
-    # Create transfer_in transaction (increases destination)
+    # Create transfer_in transaction
     tx_in = Transaction(
         type="transfer_in",
         amount=transfer.amount,
@@ -76,6 +83,7 @@ def create_transfer(transfer: TransferCreate, db: Session = Depends(get_db)):
         account_id=transfer.to_account_id,
         transfer_id=db_transfer.id,
         transfer_to_transaction_id=tx_out.id,
+        user_id=current_user.id,
     )
     db.add(tx_in)
     
@@ -107,10 +115,14 @@ def list_transfers(
     limit: int = 100,
     start_date: date = None,
     end_date: date = None,
+    current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    """List all transfers with optional date filtering."""
+    """List all transfers for current user."""
     query = db.query(Transfer)
+    
+    if current_user:
+        query = query.filter(Transfer.user_id == current_user.id)
     
     if start_date:
         query = query.filter(Transfer.date >= start_date)
@@ -121,7 +133,6 @@ def list_transfers(
     
     result = []
     for t in transfers:
-        # Get linked transactions
         tx_out = db.query(Transaction).filter(
             Transaction.transfer_id == t.id,
             Transaction.type == "transfer_out"
@@ -150,13 +161,20 @@ def list_transfers(
 
 
 @router.get("/{transfer_id}", response_model=TransferWithTransactions)
-def get_transfer(transfer_id: int, db: Session = Depends(get_db)):
+def get_transfer(
+    transfer_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Get a single transfer by ID."""
     transfer = db.query(Transfer).filter(Transfer.id == transfer_id).first()
     if not transfer:
         raise HTTPException(status_code=404, detail="Transfer not found")
     
-    # Get linked transactions
+    # Ownership check
+    if current_user and transfer.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     tx_out = db.query(Transaction).filter(
         Transaction.transfer_id == transfer.id,
         Transaction.type == "transfer_out"
@@ -183,15 +201,19 @@ def get_transfer(transfer_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{transfer_id}", status_code=204)
-def delete_transfer(transfer_id: int, db: Session = Depends(get_db)):
-    """
-    Delete a transfer.
-    
-    This reverses the balance changes by creating offsetting transactions.
-    """
+def delete_transfer(
+    transfer_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Delete a transfer with ownership check."""
     transfer = db.query(Transfer).filter(Transfer.id == transfer_id).first()
     if not transfer:
         raise HTTPException(status_code=404, detail="Transfer not found")
+    
+    # Ownership check
+    if current_user and transfer.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     # Get linked transactions
     tx_out = db.query(Transaction).filter(
@@ -208,11 +230,10 @@ def delete_transfer(transfer_id: int, db: Session = Depends(get_db)):
     to_account = db.query(Account).filter(Account.id == transfer.to_account_id).first()
     
     if from_account:
-        from_account.balance += transfer.amount  # Reverse the debit
+        from_account.balance += transfer.amount
     if to_account:
-        to_account.balance -= transfer.amount  # Reverse the credit
+        to_account.balance -= transfer.amount
     
-    # Mark transactions as deleted
     if tx_out:
         tx_out.is_deleted = True
     if tx_in:
@@ -227,10 +248,14 @@ def delete_transfer(transfer_id: int, db: Session = Depends(get_db)):
 def get_transfer_summary(
     start_date: date = None,
     end_date: date = None,
+    current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """Get transfer summary for a period."""
     query = db.query(Transfer)
+    
+    if current_user:
+        query = query.filter(Transfer.user_id == current_user.id)
     
     if start_date:
         query = query.filter(Transfer.date >= start_date)
@@ -244,6 +269,6 @@ def get_transfer_summary(
     return {
         "total_transfers": len(transfers),
         "total_transferred_out": total_out,
-        "total_transferred_in": total_out,  # Always equal
+        "total_transferred_in": total_out,
         "period": {"start": start_date, "end": end_date}
     }

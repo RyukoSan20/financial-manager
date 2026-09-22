@@ -2,6 +2,10 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, List
+from datetime import datetime
+from decimal import Decimal
 from app.core.database import get_db
 from app.core.security import (
     verify_password, get_password_hash, create_access_token,
@@ -13,6 +17,23 @@ from app.schemas.user import (
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=6)
+
+
+class UpdateProfileRequest(BaseModel):
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    default_currency: Optional[str] = None
+    timezone: Optional[str] = None
 
 
 @router.post("/register", response_model=Token, status_code=201)
@@ -57,11 +78,11 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(email: str, password: str, db: Session = Depends(get_db)):
+def login(request: LoginRequest, db: Session = Depends(get_db)):
     """Login with email and password."""
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).filter(User.email == request.email).first()
     
-    if not user or not verify_password(password, user.hashed_password):
+    if not user or not verify_password(request.password, user.hashed_password):
         raise HTTPException(
             status_code=401,
             detail="Incorrect email or password"
@@ -83,10 +104,71 @@ def login(email: str, password: str, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user_optional)):
-    """Get current user profile (optional - returns null if not authenticated)."""
+    """Get current user profile."""
     if not current_user:
         raise HTTPException(
             status_code=401,
             detail="Not authenticated"
         )
     return UserResponse.model_validate(current_user)
+
+
+@router.put("/me", response_model=UserResponse)
+def update_profile(
+    request: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Update current user profile."""
+    if not current_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated"
+        )
+    
+    # Check username uniqueness
+    if request.username and request.username != current_user.username:
+        existing = db.query(User).filter(
+            User.username == request.username,
+            User.id != current_user.id
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already taken")
+        current_user.username = request.username
+    
+    if request.full_name is not None:
+        current_user.full_name = request.full_name
+    if request.default_currency is not None:
+        current_user.default_currency = request.default_currency
+    if request.timezone is not None:
+        current_user.timezone = request.timezone
+    
+    db.commit()
+    db.refresh(current_user)
+    
+    return UserResponse.model_validate(current_user)
+
+
+@router.put("/change-password", response_model=MessageResponse)
+def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Change user password."""
+    if not current_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated"
+        )
+    
+    if not verify_password(request.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=400,
+            detail="Current password is incorrect"
+        )
+    
+    current_user.hashed_password = get_password_hash(request.new_password)
+    db.commit()
+    
+    return MessageResponse(message="Password changed successfully")

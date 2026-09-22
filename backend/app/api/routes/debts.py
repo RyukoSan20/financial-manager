@@ -1,4 +1,4 @@
-"""Debt API routes."""
+"""Debt API routes with multi-tenancy."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -7,7 +7,9 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from app.core.database import get_db
+from app.core.security import get_current_user_optional
 from app.models.debt import Debt, DebtPayment
+from app.models.user import User
 from app.schemas.debt import (
     DebtCreate, DebtUpdate, DebtResponse, DebtWithProgress,
     DebtPaymentCreate, DebtPaymentResponse, DebtAmortizationEntry, DebtAmortizationSchedule
@@ -24,11 +26,18 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[DebtWithProgress])
-def list_debts(active_only: bool = True, db: Session = Depends(get_db)):
+def list_debts(
+    active_only: bool = True,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """List all debts with calculated progress."""
     query = db.query(Debt)
     if active_only:
         query = query.filter(Debt.is_active == True, Debt.is_paid_off == False)
+    
+    if current_user:
+        query = query.filter(Debt.user_id == current_user.id)
     
     debts = query.order_by(Debt.next_payment_date).all()
     result = []
@@ -86,11 +95,19 @@ def list_debts(active_only: bool = True, db: Session = Depends(get_db)):
 
 
 @router.get("/{debt_id}", response_model=DebtWithProgress)
-def get_debt(debt_id: int, db: Session = Depends(get_db)):
+def get_debt(
+    debt_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Get a single debt with progress."""
     debt = db.query(Debt).filter(Debt.id == debt_id).first()
     if not debt:
         raise HTTPException(status_code=404, detail="Debt not found")
+    
+    # Ownership check
+    if current_user and debt.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     progress = calculate_debt_progress(debt.principal, debt.current_balance)
     
@@ -141,9 +158,19 @@ def get_debt(debt_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=DebtResponse, status_code=201)
-def create_debt(debt: DebtCreate, db: Session = Depends(get_db)):
+def create_debt(
+    debt: DebtCreate,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Create a new debt."""
-    db_debt = Debt(**debt.model_dump())
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    debt_data = debt.model_dump()
+    debt_data["user_id"] = current_user.id
+    
+    db_debt = Debt(**debt_data)
     db.add(db_debt)
     db.commit()
     db.refresh(db_debt)
@@ -151,11 +178,20 @@ def create_debt(debt: DebtCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{debt_id}", response_model=DebtResponse)
-def update_debt(debt_id: int, debt: DebtUpdate, db: Session = Depends(get_db)):
+def update_debt(
+    debt_id: int,
+    debt: DebtUpdate,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Update a debt."""
     db_debt = db.query(Debt).filter(Debt.id == debt_id).first()
     if not db_debt:
         raise HTTPException(status_code=404, detail="Debt not found")
+    
+    # Ownership check
+    if current_user and db_debt.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = debt.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -167,11 +203,19 @@ def update_debt(debt_id: int, debt: DebtUpdate, db: Session = Depends(get_db)):
 
 
 @router.delete("/{debt_id}", status_code=204)
-def delete_debt(debt_id: int, db: Session = Depends(get_db)):
+def delete_debt(
+    debt_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Delete (deactivate) a debt."""
     db_debt = db.query(Debt).filter(Debt.id == debt_id).first()
     if not db_debt:
         raise HTTPException(status_code=404, detail="Debt not found")
+    
+    # Ownership check
+    if current_user and db_debt.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     db_debt.is_active = False
     db.commit()
@@ -181,11 +225,20 @@ def delete_debt(debt_id: int, db: Session = Depends(get_db)):
 # === Debt Payments ===
 
 @router.post("/{debt_id}/payment", response_model=DebtPaymentResponse)
-def add_payment(debt_id: int, payment: DebtPaymentCreate, db: Session = Depends(get_db)):
+def add_payment(
+    debt_id: int,
+    payment: DebtPaymentCreate,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Record a debt payment."""
     db_debt = db.query(Debt).filter(Debt.id == debt_id).first()
     if not db_debt:
         raise HTTPException(status_code=404, detail="Debt not found")
+    
+    # Ownership check
+    if current_user and db_debt.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     # Create payment record
     db_payment = DebtPayment(
@@ -219,8 +272,20 @@ def add_payment(debt_id: int, payment: DebtPaymentCreate, db: Session = Depends(
 
 
 @router.get("/{debt_id}/payments", response_model=List[DebtPaymentResponse])
-def list_payments(debt_id: int, db: Session = Depends(get_db)):
+def list_payments(
+    debt_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """List all payments for a debt."""
+    db_debt = db.query(Debt).filter(Debt.id == debt_id).first()
+    if not db_debt:
+        raise HTTPException(status_code=404, detail="Debt not found")
+    
+    # Ownership check
+    if current_user and db_debt.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     payments = db.query(DebtPayment).filter(
         DebtPayment.debt_id == debt_id
     ).order_by(DebtPayment.payment_date.desc()).all()
@@ -228,15 +293,23 @@ def list_payments(debt_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{debt_id}/schedule", response_model=DebtAmortizationSchedule)
-def get_amortization_schedule(debt_id: int, db: Session = Depends(get_db)):
+def get_amortization_schedule(
+    debt_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Get amortization schedule for a debt."""
     debt = db.query(Debt).filter(Debt.id == debt_id).first()
     if not debt:
         raise HTTPException(status_code=404, detail="Debt not found")
     
+    # Ownership check
+    if current_user and debt.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     # Generate schedule
     schedule_entries = generate_amortization_schedule(
-        debt.current_balance,  # Use current balance for remaining schedule
+        debt.current_balance,
         debt.interest_rate,
         debt.remaining_months
     )
@@ -275,9 +348,17 @@ def get_amortization_schedule(debt_id: int, db: Session = Depends(get_db)):
 # === Summary ===
 
 @router.get("/summary/all")
-def get_debts_summary(db: Session = Depends(get_db)):
+def get_debts_summary(
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Get overall debts summary."""
-    debts = db.query(Debt).filter(Debt.is_active == True, Debt.is_paid_off == False).all()
+    query = db.query(Debt).filter(Debt.is_active == True, Debt.is_paid_off == False)
+    
+    if current_user:
+        query = query.filter(Debt.user_id == current_user.id)
+    
+    debts = query.all()
     
     if not debts:
         return {

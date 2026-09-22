@@ -10,6 +10,7 @@ class RecurringRule(Base):
     __tablename__ = "recurring_rules"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     
     # Transaction details
     type = Column(String(20), nullable=False)  # income, expense, transfer

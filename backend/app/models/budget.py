@@ -10,6 +10,7 @@ class Budget(Base):
     __tablename__ = "budgets"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     name = Column(String(100), nullable=False)
     amount = Column(Numeric(20, 2), nullable=False)
     currency = Column(String(10), default="IDR", nullable=False)

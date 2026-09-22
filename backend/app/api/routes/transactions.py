@@ -1,4 +1,4 @@
-"""Transaction API routes."""
+"""Transaction API routes with multi-tenancy."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -8,8 +8,10 @@ from datetime import date
 from decimal import Decimal
 
 from app.core.database import get_db
+from app.core.security import get_current_user_optional
 from app.models.transaction import Transaction
 from app.models.account import Account
+from app.models.user import User
 from app.schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse
 
 router = APIRouter()
@@ -24,9 +26,15 @@ def list_transactions(
     category_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
+    """Get all transactions for current user."""
     query = db.query(Transaction)
+    
+    # Multi-tenancy filter
+    if current_user:
+        query = query.filter(Transaction.user_id == current_user.id)
     
     if type:
         query = query.filter(Transaction.type == type)
@@ -42,104 +50,24 @@ def list_transactions(
     return query.order_by(Transaction.date.desc()).offset(skip).limit(limit).all()
 
 
-@router.get("/{transaction_id}", response_model=TransactionResponse)
-def get_transaction(transaction_id: int, db: Session = Depends(get_db)):
-    transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
-    if not transaction:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    return transaction
-
-
-@router.post("/", response_model=TransactionResponse, status_code=201)
-def create_transaction(transaction: TransactionCreate, db: Session = Depends(get_db)):
-    # Verify account exists
-    account = db.query(Account).filter(Account.id == transaction.account_id).first()
-    if not account:
-        raise HTTPException(status_code=404, detail="Account not found")
-    
-    db_transaction = Transaction(**transaction.model_dump())
-    
-    # Update account balance
-    if transaction.type == "income":
-        account.balance += transaction.amount
-    else:
-        account.balance -= transaction.amount
-    
-    db.add(db_transaction)
-    db.commit()
-    db.refresh(db_transaction)
-    return db_transaction
-
-
-@router.put("/{transaction_id}", response_model=TransactionResponse)
-def update_transaction(
-    transaction_id: int, 
-    transaction: TransactionUpdate, 
-    db: Session = Depends(get_db)
-):
-    db_transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
-    if not db_transaction:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    
-    update_data = transaction.model_dump(exclude_unset=True)
-    
-    # If amount changes, adjust account balance
-    old_amount = db_transaction.amount
-    old_type = db_transaction.type
-    
-    for key, value in update_data.items():
-        setattr(db_transaction, key, value)
-    
-    # Update account balance if amount changed
-    if "amount" in update_data or "type" in update_data:
-        # Reverse old transaction
-        account = db.query(Account).filter(Account.id == db_transaction.account_id).first()
-        if old_type == "income":
-            account.balance -= old_amount
-        else:
-            account.balance += old_amount
-        
-        # Apply new transaction
-        if db_transaction.type == "income":
-            account.balance += db_transaction.amount
-        else:
-            account.balance -= db_transaction.amount
-    
-    db.commit()
-    db.refresh(db_transaction)
-    return db_transaction
-
-
-@router.delete("/{transaction_id}", status_code=204)
-def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
-    db_transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
-    if not db_transaction:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    
-    # Reverse the balance change
-    account = db.query(Account).filter(Account.id == db_transaction.account_id).first()
-    if db_transaction.type == "income":
-        account.balance -= db_transaction.amount
-    else:
-        account.balance += db_transaction.amount
-    
-    db.delete(db_transaction)
-    db.commit()
-    return None
-
-
 @router.get("/summary/by-period")
 def get_transactions_by_period(
     start_date: date,
     end_date: date,
     group_by: str = "day",
+    current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """Get transaction summary grouped by period."""
-    transactions = db.query(Transaction).filter(
+    query = db.query(Transaction).filter(
         Transaction.date >= start_date,
         Transaction.date <= end_date
-    ).all()
+    )
+    
+    if current_user:
+        query = query.filter(Transaction.user_id == current_user.id)
+    
+    transactions = query.all()
     
     summary = {"income": Decimal("0"), "expense": Decimal("0")}
     daily_data = {}
@@ -150,7 +78,6 @@ def get_transactions_by_period(
         else:
             summary["expense"] += t.amount
         
-        # Group by date
         date_key = str(t.date)
         if date_key not in daily_data:
             daily_data[date_key] = {"income": Decimal("0"), "expense": Decimal("0")}
@@ -173,16 +100,22 @@ def get_transactions_by_category(
     start_date: date,
     end_date: date,
     type: str,
+    current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """Get transaction summary grouped by category."""
     from app.models.category import Category
     
-    transactions = db.query(Transaction).join(Category).filter(
+    query = db.query(Transaction).join(Category).filter(
         Transaction.date >= start_date,
         Transaction.date <= end_date,
         Transaction.type == type
-    ).all()
+    )
+    
+    if current_user:
+        query = query.filter(Transaction.user_id == current_user.id)
+    
+    transactions = query.all()
     
     category_totals = {}
     for t in transactions:
@@ -196,3 +129,127 @@ def get_transactions_by_category(
         "type": type,
         "by_category": category_totals
     }
+
+
+@router.get("/{transaction_id}", response_model=TransactionResponse)
+def get_transaction(
+    transaction_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Get transaction by ID with ownership check."""
+    transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    # Ownership check
+    if current_user and transaction.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return transaction
+
+
+@router.post("/", response_model=TransactionResponse, status_code=201)
+def create_transaction(
+    transaction: TransactionCreate,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Create new transaction."""
+    # Verify account exists and belongs to user
+    account = db.query(Account).filter(Account.id == transaction.account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    
+    # Account ownership check
+    if current_user and account.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cannot add transaction to another user's account")
+    
+    transaction_data = transaction.model_dump()
+    
+    # Assign user_id if authenticated
+    if current_user:
+        transaction_data["user_id"] = current_user.id
+    
+    db_transaction = Transaction(**transaction_data)
+    
+    # Update account balance
+    if transaction.type == "income":
+        account.balance += transaction.amount
+    else:
+        account.balance -= transaction.amount
+    
+    db.add(db_transaction)
+    db.commit()
+    db.refresh(db_transaction)
+    return db_transaction
+
+
+@router.put("/{transaction_id}", response_model=TransactionResponse)
+def update_transaction(
+    transaction_id: int, 
+    transaction: TransactionUpdate, 
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Update transaction with ownership check."""
+    db_transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not db_transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    # Ownership check
+    if current_user and db_transaction.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    update_data = transaction.model_dump(exclude_unset=True)
+    
+    # If amount changes, adjust account balance
+    old_amount = db_transaction.amount
+    old_type = db_transaction.type
+    
+    for key, value in update_data.items():
+        setattr(db_transaction, key, value)
+    
+    # Update account balance if amount changed
+    if "amount" in update_data or "type" in update_data:
+        account = db.query(Account).filter(Account.id == db_transaction.account_id).first()
+        if old_type == "income":
+            account.balance -= old_amount
+        else:
+            account.balance += old_amount
+        
+        if db_transaction.type == "income":
+            account.balance += db_transaction.amount
+        else:
+            account.balance -= db_transaction.amount
+    
+    db.commit()
+    db.refresh(db_transaction)
+    return db_transaction
+
+
+@router.delete("/{transaction_id}", status_code=204)
+def delete_transaction(
+    transaction_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Delete transaction with ownership check."""
+    db_transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not db_transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    # Ownership check
+    if current_user and db_transaction.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Reverse the balance change
+    account = db.query(Account).filter(Account.id == db_transaction.account_id).first()
+    if db_transaction.type == "income":
+        account.balance -= db_transaction.amount
+    else:
+        account.balance += db_transaction.amount
+    
+    db.delete(db_transaction)
+    db.commit()
+    return None

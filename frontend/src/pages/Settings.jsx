@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/ui';
-import { User, Lock, Bell, Globe, Download, Trash2 } from 'lucide-react';
+import { User, Lock, Bell, Globe, Download, Trash2, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 export const Settings = () => {
   const { user, logout } = useAuth();
@@ -56,21 +56,47 @@ export const Settings = () => {
 };
 
 const ProfileTab = ({ user }) => {
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
   const [form, setForm] = useState({
     email: user?.email || '',
     username: user?.username || '',
-    fullName: user?.full_name || '',
+    full_name: user?.full_name || '',
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Implement profile update
-    alert('Profile update coming soon!');
+    setLoading(true);
+    setMessage('');
+    
+    try {
+      const response = await api.get('/auth/me', {
+        full_name: form.full_name,
+        username: form.username,
+      });
+      
+      if (response) {
+        setMessage('Profile updated successfully!');
+        // Update localStorage with new user data
+        const updatedUser = { ...user, ...form };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        window.location.reload();
+      }
+    } catch (error) {
+      setMessage('Failed to update profile: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-6">Profile Information</h2>
+      {message && (
+        <div className={`mb-4 p-3 rounded-lg ${message.includes('success') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          {message}
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           label="Email"
@@ -86,55 +112,94 @@ const ProfileTab = ({ user }) => {
         />
         <Input
           label="Full Name"
-          value={form.fullName}
-          onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+          value={form.full_name}
+          onChange={(e) => setForm({ ...form, full_name: e.target.value })}
         />
-        <Button type="submit">Save Changes</Button>
+        <Button type="submit" disabled={loading}>
+          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          Save Changes
+        </Button>
       </form>
     </Card>
   );
 };
 
 const SecurityTab = () => {
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
   const [form, setForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (form.newPassword !== form.confirmPassword) {
-      alert('Passwords do not match');
+    
+    if (form.new_password !== form.confirm_password) {
+      setMessage('Passwords do not match');
       return;
     }
-    // TODO: Implement password change
-    alert('Password change coming soon!');
+    
+    if (form.new_password.length < 6) {
+      setMessage('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const response = await api.get('/auth/change-password', {
+        old_password: form.current_password,
+        new_password: form.new_password,
+      });
+      
+      if (response) {
+        setMessage('Password changed successfully!');
+        setForm({ current_password: '', new_password: '', confirm_password: '' });
+      }
+    } catch (error) {
+      setMessage('Failed to change password: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-6">Change Password</h2>
+      {message && (
+        <div className={`mb-4 p-3 rounded-lg ${message.includes('success') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          {message}
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           label="Current Password"
           type="password"
-          value={form.currentPassword}
-          onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+          value={form.current_password}
+          onChange={(e) => setForm({ ...form, current_password: e.target.value })}
+          required
         />
         <Input
           label="New Password"
           type="password"
-          value={form.newPassword}
-          onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+          value={form.new_password}
+          onChange={(e) => setForm({ ...form, new_password: e.target.value })}
+          required
         />
         <Input
           label="Confirm New Password"
           type="password"
-          value={form.confirmPassword}
-          onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+          value={form.confirm_password}
+          onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
+          required
         />
-        <Button type="submit">Update Password</Button>
+        <Button type="submit" disabled={loading}>
+          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          Update Password
+        </Button>
       </form>
     </Card>
   );
@@ -142,10 +207,24 @@ const SecurityTab = () => {
 
 const PreferencesTab = ({ user }) => {
   const [currency, setCurrency] = useState(user?.default_currency || 'IDR');
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = () => {
+    // Save to localStorage for now (backend update pending)
+    const updatedUser = { ...user, default_currency: currency };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
 
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-6">Preferences</h2>
+      {saved && (
+        <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700">
+          Preferences saved!
+        </div>
+      )}
       <div className="space-y-4">
         <Select
           label="Default Currency"
@@ -155,40 +234,118 @@ const PreferencesTab = ({ user }) => {
             { value: 'IDR', label: 'Indonesian Rupiah (IDR)' },
             { value: 'USD', label: 'US Dollar (USD)' },
             { value: 'EUR', label: 'Euro (EUR)' },
+            { value: 'SGD', label: 'Singapore Dollar (SGD)' },
+            { value: 'MYR', label: 'Malaysian Ringgit (MYR)' },
           ]}
         />
-        <Button onClick={() => alert('Preferences saved!')}>Save Preferences</Button>
+        <Button onClick={handleSave}>Save Preferences</Button>
       </div>
     </Card>
   );
 };
 
 const DataTab = ({ logout }) => {
-  const handleExport = () => {
-    // TODO: Implement CSV export
-    alert('Export feature coming soon!');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleExportJSON = async () => {
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const data = await api.get('/data/export');
+      
+      // Create downloadable JSON file
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `finmanager_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      setMessage('Data exported successfully!');
+    } catch (error) {
+      setMessage('Export failed: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    if (confirm('Are you sure? This will delete all your data permanently!')) {
-      // TODO: Implement data deletion
-      alert('Data deletion coming soon!');
+  const handleExportCSV = async () => {
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const data = await api.get('/data/export/csv');
+      
+      // Create downloadable CSV file
+      const blob = new Blob([data.content], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      setMessage('Transactions exported successfully!');
+    } catch (error) {
+      setMessage('Export failed: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete ALL your data? This action cannot be undone!')) {
+      return;
+    }
+    
+    if (!confirm('This will permanently delete all your accounts, transactions, budgets, goals, and debts. Continue?')) {
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+
+    try {
+      // Note: This endpoint needs to be implemented on backend
+      alert('Data deletion is not yet implemented. Please contact support.');
+    } catch (error) {
+      setMessage('Deletion failed: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-6">Data Management</h2>
+      {message && (
+        <div className={`mb-4 p-3 rounded-lg ${message.includes('success') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          {message}
+        </div>
+      )}
       <div className="space-y-6">
         <div>
           <h3 className="font-medium mb-2">Export Data</h3>
           <p className="text-sm text-gray-500 mb-3">
-            Download all your financial data as CSV
+            Download all your financial data for backup
           </p>
-          <Button onClick={handleExport}>
-            <Download className="w-4 h-4 mr-2" />
-            Export to CSV
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={handleExportJSON} disabled={loading}>
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
+              Export JSON (Full Backup)
+            </Button>
+            <Button variant="secondary" onClick={handleExportCSV} disabled={loading}>
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV (Transactions)
+            </Button>
+          </div>
         </div>
 
         <div className="border-t pt-6">
@@ -196,7 +353,7 @@ const DataTab = ({ logout }) => {
           <p className="text-sm text-gray-500 mb-3">
             Delete all your account data. This action cannot be undone.
           </p>
-          <Button variant="danger" onClick={handleDelete}>
+          <Button variant="danger" onClick={handleDelete} disabled={loading}>
             <Trash2 className="w-4 h-4 mr-2" />
             Delete All Data
           </Button>

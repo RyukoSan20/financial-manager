@@ -17,6 +17,7 @@ class Transaction(Base):
     __tablename__ = "transactions"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     type = Column(String(20), nullable=False)  # income, expense, transfer_out, transfer_in
     amount = Column(Numeric(20, 2), nullable=False)
     currency = Column(String(10), default="IDR", nullable=False)

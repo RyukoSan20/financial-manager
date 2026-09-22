@@ -1,26 +1,45 @@
-"""Category API routes."""
+"""Category API routes with multi-tenancy."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.core.database import get_db
+from app.core.security import get_current_user_optional
 from app.models.category import Category
+from app.models.user import User
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 
 router = APIRouter()
 
 
 @router.get("/", response_model=List[CategoryResponse])
-def list_categories(type: str = None, db: Session = Depends(get_db)):
+def list_categories(
+    type: str = None,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Get all categories for current user (plus shared categories)."""
     query = db.query(Category).filter(Category.is_active == True)
     if type:
         query = query.filter(Category.type == type)
+    
+    # Get shared + user's own categories
+    if current_user:
+        query = query.filter(
+            (Category.user_id == current_user.id) | (Category.user_id == None)
+        )
+    
     return query.all()
 
 
 @router.get("/{category_id}", response_model=CategoryResponse)
-def get_category(category_id: int, db: Session = Depends(get_db)):
+def get_category(
+    category_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Get category by ID."""
     category = db.query(Category).filter(Category.id == category_id).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -28,8 +47,19 @@ def get_category(category_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=CategoryResponse, status_code=201)
-def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
-    db_category = Category(**category.model_dump())
+def create_category(
+    category: CategoryCreate,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Create new category (owned by current user)."""
+    category_data = category.model_dump()
+    
+    # Assign user_id if authenticated
+    if current_user:
+        category_data["user_id"] = current_user.id
+    
+    db_category = Category(**category_data)
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
@@ -37,10 +67,20 @@ def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{category_id}", response_model=CategoryResponse)
-def update_category(category_id: int, category: CategoryUpdate, db: Session = Depends(get_db)):
+def update_category(
+    category_id: int,
+    category: CategoryUpdate,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Update category with ownership check."""
     db_category = db.query(Category).filter(Category.id == category_id).first()
     if not db_category:
         raise HTTPException(status_code=404, detail="Category not found")
+    
+    # Ownership check - can only edit own categories
+    if current_user and db_category.user_id and db_category.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cannot edit shared category")
     
     update_data = category.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -52,10 +92,19 @@ def update_category(category_id: int, category: CategoryUpdate, db: Session = De
 
 
 @router.delete("/{category_id}", status_code=204)
-def delete_category(category_id: int, db: Session = Depends(get_db)):
+def delete_category(
+    category_id: int,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Soft delete category with ownership check."""
     db_category = db.query(Category).filter(Category.id == category_id).first()
     if not db_category:
         raise HTTPException(status_code=404, detail="Category not found")
+    
+    # Ownership check
+    if current_user and db_category.user_id and db_category.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cannot delete shared category")
     
     db_category.is_active = False
     db.commit()
@@ -63,8 +112,14 @@ def delete_category(category_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/seed-defaults")
-def seed_default_categories(db: Session = Depends(get_db)):
-    """Seed default income/expense categories."""
+def seed_default_categories(
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Seed default income/expense categories for user."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
     default_categories = [
         # Income
         {"name": "Gaji", "type": "income", "icon": "💰", "color": "#4CAF50"},
@@ -86,8 +141,13 @@ def seed_default_categories(db: Session = Depends(get_db)):
     
     created = []
     for cat_data in default_categories:
-        existing = db.query(Category).filter(Category.name == cat_data["name"]).first()
+        # Check if exists for this user
+        existing = db.query(Category).filter(
+            Category.name == cat_data["name"],
+            Category.user_id == current_user.id
+        ).first()
         if not existing:
+            cat_data["user_id"] = current_user.id
             db_category = Category(**cat_data)
             db.add(db_category)
             created.append(cat_data["name"])
