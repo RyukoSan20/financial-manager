@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card, Spinner } from '../components/ui';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ScanText, MessageSquare } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
+import { TextParserModal } from '../components/parser/TextParserModal';
+import { ReceiptScannerModal } from '../components/parser/ReceiptScannerModal';
 
 const typeOptions = [
   { value: '', label: 'All' },
@@ -18,6 +20,8 @@ export const Transactions = () => {
   const [showFilter, setShowFilter] = useState(false);
   const [filters, setFilters] = useState({ type: '', search: '' });
   const [selectedTx, setSelectedTx] = useState(null);
+  const [showTextParser, setShowTextParser] = useState(false);
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -90,11 +94,29 @@ export const Transactions = () => {
           <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
           <p className="text-sm text-gray-500">{filteredTransactions.length} transactions</p>
         </div>
-        <button 
+        <button
           onClick={() => window.location.href = '/add'}
           className="p-3 bg-primary-500 text-white rounded-xl shadow-lg active:bg-primary-600 touch-manipulation"
         >
           <Plus className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Smart Parser Buttons */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setShowTextParser(true)}
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 active:bg-blue-100"
+        >
+          <MessageSquare className="w-5 h-5" />
+          <span className="font-medium">Parse SMS / QRIS</span>
+        </button>
+        <button
+          onClick={() => setShowReceiptScanner(true)}
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-purple-50 text-purple-600 rounded-xl border border-purple-200 active:bg-purple-100"
+        >
+          <ScanText className="w-5 h-5" />
+          <span className="font-medium">Scan Receipt</span>
         </button>
       </div>
 
@@ -288,6 +310,24 @@ export const Transactions = () => {
           </div>
         </BottomSheet>
       )}
+
+      {/* Parser Modals */}
+      <TextParserModal
+        isOpen={showTextParser}
+        onClose={() => setShowTextParser(false)}
+        onSuccess={() => {
+          setShowTextParser(false);
+          fetchData();
+        }}
+      />
+      <ReceiptScannerModal
+        isOpen={showReceiptScanner}
+        onClose={() => setShowReceiptScanner(false)}
+        onSuccess={() => {
+          setShowReceiptScanner(false);
+          fetchData();
+        }}
+      />
     </div>
   );
 };
@@ -317,3 +357,6 @@ const BottomSheet = ({ isOpen = true, onClose, children }) => {
 };
 
 export default Transactions;
+
+export { TextParserModal } from '../components/parser/TextParserModal';
+export { ReceiptScannerModal } from '../components/parser/ReceiptScannerModal';

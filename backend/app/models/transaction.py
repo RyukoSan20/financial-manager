@@ -38,6 +38,15 @@ class Transaction(Base):
     
     # Metadata
     is_deleted = Column(Boolean, default=False)  # Soft delete
+    
+    # Parser/OCR metadata
+    merchant_name = Column(String(100), nullable=True)
+    raw_source_text = Column(Text, nullable=True)  # Original SMS/OCR text
+    confidence_score = Column(Numeric(5, 4), nullable=True)  # 0.0000 - 1.0000
+    latitude = Column(Numeric(10, 7), nullable=True)
+    longitude = Column(Numeric(10, 7), nullable=True)
+    merchant_address = Column(String(255), nullable=True)
+    detection_type = Column(String(20), default="MANUAL")  # MANUAL, OCR_RECEIPT, QRIS_TEXT, SMS_BANK
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

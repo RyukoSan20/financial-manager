@@ -14,4 +14,5 @@ from . import (
     analytics,
     auth,
     data,
+    parser,
 )
