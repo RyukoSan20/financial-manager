@@ -18,6 +18,7 @@ from app.services.parser_service import (
     parse_receipt,
     ParsedTransaction
 )
+from app.services.geocoding_service import geocoding_service, geocode_merchant
 
 router = APIRouter(prefix="/parser", tags=["Parser"])
 
@@ -37,6 +38,9 @@ class ParsedTransactionResponse(BaseModel):
     detection_type: str
     raw_text: Optional[str] = None
     suggested_type: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    merchant_address: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -67,9 +71,21 @@ def parse_text(
     # Parse the text
     results = parse_sms_or_qris(raw_text)
     
-    # Convert to response models
+    # Convert to response models with geocoding
     response = []
     for parsed in results:
+        # Try to geocode merchant location
+        latitude = None
+        longitude = None
+        merchant_address = None
+        
+        if parsed.merchant_name:
+            geo = geocode_merchant(parsed.merchant_name)
+            if geo:
+                latitude = geo.latitude
+                longitude = geo.longitude
+                merchant_address = geo.formatted_address
+        
         response.append(ParsedTransactionResponse(
             amount=str(parsed.amount),
             transaction_type=parsed.transaction_type,
@@ -82,6 +98,9 @@ def parse_text(
             detection_type=parsed.detection_type,
             raw_text=parsed.raw_text[:500] if parsed.raw_text else None,
             suggested_type="expense" if parsed.transaction_type == "DEBIT" else "income",
+            latitude=latitude,
+            longitude=longitude,
+            merchant_address=merchant_address,
         ))
     
     return response

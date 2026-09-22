@@ -15,7 +15,8 @@ import {
   Analytics,
   Login,
   Register,
-  Settings
+  Settings,
+  MerchantMap
 } from './pages';
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
             <Route path="recurring" element={<Recurring />} />
             <Route path="calculators" element={<Calculators />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route path="map" element={<MerchantMap />} />
             <Route path="settings" element={<Settings />} />
             <Route path="more" element={<MorePage />} />
           </Route>

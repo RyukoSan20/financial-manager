@@ -903,3 +903,222 @@ def get_financial_health(
             "active_goals": len(goals),
         }
     }
+
+
+# =============================================================================
+# MERCHANT ANALYTICS
+# =============================================================================
+
+@router.get("/merchants", response_model=List[dict])
+def get_merchant_analytics(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """
+    Get merchant spending analytics.
+    
+    Returns:
+    - Top merchants by spending
+    - Visit frequency
+    - Average transaction
+    - Location coordinates (if available)
+    """
+    if not start_date:
+        start_date = date.today().replace(day=1)
+    if not end_date:
+        end_date = date.today()
+    
+    # Build query
+    query = db.query(
+        Transaction.merchant_name,
+        func.count(Transaction.id).label("transaction_count"),
+        func.sum(Transaction.amount).label("total_spent"),
+        func.avg(Transaction.amount).label("avg_transaction"),
+        func.min(Transaction.date).label("first_visit"),
+        func.max(Transaction.date).label("last_visit"),
+    ).filter(
+        Transaction.merchant_name.isnot(None),
+        Transaction.merchant_name != "",
+        Transaction.type == "expense",
+        Transaction.date >= start_date,
+        Transaction.date <= end_date,
+    )
+    
+    if current_user:
+        query = query.filter(Transaction.user_id == current_user.id)
+    
+    # Group by merchant
+    query = query.group_by(Transaction.merchant_name)
+    query = query.order_by(func.sum(Transaction.amount).desc())
+    
+    merchants = query.limit(limit).all()
+    
+    result = []
+    for m in merchants:
+        # Get coordinates (simplified - would use geocoding service)
+        coordinates = None
+        
+        result.append({
+            "merchant_name": m.merchant_name,
+            "transaction_count": m.transaction_count,
+            "total_spent": float(m.total_spent or 0),
+            "avg_transaction": float(m.avg_transaction or 0),
+            "first_visit": m.first_visit.isoformat() if m.first_visit else None,
+            "last_visit": m.last_visit.isoformat() if m.last_visit else None,
+            "coordinates": coordinates,
+        })
+    
+    return result
+
+
+@router.get("/merchants/map")
+def get_merchant_map_data(
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """
+    Get merchant data formatted for map visualization.
+    
+    Returns list of merchants with coordinates for map markers.
+    """
+    # Get merchants with coordinates
+    query = db.query(
+        Transaction.merchant_name,
+        func.count(Transaction.id).label("visit_count"),
+        func.sum(Transaction.amount).label("total_spent"),
+        func.avg(Transaction.amount).label("avg_spent"),
+        func.max(Transaction.latitude).label("latitude"),
+        func.max(Transaction.longitude).label("longitude"),
+    ).filter(
+        Transaction.merchant_name.isnot(None),
+        Transaction.merchant_name != "",
+        Transaction.type == "expense",
+    )
+    
+    if current_user:
+        query = query.filter(Transaction.user_id == current_user.id)
+    
+    query = query.group_by(Transaction.merchant_name)
+    
+    merchants = query.all()
+    
+    markers = []
+    for m in merchants:
+        if m.latitude and m.longitude:
+            markers.append({
+                "merchant_name": m.merchant_name,
+                "latitude": float(m.latitude),
+                "longitude": float(m.longitude),
+                "visit_count": m.visit_count,
+                "total_spent": float(m.total_spent or 0),
+                "avg_spent": float(m.avg_spent or 0),
+            })
+    
+    return {
+        "markers": markers,
+        "total_merchants_with_location": len(markers),
+        "total_unique_merchants": len(merchants),
+    }
+
+
+@router.get("/merchants/top")
+def get_top_merchants(
+    metric: str = Query(default="spending", regex="^(spending|frequency)$"),
+    limit: int = Query(default=10, ge=1, le=50),
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top merchants by spending or visit frequency.
+    
+    Args:
+        metric: "spending" (highest total) or "frequency" (most visits)
+        limit: Number of merchants to return
+    """
+    if metric == "spending":
+        order_col = func.sum(Transaction.amount).desc()
+    else:
+        order_col = func.count(Transaction.id).desc()
+    
+    query = db.query(
+        Transaction.merchant_name,
+        func.count(Transaction.id).label("visit_count"),
+        func.sum(Transaction.amount).label("total_spent"),
+        func.avg(Transaction.amount).label("avg_transaction"),
+    ).filter(
+        Transaction.merchant_name.isnot(None),
+        Transaction.merchant_name != "",
+        Transaction.type == "expense",
+    )
+    
+    if current_user:
+        query = query.filter(Transaction.user_id == current_user.id)
+    
+    query = query.group_by(Transaction.merchant_name)
+    query = query.order_by(order_col)
+    
+    merchants = query.limit(limit).all()
+    
+    return {
+        "metric": metric,
+        "merchants": [
+            {
+                "rank": i + 1,
+                "merchant_name": m.merchant_name,
+                "visit_count": m.visit_count,
+                "total_spent": float(m.total_spent or 0),
+                "avg_transaction": float(m.avg_transaction or 0),
+            }
+            for i, m in enumerate(merchants)
+        ]
+    }
+
+
+@router.get("/spending/heatmap")
+def get_spending_heatmap(
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """
+    Get spending data grouped by location for heatmap visualization.
+    """
+    query = db.query(
+        Transaction.merchant_name,
+        Transaction.latitude,
+        Transaction.longitude,
+        func.count(Transaction.id).label("transaction_count"),
+        func.sum(Transaction.amount).label("total_spent"),
+    ).filter(
+        Transaction.merchant_name.isnot(None),
+        Transaction.latitude.isnot(None),
+        Transaction.longitude.isnot(None),
+        Transaction.type == "expense",
+    )
+    
+    if current_user:
+        query = query.filter(Transaction.user_id == current_user.id)
+    
+    query = query.group_by(
+        Transaction.merchant_name,
+        Transaction.latitude,
+        Transaction.longitude,
+    )
+    
+    locations = query.all()
+    
+    return {
+        "points": [
+            {
+                "lat": float(loc.latitude),
+                "lng": float(loc.longitude),
+                "weight": float(loc.total_spent or 0) / 100000,  # Normalize for heatmap
+                "merchant_name": loc.merchant_name,
+                "transaction_count": loc.transaction_count,
+                "total_spent": float(loc.total_spent or 0),
+            }
+            for loc in locations
+        ]
+    }
