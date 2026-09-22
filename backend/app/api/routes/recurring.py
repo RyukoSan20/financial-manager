@@ -67,6 +67,39 @@ def list_recurring_rules(
     return query.order_by(RecurringRule.next_occurrence).all()
 
 
+
+
+
+@router.get("/upcoming")
+def get_upcoming_recurring(
+    days: int = Query(default=7, ge=1, le=90),
+    db: Session = Depends(get_db)
+):
+    """Get upcoming recurring transactions within N days."""
+    today = date.today()
+    end_date = today + timedelta(days=days)
+    
+    rules = db.query(RecurringRule).filter(
+        RecurringRule.is_active == True,
+        RecurringRule.next_occurrence <= end_date
+    ).all()
+    
+    upcoming = []
+    for rule in rules:
+        upcoming.append({
+            "rule_id": rule.id,
+            "description": rule.description,
+            "amount": rule.amount,
+            "type": rule.type,
+            "frequency": rule.frequency,
+            "next_date": rule.next_occurrence,
+            "account_id": rule.account_id,
+        })
+    
+    upcoming.sort(key=lambda x: x["next_date"])
+    return {"upcoming": upcoming, "count": len(upcoming)}
+
+
 @router.get("/{rule_id}", response_model=RecurringRuleResponse)
 def get_recurring_rule(rule_id: int, db: Session = Depends(get_db)):
     """Get a single recurring rule."""
@@ -290,31 +323,4 @@ def generate_all_due_transactions(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/upcoming")
-def get_upcoming_recurring(
-    days: int = Query(default=7, ge=1, le=90),
-    db: Session = Depends(get_db)
-):
-    """Get upcoming recurring transactions within N days."""
-    today = date.today()
-    end_date = today + timedelta(days=days)
-    
-    rules = db.query(RecurringRule).filter(
-        RecurringRule.is_active == True,
-        RecurringRule.next_occurrence <= end_date
-    ).all()
-    
-    upcoming = []
-    for rule in rules:
-        upcoming.append({
-            "rule_id": rule.id,
-            "description": rule.description,
-            "amount": rule.amount,
-            "type": rule.type,
-            "frequency": rule.frequency,
-            "next_date": rule.next_occurrence,
-            "account_id": rule.account_id,
-        })
-    
-    upcoming.sort(key=lambda x: x["next_date"])
-    return {"upcoming": upcoming, "count": len(upcoming)}
+
