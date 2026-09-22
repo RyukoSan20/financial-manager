@@ -1,4 +1,4 @@
-// Enhanced Register Page with Password Strength
+// Register Page with Supabase + Backend fallback
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,13 +9,11 @@ export const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    username: '',
-    fullName: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState({ score: 0, feedback: [] });
-  const { register } = useAuth();
+  const { register, isSupabase } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,38 +22,27 @@ export const Register = () => {
     }
   }, [form.password]);
 
-  const checkStrength = async (password) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/auth/password-strength`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-      const data = await response.json();
-      setPasswordStrength(data);
-    } catch (err) {
-      // Fallback client-side check
-      let score = 0;
-      const feedback = [];
-      
-      if (password.length >= 8) score++;
-      else feedback.push('Min. 8 karakter');
-      
-      if (password.length >= 12) score++;
-      if (/[A-Z]/.test(password)) score++;
-      else feedback.push('Huruf besar');
-      
-      if (/[a-z]/.test(password)) score++;
-      else feedback.push('Huruf kecil');
-      
-      if (/\d/.test(password)) score++;
-      else feedback.push('Angka');
-      
-      if (/[!@#$%^&*]/.test(password)) score++;
-      else feedback.push('Simbol');
-      
-      setPasswordStrength({ score: Math.min(4, Math.max(0, score - 1)), feedback });
-    }
+  const checkStrength = (password) => {
+    let score = 0;
+    const feedback = [];
+    
+    if (password.length >= 8) score++;
+    else feedback.push('Min. 8 karakter');
+    
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password)) score++;
+    else feedback.push('Huruf besar');
+    
+    if (/[a-z]/.test(password)) score++;
+    else feedback.push('Huruf kecil');
+    
+    if (/\d/.test(password)) score++;
+    else feedback.push('Angka');
+    
+    if (/[!@#$%^&*]/.test(password)) score++;
+    else feedback.push('Simbol (!@#$%)');
+    
+    setPasswordStrength({ score: Math.min(4, Math.max(0, score - 1)), feedback });
   };
 
   const handleChange = (e) => {
@@ -80,7 +67,7 @@ export const Register = () => {
     setLoading(true);
 
     try {
-      await register(form.email, form.password, form.username, form.fullName);
+      await register(form.email, form.password);
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Registrasi gagal. Email mungkin sudah terdaftar.');
@@ -106,6 +93,11 @@ export const Register = () => {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">FinManager</h1>
           <p className="text-primary-100">Buat akun baru untuk memulai</p>
+          {isSupabase && (
+            <span className="inline-block mt-2 px-2 py-1 bg-white/20 rounded-full text-xs text-white">
+              Powered by Supabase
+            </span>
+          )}
         </div>
 
         {/* Error Message */}
@@ -203,34 +195,6 @@ export const Register = () => {
               {form.confirmPassword && form.password !== form.confirmPassword && (
                 <p className="mt-1 text-xs text-red-500">Password tidak cocok</p>
               )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Username (opsional)
-              </label>
-              <input
-                type="text"
-                name="username"
-                value={form.username}
-                onChange={handleChange}
-                placeholder="namamu"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nama Lengkap (opsional)
-              </label>
-              <input
-                type="text"
-                name="fullName"
-                value={form.fullName}
-                onChange={handleChange}
-                placeholder="John Doe"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-              />
             </div>
 
             {/* Password Requirements */}

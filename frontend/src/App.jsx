@@ -19,6 +19,7 @@ import {
   MerchantMap,
   AIAdvisor
 } from './pages';
+import { AuthCallback } from './pages/AuthCallback';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           {/* Auth routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           
           {/* Main app routes */}
           <Route path="/" element={<Layout />}>

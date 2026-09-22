@@ -1,4 +1,6 @@
+// Auth Context with Supabase + Backend fallback
 import { createContext, useContext, useState, useEffect } from 'react';
+import { supabase, isSupabaseConfigured, onAuthStateChange } from '../lib/supabase';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -9,10 +11,53 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth();
+    if (isSupabaseConfigured()) {
+      // Use Supabase auth
+      initSupabaseAuth();
+    } else {
+      // Fallback to backend auth
+      checkBackendAuth();
+    }
+    
+    return () => {
+      // Cleanup subscription if exists
+    };
   }, []);
 
-  const checkAuth = async () => {
+  const initSupabaseAuth = async () => {
+    try {
+      // Get initial session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        setUser(session.user);
+        localStorage.setItem('sb_token', session.access_token);
+        localStorage.setItem('sb_user', JSON.stringify(session.user));
+      }
+      
+      // Listen for auth changes
+      const { data: { subscription } } = onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          setUser(session.user);
+          localStorage.setItem('sb_token', session.access_token);
+          localStorage.setItem('sb_user', JSON.stringify(session.user));
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          localStorage.removeItem('sb_token');
+          localStorage.removeItem('sb_user');
+        }
+      });
+      
+      setLoading(false);
+      
+      return () => subscription.unsubscribe();
+    } catch (err) {
+      console.error('Supabase auth init error:', err);
+      checkBackendAuth();
+    }
+  };
+
+  const checkBackendAuth = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
       setLoading(false);
@@ -31,32 +76,90 @@ export const AuthProvider = ({ children }) => {
         const userData = await res.json();
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
-      } else if (res.status === 401) {
-        // Token expired or invalid
+      } else {
         clearAuth();
       }
     } catch (err) {
-      console.error('Auth check failed:', err);
+      console.error('Backend auth check failed:', err);
       clearAuth();
     } finally {
       setLoading(false);
     }
   };
 
-  const setAuth = (token, userData) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-  };
-
   const clearAuth = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('sb_token');
+    localStorage.removeItem('sb_user');
     localStorage.removeItem('guest_device_id');
     setUser(null);
   };
 
-  const login = async (email, password) => {
+  // Supabase Auth Functions
+  const supabaseLogin = async (email, password) => {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase not configured. Please contact admin.');
+    }
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    if (error) throw error;
+    return data;
+  };
+
+  const supabaseRegister = async (email, password) => {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase not configured. Please contact admin.');
+    }
+    
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    
+    if (error) throw error;
+    return data;
+  };
+
+  const supabaseGoogleLogin = async () => {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase not configured. Please contact admin.');
+    }
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/auth/callback',
+      },
+    });
+    
+    if (error) throw error;
+    return data;
+  };
+
+  const supabaseGuestLogin = async () => {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase not configured. Please contact admin.');
+    }
+    
+    const { data, error } = await supabase.auth.signInAnonymously();
+    
+    if (error) throw error;
+    return data;
+  };
+
+  const supabaseLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    clearAuth();
+  };
+
+  // Backend Auth Functions (fallback)
+  const backendLogin = async (email, password) => {
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -69,20 +172,17 @@ export const AuthProvider = ({ children }) => {
     }
     
     const data = await res.json();
-    setAuth(data.access_token, data.user);
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    setUser(data.user);
     return data;
   };
 
-  const register = async (email, password, username = null, fullName = null) => {
+  const backendRegister = async (email, password, username = null, fullName = null) => {
     const res = await fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        email, 
-        password,
-        username,
-        full_name: fullName
-      }),
+      body: JSON.stringify({ email, password, username, full_name: fullName }),
     });
     
     if (!res.ok) {
@@ -91,11 +191,13 @@ export const AuthProvider = ({ children }) => {
     }
     
     const data = await res.json();
-    setAuth(data.access_token, data.user);
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    setUser(data.user);
     return data;
   };
 
-  const guestLogin = async () => {
+  const backendGuestLogin = async () => {
     let deviceId = localStorage.getItem('guest_device_id');
     
     if (!deviceId) {
@@ -109,16 +211,16 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify({ device_id: deviceId }),
     });
     
-    if (!res.ok) {
-      throw new Error('Guest login failed');
-    }
+    if (!res.ok) throw new Error('Guest login failed');
     
     const data = await res.json();
-    setAuth(data.access_token, data.user);
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    setUser(data.user);
     return data;
   };
 
-  const logout = async () => {
+  const backendLogout = async () => {
     try {
       const token = localStorage.getItem('token');
       if (token) {
@@ -135,7 +237,52 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Unified functions - use Supabase if configured, fallback to backend
+  const login = async (email, password) => {
+    if (isSupabaseConfigured()) {
+      return supabaseLogin(email, password);
+    }
+    return backendLogin(email, password);
+  };
+
+  const register = async (email, password) => {
+    if (isSupabaseConfigured()) {
+      return supabaseRegister(email, password);
+    }
+    return backendRegister(email, password);
+  };
+
+  const googleLogin = async () => {
+    if (isSupabaseConfigured()) {
+      return supabaseGoogleLogin();
+    }
+    throw new Error('Google login not configured. Please use email login.');
+  };
+
+  const guestLogin = async () => {
+    if (isSupabaseConfigured()) {
+      return supabaseGuestLogin();
+    }
+    return backendGuestLogin();
+  };
+
+  const logout = async () => {
+    if (isSupabaseConfigured()) {
+      return supabaseLogout();
+    }
+    return backendLogout();
+  };
+
   const updateProfile = async (data) => {
+    if (isSupabaseConfigured()) {
+      // Update via Supabase
+      const { data: userData, error } = await supabase.auth.updateUser(data);
+      if (error) throw error;
+      setUser(userData.user);
+      return userData.user;
+    }
+    
+    // Fallback to backend
     const token = localStorage.getItem('token');
     const res = await fetch(`${API_URL}/api/auth/me`, {
       method: 'PUT',
@@ -153,30 +300,7 @@ export const AuthProvider = ({ children }) => {
     
     const updatedUser = await res.json();
     setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
     return updatedUser;
-  };
-
-  const changePassword = async (currentPassword, newPassword) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/api/auth/change-password`, {
-      method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        current_password: currentPassword,
-        new_password: newPassword
-      }),
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.detail || 'Password change failed');
-    }
-    
-    return res.json();
   };
 
   const value = {
@@ -184,13 +308,14 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated: !!user,
     isGuest: user?.is_guest || false,
+    isSupabase: isSupabaseConfigured(),
     login,
     register,
+    googleLogin,
     guestLogin,
     logout,
     updateProfile,
-    changePassword,
-    checkAuth,
+    checkAuth: isSupabaseConfigured() ? initSupabaseAuth : checkBackendAuth,
   };
 
   return (

@@ -1,6 +1,6 @@
-// Enhanced Login Page with Email, Guest & Google OAuth
+// Login Page with Supabase + Backend fallback
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -11,7 +11,7 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loginMethod, setLoginMethod] = useState('email');
-  const { login } = useAuth();
+  const { login, googleLogin, guestLogin, isSupabase } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -29,42 +29,36 @@ export const Login = () => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      await googleLogin();
+      // If using Supabase, will redirect
+      // If using backend, this will throw
+    } catch (err) {
+      if (err.message.includes('not configured')) {
+        setError('Google login belum tersedia. Gunakan login email.');
+      } else {
+        setError(err.message);
+      }
+      setLoading(false);
+    }
+  };
+
   const handleGuestLogin = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const deviceId = localStorage.getItem('guest_device_id') || 
-        'guest_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-      
-      localStorage.setItem('guest_device_id', deviceId);
-      
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/auth/guest`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id: deviceId }),
-      });
-
-      if (!response.ok) throw new Error('Guest login failed');
-      
-      const data = await response.json();
-      
-      // Store token
-      localStorage.setItem('token', data.access_token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      
-      // Force reload to apply auth state
-      window.location.href = '/dashboard';
+      await guestLogin();
+      navigate('/dashboard');
     } catch (err) {
-      setError('Guest login failed. Please try again.');
+      setError('Guest login failed. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGoogleLogin = () => {
-    // Open Google OAuth in popup or redirect
-    window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/auth/google/url`;
   };
 
   return (
@@ -74,6 +68,11 @@ export const Login = () => {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">FinManager</h1>
           <p className="text-primary-100">Kelola keuanganmu dengan bijak</p>
+          {isSupabase && (
+            <span className="inline-block mt-2 px-2 py-1 bg-white/20 rounded-full text-xs text-white">
+              Powered by Supabase
+            </span>
+          )}
         </div>
 
         {/* Login Method Tabs */}
