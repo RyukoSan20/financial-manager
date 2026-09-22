@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Badge, Spinner, EmptyState, Select } from '../components/ui';
+import { Card, CardHeader, CardBody, CardFooter, Badge, Spinner, EmptyState, Select } from '../components/ui';
 import { 
   TrendingUp, TrendingDown, PieChart, BarChart3, 
   DollarSign, CreditCard, Target, Calendar
@@ -144,10 +144,10 @@ export const Analytics = () => {
       {/* Cash Flow Trend */}
       {cashFlow && cashFlow.monthly && cashFlow.monthly.length > 0 && (
         <Card>
-          <Card.Header>
+          <CardHeader>
             <h3 className="font-semibold text-gray-900">Cash Flow Trend</h3>
-          </Card.Header>
-          <Card.Body>
+          </CardHeader>
+          <CardBody>
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={cashFlow.monthly.map(m => ({
                 month: m.month,
@@ -165,7 +165,7 @@ export const Analytics = () => {
                 <Area type="monotone" dataKey="Net" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.1} />
               </AreaChart>
             </ResponsiveContainer>
-          </Card.Body>
+          </CardBody>
         </Card>
       )}
 
@@ -174,10 +174,10 @@ export const Analytics = () => {
         {/* Expense by Category */}
         {expenseBreakdown && expenseBreakdown.breakdown && expenseBreakdown.breakdown.length > 0 ? (
           <Card>
-            <Card.Header>
+            <CardHeader>
               <h3 className="font-semibold text-gray-900">Expense by Category</h3>
-            </Card.Header>
-            <Card.Body>
+            </CardHeader>
+            <CardBody>
               <ResponsiveContainer width="100%" height={250}>
                 <RePieChart>
                   <Pie
@@ -198,26 +198,26 @@ export const Analytics = () => {
                   <Tooltip formatter={(value) => formatCurrency(value)} />
                 </RePieChart>
               </ResponsiveContainer>
-            </Card.Body>
+            </CardBody>
           </Card>
         ) : (
           <Card>
-            <Card.Header>
+            <CardHeader>
               <h3 className="font-semibold text-gray-900">Expense by Category</h3>
-            </Card.Header>
-            <Card.Body className="text-center text-gray-500 py-12">
+            </CardHeader>
+            <CardBody className="text-center text-gray-500 py-12">
               No expense data available
-            </Card.Body>
+            </CardBody>
           </Card>
         )}
 
         {/* Budget vs Actual */}
         {budgetComparison && budgetComparison.comparisons && budgetComparison.comparisons.length > 0 ? (
           <Card>
-            <Card.Header>
+            <CardHeader>
               <h3 className="font-semibold text-gray-900">Budget vs Actual</h3>
-            </Card.Header>
-            <Card.Body>
+            </CardHeader>
+            <CardBody>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={budgetComparison.comparisons.map(c => ({
                   category: c.category_name || 'Other',
@@ -233,16 +233,16 @@ export const Analytics = () => {
                   <Bar dataKey="actual" fill="#ef4444" name="Actual" />
                 </BarChart>
               </ResponsiveContainer>
-            </Card.Body>
+            </CardBody>
           </Card>
         ) : (
           <Card>
-            <Card.Header>
+            <CardHeader>
               <h3 className="font-semibold text-gray-900">Budget vs Actual</h3>
-            </Card.Header>
-            <Card.Body className="text-center text-gray-500 py-12">
+            </CardHeader>
+            <CardBody className="text-center text-gray-500 py-12">
               No budget comparison available
-            </Card.Body>
+            </CardBody>
           </Card>
         )}
       </div>
@@ -250,10 +250,10 @@ export const Analytics = () => {
       {/* Monthly Comparison */}
       {monthlyComparison && monthlyComparison.comparisons && monthlyComparison.comparisons.length > 0 && (
         <Card>
-          <Card.Header>
+          <CardHeader>
             <h3 className="font-semibold text-gray-900">Month-over-Month Comparison</h3>
-          </Card.Header>
-          <Card.Body>
+          </CardHeader>
+          <CardBody>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -286,7 +286,7 @@ export const Analytics = () => {
                 </tbody>
               </table>
             </div>
-          </Card.Body>
+          </CardBody>
         </Card>
       )}
     </div>
