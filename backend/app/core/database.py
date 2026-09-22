@@ -41,3 +41,39 @@ def init_db():
         Debt, DebtPayment, NetWorthSnapshot
     )
     Base.metadata.create_all(bind=engine)
+
+
+def seed_categories():
+    """Seed default categories if none exist."""
+    from app.models.category import Category
+    
+    default_categories = [
+        # Income
+        {"name": "Gaji", "type": "income", "icon": "💰", "color": "#4CAF50"},
+        {"name": "Freelance", "type": "income", "icon": "💻", "color": "#2196F3"},
+        {"name": "Investasi", "type": "income", "icon": "📈", "color": "#9C27B0"},
+        {"name": "Bonus", "type": "income", "icon": "🎁", "color": "#FF9800"},
+        {"name": "Lainnya (Income)", "type": "income", "icon": "📦", "color": "#607D8B"},
+        # Expense
+        {"name": "Makanan & Minuman", "type": "expense", "icon": "🍔", "color": "#F44336"},
+        {"name": "Transportasi", "type": "expense", "icon": "🚗", "color": "#3F51B5"},
+        {"name": "Belanja", "type": "expense", "icon": "🛒", "color": "#E91E63"},
+        {"name": "Kesehatan", "type": "expense", "icon": "🏥", "color": "#00BCD4"},
+        {"name": "Pendidikan", "type": "expense", "icon": "📚", "color": "#795548"},
+        {"name": "Hiburan", "type": "expense", "icon": "🎬", "color": "#FF5722"},
+        {"name": "Tagihan & Utilitas", "type": "expense", "icon": "📄", "color": "#9E9E9E"},
+        {"name": "Investasi & Tabungan", "type": "expense", "icon": "🏦", "color": "#4CAF50"},
+        {"name": "Lainnya (Expense)", "type": "expense", "icon": "📦", "color": "#607D8B"},
+    ]
+    
+    db = SessionLocal()
+    try:
+        existing = db.query(Category).first()
+        if not existing:
+            for cat_data in default_categories:
+                db_category = Category(**cat_data)
+                db.add(db_category)
+            db.commit()
+            print(f"Seeded {len(default_categories)} default categories")
+    finally:
+        db.close()

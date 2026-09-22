@@ -27,7 +27,7 @@ export const formatNumber = (num) => {
 
 // Format percentage
 export const formatPercent = (value, decimals = 1) => {
-  if (value === null || value === undefined) return '-';
+  if (value === null || value === undefined || isNaN(value) || !isFinite(value)) return '0%';
   return `${Number(value).toFixed(decimals)}%`;
 };
 

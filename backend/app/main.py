@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.core.database import init_db
+from app.core.database import init_db, seed_categories
 from app.core.config import get_settings
 from app.api.routes import (
     accounts, categories, transactions, budgets,
@@ -30,10 +30,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize database on startup
+# Initialize database and seed data on startup
 @app.on_event("startup")
 def startup():
     init_db()
+    seed_categories()
 
 # Include routers
 app.include_router(accounts.router, prefix="/api/accounts", tags=["Accounts"])

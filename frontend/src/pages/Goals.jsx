@@ -277,9 +277,8 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
     target_amount: '',
     current_amount: '0',
     target_date: '',
+    goal_type: 'savings',
     color: '#3b82f6',
-    status: 'active',
-    priority: 'medium',
   });
 
   useEffect(() => {
@@ -289,9 +288,8 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
         target_amount: goal.target_amount?.toString() || '',
         current_amount: goal.current_amount?.toString() || '0',
         target_date: goal.target_date || '',
+        goal_type: goal.goal_type || 'savings',
         color: goal.color || '#3b82f6',
-        status: goal.status || 'active',
-        priority: goal.priority || 'medium',
       });
     } else {
       setForm({
@@ -299,20 +297,29 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
         target_amount: '',
         current_amount: '0',
         target_date: '',
+        goal_type: 'savings',
         color: '#3b82f6',
-        status: 'active',
-        priority: 'medium',
       });
     }
   }, [goal]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({
-      ...form,
+    // Convert date string to ISO format (YYYY-MM-DD) for backend
+    const submitData = {
+      name: form.name,
       target_amount: parseFloat(form.target_amount),
-      current_amount: parseFloat(form.current_amount),
-    });
+      current_amount: parseFloat(form.current_amount) || 0,
+      goal_type: form.goal_type,
+      color: form.color,
+    };
+    
+    // Add target_date only if provided
+    if (form.target_date) {
+      submitData.target_date = form.target_date;
+    }
+    
+    onSubmit(submitData);
   };
 
   const colorOptions = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];

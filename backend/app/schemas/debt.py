@@ -1,4 +1,4 @@
-"""Debt schemas."""
+"""Debt schemas - simplified for frontend compatibility."""
 
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -9,16 +9,16 @@ from decimal import Decimal
 class DebtBase(BaseModel):
     name: str = Field(..., max_length=100)
     description: Optional[str] = None
-    debt_type: str = Field(..., pattern="^(personal_loan|mortgage|car_loan|credit_card|student_loan|other)$")
+    debt_type: str = Field(default="personal_loan")
     principal: Decimal = Field(..., gt=0)
-    current_balance: Decimal = Field(..., ge=0)
-    interest_rate: Decimal = Field(..., ge=0, le=1)  # As decimal
+    current_balance: Decimal = Field(default=Decimal("0"))
+    interest_rate: Decimal = Field(default=Decimal("0"), ge=0, le=1)
     currency: str = Field(default="IDR", max_length=10)
-    tenor_months: int = Field(..., gt=0)
-    remaining_months: int = Field(..., ge=0)
-    monthly_payment: Decimal = Field(..., gt=0)
-    start_date: date
-    end_date: date
+    tenor_months: int = Field(default=12, gt=0)
+    remaining_months: Optional[int] = None
+    monthly_payment: Optional[Decimal] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
     next_payment_date: Optional[date] = None
     account_id: Optional[int] = None
     lender_name: Optional[str] = Field(None, max_length=100)
@@ -26,7 +26,11 @@ class DebtBase(BaseModel):
 
 
 class DebtCreate(DebtBase):
-    pass
+    current_balance: Decimal = Field(default=None)
+    
+    @property
+    def get_current_balance(self):
+        return self.current_balance if self.current_balance is not None else self.principal
 
 
 class DebtUpdate(BaseModel):
@@ -42,10 +46,10 @@ class DebtUpdate(BaseModel):
 
 class DebtResponse(DebtBase):
     id: int
-    is_paid_off: bool
-    is_active: bool
-    created_at: datetime
-    updated_at: datetime
+    is_paid_off: bool = False
+    is_active: bool = True
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -53,23 +57,23 @@ class DebtResponse(DebtBase):
 
 class DebtWithProgress(DebtResponse):
     """Debt with calculated progress."""
-    progress_percent: float  # 0-100
-    total_paid: Decimal
-    total_interest_paid: Decimal
-    total_principal_paid: Decimal
-    original_principal: Decimal
-    upcoming_payment_date: Optional[date]
-    upcoming_payment_amount: Optional[Decimal]
-    status: str  # active, upcoming, overdue, paid_off
+    progress_percent: float = 0
+    total_paid: Decimal = Decimal("0")
+    total_interest_paid: Decimal = Decimal("0")
+    total_principal_paid: Decimal = Decimal("0")
+    original_principal: Decimal = Decimal("0")
+    upcoming_payment_date: Optional[date] = None
+    upcoming_payment_amount: Optional[Decimal] = None
+    status: str = "active"
 
 
 class DebtPaymentBase(BaseModel):
     amount: Decimal = Field(..., gt=0)
     currency: str = Field(default="IDR", max_length=10)
-    payment_date: date
-    principal_portion: Decimal = Field(..., ge=0)
-    interest_portion: Decimal = Field(..., ge=0)
-    remaining_balance_after: Decimal = Field(..., ge=0)
+    payment_date: Optional[date] = None
+    principal_portion: Optional[Decimal] = None
+    interest_portion: Optional[Decimal] = None
+    remaining_balance_after: Optional[Decimal] = None
     payment_method: Optional[str] = None
     notes: Optional[str] = None
 
@@ -82,8 +86,8 @@ class DebtPaymentCreate(DebtPaymentBase):
 class DebtPaymentResponse(DebtPaymentBase):
     id: int
     debt_id: int
-    transaction_id: Optional[int]
-    created_at: datetime
+    transaction_id: Optional[int] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -92,21 +96,21 @@ class DebtPaymentResponse(DebtPaymentBase):
 class DebtAmortizationEntry(BaseModel):
     """Single entry in amortization schedule."""
     month: int
-    payment_date: date
-    payment: Decimal
-    principal: Decimal
-    interest: Decimal
-    balance: Decimal
+    payment_date: Optional[date] = None
+    payment: Decimal = Decimal("0")
+    principal: Decimal = Decimal("0")
+    interest: Decimal = Decimal("0")
+    balance: Decimal = Decimal("0")
 
 
 class DebtAmortizationSchedule(BaseModel):
     """Full amortization schedule for a debt."""
     debt_id: int
     debt_name: str
-    principal: Decimal
-    interest_rate: Decimal
-    tenor_months: int
-    monthly_payment: Decimal
-    total_interest: Decimal
-    total_payment: Decimal
-    schedule: List[DebtAmortizationEntry]
+    principal: Decimal = Decimal("0")
+    interest_rate: Decimal = Decimal("0")
+    tenor_months: int = 12
+    monthly_payment: Decimal = Decimal("0")
+    total_interest: Decimal = Decimal("0")
+    total_payment: Decimal = Decimal("0")
+    schedule: List[DebtAmortizationEntry] = []
