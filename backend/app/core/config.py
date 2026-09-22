@@ -26,8 +26,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
-        # Add your Vercel domain here:
-        # "https://your-app.vercel.app",
+        "https://financial-manager-flax.vercel.app",
     ]
     
     # Currency

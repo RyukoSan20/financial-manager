@@ -1,4 +1,4 @@
-"""Updated database initialization with all models."""
+"""Database configuration - supports SQLite and PostgreSQL."""
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -6,9 +6,17 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+# PostgreSQL doesn't support check_same_thread
+connect_args = {}
+if settings.DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
 engine = create_engine(
     settings.DATABASE_URL,
-    connect_args={"check_same_thread": False}  # SQLite specific
+    connect_args=connect_args,
+    pool_pre_ping=True,  # Enable connection health checks
+    pool_size=5,
+    max_overflow=10,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
