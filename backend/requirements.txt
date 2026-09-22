@@ -22,3 +22,6 @@ httpx==0.26.0
 
 # Utilities
 python-dateutil==2.8.2
+
+# OCR (optional - for receipt scanning)
+# pytesseract==0.3.10  # Install separately: brew install tesseract
