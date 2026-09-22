@@ -8,7 +8,8 @@ from app.core.config import get_settings
 from app.api.routes import (
     accounts, categories, transactions, budgets,
     dashboard, calculators,
-    transfers, recurring, goals, debts, analytics
+    transfers, recurring, goals, debts, analytics,
+    auth
 )
 
 settings = get_settings()
@@ -37,6 +38,7 @@ def startup():
     seed_categories()
 
 # Include routers
+app.include_router(auth.router, prefix="/api", tags=["Authentication"])
 app.include_router(accounts.router, prefix="/api/accounts", tags=["Accounts"])
 app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
 app.include_router(transactions.router, prefix="/api/transactions", tags=["Transactions"])

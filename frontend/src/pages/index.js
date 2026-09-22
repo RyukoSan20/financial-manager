@@ -8,3 +8,6 @@ export { Debts } from './Debts';
 export { Recurring } from './Recurring';
 export { Calculators } from './Calculators';
 export { Analytics } from './Analytics';
+export { Login } from './Login';
+export { Register } from './Register';
+export { Settings } from './Settings';

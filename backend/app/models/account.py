@@ -1,6 +1,6 @@
 """Account/Wallet model."""
 
-from sqlalchemy import Column, Integer, String, Numeric, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -10,6 +10,7 @@ class Account(Base):
     __tablename__ = "accounts"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     name = Column(String(100), nullable=False)
     account_type = Column(String(50), nullable=False)  # cash, bank, e-wallet, credit_card, investment
     balance = Column(Numeric(20, 2), default=0, nullable=False)
@@ -30,6 +31,7 @@ class Account(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    user = relationship("User", back_populates="accounts")
     transactions = relationship("Transaction", back_populates="account")
     budgets = relationship("Budget", back_populates="account")
     recurring_rules = relationship("RecurringRule", back_populates="account", foreign_keys="RecurringRule.account_id")

@@ -40,6 +40,8 @@ def init_db():
         Transfer, RecurringRule, Goal, GoalContribution,
         Debt, DebtPayment, NetWorthSnapshot
     )
+    # Import User model for auth
+    from app.models.user import User
     Base.metadata.create_all(bind=engine)
 
 

@@ -23,6 +23,7 @@ import {
   PlusCircle
 } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -233,6 +234,7 @@ export const MobileHeader = ({ title, showBack = false, onBack }) => {
 export const BottomNav = () => {
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
 
   const navItems = [
     { name: 'Home', href: '/', icon: LayoutDashboard },
