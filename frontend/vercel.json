@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://financial-manager-flax.up.railway.app/api/$1"
+      "destination": "https://financial-manager-production-a042.up.railway.app/api/$1"
     },
     {
       "source": "/((?!api/).*)",

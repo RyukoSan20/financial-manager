@@ -27,6 +27,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:5173",
         "https://financial-manager-flax.vercel.app",
+        "https://financial-manager-production-a042.up.railway.app",
     ]
     
     # Currency
