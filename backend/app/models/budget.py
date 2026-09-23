@@ -28,5 +28,6 @@ class Budget(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    user = relationship("User", back_populates="budgets")
     category = relationship("Category", back_populates="budgets")
     account = relationship("Account", back_populates="budgets")

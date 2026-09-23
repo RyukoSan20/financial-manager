@@ -51,6 +51,7 @@ class Transaction(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    user = relationship("User", back_populates="transactions")
     account = relationship("Account", back_populates="transactions")
     category = relationship("Category", back_populates="transactions")
     transfer = relationship("Transfer", back_populates="transactions")

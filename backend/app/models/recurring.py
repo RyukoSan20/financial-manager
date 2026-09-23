@@ -45,6 +45,7 @@ class RecurringRule(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    user = relationship("User", back_populates="recurring_rules")
     account = relationship("Account", foreign_keys=[account_id], back_populates="recurring_rules")
     to_account = relationship("Account", foreign_keys=[to_account_id])
     category = relationship("Category", back_populates="recurring_rules")

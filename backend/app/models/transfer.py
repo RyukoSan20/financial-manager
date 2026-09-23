@@ -26,6 +26,7 @@ class Transfer(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    user = relationship("User", back_populates="transfers")
     from_account = relationship("Account", foreign_keys=[from_account_id])
     to_account = relationship("Account", foreign_keys=[to_account_id])
     

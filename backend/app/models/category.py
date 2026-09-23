@@ -21,6 +21,7 @@ class Category(Base):
 
     # Self-referential relationship for subcategories
     subcategories = relationship("Category", backref="parent", remote_side=[id])
+    user = relationship("User", back_populates="categories")
     transactions = relationship("Transaction", back_populates="category")
     budgets = relationship("Budget", back_populates="category")
     recurring_rules = relationship("RecurringRule", back_populates="category")

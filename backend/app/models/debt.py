@@ -47,6 +47,7 @@ class Debt(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    user = relationship("User", back_populates="debts")
     account = relationship("Account", back_populates="debts")
     payments = relationship("DebtPayment", back_populates="debt", order_by="desc(DebtPayment.payment_date)")
 

@@ -40,6 +40,7 @@ class Goal(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    user = relationship("User", back_populates="goals")
     account = relationship("Account", back_populates="goals")
     contributions = relationship("GoalContribution", back_populates="goal", order_by="desc(GoalContribution.created_at)")
 

@@ -1,6 +1,7 @@
 """Net worth snapshot model for historical tracking."""
 
 from sqlalchemy import Column, Integer, Numeric, DateTime, Date, String, ForeignKey
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
 
@@ -35,3 +36,6 @@ class NetWorthSnapshot(Base):
     change_percent = Column(Numeric(10, 4), default=0)
     
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", back_populates="net_worth_snapshots")
