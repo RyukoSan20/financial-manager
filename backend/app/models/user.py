@@ -36,3 +36,14 @@ class User(Base):
     # Default preferences
     default_currency = Column(String(10), default="IDR")
     timezone = Column(String(50), default="Asia/Jakarta")
+    
+    # Relationships (for back_populates from other models)
+    accounts = relationship("Account", back_populates="user")
+    transactions = relationship("Transaction", back_populates="user")
+    budgets = relationship("Budget", back_populates="user")
+    goals = relationship("Goal", back_populates="user")
+    debts = relationship("Debt", back_populates="user")
+    recurring_rules = relationship("RecurringRule", back_populates="user")
+    transfers = relationship("Transfer", back_populates="user")
+    categories = relationship("Category", back_populates="user")
+    net_worth_snapshots = relationship("NetWorthSnapshot", back_populates="user")
