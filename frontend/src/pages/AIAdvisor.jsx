@@ -2,7 +2,7 @@
 // Provides personalized AI-powered financial insights
 
 import { useState, useEffect } from "react";
-import { api } from "../services/api";
+import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 const AIAdvisor = () => {
@@ -26,11 +26,11 @@ const AIAdvisor = () => {
       setError(null);
       
       const [adviceRes, summaryRes] = await Promise.all([
-        api.get("/ai/advice"),
-        api.get("/ai/summary")
+        api.request("/ai/advice"),
+        api.request("/ai/summary")
       ]);
       
-      setAdvice(adviceRes || []);
+      setAdvice(Array.isArray(adviceRes) ? adviceRes : []);
       setSummary(summaryRes);
     } catch (err) {
       console.error("Error fetching AI data:", err);
@@ -52,9 +52,13 @@ const AIAdvisor = () => {
     setChatHistory(prev => [...prev, { role: "user", text: userMessage }]);
     
     try {
-      const response = await api.post("/ai/chat", { message: userMessage });
+      const response = await api.request("/ai/chat", { 
+        method: 'POST',
+        body: JSON.stringify({ message: userMessage })
+      });
       setChatHistory(prev => [...prev, { role: "ai", text: response.response || "Maaf, saya tidak bisa menjawab saat ini." }]);
     } catch (err) {
+      console.error("Chat error:", err);
       setChatHistory(prev => [...prev, { role: "ai", text: "Terjadi kesalahan. Silakan coba lagi." }]);
     } finally {
       setChatLoading(false);

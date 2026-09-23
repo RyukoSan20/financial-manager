@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, ProgressBar, Badge, EmptyState, Spinner } from '../components/ui';
 import { Plus, CreditCard, RefreshCw, Trash2, Edit2, Calendar, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
+import api from '../services/api';
 
 export const Debts = () => {
   const [debts, setDebts] = useState([]);
@@ -19,11 +20,11 @@ export const Debts = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/debts/');
-      const data = await res.json();
+      const data = await api.debts.list();
       setDebts(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch debts:', err);
+      setDebts([]);
     } finally {
       setLoading(false);
     }
@@ -31,32 +32,27 @@ export const Debts = () => {
 
   const fetchAmortization = async (debtId) => {
     try {
-      const res = await fetch(`/api/debts/${debtId}/amortization`);
-      const data = await res.json();
+      const data = await api.debts.schedule(debtId);
       setAmortization(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch amortization:', err);
     }
   };
 
   const handleSubmit = async (formData) => {
     try {
-      const method = editingDebt ? 'PUT' : 'POST';
-      const url = editingDebt 
-        ? `/api/debts/${editingDebt.id}` 
-        : '/api/debts/';
-      
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      if (editingDebt) {
+        await api.debts.update(editingDebt.id, formData);
+      } else {
+        await api.debts.create(formData);
+      }
       
       setShowModal(false);
       setEditingDebt(null);
       fetchData();
     } catch (err) {
-      console.error(err);
+      console.error('Failed to save debt:', err);
+      alert('Failed to save debt: ' + (err.message || 'Unknown error'));
     }
   };
 

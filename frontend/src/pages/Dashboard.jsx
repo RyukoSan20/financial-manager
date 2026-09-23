@@ -10,6 +10,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
+import api from '../services/api';
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -17,6 +18,7 @@ export const Dashboard = () => {
   const [data, setData] = useState(null);
   const [cashFlow, setCashFlow] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -24,15 +26,17 @@ export const Dashboard = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [summaryRes, cashFlowRes] = await Promise.all([
-        fetch('/api/dashboard/summary').then(r => r.json()),
-        fetch('/api/dashboard/cash-flow?months=6').then(r => r.json()),
+        api.dashboard.summary(),
+        api.dashboard.cashFlow(),
       ]);
       setData(summaryRes);
       setCashFlow(cashFlowRes);
     } catch (err) {
-      console.error(err);
+      console.error('Dashboard fetch error:', err);
+      setError(err.message || 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }

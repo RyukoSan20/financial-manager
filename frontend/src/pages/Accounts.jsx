@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner } from '../components/ui';
 import { Plus, Wallet, Banknote, CreditCard, Smartphone, RefreshCw, Trash2, Edit2, PiggyBank } from 'lucide-react';
+import api from '../services/api';
 
 const accountTypeOptions = [
   { value: 'bank', label: 'Bank Account', icon: Banknote },
@@ -30,13 +31,14 @@ export const Accounts = () => {
     setLoading(true);
     try {
       const [accRes, summaryRes] = await Promise.all([
-        fetch('/api/accounts/').then(r => r.json()),
-        fetch('/api/accounts/summary/total-balance').then(r => r.json()),
+        api.accounts.list(),
+        api.accounts.balance(),
       ]);
-      setAccounts(accRes);
+      setAccounts(Array.isArray(accRes) ? accRes : []);
       setSummary(summaryRes);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch accounts:', err);
+      setAccounts([]);
     } finally {
       setLoading(false);
     }
@@ -44,32 +46,29 @@ export const Accounts = () => {
 
   const handleSubmit = async (formData) => {
     try {
-      const method = editingAccount ? 'PUT' : 'POST';
-      const url = editingAccount 
-        ? `/api/accounts/${editingAccount.id}` 
-        : '/api/accounts/';
-      
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      if (editingAccount) {
+        await api.accounts.update(editingAccount.id, formData);
+      } else {
+        await api.accounts.create(formData);
+      }
       
       setShowModal(false);
       setEditingAccount(null);
       fetchData();
     } catch (err) {
-      console.error(err);
+      console.error('Failed to save account:', err);
+      alert('Failed to save account: ' + (err.message || 'Unknown error'));
     }
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this account? All transactions will remain.')) return;
     try {
-      await fetch(`/api/accounts/${id}`, { method: 'DELETE' });
+      await api.accounts.delete(id);
       fetchData();
     } catch (err) {
-      console.error(err);
+      console.error('Failed to delete account:', err);
+      alert('Failed to delete account: ' + (err.message || 'Unknown error'));
     }
   };
 

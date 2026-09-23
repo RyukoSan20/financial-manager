@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import api from '../services/api';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Generic data fetching hook
 export const useApi = (fetchFn, deps = [], options = {}) => {
@@ -50,9 +53,9 @@ export const useDashboard = () => {
 
     try {
       const [summaryRes, cashFlowRes, expensesRes] = await Promise.all([
-        fetch('/api/dashboard/summary').then(r => r.json()),
-        fetch('/api/dashboard/cash-flow?months=6').then(r => r.json()),
-        fetch('/api/analytics/expense-breakdown').then(r => r.json()),
+        api.dashboard.summary(),
+        api.dashboard.cashFlow(),
+        api.analytics.expenseBreakdown(),
       ]);
 
       setSummary(summaryRes);
@@ -84,21 +87,18 @@ export const useTransactions = (filters = {}) => {
     setError(null);
 
     try {
-      const params = new URLSearchParams({
-        skip: ((pagination.page - 1) * pagination.limit).toString(),
-        limit: pagination.limit.toString(),
+      const result = await api.transactions.list({
+        skip: (pagination.page - 1) * pagination.limit,
+        limit: pagination.limit,
         ...filters,
-      }).toString();
-
-      const response = await fetch(`/api/transactions/?${params}`);
-      const data = await response.json();
-      setTransactions(data);
+      });
+      setTransactions(result);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, JSON.stringify(filters)]);
+  }, [pagination.page, pagination.limit]);
 
   useEffect(() => {
     fetchData();

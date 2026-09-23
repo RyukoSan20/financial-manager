@@ -4,6 +4,7 @@ import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, 
 import { formatCurrency, formatDate } from '../utils/format';
 import { TextParserModal } from '../components/parser/TextParserModal';
 import { ReceiptScannerModal } from '../components/parser/ReceiptScannerModal';
+import api from '../services/api';
 
 const typeOptions = [
   { value: '', label: 'All' },
@@ -31,15 +32,18 @@ export const Transactions = () => {
     setLoading(true);
     try {
       const [txRes, accRes, catRes] = await Promise.all([
-        fetch('/api/transactions/?limit=100').then(r => r.json()),
-        fetch('/api/accounts/').then(r => r.json()),
-        fetch('/api/categories/').then(r => r.json()),
+        api.transactions.list({ limit: 100 }),
+        api.accounts.list(),
+        api.categories.list(),
       ]);
       setTransactions(Array.isArray(txRes) ? txRes : []);
       setAccounts(Array.isArray(accRes) ? accRes : []);
       setCategories(Array.isArray(catRes) ? catRes : []);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch transactions:', err);
+      setTransactions([]);
+      setAccounts([]);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -48,10 +52,11 @@ export const Transactions = () => {
   const handleDelete = async (id) => {
     if (!confirm('Delete this transaction?')) return;
     try {
-      await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+      await api.transactions.delete(id);
       fetchData();
     } catch (err) {
-      console.error(err);
+      console.error('Failed to delete transaction:', err);
+      alert('Failed to delete transaction: ' + (err.message || 'Unknown error'));
     }
   };
 

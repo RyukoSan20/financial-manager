@@ -70,9 +70,12 @@ const ProfileTab = ({ user }) => {
     setMessage('');
     
     try {
-      const response = await api.get('/auth/me', {
-        full_name: form.full_name,
-        username: form.username,
+      const response = await api.request('/auth/me', {
+        method: 'PUT',
+        body: JSON.stringify({
+          full_name: form.full_name,
+          username: form.username,
+        }),
       });
       
       if (response) {
@@ -83,7 +86,7 @@ const ProfileTab = ({ user }) => {
         window.location.reload();
       }
     } catch (error) {
-      setMessage('Failed to update profile: ' + error.message);
+      setMessage('Failed to update profile: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }

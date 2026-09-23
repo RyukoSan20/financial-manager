@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, ProgressBar, Badge, EmptyState, Spinner } from '../components/ui';
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
+import api from '../services/api';
 
 export const Budgets = () => {
   const [budgets, setBudgets] = useState([]);
@@ -18,13 +19,13 @@ export const Budgets = () => {
     setLoading(true);
     try {
       const [budgetRes, catRes] = await Promise.all([
-        fetch('/api/budgets/').then(r => r.json()),
-        fetch('/api/categories/').then(r => r.json()),
+        api.budgets.list(),
+        api.categories.list(),
       ]);
       setBudgets(Array.isArray(budgetRes) ? budgetRes : []);
-      setCategories(catRes);
+      setCategories(catRes || []);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch budgets:', err);
       setBudgets([]);
     } finally {
       setLoading(false);
@@ -33,32 +34,29 @@ export const Budgets = () => {
 
   const handleSubmit = async (formData) => {
     try {
-      const method = editingBudget ? 'PUT' : 'POST';
-      const url = editingBudget 
-        ? `/api/budgets/${editingBudget.id}` 
-        : '/api/budgets/';
-      
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      if (editingBudget) {
+        await api.budgets.update(editingBudget.id, formData);
+      } else {
+        await api.budgets.create(formData);
+      }
       
       setShowModal(false);
       setEditingBudget(null);
       fetchData();
     } catch (err) {
-      console.error(err);
+      console.error('Failed to save budget:', err);
+      alert('Failed to save budget: ' + (err.message || 'Unknown error'));
     }
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this budget?')) return;
     try {
-      await fetch(`/api/budgets/${id}`, { method: 'DELETE' });
+      await api.budgets.delete(id);
       fetchData();
     } catch (err) {
-      console.error(err);
+      console.error('Failed to delete budget:', err);
+      alert('Failed to delete budget: ' + (err.message || 'Unknown error'));
     }
   };
 

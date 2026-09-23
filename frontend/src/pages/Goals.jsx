@@ -3,6 +3,7 @@ import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner, StatCar
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp, TrendingDown, Clock, CheckCircle } from 'lucide-react';
 import { formatCurrency, formatPercent, formatDate } from '../utils/format';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import api from '../services/api';
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -20,11 +21,11 @@ export const Goals = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/goals/');
-      const data = await res.json();
+      const data = await api.goals.list();
       setGoals(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch goals:', err);
+      setGoals([]);
     } finally {
       setLoading(false);
     }
@@ -32,32 +33,24 @@ export const Goals = () => {
 
   const handleSubmit = async (formData) => {
     try {
-      const method = editingGoal ? 'PUT' : 'POST';
-      const url = editingGoal 
-        ? `/api/goals/${editingGoal.id}` 
-        : '/api/goals/';
-      
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      if (editingGoal) {
+        await api.goals.update(editingGoal.id, formData);
+      } else {
+        await api.goals.create(formData);
+      }
       
       setShowModal(false);
       setEditingGoal(null);
       fetchData();
     } catch (err) {
-      console.error(err);
+      console.error('Failed to save goal:', err);
+      alert('Failed to save goal: ' + (err.message || 'Unknown error'));
     }
   };
 
   const handleContribution = async (goalId, amount) => {
     try {
-      await fetch(`/api/goals/${goalId}/contribute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount }),
-      });
+      await api.goals.contribute(goalId, { amount });
       fetchData();
     } catch (err) {
       console.error(err);
