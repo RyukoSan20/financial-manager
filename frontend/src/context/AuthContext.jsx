@@ -1,6 +1,6 @@
 // Auth Context with Supabase + Backend fallback
 import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured, onAuthStateChange } from '../lib/supabase';
+import { getSupabase, isSupabaseConfigured, onAuthStateChange } from '../lib/supabase';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -11,6 +11,9 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Always set loading to false after mount
+    setLoading(false);
+    
     if (isSupabaseConfigured()) {
       // Use Supabase auth
       initSupabaseAuth();
@@ -19,13 +22,18 @@ export const AuthProvider = ({ children }) => {
       checkBackendAuth();
     }
     
-    return () => {
-      // Cleanup subscription if exists
-    };
+    return () => {};
   }, []);
 
   const initSupabaseAuth = async () => {
+    if (!isSupabaseConfigured()) {
+      setLoading(false);
+      return;
+    }
+    
     try {
+      const supabase = getSupabase();
+      
       // Get initial session
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -36,7 +44,7 @@ export const AuthProvider = ({ children }) => {
       }
       
       // Listen for auth changes
-      const { data: { subscription } } = onAuthStateChange((event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session) {
           setUser(session.user);
           localStorage.setItem('sb_token', session.access_token);
@@ -53,7 +61,7 @@ export const AuthProvider = ({ children }) => {
       return () => subscription.unsubscribe();
     } catch (err) {
       console.error('Supabase auth init error:', err);
-      checkBackendAuth();
+      setLoading(false);
     }
   };
 

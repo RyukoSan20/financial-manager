@@ -4,80 +4,87 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Create client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 // Check if configured
 export const isSupabaseConfigured = () => {
-  return !!(supabaseUrl && supabaseAnonKey);
+  return !!(supabaseUrl && supabaseAnonKey && 
+    supabaseUrl !== 'undefined' && supabaseAnonKey !== 'undefined' &&
+    supabaseUrl.startsWith('http'));
 };
+
+// Create client only if configured
+let supabaseInstance = null;
+
+if (isSupabaseConfigured()) {
+  try {
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+  } catch (e) {
+    console.error('Supabase init error:', e);
+  }
+}
+
+// Fallback mock for when not configured
+const mockSupabase = {
+  auth: {
+    getSession: async () => ({ data: { session: null }, error: null }),
+    getUser: async () => ({ data: { user: null }, error: null }),
+    signUp: async () => { throw new Error('Supabase not configured'); },
+    signInWithPassword: async () => { throw new Error('Supabase not configured'); },
+    signInWithOAuth: async () => { throw new Error('Supabase not configured'); },
+    signInAnonymously: async () => { throw new Error('Supabase not configured'); },
+    signOut: async () => {},
+    updateUser: async () => { throw new Error('Supabase not configured'); },
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+  }
+};
+
+// Export the client or mock
+export const getSupabase = () => supabaseInstance || mockSupabase;
+
+// Legacy export for backward compatibility
+export const supabase = supabaseInstance || mockSupabase;
 
 // Auth helpers
 export const signUp = async (email, password) => {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase not configured');
-  }
-  
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-  
-  if (error) throw error;
-  return data;
+  const sb = getSupabase();
+  return sb.auth.signUp({ email, password });
 };
 
 export const signIn = async (email, password) => {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase not configured');
-  }
-  
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  
-  if (error) throw error;
-  return data;
+  const sb = getSupabase();
+  return sb.auth.signInWithPassword({ email, password });
 };
 
 export const signInWithGoogle = async () => {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase not configured');
-  }
-  
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const sb = getSupabase();
+  return sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: window.location.origin + '/auth/callback',
     },
   });
-  
-  if (error) throw error;
-  return data;
 };
 
 export const signInAnonymously = async () => {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase not configured');
-  }
-  
-  const { data, error } = await supabase.auth.signInAnonymously();
-  
-  if (error) throw error;
-  return data;
+  const sb = getSupabase();
+  return sb.auth.signInAnonymously();
 };
 
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  const sb = getSupabase();
+  return sb.auth.signOut();
 };
 
-export const getSession = () => supabase.auth.getSession();
+export const getSession = async () => {
+  const sb = getSupabase();
+  return sb.auth.getSession();
+};
 
-export const getUser = () => supabase.auth.getUser();
+export const getUser = async () => {
+  const sb = getSupabase();
+  return sb.auth.getUser();
+};
 
-// Listen to auth changes
 export const onAuthStateChange = (callback) => {
-  return supabase.auth.onAuthStateChange(callback);
+  const sb = getSupabase();
+  return sb.auth.onAuthStateChange(callback);
 };
