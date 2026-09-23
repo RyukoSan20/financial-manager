@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase } from '../lib/supabase';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 export const AuthCallback = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -16,19 +18,44 @@ export const AuthCallback = () => {
       const sb = getSupabase();
       
       // Get session from URL
-      const { data, error } = await sb.auth.getSession();
+      const { data, error: sbError } = await sb.auth.getSession();
       
-      if (error) {
-        console.error('Callback error:', error);
-        setError(error.message);
+      if (sbError) {
+        console.error('Supabase callback error:', sbError);
+        setError(sbError.message);
         setTimeout(() => navigate('/login'), 3000);
         return;
       }
 
       if (data.session) {
-        // Store token
+        // Get user info from Supabase
+        const user = data.session.user;
+        
+        // Exchange Supabase token for backend JWT
+        try {
+          const response = await fetch(`${API_URL}/api/auth/supabase-exchange`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: user.email,
+              supabase_id: user.id,
+              provider: user.app_metadata?.provider || 'google',
+            }),
+          });
+          
+          if (response.ok) {
+            const tokenData = await response.json();
+            // Store backend token (this is what API uses)
+            localStorage.setItem('token', tokenData.access_token);
+            localStorage.setItem('user', JSON.stringify(tokenData.user));
+          }
+        } catch (e) {
+          console.error('Token exchange error:', e);
+        }
+        
+        // Store Supabase session too
         localStorage.setItem('sb_token', data.session.access_token);
-        localStorage.setItem('sb_user', JSON.stringify(data.session.user));
+        localStorage.setItem('sb_user', JSON.stringify(user));
         
         // Redirect to dashboard
         navigate('/dashboard');

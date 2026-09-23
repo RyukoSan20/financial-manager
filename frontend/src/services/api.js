@@ -1,10 +1,16 @@
 // API Configuration with JWT Interceptor
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-const TOKEN_KEY = 'token';
+// Support both backend JWT (token) and Supabase (sb_token)
+const TOKEN_KEYS = ['token', 'sb_token'];
 
-// Get token from localStorage
-const getToken = () => localStorage.getItem(TOKEN_KEY);
+const getToken = () => {
+  for (const key of TOKEN_KEYS) {
+    const token = localStorage.getItem(key);
+    if (token) return token;
+  }
+  return null;
+};
 
 // Set token
 export const setToken = (token) => {

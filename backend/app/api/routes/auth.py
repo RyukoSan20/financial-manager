@@ -479,3 +479,53 @@ def logout(current_user: User = Depends(get_current_user)):
     # In JWT, logout is handled client-side by removing the token
     # Server can maintain a token blacklist for enhanced security
     return MessageResponse(message="Logged out successfully")
+
+
+# === Supabase Token Exchange ===
+# Allow frontend to exchange Supabase token for backend JWT
+
+class SupabaseTokenRequest(BaseModel):
+    email: str
+    supabase_id: str
+    provider: str = "google"
+
+
+@router.post("/supabase-exchange", response_model=Token)
+def supabase_token_exchange(
+    request: SupabaseTokenRequest,
+    db: Session = Depends(get_db)
+):
+    """Exchange Supabase user info for backend JWT. Creates user if not exists."""
+    # Find or create user by email
+    user = db.query(User).filter(User.email == request.email).first()
+    
+    if not user:
+        # Create new user
+        user = User(
+            email=request.email,
+            username=request.email.split("@")[0],
+            hashed_password=None,  # No password - OAuth only
+            provider=request.provider,
+            is_active=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    
+    # Update last login
+    user.last_login = datetime.utcnow()
+    db.commit()
+    
+    # Create backend JWT
+    access_token = create_access_token(user.id)
+    
+    return Token(
+        access_token=access_token,
+        user={
+            "id": user.id,
+            "email": user.email,
+            "username": user.username,
+            "full_name": user.full_name,
+            "is_active": user.is_active,
+        }
+    )
