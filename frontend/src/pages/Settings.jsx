@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/ui';
-import { User, Lock, Bell, Globe, Download, Trash2, Loader2 } from 'lucide-react';
+import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
@@ -17,9 +18,22 @@ export const Settings = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-500 mt-1">Manage your account settings</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <p className="text-gray-500 mt-1">Manage your account settings</p>
+        </div>
+        <Button 
+          variant="secondary" 
+          onClick={() => {
+            localStorage.clear();
+            logout();
+          }}
+          className="flex items-center gap-2"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </Button>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">

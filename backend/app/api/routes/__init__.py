@@ -15,4 +15,5 @@ from . import (
     auth,
     data,
     parser,
+    ai_advisor,
 )
