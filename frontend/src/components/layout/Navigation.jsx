@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Receipt, 
@@ -48,6 +48,8 @@ const bottomNavItems = [
   { name: 'Budgets', href: '/budgets', icon: PiggyBank },
   { name: 'More', href: '/more', icon: Menu },
 ];
+
+import api from '../../services/api';
 
 // Desktop Sidebar
 export const Sidebar = () => {
@@ -347,6 +349,7 @@ export const BottomNav = () => {
 
 // Add Transaction Page
 export const AddTransactionPage = () => {
+  const navigate = useNavigate();
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -355,19 +358,77 @@ export const AddTransactionPage = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [showAccountSheet, setShowAccountSheet] = useState(false);
-
-  const categories = type === 'income' 
-    ? ['Salary', 'Freelance', 'Investment', 'Gift', 'Other Income']
-    : ['Food & Dining', 'Transportation', 'Shopping', 'Bills & Utilities', 'Entertainment', 'Health', 'Education', 'Other'];
-
-  const accounts = ['BCA', 'Mandiri', 'OVO', 'GoPay', 'Cash'];
-
-  const quickAmounts = ['50,000', '100,000', '200,000', '500,000', '1,000,000'];
-
-  const handleSubmit = () => {
-    if (!amount) return;
-    // Submit logic here
-    console.log({ type, amount, description, category, account, date });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  // Fetch categories and accounts from API
+  const [categories, setCategories] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [categoryList, setCategoryList] = useState([]);
+  
+  useEffect(() => {
+    loadData();
+  }, []);
+  
+  const loadData = async () => {
+    try {
+      const [catRes, accRes] = await Promise.all([
+        api.categories.list(),
+        api.accounts.list(),
+      ]);
+      setCategoryList(Array.isArray(catRes) ? catRes : []);
+      setAccounts(Array.isArray(accRes) ? accRes : []);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+    }
+  };
+  
+  // Filter categories by type
+  const filteredCategories = categoryList.filter(c => {
+    if (type === 'income') return c.type === 'income';
+    return c.type === 'expense';
+  });
+  
+  const handleSubmit = async () => {
+    if (!amount) {
+      setError('Please enter amount');
+      return;
+    }
+    if (!account) {
+      setError('Please select an account');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    
+    // Parse amount - remove commas and convert to number
+    const parsedAmount = parseFloat(amount.toString().replace(/,/g, ''));
+    
+    try {
+      await api.transactions.create({
+        type: type,
+        amount: parsedAmount,
+        description: description || (category ? `${category} expense` : `${type} transaction`),
+        account_id: parseInt(account),
+        category_id: category ? parseInt(category) : null,
+        date: date,
+      });
+      
+      // Success - redirect to dashboard
+      navigate('/');
+    } catch (err) {
+      console.error('Failed to save transaction:', err);
+      setError('Failed to save: ' + (err.message || 'Unknown error'));
+      setLoading(false);
+    }
+  };
+  
+  const quickAmounts = ['50000', '100000', '200000', '500000', '1000000'];
+  
+  const formatDisplayAmount = (val) => {
+    if (!val) return '';
+    return parseInt(val).toLocaleString('id-ID');
   };
 
   return (
@@ -415,8 +476,8 @@ export const AddTransactionPage = () => {
               type="text"
               inputMode="numeric"
               placeholder="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              value={formatDisplayAmount(amount)}
+              onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
               className={`text-5xl font-bold bg-transparent outline-none w-full ${
                 type === 'income' ? 'text-success-600' : 'text-gray-900'
               }`}
@@ -429,13 +490,20 @@ export const AddTransactionPage = () => {
           {quickAmounts.map((q) => (
             <button
               key={q}
-              onClick={() => setAmount(q.replace(',', ''))}
+              onClick={() => setAmount(q)}
               className="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-600 whitespace-nowrap active:bg-gray-200 touch-manipulation"
             >
-              {q}
+              {parseInt(q).toLocaleString('id-ID')}
             </button>
           ))}
         </div>
+        
+        {/* Error Message */}
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {error}
+          </div>
+        )}
       </div>
 
       {/* Form */}
@@ -461,13 +529,13 @@ export const AddTransactionPage = () => {
               type === 'income' ? 'bg-success-100 text-success-600' : 'bg-danger-100 text-danger-600'
             } flex items-center justify-center`}>
               {category ? (
-                <span className="text-lg">{category[0]}</span>
+                <span className="text-lg">{categoryList.find(c => c.id === parseInt(category))?.name?.[0] || 'C'}</span>
               ) : (
                 <PlusCircle className="w-5 h-5" />
               )}
             </div>
             <span className={category ? 'text-gray-900 font-medium' : 'text-gray-400'}>
-              {category || 'Select Category'}
+              {category ? (categoryList.find(c => c.id === parseInt(category))?.name || 'Category') : 'Select Category'}
             </span>
           </div>
           <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -483,7 +551,7 @@ export const AddTransactionPage = () => {
               <Wallet className="w-5 h-5" />
             </div>
             <span className={account ? 'text-gray-900 font-medium' : 'text-gray-400'}>
-              {account || 'Select Account'}
+              {account ? (accounts.find(a => a.id === parseInt(account))?.name || 'Account') : 'Select Account'}
             </span>
           </div>
           <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -509,16 +577,16 @@ export const AddTransactionPage = () => {
       <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent lg:hidden">
         <button
           onClick={handleSubmit}
-          disabled={!amount}
+          disabled={!amount || loading}
           className={`w-full py-4 rounded-2xl font-semibold text-lg shadow-lg transition-all ${
-            amount
+            amount && !loading
               ? type === 'income'
                 ? 'bg-success-500 text-white active:bg-success-600'
                 : 'bg-primary-500 text-white active:bg-primary-600'
               : 'bg-gray-200 text-gray-400'
           }`}
         >
-          Save {type === 'income' ? 'Income' : 'Expense'}
+          {loading ? 'Saving...' : `Save ${type === 'income' ? 'Income' : 'Expense'}`}
         </button>
       </div>
 
@@ -529,20 +597,20 @@ export const AddTransactionPage = () => {
           onClose={() => setShowCategorySheet(false)}
         >
           <div className="grid grid-cols-3 gap-3 p-4">
-            {categories.map((cat) => (
+            {filteredCategories.map((cat) => (
               <button
-                key={cat}
+                key={cat.id}
                 onClick={() => {
-                  setCategory(cat);
+                  setCategory(cat.id.toString());
                   setShowCategorySheet(false);
                 }}
                 className={`p-4 rounded-xl border-2 transition-colors ${
-                  category === cat
+                  category === cat.id.toString()
                     ? 'border-primary-500 bg-primary-50'
                     : 'border-gray-100 bg-gray-50 active:bg-gray-100'
                 }`}
               >
-                <span className="text-sm font-medium text-gray-700">{cat}</span>
+                <span className="text-sm font-medium text-gray-700">{cat.name}</span>
               </button>
             ))}
           </div>
@@ -558,19 +626,22 @@ export const AddTransactionPage = () => {
           <div className="p-4 space-y-2">
             {accounts.map((acc) => (
               <button
-                key={acc}
+                key={acc.id}
                 onClick={() => {
-                  setAccount(acc);
+                  setAccount(acc.id.toString());
                   setShowAccountSheet(false);
                 }}
                 className={`w-full p-4 rounded-xl flex items-center gap-3 transition-colors ${
-                  account === acc
+                  account === acc.id.toString()
                     ? 'bg-primary-50 border-2 border-primary-500'
                     : 'bg-gray-50 border-2 border-transparent active:bg-gray-100'
                 }`}
               >
                 <Wallet className="w-5 h-5 text-gray-600" />
-                <span className="font-medium text-gray-900">{acc}</span>
+                <div className="text-left">
+                  <span className="font-medium text-gray-900 block">{acc.name}</span>
+                  <span className="text-sm text-gray-500">{acc.account_type}</span>
+                </div>
               </button>
             ))}
           </div>

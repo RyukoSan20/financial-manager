@@ -34,7 +34,14 @@ const AIAdvisor = () => {
       setSummary(summaryRes);
     } catch (err) {
       console.error("Error fetching AI data:", err);
-      setError("Gagal memuat data. Pastikan Anda sudah login.");
+      // Show more specific error message
+      if (err.message?.includes('401') || err.message?.includes('Unauthorized')) {
+        setError("Sesi habis. Silakan login ulang.");
+      } else if (err.message?.includes('Failed to fetch') || err.message?.includes('Network')) {
+        setError("Tidak dapat terhubung ke server. Periksa koneksi internet Anda.");
+      } else {
+        setError("Gagal memuat data AI: " + (err.message || 'Error tidak dikenal'));
+      }
     } finally {
       setLoading(false);
     }
