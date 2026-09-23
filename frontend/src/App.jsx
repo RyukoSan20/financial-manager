@@ -1,8 +1,7 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Layout } from './components/layout/Layout';
 import { AddTransactionPage, MorePage } from './components/layout/Navigation';
-import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { 
   Dashboard, 
   Transactions, 
@@ -21,18 +20,77 @@ import {
 } from './pages';
 import { AuthCallback } from './pages/AuthCallback';
 
+// Auth Guard Component
+const RequireAuth = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
+// Redirect if already logged in
+const RedirectIfAuth = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+      </div>
+    );
+  }
+  
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return children;
+};
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Auth routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          {/* Auth routes - redirect if already logged in */}
+          <Route 
+            path="/login" 
+            element={
+              <RedirectIfAuth>
+                <Login />
+              </RedirectIfAuth>
+            } 
+          />
+          <Route 
+            path="/register" 
+            element={
+              <RedirectIfAuth>
+                <Register />
+              </RedirectIfAuth>
+            } 
+          />
           <Route path="/auth/callback" element={<AuthCallback />} />
           
-          {/* Main app routes */}
-          <Route path="/" element={<Layout />}>
+          {/* Protected app routes */}
+          <Route path="/" element={
+            <RequireAuth>
+              <Layout />
+            </RequireAuth>
+          }>
             <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="transactions" element={<Transactions />} />
@@ -49,8 +107,18 @@ function App() {
             <Route path="more" element={<MorePage />} />
           </Route>
           
-          {/* Full screen pages */}
-          <Route path="/add" element={<AddTransactionPage />} />
+          {/* Full screen pages - also protected */}
+          <Route 
+            path="/add" 
+            element={
+              <RequireAuth>
+                <AddTransactionPage />
+              </RequireAuth>
+            } 
+          />
+          
+          {/* Catch all - redirect to login */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
