@@ -38,10 +38,11 @@ export const Login = () => {
       // If using Supabase, will redirect
       // If using backend, this will throw
     } catch (err) {
-      if (err.message.includes('not configured')) {
+      const msg = err.message || '';
+      if (msg.includes('not configured') || msg.includes('Supabase not configured')) {
         setError('Google login belum tersedia. Gunakan login email.');
       } else {
-        setError(err.message);
+        setError(msg || 'Google login gagal. Coba lagi.');
       }
       setLoading(false);
     }

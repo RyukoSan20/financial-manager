@@ -284,7 +284,8 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (data) => {
     if (isSupabaseConfigured()) {
       // Update via Supabase
-      const { data: userData, error } = await supabase.auth.updateUser(data);
+      const sb = getSupabase();
+      const { data: userData, error } = await sb.auth.updateUser(data);
       if (error) throw error;
       setUser(userData.user);
       return userData.user;
