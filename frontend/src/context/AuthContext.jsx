@@ -110,7 +110,8 @@ export const AuthProvider = ({ children }) => {
       throw new Error('Supabase not configured. Please contact admin.');
     }
     
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const sb = getSupabase();
+    const { data, error } = await sb.auth.signInWithPassword({
       email,
       password,
     });
@@ -124,7 +125,8 @@ export const AuthProvider = ({ children }) => {
       throw new Error('Supabase not configured. Please contact admin.');
     }
     
-    const { data, error } = await supabase.auth.signUp({
+    const sb = getSupabase();
+    const { data, error } = await sb.auth.signUp({
       email,
       password,
     });
@@ -138,7 +140,8 @@ export const AuthProvider = ({ children }) => {
       throw new Error('Supabase not configured. Please contact admin.');
     }
     
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const sb = getSupabase();
+    const { data, error } = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin + '/auth/callback',
@@ -154,14 +157,16 @@ export const AuthProvider = ({ children }) => {
       throw new Error('Supabase not configured. Please contact admin.');
     }
     
-    const { data, error } = await supabase.auth.signInAnonymously();
+    const sb = getSupabase();
+    const { data, error } = await sb.auth.signInAnonymously();
     
     if (error) throw error;
     return data;
   };
 
   const supabaseLogout = async () => {
-    const { error } = await supabase.auth.signOut();
+    const sb = getSupabase();
+    const { error } = await sb.auth.signOut();
     if (error) throw error;
     clearAuth();
   };
