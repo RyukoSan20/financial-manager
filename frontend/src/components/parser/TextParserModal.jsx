@@ -25,11 +25,11 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
   const loadData = async () => {
     try {
       const [accRes, catRes] = await Promise.all([
-        api.get('/accounts/'),
-        api.get('/categories/?type=expense'),
+        api.accounts.list(),
+        api.categories.list('expense'),
       ]);
-      setAccounts(accRes || []);
-      setCategories(catRes || []);
+      setAccounts(Array.isArray(accRes) ? accRes : []);
+      setCategories(Array.isArray(catRes) ? catRes : []);
     } catch (err) {
       console.error('Failed to load data:', err);
     }
@@ -45,8 +45,11 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
     setError('');
 
     try {
-      const response = await api.post('/parser/parse-text', { raw_text: rawText });
-      const parsed = response || [];
+      const response = await api.request('/parser/parse-text', {
+        method: 'POST',
+        body: JSON.stringify({ raw_text: rawText }),
+      });
+      const parsed = Array.isArray(response) ? response : [];
       
       if (parsed.length === 0) {
         setError('No transactions detected. Try a different format.');
@@ -57,6 +60,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
       setSelectedResult(parsed[0]);
       setStep('preview');
     } catch (err) {
+      console.error('Parse error:', err);
       setError('Failed to parse text: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
@@ -73,9 +77,9 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
     setError('');
 
     try {
-      await api.post('/parser/confirm', {
-        amount: selectedResult.amount,
-        transaction_type: selectedResult.suggested_type,
+      await api.transactions.create({
+        amount: parseFloat(selectedResult.amount),
+        type: selectedResult.suggested_type === 'income' ? 'income' : 'expense',
         description: selectedResult.description || selectedResult.merchant_name || 'Parsed Transaction',
         date: selectedResult.date || new Date().toISOString().split('T')[0],
         account_id: parseInt(selectedResult.account_id),
@@ -89,6 +93,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
       onSuccess?.();
       handleClose();
     } catch (err) {
+      console.error('Confirm error:', err);
       setError('Failed to save transaction: ' + (err.message || 'Unknown error'));
     } finally {
       setConfirming(false);

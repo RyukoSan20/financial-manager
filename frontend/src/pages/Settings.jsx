@@ -256,7 +256,7 @@ const DataTab = ({ logout }) => {
     setMessage('');
 
     try {
-      const data = await api.get('/data/export');
+      const data = await api.request('/data/export');
       
       // Create downloadable JSON file
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -271,7 +271,8 @@ const DataTab = ({ logout }) => {
       
       setMessage('Data exported successfully!');
     } catch (error) {
-      setMessage('Export failed: ' + error.message);
+      console.error('Export error:', error);
+      setMessage('Export failed: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -282,7 +283,7 @@ const DataTab = ({ logout }) => {
     setMessage('');
 
     try {
-      const data = await api.get('/data/export/csv');
+      const data = await api.request('/data/export/csv');
       
       // Create downloadable CSV file
       const blob = new Blob([data.content], { type: 'text/csv' });
@@ -297,7 +298,8 @@ const DataTab = ({ logout }) => {
       
       setMessage('Transactions exported successfully!');
     } catch (error) {
-      setMessage('Export failed: ' + error.message);
+      console.error('CSV export error:', error);
+      setMessage('Export failed: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -316,10 +318,20 @@ const DataTab = ({ logout }) => {
     setMessage('');
 
     try {
-      // Note: This endpoint needs to be implemented on backend
-      alert('Data deletion is not yet implemented. Please contact support.');
+      await api.request('/data/delete-all', { method: 'DELETE' });
+      setMessage('All data deleted successfully!');
+      
+      // Clear local storage
+      localStorage.clear();
+      
+      // Logout and redirect
+      setTimeout(() => {
+        logout();
+        window.location.href = '/login';
+      }, 2000);
     } catch (error) {
-      setMessage('Deletion failed: ' + error.message);
+      console.error('Delete error:', error);
+      setMessage('Deletion failed: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }

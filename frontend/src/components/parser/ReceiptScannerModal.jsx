@@ -16,8 +16,8 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
   const loadAccounts = async () => {
     try {
-      const response = await api.get('/accounts/');
-      setAccounts(response || []);
+      const response = await api.accounts.list();
+      setAccounts(Array.isArray(response) ? response : []);
     } catch (err) {
       console.error('Failed to load accounts:', err);
     }
@@ -82,14 +82,22 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       const blob = await response.blob();
       const file = new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
 
-      // Call parser endpoint
+      // Call parser endpoint with FormData
       const formData = new FormData();
       formData.append('file', file);
 
-      const result = await api.post('/parser/parse-receipt', formData);
+      // Use direct fetch for FormData (api.request doesn't support FormData)
+      const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      
+      const result = await fetch(`${apiUrl}/api/parser/parse-receipt`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData,
+      }).then(r => r.json());
 
-      if (result.status === 'requires_ocr') {
-        setError('OCR processing not configured. Please provide OCR API credentials.');
+      if (result.status === 'requires_ocr' || result.detail?.includes('OCR')) {
+        setError('OCR processing not configured. For receipt scanning, you can use the SMS/QRIS parser instead.');
         setLoading(false);
         return;
       }
@@ -97,6 +105,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       setParsedData(result);
       setStep('confirm');
     } catch (err) {
+      console.error('Parse error:', err);
       setError('Failed to process image: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
@@ -110,9 +119,9 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     setError('');
 
     try {
-      await api.post('/parser/confirm', {
-        amount: parsedData.amount,
-        transaction_type: 'expense', // Receipts are usually expenses
+      await api.transactions.create({
+        amount: parseFloat(parsedData.amount),
+        type: 'expense', // Receipts are usually expenses
         description: parsedData.description || 'Pembelian',
         date: parsedData.date || new Date().toISOString().split('T')[0],
         account_id: accountId,
@@ -124,6 +133,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       onSuccess?.();
       handleClose();
     } catch (err) {
+      console.error('Confirm error:', err);
       setError('Failed to save transaction: ' + (err.message || 'Unknown error'));
     } finally {
       setConfirming(false);
