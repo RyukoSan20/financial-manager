@@ -1,7 +1,7 @@
 // Auth Callback Page - handles OAuth redirect
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { getSupabase } from '../lib/supabase';
 
 export const AuthCallback = () => {
   const [error, setError] = useState('');
@@ -13,10 +13,13 @@ export const AuthCallback = () => {
 
   const handleCallback = async () => {
     try {
+      const sb = getSupabase();
+      
       // Get session from URL
-      const { data, error } = await supabase.auth.getSession();
+      const { data, error } = await sb.auth.getSession();
       
       if (error) {
+        console.error('Callback error:', error);
         setError(error.message);
         setTimeout(() => navigate('/login'), 3000);
         return;

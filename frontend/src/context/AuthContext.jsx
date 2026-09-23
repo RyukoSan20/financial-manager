@@ -1,6 +1,6 @@
 // Auth Context with Supabase + Backend fallback
 import { createContext, useContext, useState, useEffect } from 'react';
-import { getSupabase, isSupabaseConfigured, onAuthStateChange } from '../lib/supabase';
+import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -11,14 +11,21 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Always set loading to false after mount
-    setLoading(false);
+    // Check localStorage first (for OAuth callback)
+    const storedUser = localStorage.getItem('sb_user');
+    const storedToken = localStorage.getItem('sb_token');
+    if (storedUser && storedToken) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.removeItem('sb_user');
+        localStorage.removeItem('sb_token');
+      }
+    }
     
     if (isSupabaseConfigured()) {
-      // Use Supabase auth
       initSupabaseAuth();
     } else {
-      // Fallback to backend auth
       checkBackendAuth();
     }
     
@@ -26,11 +33,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const initSupabaseAuth = async () => {
-    if (!isSupabaseConfigured()) {
-      setLoading(false);
-      return;
-    }
-    
     try {
       const supabase = getSupabase();
       
@@ -44,7 +46,7 @@ export const AuthProvider = ({ children }) => {
       }
       
       // Listen for auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session) {
           setUser(session.user);
           localStorage.setItem('sb_token', session.access_token);
@@ -57,89 +59,97 @@ export const AuthProvider = ({ children }) => {
       });
       
       setLoading(false);
-      
-      return () => subscription.unsubscribe();
     } catch (err) {
-      console.error('Supabase auth init error:', err);
+      console.error('Supabase auth error:', err);
       setLoading(false);
     }
   };
 
   const checkBackendAuth = async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_URL}/api/auth/me`, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+    if (token) {
+      try {
+        const res = await fetch(`${API_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const userData = await res.json();
+          setUser(userData);
+        } else {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
         }
-      });
-      
-      if (res.ok) {
-        const userData = await res.json();
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-      } else {
-        clearAuth();
+      } catch (err) {
+        console.error('Backend auth check error:', err);
       }
-    } catch (err) {
-      console.error('Backend auth check failed:', err);
-      clearAuth();
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   const clearAuth = () => {
+    setUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('sb_token');
     localStorage.removeItem('sb_user');
-    localStorage.removeItem('guest_device_id');
-    setUser(null);
+  };
+
+  const login = async (email, password) => {
+    if (isSupabaseConfigured()) {
+      return supabaseLogin(email, password);
+    } else {
+      return backendLogin(email, password);
+    }
+  };
+
+  const register = async (email, password) => {
+    if (isSupabaseConfigured()) {
+      return supabaseRegister(email, password);
+    } else {
+      return backendRegister(email, password);
+    }
+  };
+
+  const googleLogin = async () => {
+    if (isSupabaseConfigured()) {
+      return supabaseGoogleLogin();
+    } else {
+      throw new Error('Google login belum tersedia. Gunakan login email.');
+    }
+  };
+
+  const guestLogin = async () => {
+    if (isSupabaseConfigured()) {
+      return supabaseGuestLogin();
+    } else {
+      throw new Error('Guest login belum tersedia. Gunakan login email.');
+    }
+  };
+
+  const logout = async () => {
+    if (isSupabaseConfigured()) {
+      return supabaseLogout();
+    } else {
+      return backendLogout();
+    }
   };
 
   // Supabase Auth Functions
   const supabaseLogin = async (email, password) => {
-    if (!isSupabaseConfigured()) {
-      throw new Error('Supabase not configured. Please contact admin.');
-    }
-    
     const sb = getSupabase();
-    const { data, error } = await sb.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) throw error;
     return data;
   };
 
   const supabaseRegister = async (email, password) => {
-    if (!isSupabaseConfigured()) {
-      throw new Error('Supabase not configured. Please contact admin.');
-    }
-    
     const sb = getSupabase();
-    const { data, error } = await sb.auth.signUp({
-      email,
-      password,
-    });
-    
+    const { data, error } = await sb.auth.signUp({ email, password });
     if (error) throw error;
     return data;
   };
 
   const supabaseGoogleLogin = async () => {
-    if (!isSupabaseConfigured()) {
-      throw new Error('Supabase not configured. Please contact admin.');
-    }
-    
     const sb = getSupabase();
     const { data, error } = await sb.auth.signInWithOAuth({
       provider: 'google',
@@ -147,19 +157,13 @@ export const AuthProvider = ({ children }) => {
         redirectTo: window.location.origin + '/auth/callback',
       },
     });
-    
     if (error) throw error;
     return data;
   };
 
   const supabaseGuestLogin = async () => {
-    if (!isSupabaseConfigured()) {
-      throw new Error('Supabase not configured. Please contact admin.');
-    }
-    
     const sb = getSupabase();
     const { data, error } = await sb.auth.signInAnonymously();
-    
     if (error) throw error;
     return data;
   };
@@ -171,19 +175,17 @@ export const AuthProvider = ({ children }) => {
     clearAuth();
   };
 
-  // Backend Auth Functions (fallback)
+  // Backend Auth Functions
   const backendLogin = async (email, password) => {
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    
     if (!res.ok) {
       const error = await res.json();
       throw new Error(error.detail || 'Login failed');
     }
-    
     const data = await res.json();
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
@@ -191,152 +193,68 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const backendRegister = async (email, password, username = null, fullName = null) => {
+  const backendRegister = async (email, password) => {
     const res = await fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, username, full_name: fullName }),
+      body: JSON.stringify({ email, password }),
     });
-    
     if (!res.ok) {
       const error = await res.json();
       throw new Error(error.detail || 'Registration failed');
     }
-    
     const data = await res.json();
-    localStorage.setItem('token', data.access_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setUser(data.user);
-    return data;
-  };
-
-  const backendGuestLogin = async () => {
-    let deviceId = localStorage.getItem('guest_device_id');
-    
-    if (!deviceId) {
-      deviceId = 'guest_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-      localStorage.setItem('guest_device_id', deviceId);
-    }
-    
-    const res = await fetch(`${API_URL}/api/auth/guest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ device_id: deviceId }),
-    });
-    
-    if (!res.ok) throw new Error('Guest login failed');
-    
-    const data = await res.json();
-    localStorage.setItem('token', data.access_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setUser(data.user);
     return data;
   };
 
   const backendLogout = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        await fetch(`${API_URL}/api/auth/logout`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-      }
-    } catch (err) {
-      console.error('Logout API error:', err);
-    } finally {
-      clearAuth();
-      window.location.href = '/login';
-    }
-  };
-
-  // Unified functions - use Supabase if configured, fallback to backend
-  const login = async (email, password) => {
-    if (isSupabaseConfigured()) {
-      return supabaseLogin(email, password);
-    }
-    return backendLogin(email, password);
-  };
-
-  const register = async (email, password) => {
-    if (isSupabaseConfigured()) {
-      return supabaseRegister(email, password);
-    }
-    return backendRegister(email, password);
-  };
-
-  const googleLogin = async () => {
-    if (isSupabaseConfigured()) {
-      return supabaseGoogleLogin();
-    }
-    throw new Error('Google login not configured. Please use email login.');
-  };
-
-  const guestLogin = async () => {
-    if (isSupabaseConfigured()) {
-      return supabaseGuestLogin();
-    }
-    return backendGuestLogin();
-  };
-
-  const logout = async () => {
-    if (isSupabaseConfigured()) {
-      return supabaseLogout();
-    }
-    return backendLogout();
+    clearAuth();
   };
 
   const updateProfile = async (data) => {
     if (isSupabaseConfigured()) {
-      // Update via Supabase
       const sb = getSupabase();
       const { data: userData, error } = await sb.auth.updateUser(data);
       if (error) throw error;
       setUser(userData.user);
+      localStorage.setItem('sb_user', JSON.stringify(userData.user));
       return userData.user;
+    } else {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/auth/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.detail || 'Update failed');
+      }
+      const updatedUser = await res.json();
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
     }
-    
-    // Fallback to backend
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/api/auth/me`, {
-      method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(data),
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.detail || 'Update failed');
-    }
-    
-    const updatedUser = await res.json();
-    setUser(updatedUser);
-    return updatedUser;
   };
+
+  const isAuthenticated = !!user;
 
   const value = {
     user,
     loading,
-    isAuthenticated: !!user,
-    isGuest: user?.is_guest || false,
-    isSupabase: isSupabaseConfigured(),
+    isAuthenticated,
     login,
     register,
     googleLogin,
     guestLogin,
     logout,
     updateProfile,
-    checkAuth: isSupabaseConfigured() ? initSupabaseAuth : checkBackendAuth,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
@@ -346,5 +264,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-export default AuthContext;
