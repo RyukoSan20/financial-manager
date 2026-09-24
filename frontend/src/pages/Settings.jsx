@@ -167,9 +167,12 @@ const SecurityTab = () => {
     setMessage('');
 
     try {
-      const response = await api.get('/auth/change-password', {
-        old_password: form.current_password,
-        new_password: form.new_password,
+      const response = await api.request('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          old_password: form.current_password,
+          new_password: form.new_password,
+        }),
       });
       
       if (response) {

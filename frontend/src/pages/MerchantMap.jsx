@@ -19,7 +19,7 @@ const MerchantMap = () => {
   const fetchMerchantData = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/analytics/merchants/map");
+      const response = await api.request("/analytics/merchants/map");
       setMerchants(response.markers || []);
     } catch (err) {
       console.error("Error fetching merchant data:", err);
@@ -31,7 +31,7 @@ const MerchantMap = () => {
 
   const fetchTopMerchants = async () => {
     try {
-      const response = await api.get(
+      const response = await api.request(
         `/analytics/merchants/top?metric=${selectedMetric}&limit=10`
       );
       setTopMerchants(response.merchants || []);

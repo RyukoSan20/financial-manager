@@ -14,12 +14,12 @@ const getToken = () => {
 
 // Set token
 export const setToken = (token) => {
-  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem('token', token);
 };
 
 // Clear token
 export const clearToken = () => {
-  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem('token');
 };
 
 // Check if authenticated
