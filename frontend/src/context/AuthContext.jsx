@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const res = await fetch(`${API_URL}/api/auth/me`, {
+        const res = await fetch(`${API_URL}/api/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -177,7 +177,7 @@ export const AuthProvider = ({ children }) => {
 
   // Backend Auth Functions
   const backendLogin = async (email, password) => {
-    const res = await fetch(`${API_URL}/api/auth/login`, {
+    const res = await fetch(`${API_URL}/api/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -194,7 +194,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const backendRegister = async (email, password) => {
-    const res = await fetch(`${API_URL}/api/auth/register`, {
+    const res = await fetch(`${API_URL}/api/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -221,7 +221,7 @@ export const AuthProvider = ({ children }) => {
       return userData.user;
     } else {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/auth/profile`, {
+      const res = await fetch(`${API_URL}/api/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

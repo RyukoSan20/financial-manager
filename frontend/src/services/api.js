@@ -83,15 +83,15 @@ export const api = {
 
   // Auth
   auth: {
-    login: (email, password) => api.request('/auth/login', {
+    login: (email, password) => api.request('/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
-    register: (data) => api.request('/auth/register', {
+    register: (data) => api.request('/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-    me: () => api.request('/auth/me'),
+    me: () => api.request('/me'),
   },
 
   // Accounts
