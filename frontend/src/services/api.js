@@ -54,6 +54,11 @@ const fetchWithInterceptor = async (url, options = {}) => {
       throw new Error('Session expired. Please login again.');
     }
     
+    // Handle 204 No Content (DELETE success)
+    if (response.status === 204) {
+      return { success: true };
+    }
+    
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Request failed' }));
       throw new Error(error.detail || `HTTP ${response.status}`);
