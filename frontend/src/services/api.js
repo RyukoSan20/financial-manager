@@ -61,7 +61,13 @@ const fetchWithInterceptor = async (url, options = {}) => {
     
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Request failed' }));
-      throw new Error(error.detail || `HTTP ${response.status}`);
+      // Handle case where detail is an object (e.g., validation errors)
+      const errorMsg = typeof error.detail === 'string' 
+        ? error.detail 
+        : Array.isArray(error.detail) 
+          ? error.detail.join(', ')
+          : JSON.stringify(error.detail) || `HTTP ${response.status}`;
+      throw new Error(errorMsg);
     }
     
     return response;
@@ -79,6 +85,10 @@ export const api = {
     const url = `${API_BASE_URL}${endpoint}`;
     try {
       const response = await fetchWithInterceptor(url, options);
+      // Handle 204 No Content
+      if (response.status === 204) {
+        return { success: true };
+      }
       return response.json();
     } catch (error) {
       console.error(`API Error [${endpoint}]:`, error);
