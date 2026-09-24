@@ -500,10 +500,17 @@ def supabase_token_exchange(
     user = db.query(User).filter(User.email == request.email).first()
     
     if not user:
-        # Create new user
+        # Create new user with unique username
+        base_username = request.email.split("@")[0]
+        username = base_username
+        counter = 1
+        while db.query(User).filter(User.username == username).first():
+            username = f"{base_username}{counter}"
+            counter += 1
+        
         user = User(
             email=request.email,
-            username=request.email.split("@")[0],
+            username=username,
             hashed_password=None,  # No password - OAuth only
             is_active=True,
             google_id=request.supabase_id,
@@ -511,6 +518,10 @@ def supabase_token_exchange(
         db.add(user)
         db.commit()
         db.refresh(user)
+    else:
+        # Update google_id if provided and different
+        if request.supabase_id and user.google_id != request.supabase_id:
+            user.google_id = request.supabase_id
     
     # Update last login
     user.last_login = datetime.utcnow()
