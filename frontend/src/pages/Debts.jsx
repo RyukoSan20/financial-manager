@@ -52,7 +52,7 @@ export const Debts = () => {
       fetchData();
     } catch (err) {
       console.error('Failed to save debt:', err);
-      alert('Failed to save debt: ' + (err.message || 'Unknown error'));
+      alert('Failed to save debt: ' + (err.message || JSON.stringify(err) || 'Unknown error'));
     }
   };
 

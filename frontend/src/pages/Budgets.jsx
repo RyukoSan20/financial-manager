@@ -45,7 +45,7 @@ export const Budgets = () => {
       fetchData();
     } catch (err) {
       console.error('Failed to save budget:', err);
-      alert('Failed to save budget: ' + (err.message || 'Unknown error'));
+      alert('Failed to save budget: ' + (err.message || JSON.stringify(err) || 'Unknown error'));
     }
   };
 
