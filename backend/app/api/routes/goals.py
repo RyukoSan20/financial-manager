@@ -27,7 +27,7 @@ router = APIRouter()
 @router.get("/", response_model=List[GoalWithProgress])
 def list_goals(
     active_only: bool = True,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """List all goals with calculated progress."""
@@ -85,7 +85,7 @@ def list_goals(
 @router.get("/{goal_id}", response_model=GoalWithProgress)
 def get_goal(
     goal_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get a single goal with progress."""
@@ -94,7 +94,7 @@ def get_goal(
         raise HTTPException(status_code=404, detail="Goal not found")
     
     # Ownership check
-    if current_user and goal.user_id != current_user.id:
+    if goal.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     progress = calculate_goal_progress(goal.current_amount, goal.target_amount)
@@ -138,7 +138,7 @@ def get_goal(
 @router.post("/", response_model=GoalResponse, status_code=201)
 def create_goal(
     goal: GoalCreate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create a new goal."""
@@ -159,7 +159,7 @@ def create_goal(
 def update_goal(
     goal_id: int,
     goal: GoalUpdate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Update a goal."""
@@ -168,7 +168,7 @@ def update_goal(
         raise HTTPException(status_code=404, detail="Goal not found")
     
     # Ownership check
-    if current_user and db_goal.user_id != current_user.id:
+    if db_goal.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = goal.model_dump(exclude_unset=True)
@@ -183,7 +183,7 @@ def update_goal(
 @router.delete("/{goal_id}", status_code=204)
 def delete_goal(
     goal_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Delete (deactivate) a goal."""
@@ -192,7 +192,7 @@ def delete_goal(
         raise HTTPException(status_code=404, detail="Goal not found")
     
     # Ownership check
-    if current_user and db_goal.user_id != current_user.id:
+    if db_goal.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     db_goal.is_active = False
@@ -206,7 +206,7 @@ def delete_goal(
 def add_contribution(
     goal_id: int,
     contribution: GoalContributionCreate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Add a contribution to a goal."""
@@ -215,7 +215,7 @@ def add_contribution(
         raise HTTPException(status_code=404, detail="Goal not found")
     
     # Ownership check
-    if current_user and db_goal.user_id != current_user.id:
+    if db_goal.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Create contribution
@@ -246,7 +246,7 @@ def add_contribution(
 @router.get("/{goal_id}/contributions", response_model=List[GoalContributionResponse])
 def list_contributions(
     goal_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """List all contributions for a goal."""
@@ -255,7 +255,7 @@ def list_contributions(
         raise HTTPException(status_code=404, detail="Goal not found")
     
     # Ownership check
-    if current_user and db_goal.user_id != current_user.id:
+    if db_goal.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     contributions = db.query(GoalContribution).filter(
@@ -266,7 +266,7 @@ def list_contributions(
 
 @router.get("/summary")
 def get_goals_summary(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get overall goals summary."""

@@ -152,24 +152,21 @@ def get_transaction(
 @router.post("/", response_model=TransactionResponse, status_code=201)
 def create_transaction(
     transaction: TransactionCreate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create new transaction."""
+    """Create new transaction. Requires authentication."""
     # Verify account exists and belongs to user
     account = db.query(Account).filter(Account.id == transaction.account_id).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     
     # Account ownership check
-    if current_user and account.user_id != current_user.id:
+    if account.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Cannot add transaction to another user's account")
     
     transaction_data = transaction.model_dump()
-    
-    # Assign user_id if authenticated
-    if current_user:
-        transaction_data["user_id"] = current_user.id
+    transaction_data["user_id"] = current_user.id
     
     db_transaction = Transaction(**transaction_data)
     
@@ -189,16 +186,16 @@ def create_transaction(
 def update_transaction(
     transaction_id: int, 
     transaction: TransactionUpdate, 
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update transaction with ownership check."""
+    """Update transaction with ownership check. Requires authentication."""
     db_transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
     if not db_transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
     
     # Ownership check
-    if current_user and db_transaction.user_id != current_user.id:
+    if db_transaction.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = transaction.model_dump(exclude_unset=True)
@@ -231,16 +228,16 @@ def update_transaction(
 @router.delete("/{transaction_id}", status_code=204)
 def delete_transaction(
     transaction_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete transaction with ownership check."""
+    """Delete transaction with ownership check. Requires authentication."""
     db_transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
     if not db_transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
     
     # Ownership check
-    if current_user and db_transaction.user_id != current_user.id:
+    if db_transaction.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Reverse the balance change

@@ -20,7 +20,7 @@ router = APIRouter()
 @router.post("/", response_model=TransferWithTransactions, status_code=201)
 def create_transfer(
     transfer: TransferCreate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create a transfer between two accounts."""
@@ -115,7 +115,7 @@ def list_transfers(
     limit: int = 100,
     start_date: date = None,
     end_date: date = None,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """List all transfers for current user."""
@@ -163,7 +163,7 @@ def list_transfers(
 @router.get("/{transfer_id}", response_model=TransferWithTransactions)
 def get_transfer(
     transfer_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get a single transfer by ID."""
@@ -172,7 +172,7 @@ def get_transfer(
         raise HTTPException(status_code=404, detail="Transfer not found")
     
     # Ownership check
-    if current_user and transfer.user_id != current_user.id:
+    if transfer.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     tx_out = db.query(Transaction).filter(
@@ -203,7 +203,7 @@ def get_transfer(
 @router.delete("/{transfer_id}", status_code=204)
 def delete_transfer(
     transfer_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Delete a transfer with ownership check."""
@@ -212,7 +212,7 @@ def delete_transfer(
         raise HTTPException(status_code=404, detail="Transfer not found")
     
     # Ownership check
-    if current_user and transfer.user_id != current_user.id:
+    if transfer.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Get linked transactions
@@ -248,7 +248,7 @@ def delete_transfer(
 def get_transfer_summary(
     start_date: date = None,
     end_date: date = None,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get transfer summary for a period."""

@@ -48,7 +48,7 @@ def decode_token(token: str) -> Optional[dict]:
         return None
 
 
-async def get_current_user_optional(
+async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> Optional["User"]:

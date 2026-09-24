@@ -20,7 +20,7 @@ router = APIRouter()
 @router.get("/", response_model=List[BudgetResponse])
 def list_budgets(
     active_only: bool = True,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all budgets for current user."""
@@ -37,7 +37,7 @@ def list_budgets(
 @router.get("/{budget_id}", response_model=BudgetResponse)
 def get_budget(
     budget_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get budget by ID with ownership check."""
@@ -46,7 +46,7 @@ def get_budget(
         raise HTTPException(status_code=404, detail="Budget not found")
     
     # Ownership check
-    if current_user and budget.user_id != current_user.id:
+    if budget.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     return budget
@@ -55,7 +55,7 @@ def get_budget(
 @router.post("/", response_model=BudgetResponse, status_code=201)
 def create_budget(
     budget: BudgetCreate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create new budget."""
@@ -76,7 +76,7 @@ def create_budget(
 def update_budget(
     budget_id: int,
     budget: BudgetUpdate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Update budget with ownership check."""
@@ -85,7 +85,7 @@ def update_budget(
         raise HTTPException(status_code=404, detail="Budget not found")
     
     # Ownership check
-    if current_user and db_budget.user_id != current_user.id:
+    if db_budget.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = budget.model_dump(exclude_unset=True)
@@ -100,7 +100,7 @@ def update_budget(
 @router.delete("/{budget_id}", status_code=204)
 def delete_budget(
     budget_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Soft delete budget with ownership check."""
@@ -109,7 +109,7 @@ def delete_budget(
         raise HTTPException(status_code=404, detail="Budget not found")
     
     # Ownership check
-    if current_user and db_budget.user_id != current_user.id:
+    if db_budget.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     db_budget.is_active = False
@@ -120,7 +120,7 @@ def delete_budget(
 @router.get("/{budget_id}/progress")
 def get_budget_progress(
     budget_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get budget progress with calculations."""
@@ -129,7 +129,7 @@ def get_budget_progress(
         raise HTTPException(status_code=404, detail="Budget not found")
     
     # Ownership check
-    if current_user and budget.user_id != current_user.id:
+    if budget.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Calculate actual spending in budget period
@@ -185,7 +185,7 @@ def get_budget_progress(
 
 @router.post("/seed-defaults")
 def seed_default_budgets(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create default monthly budget template."""

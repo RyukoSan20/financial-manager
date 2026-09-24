@@ -16,7 +16,7 @@ router = APIRouter()
 @router.get("/", response_model=List[CategoryResponse])
 def list_categories(
     type: str = None,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all categories for current user (plus shared categories)."""
@@ -36,7 +36,7 @@ def list_categories(
 @router.get("/{category_id}", response_model=CategoryResponse)
 def get_category(
     category_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get category by ID."""
@@ -49,7 +49,7 @@ def get_category(
 @router.post("/", response_model=CategoryResponse, status_code=201)
 def create_category(
     category: CategoryCreate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create new category (owned by current user)."""
@@ -70,7 +70,7 @@ def create_category(
 def update_category(
     category_id: int,
     category: CategoryUpdate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Update category with ownership check."""
@@ -94,7 +94,7 @@ def update_category(
 @router.delete("/{category_id}", status_code=204)
 def delete_category(
     category_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Soft delete category with ownership check."""
@@ -113,7 +113,7 @@ def delete_category(
 
 @router.post("/seed-defaults")
 def seed_default_categories(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Seed default income/expense categories for user."""

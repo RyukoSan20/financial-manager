@@ -56,7 +56,7 @@ def calculate_next_occurrence(rule: RecurringRule, from_date: date = None) -> da
 def list_recurring_rules(
     active_only: bool = True,
     type: Optional[str] = None,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """List all recurring rules for current user."""
@@ -75,7 +75,7 @@ def list_recurring_rules(
 @router.get("/upcoming")
 def get_upcoming_recurring(
     days: int = Query(default=7, ge=1, le=90),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get upcoming recurring transactions within N days."""
@@ -111,7 +111,7 @@ def get_upcoming_recurring(
 @router.get("/{rule_id}", response_model=RecurringRuleResponse)
 def get_recurring_rule(
     rule_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get a single recurring rule."""
@@ -120,7 +120,7 @@ def get_recurring_rule(
         raise HTTPException(status_code=404, detail="Recurring rule not found")
     
     # Ownership check
-    if current_user and rule.user_id != current_user.id:
+    if rule.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     return rule
@@ -129,7 +129,7 @@ def get_recurring_rule(
 @router.post("/", response_model=RecurringRuleResponse, status_code=201)
 def create_recurring_rule(
     rule: RecurringRuleCreate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create a new recurring rule."""
@@ -172,7 +172,7 @@ def create_recurring_rule(
 def update_recurring_rule(
     rule_id: int,
     rule: RecurringRuleUpdate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Update a recurring rule."""
@@ -181,7 +181,7 @@ def update_recurring_rule(
         raise HTTPException(status_code=404, detail="Recurring rule not found")
     
     # Ownership check
-    if current_user and db_rule.user_id != current_user.id:
+    if db_rule.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = rule.model_dump(exclude_unset=True)
@@ -207,7 +207,7 @@ def update_recurring_rule(
 @router.delete("/{rule_id}", status_code=204)
 def delete_recurring_rule(
     rule_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Delete (deactivate) a recurring rule."""
@@ -216,7 +216,7 @@ def delete_recurring_rule(
         raise HTTPException(status_code=404, detail="Recurring rule not found")
     
     # Ownership check
-    if current_user and db_rule.user_id != current_user.id:
+    if db_rule.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     db_rule.is_active = False
@@ -227,7 +227,7 @@ def delete_recurring_rule(
 @router.post("/{rule_id}/generate")
 def generate_transaction_from_rule(
     rule_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Generate a transaction from a recurring rule."""
@@ -236,7 +236,7 @@ def generate_transaction_from_rule(
         raise HTTPException(status_code=404, detail="Recurring rule not found")
     
     # Ownership check
-    if current_user and db_rule.user_id != current_user.id:
+    if db_rule.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     if not db_rule.is_active:
@@ -301,7 +301,7 @@ def generate_transaction_from_rule(
 
 @router.post("/generate-all")
 def generate_all_due_transactions(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Generate transactions for all rules with due occurrences."""

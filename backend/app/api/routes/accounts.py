@@ -6,7 +6,7 @@ from typing import List
 from decimal import Decimal
 
 from app.core.database import get_db
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user, get_current_user_optional
 from app.models.account import Account
 from app.models.user import User
 from app.schemas.account import AccountCreate, AccountUpdate, AccountResponse
@@ -64,15 +64,12 @@ def get_account(
 @router.post("/", response_model=AccountResponse, status_code=201)
 def create_account(
     account: AccountCreate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create new account."""
+    """Create new account. Requires authentication."""
     account_data = account.model_dump()
-    
-    # Assign user_id if authenticated
-    if current_user:
-        account_data["user_id"] = current_user.id
+    account_data["user_id"] = current_user.id
     
     db_account = Account(**account_data)
     db.add(db_account)
@@ -85,16 +82,16 @@ def create_account(
 def update_account(
     account_id: int,
     account: AccountUpdate,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update account with ownership check."""
+    """Update account with ownership check. Requires authentication."""
     db_account = db.query(Account).filter(Account.id == account_id).first()
     if not db_account:
         raise HTTPException(status_code=404, detail="Account not found")
     
     # Ownership check
-    if current_user and db_account.user_id != current_user.id:
+    if db_account.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = account.model_dump(exclude_unset=True)
@@ -109,16 +106,16 @@ def update_account(
 @router.delete("/{account_id}", status_code=204)
 def delete_account(
     account_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete account with ownership check."""
+    """Delete account with ownership check. Requires authentication."""
     db_account = db.query(Account).filter(Account.id == account_id).first()
     if not db_account:
         raise HTTPException(status_code=404, detail="Account not found")
     
     # Ownership check
-    if current_user and db_account.user_id != current_user.id:
+    if db_account.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     db.delete(db_account)

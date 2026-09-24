@@ -51,7 +51,7 @@ class PatternAnalysis(BaseModel):
 
 @router.get("/advice", response_model=List[AdviceResponse])
 def get_ai_advice(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -83,7 +83,7 @@ def get_ai_advice(
 
 @router.get("/summary", response_model=FinancialSummaryResponse)
 def get_financial_summary_api(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -110,7 +110,7 @@ def get_financial_summary_api(
 @router.post("/analyze-patterns", response_model=PatternAnalysis)
 def analyze_spending_patterns(
     transactions: List[dict],
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -136,7 +136,7 @@ def analyze_spending_patterns(
 @router.post("/chat")
 def chat_with_advisor(
     message: dict,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -186,7 +186,7 @@ Respond in Indonesian, be helpful and practical. Keep it concise (under 200 word
 @router.get("/tips")
 def get_financial_tips(
     category: str = None,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
