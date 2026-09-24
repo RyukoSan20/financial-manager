@@ -32,7 +32,7 @@ export const AuthCallback = () => {
         const user = data.session.user;
         
         // Exchange Supabase token for backend JWT
-        const response = await fetch(`${API_URL}/auth/supabase-exchange`, {
+        const response = await fetch(`${API_URL}/api/supabase-exchange`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
