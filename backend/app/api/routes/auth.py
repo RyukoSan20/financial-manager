@@ -505,8 +505,8 @@ def supabase_token_exchange(
             email=request.email,
             username=request.email.split("@")[0],
             hashed_password=None,  # No password - OAuth only
-            provider=request.provider,
             is_active=True,
+            google_id=request.supabase_id,
         )
         db.add(user)
         db.commit()
