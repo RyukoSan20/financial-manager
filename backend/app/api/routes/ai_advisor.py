@@ -14,7 +14,7 @@ from app.services.ai_advisor_service import (
     AIAdvice
 )
 
-router = APIRouter(prefix="/ai", tags=["AI Advisor"])
+router = APIRouter(tags=["AI Advisor"])
 
 
 # === Pydantic Models ===

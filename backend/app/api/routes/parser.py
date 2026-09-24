@@ -20,7 +20,7 @@ from app.services.parser_service import (
 )
 from app.services.geocoding_service import geocoding_service, geocode_merchant
 
-router = APIRouter(prefix="/parser", tags=["Parser"])
+router = APIRouter(tags=["Parser"])
 
 
 # === Pydantic Models ===

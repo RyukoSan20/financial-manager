@@ -14,7 +14,7 @@ from app.models.budget import Budget
 from app.models.goal import Goal
 from app.models.debt import Debt
 
-router = APIRouter(prefix="/data", tags=["Data"])
+router = APIRouter(tags=["Data"])
 
 
 @router.get("/export")

@@ -17,7 +17,7 @@ from app.models.user import User
 from app.schemas.user import Token, MessageResponse
 import os
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(tags=["Authentication"])
 
 # Google OAuth Config
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
