@@ -32,26 +32,26 @@ export const AuthCallback = () => {
         const user = data.session.user;
         
         // Exchange Supabase token for backend JWT
-        try {
-          const response = await fetch(`${API_URL}/api/auth/supabase-exchange`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: user.email,
-              supabase_id: user.id,
-              provider: user.app_metadata?.provider || 'google',
-            }),
-          });
-          
-          if (response.ok) {
-            const tokenData = await response.json();
-            // Store backend token (this is what API uses)
-            localStorage.setItem('token', tokenData.access_token);
-            localStorage.setItem('user', JSON.stringify(tokenData.user));
-          }
-        } catch (e) {
-          console.error('Token exchange error:', e);
+        const response = await fetch(`${API_URL}/api/auth/supabase-exchange`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            supabase_id: user.id,
+            provider: user.app_metadata?.provider || 'google',
+          }),
+        });
+        
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error('Token exchange failed: ' + (errData.detail || response.statusText));
         }
+        
+        const tokenData = await response.json();
+        // Store backend token (this is what API uses)
+        localStorage.setItem('token', tokenData.access_token);
+        localStorage.setItem('user', JSON.stringify(tokenData.user));
+        
         
         // Store Supabase session too
         localStorage.setItem('sb_token', data.session.access_token);
