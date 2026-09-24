@@ -58,11 +58,7 @@ export const Debts = () => {
 
   const handlePayment = async (debtId, paymentData) => {
     try {
-      await fetch(`/api/debts/${debtId}/payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(paymentData),
-      });
+      await api.debts.payment(debtId, paymentData);
       setShowPaymentModal(false);
       setSelectedDebt(null);
       fetchData();
@@ -74,7 +70,7 @@ export const Debts = () => {
   const handleDelete = async (id) => {
     if (!confirm('Delete this debt?')) return;
     try {
-      await fetch(`/api/debts/${id}`, { method: 'DELETE' });
+      await api.debts.delete(id);
       fetchData();
     } catch (err) {
       console.error(err);

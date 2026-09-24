@@ -60,7 +60,7 @@ export const Goals = () => {
   const handleDelete = async (id) => {
     if (!confirm('Delete this goal?')) return;
     try {
-      await fetch(`/api/goals/${id}`, { method: 'DELETE' });
+      await api.goals.delete(id);
       fetchData();
     } catch (err) {
       console.error(err);

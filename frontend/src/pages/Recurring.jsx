@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner } from '../components/ui';
+import api from '../services/api';
 import { Plus, Repeat, RefreshCw, Trash2, Edit2, Calendar, Clock, Play, Pause } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 
@@ -29,10 +30,10 @@ export const Recurring = () => {
     setLoading(true);
     try {
       const [rulesRes, catRes, accRes, upcomingRes] = await Promise.all([
-        fetch('/api/recurring/').then(r => r.json()),
-        fetch('/api/categories/').then(r => r.json()),
-        fetch('/api/accounts/').then(r => r.json()),
-        fetch('/api/recurring/upcoming').then(r => r.json()),
+        api.recurring.list(),
+        api.categories.list(),
+        api.accounts.list(),
+        api.recurring.upcoming(),
       ]);
       setRules(Array.isArray(rulesRes) ? rulesRes : []);
       setCategories(catRes);
@@ -47,16 +48,11 @@ export const Recurring = () => {
 
   const handleSubmit = async (formData) => {
     try {
-      const method = editingRule ? 'PUT' : 'POST';
-      const url = editingRule 
-        ? `/api/recurring/${editingRule.id}` 
-        : '/api/recurring/';
-      
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      if (editingRule) {
+        await api.recurring.update(editingRule.id, formData);
+      } else {
+        await api.recurring.create(formData);
+      }
       
       setShowModal(false);
       setEditingRule(null);
@@ -68,11 +64,7 @@ export const Recurring = () => {
 
   const handleToggleActive = async (rule) => {
     try {
-      await fetch(`/api/recurring/${rule.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !rule.is_active }),
-      });
+      await api.recurring.update(rule.id, { is_active: !rule.is_active });
       fetchData();
     } catch (err) {
       console.error(err);
@@ -82,7 +74,7 @@ export const Recurring = () => {
   const handleDelete = async (id) => {
     if (!confirm('Delete this recurring rule?')) return;
     try {
-      await fetch(`/api/recurring/${id}`, { method: 'DELETE' });
+      await api.recurring.delete(id);
       fetchData();
     } catch (err) {
       console.error(err);

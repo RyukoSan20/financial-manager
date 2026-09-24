@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardBody, CardFooter, Badge, Spinner, EmptyState, Select } from '../components/ui';
+import api from '../services/api';
 import { 
   TrendingUp, TrendingDown, PieChart, BarChart3, 
   DollarSign, CreditCard, Target, Calendar
@@ -30,11 +31,11 @@ export const Analytics = () => {
     setLoading(true);
     try {
       const [healthRes, cashFlowRes, expenseRes, budgetRes, monthlyRes] = await Promise.all([
-        fetch('/api/analytics/financial-health').then(r => r.json()),
-        fetch(`/api/analytics/cash-flow-trend?months=${period}`).then(r => r.json()),
-        fetch('/api/analytics/expense-breakdown?period=monthly').then(r => r.json()),
-        fetch('/api/analytics/budget-vs-actual').then(r => r.json()),
-        fetch(`/api/analytics/monthly-comparison?months=${period}`).then(r => r.json()),
+        api.request('/analytics/financial-health'),
+        api.request(`/analytics/cash-flow-trend?months=${period}`),
+        api.request('/analytics/expense-breakdown?period=monthly'),
+        api.request('/analytics/budget-vs-actual'),
+        api.request(`/analytics/monthly-comparison?months=${period}`),
       ]);
       setHealth(healthRes);
       setCashFlow(cashFlowRes);
