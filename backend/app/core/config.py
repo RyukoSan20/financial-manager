@@ -28,6 +28,7 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "https://financial-manager-flax.vercel.app",
         "https://financial-manager-nu.vercel.app",
+        "https://financial-manager-inky.vercel.app",
         "https://financial-manager-production-a042.up.railway.app",
     ]
     
