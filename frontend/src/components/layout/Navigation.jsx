@@ -557,7 +557,10 @@ export const AddTransactionPage = () => {
 
         {/* Category */}
         <button
-          onClick={() => setShowCategorySheet(true)}
+          onClick={() => {
+            console.log('Opening category sheet, filtered:', filteredCategories.length);
+            setShowCategorySheet(true);
+          }}
           className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between active:bg-gray-50 touch-manipulation"
         >
           <div className="flex items-center gap-3">
@@ -579,7 +582,10 @@ export const AddTransactionPage = () => {
 
         {/* Account */}
         <button
-          onClick={() => setShowAccountSheet(true)}
+          onClick={() => {
+            console.log('Opening account sheet, accounts:', accounts.length, accounts);
+            setShowAccountSheet(true);
+          }}
           className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between active:bg-gray-50 touch-manipulation"
         >
           <div className="flex items-center gap-3">
