@@ -372,22 +372,44 @@ export const AddTransactionPage = () => {
       // Wait for token to be available
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log('No token, waiting...');
+        console.log('AddTransaction: No token, waiting...');
         setTimeout(loadData, 500);
         return;
       }
       
+      console.log('AddTransaction: Loading data with token...');
       const [catRes, accRes] = await Promise.all([
         api.categories.list(),
         api.accounts.list(),
       ]);
-      console.log('Categories loaded:', catRes);
-      console.log('Accounts loaded:', accRes);
-      setCategoryList(Array.isArray(catRes) ? catRes : []);
-      setAccounts(Array.isArray(accRes) ? accRes : []);
+      console.log('AddTransaction: Categories response:', catRes);
+      console.log('AddTransaction: Accounts response:', accRes);
+      
+      // Handle categories response
+      let cats = [];
+      if (Array.isArray(catRes)) {
+        cats = catRes;
+      } else if (catRes && typeof catRes === 'object') {
+        // Check if it's wrapped in a data property
+        cats = catRes.data || catRes.categories || Object.values(catRes)[0] || [];
+      }
+      
+      // Handle accounts response  
+      let accs = [];
+      if (Array.isArray(accRes)) {
+        accs = accRes;
+      } else if (accRes && typeof accRes === 'object') {
+        accs = accRes.data || accRes.accounts || Object.values(accRes)[0] || [];
+      }
+      
+      console.log('AddTransaction: Processed categories:', cats);
+      console.log('AddTransaction: Processed accounts:', accs);
+      
+      setCategoryList(cats);
+      setAccounts(accs);
       setDataLoaded(true);
     } catch (err) {
-      console.error('Failed to load data:', err);
+      console.error('AddTransaction: Failed to load data:', err);
       // Retry after delay
       setTimeout(loadData, 1000);
     }
