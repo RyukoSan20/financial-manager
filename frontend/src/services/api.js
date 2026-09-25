@@ -31,7 +31,7 @@ const redirectToLogin = () => {
   window.location.href = '/login';
 };
 
-// Base fetch with interceptor
+// Base fetch with interceptor - handles auth and error formatting
 const fetchWithInterceptor = async (url, options = {}) => {
   const token = getToken();
   
@@ -44,39 +44,45 @@ const fetchWithInterceptor = async (url, options = {}) => {
     },
   };
 
-  try {
-    const response = await fetch(url, config);
-    
-    // Handle 401 Unauthorized
-    if (response.status === 401) {
-      console.warn('401 Unauthorized - clearing token and redirecting');
-      redirectToLogin();
-      throw new Error('Session expired. Please login again.');
-    }
-    
-    // Handle 204 No Content (DELETE success)
-    if (response.status === 204) {
-      return { success: true };
-    }
-    
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Request failed' }));
-      // Handle case where detail is an object (e.g., validation errors)
-      const errorMsg = typeof error.detail === 'string' 
-        ? error.detail 
-        : Array.isArray(error.detail) 
-          ? error.detail.join(', ')
-          : JSON.stringify(error.detail) || `HTTP ${response.status}`;
-      throw new Error(errorMsg);
-    }
-    
-    return response;
-  } catch (error) {
-    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-      throw new Error('Network error. Please check your connection.');
-    }
-    throw error;
+  const response = await fetch(url, config);
+  
+  // Handle 401 Unauthorized
+  if (response.status === 401) {
+    console.warn('401 Unauthorized - clearing token and redirecting');
+    redirectToLogin();
+    throw new Error('Session expired. Please login again.');
   }
+  
+  // Handle 204 No Content (DELETE success) - return Response object with status
+  if (response.status === 204) {
+    return response; // Return Response object, not parsed result
+  }
+  
+  // Handle other error responses
+  if (!response.ok) {
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = { detail: `HTTP ${response.status}` };
+    }
+    
+    // Format error message from backend validation errors
+    let errorMsg = 'Request failed';
+    if (errorData.detail) {
+      if (typeof errorData.detail === 'string') {
+        errorMsg = errorData.detail;
+      } else if (Array.isArray(errorData.detail)) {
+        // FastAPI validation errors: [{loc: [...], msg: "...", type: "..."}]
+        errorMsg = errorData.detail.map(e => e.msg || JSON.stringify(e)).join(', ');
+      } else if (typeof errorData.detail === 'object') {
+        errorMsg = JSON.stringify(errorData.detail);
+      }
+    }
+    throw new Error(errorMsg);
+  }
+  
+  return response;
 };
 
 export const api = {
@@ -85,10 +91,13 @@ export const api = {
     const url = `${API_BASE_URL}${endpoint}`;
     try {
       const response = await fetchWithInterceptor(url, options);
-      // Handle 204 No Content
+      
+      // Handle 204 No Content - return success object
       if (response.status === 204) {
         return { success: true };
       }
+      
+      // Parse JSON response
       return response.json();
     } catch (error) {
       console.error(`API Error [${endpoint}]:`, error);
@@ -231,6 +240,16 @@ export const api = {
     financialHealth: () => api.request('/analytics/financial-health'),
   },
 
+  // AI Advisor
+  ai: {
+    advice: () => api.request('/ai/advice'),
+    summary: () => api.request('/ai/summary'),
+    chat: (message) => api.request('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+  },
+
   // Calculators
   calculators: {
     discount: (data) => api.request('/calculators/discount', { method: 'POST', body: JSON.stringify(data) }),
@@ -246,6 +265,8 @@ export const api = {
   // Data Export
   data: {
     export: () => api.request('/data/export'),
+    exportCsv: () => api.request('/data/export/csv'),
+    deleteAll: () => api.request('/data/delete-all', { method: 'DELETE' }),
   },
 
   // Health check

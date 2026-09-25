@@ -273,7 +273,7 @@ const DataTab = ({ logout }) => {
     setMessage('');
 
     try {
-      const data = await api.request('/data/export');
+      const data = await api.data.export();
       
       // Create downloadable JSON file
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -300,7 +300,7 @@ const DataTab = ({ logout }) => {
     setMessage('');
 
     try {
-      const data = await api.request('/data/export/csv');
+      const data = await api.data.exportCsv();
       
       // Create downloadable CSV file
       const blob = new Blob([data.content], { type: 'text/csv' });
@@ -335,7 +335,7 @@ const DataTab = ({ logout }) => {
     setMessage('');
 
     try {
-      await api.request('/data/delete-all', { method: 'DELETE' });
+      await api.data.deleteAll();
       setMessage('All data deleted successfully!');
       
       // Clear local storage

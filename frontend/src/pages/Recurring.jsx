@@ -346,11 +346,22 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Validate required fields
+    if (!form.account_id) {
+      alert('Please select an account');
+      return;
+    }
+    if (!form.amount || parseFloat(form.amount) <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
     onSubmit({
       ...form,
+      type: form.rule_type, // Backend expects 'type', frontend uses 'rule_type'
       amount: parseFloat(form.amount),
       category_id: form.category_id ? parseInt(form.category_id) : null,
-      account_id: form.account_id ? parseInt(form.account_id) : null,
+      account_id: parseInt(form.account_id),
+      description: form.name || `${form.rule_type} recurring`,
     });
   };
 

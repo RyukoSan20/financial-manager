@@ -214,6 +214,7 @@ export const Budgets = () => {
 
 const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories }) => {
   const [form, setForm] = useState({
+    name: '',
     category_id: '',
     amount: '',
     period: 'monthly',
@@ -223,6 +224,7 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories }) => {
   useEffect(() => {
     if (budget) {
       setForm({
+        name: budget.name || '',
         category_id: budget.category_id || '',
         amount: budget.amount?.toString() || '',
         period: budget.period || 'monthly',
@@ -230,6 +232,7 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories }) => {
       });
     } else {
       setForm({
+        name: '',
         category_id: '',
         amount: '',
         period: 'monthly',
@@ -240,8 +243,12 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Get category name for budget name if category selected
+    const categoryName = categories?.find(c => c.id === parseInt(form.category_id))?.name || 'General';
+    const budgetName = form.name || `${categoryName} Budget`;
     onSubmit({
       ...form,
+      name: budgetName,
       category_id: form.category_id ? parseInt(form.category_id) : null,
       amount: parseFloat(form.amount),
     });

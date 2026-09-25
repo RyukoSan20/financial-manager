@@ -322,9 +322,10 @@ const DebtModal = ({ isOpen, onClose, onSubmit, debt }) => {
     debt_type: 'personal_loan',
     principal: '',
     interest_rate: '0',
-    tenor_months: '',
+    tenor_months: '12',
     monthly_payment: '',
     start_date: new Date().toISOString().split('T')[0],
+    end_date: '',
     status: 'active',
   });
 
@@ -335,9 +336,10 @@ const DebtModal = ({ isOpen, onClose, onSubmit, debt }) => {
         debt_type: debt.debt_type || 'personal_loan',
         principal: debt.principal?.toString() || '',
         interest_rate: debt.interest_rate?.toString() || '0',
-        tenor_months: debt.tenor_months?.toString() || '',
+        tenor_months: debt.tenor_months?.toString() || '12',
         monthly_payment: debt.monthly_payment?.toString() || '',
         start_date: debt.start_date || new Date().toISOString().split('T')[0],
+        end_date: debt.end_date || '',
         status: debt.status || 'active',
       });
     } else {
@@ -346,9 +348,10 @@ const DebtModal = ({ isOpen, onClose, onSubmit, debt }) => {
         debt_type: 'personal_loan',
         principal: '',
         interest_rate: '0',
-        tenor_months: '',
+        tenor_months: '12',
         monthly_payment: '',
         start_date: new Date().toISOString().split('T')[0],
+        end_date: '',
         status: 'active',
       });
     }
@@ -356,10 +359,18 @@ const DebtModal = ({ isOpen, onClose, onSubmit, debt }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Calculate end_date from start_date + tenor_months if not provided
+    let endDate = form.end_date;
+    if (!endDate && form.tenor_months) {
+      const start = new Date(form.start_date);
+      start.setMonth(start.getMonth() + parseInt(form.tenor_months));
+      endDate = start.toISOString().split('T')[0];
+    }
     onSubmit({
       ...form,
+      end_date: endDate,
       principal: parseFloat(form.principal),
-      interest_rate: parseFloat(form.interest_rate),
+      interest_rate: parseFloat(form.interest_rate) / 100, // Convert percentage to decimal
       tenor_months: parseInt(form.tenor_months),
       monthly_payment: parseFloat(form.monthly_payment),
     });

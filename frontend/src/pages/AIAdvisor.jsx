@@ -26,8 +26,8 @@ const AIAdvisor = () => {
       setError(null);
       
       const [adviceRes, summaryRes] = await Promise.all([
-        api.request("/ai/advice"),
-        api.request("/ai/summary")
+        api.ai.advice(),
+        api.ai.summary(),
       ]);
       
       setAdvice(Array.isArray(adviceRes) ? adviceRes : []);
@@ -59,10 +59,7 @@ const AIAdvisor = () => {
     setChatHistory(prev => [...prev, { role: "user", text: userMessage }]);
     
     try {
-      const response = await api.request("/ai/chat", { 
-        method: 'POST',
-        body: JSON.stringify({ message: userMessage })
-      });
+      const response = await api.ai.chat(userMessage);
       setChatHistory(prev => [...prev, { role: "ai", text: response.response || "Maaf, saya tidak bisa menjawab saat ini." }]);
     } catch (err) {
       console.error("Chat error:", err);
