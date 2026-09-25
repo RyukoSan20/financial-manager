@@ -365,23 +365,37 @@ export const AddTransactionPage = () => {
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [categoryList, setCategoryList] = useState([]);
-  
-  useEffect(() => {
-    loadData();
-  }, []);
+  const [dataLoaded, setDataLoaded] = useState(false);
   
   const loadData = async () => {
     try {
+      // Wait for token to be available
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token, waiting...');
+        setTimeout(loadData, 500);
+        return;
+      }
+      
       const [catRes, accRes] = await Promise.all([
         api.categories.list(),
         api.accounts.list(),
       ]);
+      console.log('Categories loaded:', catRes);
+      console.log('Accounts loaded:', accRes);
       setCategoryList(Array.isArray(catRes) ? catRes : []);
       setAccounts(Array.isArray(accRes) ? accRes : []);
+      setDataLoaded(true);
     } catch (err) {
       console.error('Failed to load data:', err);
+      // Retry after delay
+      setTimeout(loadData, 1000);
     }
   };
+  
+  useEffect(() => {
+    loadData();
+  }, []);
   
   // Filter categories by type
   const filteredCategories = categoryList.filter(c => {
@@ -596,24 +610,45 @@ export const AddTransactionPage = () => {
           title="Select Category" 
           onClose={() => setShowCategorySheet(false)}
         >
-          <div className="grid grid-cols-3 gap-3 p-4">
-            {filteredCategories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => {
-                  setCategory(cat.id.toString());
-                  setShowCategorySheet(false);
+          {!dataLoaded ? (
+            <div className="p-4 text-center text-gray-500">Loading categories...</div>
+          ) : filteredCategories.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">
+              No categories found. 
+              <button 
+                onClick={async () => {
+                  try {
+                    await api.categories.seed();
+                    loadData();
+                  } catch (e) {
+                    console.error('Failed to seed categories:', e);
+                  }
                 }}
-                className={`p-4 rounded-xl border-2 transition-colors ${
-                  category === cat.id.toString()
-                    ? 'border-primary-500 bg-primary-50'
-                    : 'border-gray-100 bg-gray-50 active:bg-gray-100'
-                }`}
+                className="block mx-auto mt-2 text-primary-600 underline"
               >
-                <span className="text-sm font-medium text-gray-700">{cat.name}</span>
+                Create default categories
               </button>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3 p-4">
+              {filteredCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    setCategory(cat.id.toString());
+                    setShowCategorySheet(false);
+                  }}
+                  className={`p-4 rounded-xl border-2 transition-colors ${
+                    category === cat.id.toString()
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-gray-100 bg-gray-50 active:bg-gray-100'
+                  }`}
+                >
+                  <span className="text-sm font-medium text-gray-700">{cat.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </BottomSheet>
       )}
 
@@ -623,7 +658,14 @@ export const AddTransactionPage = () => {
           title="Select Account" 
           onClose={() => setShowAccountSheet(false)}
         >
-          <div className="p-4 space-y-2">
+          {!dataLoaded ? (
+            <div className="p-4 text-center text-gray-500">Loading accounts...</div>
+          ) : accounts.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">
+              No accounts found. Please create an account first.
+            </div>
+          ) : (
+            <div className="p-4 space-y-2">
             {accounts.map((acc) => (
               <button
                 key={acc.id}
@@ -644,7 +686,8 @@ export const AddTransactionPage = () => {
                 </div>
               </button>
             ))}
-          </div>
+            </div>
+          )}
         </BottomSheet>
       )}
     </div>
