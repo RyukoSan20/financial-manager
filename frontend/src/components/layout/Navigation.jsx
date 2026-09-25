@@ -724,9 +724,8 @@ export const AddTransactionPage = () => {
 
 // Bottom Sheet Component
 export const BottomSheet = ({ isOpen, onClose, title, children }) => {
-  console.log('BottomSheet render:', { isOpen, title });
-  if (!isOpen) return null;
-
+  // Parent already does conditional rendering, so we don't need isOpen check
+  // Just render the component
   return (
     <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose}>
       <div 
