@@ -616,7 +616,7 @@ export const AddTransactionPage = () => {
       </div>
 
       {/* Bottom Submit */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent lg:hidden">
+      <div className="fixed bottom-4 left-4 right-4 lg:hidden">
         <button
           onClick={handleSubmit}
           disabled={!amount || loading}
@@ -724,18 +724,18 @@ export const AddTransactionPage = () => {
 
 // Bottom Sheet Component
 export const BottomSheet = ({ isOpen, onClose, title, children }) => {
+  console.log('BottomSheet render:', { isOpen, title });
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
+    <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose}>
       <div 
-        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-xl animate-slideUp max-h-[80vh] overflow-hidden"
+        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[80vh] overflow-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Handle */}
-        <div className="flex justify-center py-3">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        <div className="flex justify-center py-3 pt-4">
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
         </div>
         
         {/* Header */}
@@ -746,7 +746,7 @@ export const BottomSheet = ({ isOpen, onClose, title, children }) => {
         )}
         
         {/* Content */}
-        <div className="overflow-y-auto max-h-[60vh]">
+        <div className="overflow-y-auto">
           {children}
         </div>
       </div>
