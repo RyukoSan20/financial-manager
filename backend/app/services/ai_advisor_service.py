@@ -7,6 +7,7 @@ No credit card required.
 import os
 import json
 import random
+import requests
 from typing import Optional, Dict, Any, List
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass, asdict
