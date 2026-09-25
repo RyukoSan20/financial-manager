@@ -159,28 +159,10 @@ def chat_with_advisor(
     # Get financial context
     summary = get_financial_summary(db, current_user.id)
     
-    # Build context prompt
-    context = f"""You are a friendly Indonesian financial advisor. The user has:
-- Total savings: Rp {summary.total_balance:,.0f}
-- Monthly income: Rp {summary.monthly_income:,.0f}
-- Monthly expenses: Rp {summary.monthly_expense:,.0f}
-- Savings rate: {summary.savings_rate:.1f}%
-- Active goals: {summary.active_goals}
-
-User question: {user_message}
-
-Respond in Indonesian, be helpful and practical. Keep it concise (under 200 words).
-"""
+    # Use the new chat method with full context
+    result = ai_advisor.chat(user_message, summary)
     
-    # Get AI response
-    response = ai_advisor._call_gemini(context)
-    
-    if not response:
-        return {
-            "response": "Maaf, saya sedang tidak bisa menjawab saat ini. Coba lagi nanti atau hubungi customer service untuk bantuan langsung."
-        }
-    
-    return {"response": response}
+    return result
 
 
 @router.get("/tips")

@@ -69,6 +69,19 @@ const AIAdvisor = () => {
     }
   };
 
+  // Default questions for users
+  const defaultQuestions = [
+    "Berapa total saldo saya saat ini?",
+    "Berapa tingkat tabungan saya sekarang?",
+    "Apa saja pengeluaran terbesar saya bulan ini?",
+    "Bagaimana tips menabung lebih banyak?",
+    "Bagaimana cara menurunkan pengeluaran?",
+  ];
+
+  const handleSuggestionClick = (question) => {
+    setChatMessage(question);
+  };
+
   const getCategoryColor = (category) => {
     const colors = {
       savings: "bg-green-100 text-green-700 border-green-200",
@@ -346,6 +359,24 @@ const AIAdvisor = () => {
           
           {/* Chat Input */}
           <form onSubmit={handleChat} className="border-t p-4">
+            {/* Suggestion Buttons */}
+            {chatHistory.length === 0 && !chatLoading && (
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 mb-2">Pertanyaan populer:</p>
+                <div className="flex flex-wrap gap-2">
+                  {defaultQuestions.map((q, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleSuggestionClick(q)}
+                      className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex gap-2">
               <input
                 type="text"
