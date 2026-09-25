@@ -367,43 +367,34 @@ export const AddTransactionPage = () => {
   const [categoryList, setCategoryList] = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   
+  const { isAuthenticated } = useAuth();
+  
   const loadData = async () => {
     try {
       // Wait for token to be available
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log('AddTransaction: No token, waiting...');
-        setTimeout(loadData, 500);
+        console.log('AddTransaction: No token yet, isAuthenticated:', isAuthenticated);
+        // Wait a bit and try again
+        if (isAuthenticated) {
+          setTimeout(loadData, 500);
+        }
         return;
       }
       
-      console.log('AddTransaction: Loading data with token...');
+      console.log('AddTransaction: Loading data...');
       const [catRes, accRes] = await Promise.all([
         api.categories.list(),
         api.accounts.list(),
       ]);
-      console.log('AddTransaction: Categories response:', catRes);
-      console.log('AddTransaction: Accounts response:', accRes);
       
       // Handle categories response
-      let cats = [];
-      if (Array.isArray(catRes)) {
-        cats = catRes;
-      } else if (catRes && typeof catRes === 'object') {
-        // Check if it's wrapped in a data property
-        cats = catRes.data || catRes.categories || Object.values(catRes)[0] || [];
-      }
+      let cats = Array.isArray(catRes) ? catRes : [];
       
       // Handle accounts response  
-      let accs = [];
-      if (Array.isArray(accRes)) {
-        accs = accRes;
-      } else if (accRes && typeof accRes === 'object') {
-        accs = accRes.data || accRes.accounts || Object.values(accRes)[0] || [];
-      }
+      let accs = Array.isArray(accRes) ? accRes : [];
       
-      console.log('AddTransaction: Processed categories:', cats);
-      console.log('AddTransaction: Processed accounts:', accs);
+      console.log('AddTransaction: Loaded', cats.length, 'categories,', accs.length, 'accounts');
       
       setCategoryList(cats);
       setAccounts(accs);
@@ -416,8 +407,10 @@ export const AddTransactionPage = () => {
   };
   
   useEffect(() => {
-    loadData();
-  }, []);
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated]);
   
   // Filter categories by type
   const filteredCategories = categoryList.filter(c => {
