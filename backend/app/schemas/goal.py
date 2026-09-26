@@ -73,6 +73,14 @@ class GoalContributionCreate(BaseModel):
     currency: Optional[str] = "IDR"
     date: Optional[date] = None
     notes: Optional[str] = None
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"amount": 100000, "currency": "IDR", "date": None, "notes": "Monthly savings"}
+            ]
+        }
+    }
 
 
 class GoalContributionResponse(GoalContributionBase):
