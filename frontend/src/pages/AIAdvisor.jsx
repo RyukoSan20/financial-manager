@@ -2,8 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const AIAdvisor = () => {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [advice, setAdvice] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,8 +29,14 @@ const AIAdvisor = () => {
   ];
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    if (isAuthenticated) {
+      fetchData();
+    }
+  }, [isAuthenticated, authLoading]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

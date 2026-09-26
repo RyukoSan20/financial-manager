@@ -291,20 +291,33 @@ Jawab pertanyaan di atas berdasarkan data keuangan pengguna. Berikan jawaban yan
         if response:
             try:
                 import re
-                json_match = re.search(r'\{[\s\S]*"advice"[\s\S]*\}|\[[\s\S]*\]', response)
+                json_match = re.search(r'\[[\s\S]*\]', response)
                 if json_match:
                     data = json.loads(json_match.group())
-                    return [
-                        AIAdvice(
-                            title=a["title"],
-                            category=a["category"],
-                            priority=a["priority"],
-                            insight=a["insight"],
-                            action_items=a["action_items"],
-                            potential_impact=a.get("potential_impact", "")
-                        )
-                        for a in data.get("advice", [])
-                    ]
+                    if isinstance(data, list):
+                        return [
+                            AIAdvice(
+                                title=a.get("title", "Saran"),
+                                category=a.get("category", "general"),
+                                priority=a.get("priority", "medium"),
+                                insight=a.get("insight", a.get("description", "")),
+                                action_items=a.get("action_items", []),
+                                potential_impact=a.get("potential_impact", "")
+                            )
+                            for a in data
+                        ]
+                    elif isinstance(data, dict):
+                        return [
+                            AIAdvice(
+                                title=a["title"],
+                                category=a["category"],
+                                priority=a["priority"],
+                                insight=a["insight"],
+                                action_items=a["action_items"],
+                                potential_impact=a.get("potential_impact", "")
+                            )
+                            for a in data.get("advice", [])
+                        ]
             except (json.JSONDecodeError, KeyError) as e:
                 print(f"Failed to parse Gemini response: {e}")
         
