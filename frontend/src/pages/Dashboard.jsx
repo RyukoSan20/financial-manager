@@ -18,6 +18,7 @@ const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 export const Dashboard = () => {
   const [data, setData] = useState(null);
   const [cashFlow, setCashFlow] = useState(null);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -41,12 +42,14 @@ export const Dashboard = () => {
     setLoading(true);
     setError(null);
     try {
-      const [summaryRes, cashFlowRes] = await Promise.all([
+      const [summaryRes, cashFlowRes, txRes] = await Promise.all([
         api.dashboard.summary(),
         api.dashboard.cashFlow(),
+        api.transactions.list({ limit: 100 }),
       ]);
       setData(summaryRes);
       setCashFlow(cashFlowRes);
+      setTransactions(txRes);
     } catch (err) {
       console.error('Dashboard fetch error:', err);
       setError(err.message || 'Failed to load dashboard');
@@ -101,13 +104,36 @@ export const Dashboard = () => {
   const total_income_month = total_income;
   const total_expense_month = total_expense;
 
-  const chartData = cashFlow?.monthly?.map(m => ({
-    month: m.month_name ? m.month_name.split(' ')[0] : (m.month?.slice(5) || ''),
-    income: parseFloat(m.income) || 0,
-    expense: parseFloat(m.expense) || 0,
-    net: parseFloat(m.net) || 0,
-    balance: parseFloat(m.income - m.expense) || 0
-  })) || [];
+  // Get last 7 days for chart
+  const getLast7Days = () => {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push({
+        date: d.toISOString().split('T')[0],
+        day: d.getDate().toString().padStart(2, '0'),
+        month: d.toLocaleString('id-ID', { month: 'short' })
+      });
+    }
+    return days;
+  };
+
+  const last7Days = getLast7Days();
+  
+  // Build chart data from transactions
+  const chartData = last7Days.map(day => {
+    const dayTxs = transactions?.filter(t => t.date?.startsWith(day.date)) || [];
+    const income = dayTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+    const expense = dayTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+    return {
+      date: day.day,
+      income: income,
+      expense: expense,
+      net: income - expense,
+      balance: summary?.total_balance || 0
+    };
+  });
 
   const pieData = Object.entries(expense_by_category)
     .map(([name, amount]) => ({ name, value: parseFloat(amount) }))
@@ -205,7 +231,7 @@ export const Dashboard = () => {
             <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#94a3b8" />
                 <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `${(v/1000000).toFixed(0)}M`} />
                 <Tooltip 
                   formatter={(value, name) => [
@@ -244,7 +270,7 @@ export const Dashboard = () => {
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#94a3b8" />
                 <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `${(v/1000000).toFixed(0)}M`} />
                 <Tooltip 
                   formatter={(value) => formatCurrency(value)}
