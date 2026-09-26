@@ -29,6 +29,7 @@ class Settings(BaseSettings):
         "https://financial-manager-flax.vercel.app",
         "https://financial-manager-nu.vercel.app",
         "https://financial-manager-inky.vercel.app",
+        "https://financial-manager-kwi4rf5e7-fin-pro2.vercel.app",
         "https://financial-manager-production-a042.up.railway.app",
     ]
     
