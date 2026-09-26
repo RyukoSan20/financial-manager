@@ -170,7 +170,7 @@ def chat_with_advisor(
 
 @router.post("/chat/stream")
 async def chat_stream(
-    message: ChatMessage,
+    message: dict,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
