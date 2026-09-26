@@ -84,7 +84,7 @@ const ProfileTab = ({ user }) => {
     setMessage('');
     
     try {
-      const response = await api.request('/auth/me', {
+      const response = await api.request('/api/me', {
         method: 'PUT',
         body: JSON.stringify({
           full_name: form.full_name,
@@ -167,7 +167,7 @@ const SecurityTab = () => {
     setMessage('');
 
     try {
-      const response = await api.request('/auth/change-password', {
+      const response = await api.request('/api/change-password', {
         method: 'POST',
         body: JSON.stringify({
           old_password: form.current_password,

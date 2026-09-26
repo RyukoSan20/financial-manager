@@ -50,7 +50,10 @@ export const Goals = () => {
 
   const handleContribution = async (goalId, amount) => {
     try {
-      await api.goals.contribute(goalId, { amount });
+      await api.goals.contribute(goalId, { 
+        amount, 
+        date: new Date().toISOString().split('T')[0] 
+      });
       fetchData();
     } catch (err) {
       console.error(err);
