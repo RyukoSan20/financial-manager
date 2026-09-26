@@ -2,15 +2,15 @@
 
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import date, datetime
 
 
 class GoalBase(BaseModel):
-    name: str
+    name: str = Field(max_length=100)
     description: Optional[str] = None
-    target_amount: float
+    target_amount: float = Field(gt=0)
     currency: str = "IDR"
-    target_date: Optional[str] = None
+    target_date: Optional[date] = None
     goal_type: str = "savings"
     account_id: Optional[int] = None
     icon: Optional[str] = None
@@ -22,10 +22,10 @@ class GoalCreate(GoalBase):
 
 
 class GoalUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = None
     target_amount: Optional[float] = None
-    target_date: Optional[str] = None
+    target_date: Optional[date] = None
     goal_type: Optional[str] = None
     account_id: Optional[int] = None
     icon: Optional[str] = None
@@ -37,10 +37,10 @@ class GoalResponse(GoalBase):
     id: int
     current_amount: float
     is_completed: bool
-    completed_at: Optional[str] = None
+    completed_at: Optional[datetime] = None
     is_active: bool
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -55,15 +55,15 @@ class GoalWithProgress(GoalResponse):
     required_weekly: float
     required_daily: float
     on_track: bool
-    estimated_completion: Optional[str] = None
+    estimated_completion: Optional[date] = None
     status: str
 
 
 class GoalContributionCreate(BaseModel):
     """Create contribution - only amount is required."""
-    amount: float = Field(..., gt=0)
+    amount: float = Field(gt=0)
     currency: str = "IDR"
-    date: Optional[str] = None
+    date: Optional[date] = None
     notes: Optional[str] = None
 
 
@@ -72,10 +72,10 @@ class GoalContributionResponse(BaseModel):
     goal_id: int
     amount: float
     currency: str
-    date: str
+    date: date
     notes: Optional[str] = None
     transaction_id: Optional[int] = None
-    created_at: str
+    created_at: datetime
 
     class Config:
         from_attributes = True

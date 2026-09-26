@@ -222,7 +222,7 @@ def add_contribution(
     from decimal import Decimal
     
     # Create contribution with defaults
-    contribution_date = contribution.date or date_type.today().isoformat()
+    contribution_date = contribution.date or date_type.today()
     amount_decimal = Decimal(str(contribution.amount))
     
     db_contribution = GoalContribution(
