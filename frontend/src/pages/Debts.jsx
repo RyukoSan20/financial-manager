@@ -58,12 +58,15 @@ export const Debts = () => {
 
   const handlePayment = async (debtId, paymentData) => {
     try {
+      console.log('Recording payment:', debtId, paymentData);
       await api.debts.payment(debtId, paymentData);
+      console.log('Payment recorded successfully');
       setShowPaymentModal(false);
       setSelectedDebt(null);
       fetchData();
+      window.dispatchEvent(new Event('transactionUpdated'));
     } catch (err) {
-      console.error(err);
+      console.error('Payment failed:', err);
     }
   };
 
