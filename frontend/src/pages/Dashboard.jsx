@@ -74,8 +74,8 @@ export const Dashboard = () => {
 
   const {
     total_balance = 0,
-    total_income_month = 0,
-    total_expense_month = 0,
+    total_income = 0,
+    total_expense = 0,
     net_cash_flow = 0,
     saving_rate = 0,
     total_budget = 0,
@@ -84,6 +84,10 @@ export const Dashboard = () => {
     expense_by_category = {},
     account_count = 0
   } = data;
+  
+  // For display compatibility
+  const total_income_month = total_income;
+  const total_expense_month = total_expense;
 
   const chartData = cashFlow?.monthly?.map(m => ({
     month: m.month?.slice(0, 3) || '',
