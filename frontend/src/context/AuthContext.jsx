@@ -163,7 +163,7 @@ export const AuthProvider = ({ children }) => {
 
   const supabaseGuestLogin = async () => {
     // Use backend guest login, not Supabase anonymous
-    const res = await fetch(`${API_URL}/api/auth/guest`, {
+    const res = await fetch(`${API_URL}/api/guest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ device_id: crypto.randomUUID() }),
