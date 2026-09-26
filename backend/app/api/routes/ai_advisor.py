@@ -190,6 +190,20 @@ async def chat_stream(
     
     # Get financial context
     summary = get_financial_summary(db, current_user.id)
+    topic = message.get("topic", "free")
+    
+    # Topic-aware system prompts
+    topic_prompts = {
+        "news": "Anda adalah konsultan keuangan yang memberikan berita dan tren ekonomi terkini yang relevan. Selalu jawab dalam Bahasa Indonesia.",
+        "future": "Anda adalah perencana keuangan yang fokus pada tujuan jangka panjang dan pensiun. Berikan proyeksi yang realistis.",
+        "balance": "Anda adalah konsultan life-finance yang membantu menyeimbangkan usia, karier, dan gaya hidup.",
+        "debt": "Anda adalah spesialis manajemen utang. Berikan strategi pembayaran utang yang optimal.",
+        "invest": "Anda adalah penasihat investasi. Berikan rekomendasi diversifikasi portofolio.",
+        "budget": "Anda adalah ahli budgeting. Rekomendasikan teknik budgeting terbaik.",
+        "emergency": "Anda adalah konsultan proteksi finansial.",
+        "free": "Anda adalah asisten keuangan personal."
+    }
+    system_prompt = topic_prompts.get(topic, topic_prompts["free"])
     
     async def generate():
         # Send typing indicator
