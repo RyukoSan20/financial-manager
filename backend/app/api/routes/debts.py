@@ -246,6 +246,9 @@ def add_payment(
     db: Session = Depends(get_db)
 ):
     """Record a debt payment."""
+    from decimal import Decimal
+    from datetime import date, timedelta
+    
     db_debt = db.query(Debt).filter(Debt.id == debt_id).first()
     if not db_debt:
         raise HTTPException(status_code=404, detail="Debt not found")
@@ -254,15 +257,27 @@ def add_payment(
     if db_debt.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
+    # Use defaults for None values
+    amount = Decimal(str(payment.amount)) if payment.amount else Decimal("0")
+    currency = payment.currency or "IDR"
+    payment_date = payment.payment_date
+    if isinstance(payment_date, str) and payment_date:
+        try:
+            payment_date = date.fromisoformat(payment_date)
+        except:
+            payment_date = date.today()
+    elif not payment_date:
+        payment_date = date.today()
+    
     # Create payment record
     db_payment = DebtPayment(
         debt_id=debt_id,
-        amount=payment.amount,
-        currency=payment.currency,
-        payment_date=payment.payment_date,
-        principal_portion=payment.principal_portion,
-        interest_portion=payment.interest_portion,
-        remaining_balance_after=payment.remaining_balance_after,
+        amount=amount,
+        currency=currency,
+        payment_date=payment_date,
+        principal_portion=Decimal(str(payment.principal_portion)) if payment.principal_portion else None,
+        interest_portion=Decimal(str(payment.interest_portion)) if payment.interest_portion else None,
+        remaining_balance_after=Decimal(str(payment.remaining_balance_after)) if payment.remaining_balance_after else None,
         payment_method=payment.payment_method,
         notes=payment.notes,
         transaction_id=payment.transaction_id,
@@ -270,12 +285,22 @@ def add_payment(
     db.add(db_payment)
     
     # Update debt balance
-    db_debt.current_balance = payment.remaining_balance_after
-    db_debt.remaining_months = max(0, db_debt.remaining_months - 1)
+    if payment.remaining_balance_after is not None:
+        try:
+            db_debt.current_balance = Decimal(str(payment.remaining_balance_after))
+        except:
+            db_debt.current_balance -= amount
+    else:
+        db_debt.current_balance -= amount
+    
+    # Calculate remaining months
+    remaining_months = db_debt.remaining_months or 0
+    if remaining_months > 0:
+        db_debt.remaining_months = remaining_months - 1
     
     # Calculate next payment date
-    if db_debt.remaining_months > 0:
-        db_debt.next_payment_date = payment.payment_date + timedelta(days=30)
+    if db_debt.remaining_months and db_debt.remaining_months > 0:
+        db_debt.next_payment_date = payment_date + timedelta(days=30)
     else:
         db_debt.next_payment_date = None
         db_debt.is_paid_off = True
