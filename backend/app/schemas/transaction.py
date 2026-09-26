@@ -48,8 +48,9 @@ class TransactionResponse(BaseModel):
     recurring_rule_id: Optional[int]
     is_recurring: bool
     is_deleted: bool
-    created_at: datetime
-    updated_at: datetime
+    user_id: Optional[int]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
 
     class Config:
         from_attributes = True
