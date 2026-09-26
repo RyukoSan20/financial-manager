@@ -220,7 +220,7 @@ def add_contribution(
     
     from datetime import date as date_type
     # Create contribution with defaults for optional fields
-    contribution_date = contribution.date or date_type.today()
+    contribution_date = contribution.date or date_type.today().isoformat()
     
     db_contribution = GoalContribution(
         goal_id=goal_id,

@@ -68,11 +68,11 @@ class GoalContributionBase(BaseModel):
 
 
 class GoalContributionCreate(BaseModel):
-    """Create contribution - all fields optional except amount."""
-    amount: Decimal = Field(..., gt=0, title="Amount", description="Contribution amount")
-    currency: Optional[str] = Field(default="IDR", title="Currency")
-    date: Optional[date] = Field(default=None, title="Date")
-    notes: Optional[str] = Field(default=None, title="Notes")
+    """Create contribution - only amount is required."""
+    amount: float = Field(..., gt=0)
+    currency: str = "IDR"
+    date: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class GoalContributionResponse(GoalContributionBase):
