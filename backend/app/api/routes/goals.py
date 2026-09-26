@@ -219,12 +219,15 @@ def add_contribution(
         raise HTTPException(status_code=403, detail="Access denied")
     
     from datetime import date as date_type
-    # Create contribution with defaults for optional fields
+    from decimal import Decimal
+    
+    # Create contribution with defaults
     contribution_date = contribution.date or date_type.today().isoformat()
+    amount_decimal = Decimal(str(contribution.amount))
     
     db_contribution = GoalContribution(
         goal_id=goal_id,
-        amount=contribution.amount,
+        amount=amount_decimal,
         currency=contribution.currency or "IDR",
         date=contribution_date,
         notes=contribution.notes,
@@ -233,7 +236,7 @@ def add_contribution(
     db.add(db_contribution)
     
     # Update goal current amount
-    db_goal.current_amount += contribution.amount
+    db_goal.current_amount += amount_decimal
     
     # Check if goal is completed
     if db_goal.current_amount >= db_goal.target_amount:
