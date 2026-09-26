@@ -46,6 +46,19 @@ class GoalResponse(GoalBase):
         from_attributes = True
 
 
+class GoalWithProgress(GoalResponse):
+    """Goal with calculated progress."""
+    progress_percent: float
+    remaining_amount: float
+    days_remaining: int
+    required_monthly: float
+    required_weekly: float
+    required_daily: float
+    on_track: bool
+    estimated_completion: Optional[str] = None
+    status: str
+
+
 class GoalContributionCreate(BaseModel):
     """Create contribution - only amount is required."""
     amount: float = Field(..., gt=0)
