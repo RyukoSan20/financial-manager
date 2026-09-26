@@ -526,9 +526,9 @@ def get_financial_summary(
     
     top_categories = [
         {
-            "category": c.category or "Other",
-            "total": float(c.total),
-            "percentage": float(c.total) / monthly_expense * 100 if monthly_expense > 0 else 0
+            "category": c[0] if c[0] else "Other",
+            "total": float(c[1]),
+            "percentage": float(c[1]) / monthly_expense * 100 if monthly_expense > 0 else 0
         }
         for c in categories
     ]
