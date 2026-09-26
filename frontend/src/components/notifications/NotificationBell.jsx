@@ -1,7 +1,8 @@
 import { Bell, X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { useState, useEffect } from 'react';
-import { showNotification } from './NotificationHelper';
+// Helper is already imported from NotificationHelper
+// This file exports NotificationBell component
 
 const iconMap = {
   success: CheckCircle,
