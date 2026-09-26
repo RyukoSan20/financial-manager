@@ -195,8 +195,10 @@ Format jawaban JSON:
 }}
 """
 
-    def chat(self, message: str, summary: FinancialSummary) -> Dict[str, Any]:
-        """Chat with AI about finances."""
+    def chat(self, message: str, summary: FinancialSummary, system_prompt: str = None) -> Dict[str, Any]:
+        """Chat with AI about finances. Optionally override system prompt based on topic."""
+        if not system_prompt:
+            system_prompt = "Anda adalah asisten keuangan personal yang helpful dan friendly. Selalu jawab dalam Bahasa Indonesia yang natural dan tidak berulang-ulang."
         # Check if message is finance related
         if not is_finance_related(message):
             return {
@@ -205,15 +207,17 @@ Format jawaban JSON:
                 "is_finance_related": False
             }
         
-        # Build context with user data
+        # Build context with user data and topic
         context = self.build_context(summary)
         
-        prompt = f"""{context}
+        prompt = f"""{system_prompt}
+
+{context}
 
 PERTANYAAN PENGGUNA:
 {message}
 
-Jawab pertanyaan di atas berdasarkan data keuangan pengguna. Berikan jawaban yang spesifik, actionable, dan dalam Bahasa Indonesia. Jika pertanyaan memerlukan data yang tidak ada, sampaikan dengan sopan dan tawarkan bantuan lain.
+Jawab pertanyaan di atas berdasarkan data keuangan pengguna. Berikan jawaban yang spesifik, actionable, dan dalam Bahasa Indonesia. Jangan ulangi data user kecuali diminta. Jika pertanyaan memerlukan data yang tidak ada, sampaikan dengan sopan dan tawarkan bantuan lain.
 """
         
         response = self._call_gemini(prompt)

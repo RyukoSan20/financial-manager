@@ -194,16 +194,29 @@ async def chat_stream(
     
     # Topic-aware system prompts
     topic_prompts = {
-        "news": "Anda adalah konsultan keuangan yang memberikan berita dan tren ekonomi terkini yang relevan. Selalu jawab dalam Bahasa Indonesia.",
-        "future": "Anda adalah perencana keuangan yang fokus pada tujuan jangka panjang dan pensiun. Berikan proyeksi yang realistis.",
-        "balance": "Anda adalah konsultan life-finance yang membantu menyeimbangkan usia, karier, dan gaya hidup.",
-        "debt": "Anda adalah spesialis manajemen utang. Berikan strategi pembayaran utang yang optimal.",
-        "invest": "Anda adalah penasihat investasi. Berikan rekomendasi diversifikasi portofolio.",
-        "budget": "Anda adalah ahli budgeting. Rekomendasikan teknik budgeting terbaik.",
-        "emergency": "Anda adalah konsultan proteksi finansial.",
-        "free": "Anda adalah asisten keuangan personal."
+        "news": "Anda adalah konsultan berita keuangan yang memberikan informasi terkini tentang ekonomi dan finansial. FOKUS pada berita dan tren terbaru, bukan ringkasan data user. Selalu jawab dalam Bahasa Indonesia yang engaging.",
+        "future": "Anda adalah perencana keuangan jangka panjang. Bantu user dengan proyeksi dan perencanaan masa depan mereka. Selalu jawab dalam Bahasa Indonesia.",
+        "balance": "Anda adalah konsultan life-finance. Bantu menyeimbangkan keuangan dengan usia, karier, dan gaya hidup. Selalu jawab dalam Bahasa Indonesia.",
+        "debt": "Anda adalah spesialis manajemen utang. Berikan strategi pembayaran utang yang optimal. Selalu jawab dalam Bahasa Indonesia.",
+        "invest": "Anda adalah penasihat investasi. Berikan rekomendasi diversifikasi portofolio. Selalu jawab dalam Bahasa Indonesia.",
+        "budget": "Anda adalah ahli budgeting. Rekomendasikan teknik budgeting terbaik. Selalu jawab dalam Bahasa Indonesia.",
+        "emergency": "Anda adalah konsultan proteksi finansial. Selalu jawab dalam Bahasa Indonesia.",
+        "free": "Anda adalah asisten keuangan personal yang helpful dan friendly. Selalu jawab dalam Bahasa Indonesia."
     }
     system_prompt = topic_prompts.get(topic, topic_prompts["free"])
+    
+    # Inject topic into context
+    topic_intros = {
+        "news": "📰 TOPIK: BERITA FINANSIAL\nBerikan berita dan tren ekonomi terkini yang relevan untuk keuangan personal di Indonesia. ",
+        "future": "🎯 TOPIK: PROYEKSI MASA DEPAN\nBantu perencanaan keuangan jangka panjang dan tujuan-tujuan besar. ",
+        "balance": "⚖️ TOPIK: LIFE-FINANCE BALANCE\nAnalisis keseimbangan antara usia, karier, dan gaya hidup. ",
+        "debt": "💳 TOPIK: STRATEGI UTANG\nBerikan strategi optimal untuk mengelola dan melunasi utang. ",
+        "invest": "📈 TOPIK: STRATEGI INVESTASI\nRekomendasikan diversifikasi portofolio investasi. ",
+        "budget": "📊 TOPIK: TEKNIK BUDGETING\nRekomendasikan dan bantu implementasi sistem budgeting. ",
+        "emergency": "🛡️ TOPIK: DANA DARURAT & ASURANSI\nBantu perhitungan proteksi finansial. ",
+        "free": ""
+    }
+    topic_intro = topic_intros.get(topic, "")
     
     async def generate():
         # Send typing indicator
@@ -211,7 +224,8 @@ async def chat_stream(
         await asyncio.sleep(0.5)
         
         # Get full response
-        result = ai_advisor.chat(user_message, summary)
+        enhanced_context = f"{topic_intro}{user_context}"
+        result = ai_advisor.chat(user_message, summary, system_prompt)
         response_text = result.get("response", "")
         
         # Stream word by word for real-time feel
