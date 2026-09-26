@@ -26,11 +26,8 @@ class DebtBase(BaseModel):
 
 
 class DebtCreate(DebtBase):
-    current_balance: Decimal = Field(default=None)
-    
-    @property
-    def get_current_balance(self):
-        return self.current_balance if self.current_balance is not None else self.principal
+    """Create debt - inherits all fields from DebtBase."""
+    pass
 
 
 class DebtUpdate(BaseModel):

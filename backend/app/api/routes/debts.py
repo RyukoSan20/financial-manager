@@ -164,11 +164,11 @@ def create_debt(
     db: Session = Depends(get_db)
 ):
     """Create a new debt."""
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    
     debt_data = debt.model_dump()
     debt_data["user_id"] = current_user.id
+    # Set default current_balance to principal if not provided
+    if not debt_data.get("current_balance"):
+        debt_data["current_balance"] = debt_data["principal"]
     
     db_debt = Debt(**debt_data)
     db.add(db_debt)

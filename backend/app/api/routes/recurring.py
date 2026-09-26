@@ -155,7 +155,7 @@ def create_recurring_rule(
         rule.start_date
     )
     
-    rule_data = rule.model_dump()
+    rule_data = rule.model_dump(exclude={'next_occurrence'})
     rule_data["user_id"] = current_user.id
     
     db_rule = RecurringRule(
