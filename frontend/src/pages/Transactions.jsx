@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Spinner } from '../components/ui';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ScanText, MessageSquare } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ScanText, MessageSquare, Edit2, Check } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import { TextParserModal } from '../components/parser/TextParserModal';
 import { ReceiptScannerModal } from '../components/parser/ReceiptScannerModal';
@@ -11,6 +11,22 @@ const typeOptions = [
   { value: 'income', label: 'Income' },
   { value: 'expense', label: 'Expense' },
 ];
+
+// Source badge component
+const SourceBadge = ({ type }) => {
+  const badges = {
+    MANUAL: { label: 'Manual', color: 'bg-gray-100 text-gray-600' },
+    OCR_RECEIPT: { label: 'Receipt', color: 'bg-purple-100 text-purple-600' },
+    QRIS_TEXT: { label: 'QRIS', color: 'bg-blue-100 text-blue-600' },
+    SMS_BANK: { label: 'SMS', color: 'bg-green-100 text-green-600' },
+  };
+  const badge = badges[type] || badges.MANUAL;
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.color}`}>
+      {badge.label}
+    </span>
+  );
+};
 
 export const Transactions = () => {
   const [transactions, setTransactions] = useState([]);
@@ -23,6 +39,10 @@ export const Transactions = () => {
   const [selectedTx, setSelectedTx] = useState(null);
   const [showTextParser, setShowTextParser] = useState(false);
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
+  
+  // Edit mode state
+  const [editingTx, setEditingTx] = useState(null);
+  const [editForm, setEditForm] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -42,8 +62,6 @@ export const Transactions = () => {
     } catch (err) {
       console.error('Failed to fetch transactions:', err);
       setTransactions([]);
-      setAccounts([]);
-      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -56,25 +74,55 @@ export const Transactions = () => {
       fetchData();
     } catch (err) {
       console.error('Failed to delete transaction:', err);
-      alert('Failed to delete transaction: ' + (err.message || 'Unknown error'));
+      alert('Failed to delete: ' + (err.message || 'Unknown error'));
     }
   };
 
+  // Edit functions
+  const startEdit = (tx) => {
+    setEditingTx(tx.id);
+    setEditForm({
+      description: tx.description || '',
+      amount: tx.amount,
+      type: tx.type,
+      date: tx.date,
+      category_id: tx.category_id,
+      account_id: tx.account_id,
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingTx(null);
+    setEditForm({});
+  };
+
+  const saveEdit = async (id) => {
+    try {
+      await api.transactions.update(id, editForm);
+      setEditingTx(null);
+      setEditForm({});
+      fetchData();
+    } catch (err) {
+      console.error('Failed to update transaction:', err);
+      alert('Failed to update: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  // Filter transactions
   const filteredTransactions = transactions.filter(tx => {
     if (filters.type && tx.type !== filters.type) return false;
     if (filters.search) {
       const search = filters.search.toLowerCase();
-      return (
-        tx.description?.toLowerCase().includes(search) ||
-        tx.amount?.toString().includes(search)
-      );
+      const desc = (tx.description || '').toLowerCase();
+      const cat = (categories.find(c => c.id === tx.category_id)?.name || '').toLowerCase();
+      if (!desc.includes(search) && !cat.includes(search)) return false;
     }
     return true;
   });
 
   // Group by date
   const groupedTx = filteredTransactions.reduce((acc, tx) => {
-    const date = tx.date || 'Unknown';
+    const date = tx.date;
     if (!acc[date]) acc[date] = [];
     acc[date].push(tx);
     return acc;
@@ -92,7 +140,7 @@ export const Transactions = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-4 animate-fadeIn">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -101,7 +149,7 @@ export const Transactions = () => {
         </div>
         <button
           onClick={() => window.location.href = '/add'}
-          className="p-3 bg-primary-500 text-white rounded-xl shadow-lg active:bg-primary-600 touch-manipulation"
+          className="p-3 bg-primary-500 text-white rounded-xl shadow-lg active:bg-primary-600"
         >
           <Plus className="w-5 h-5" />
         </button>
@@ -145,6 +193,12 @@ export const Transactions = () => {
         >
           <Filter className="w-5 h-5" />
         </button>
+        <button
+          onClick={fetchData}
+          className="p-3 bg-white rounded-2xl shadow-sm text-gray-600 active:bg-gray-50"
+        >
+          <RefreshCw className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Filter Dropdown */}
@@ -177,9 +231,9 @@ export const Transactions = () => {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No transactions yet</h3>
           <p className="text-gray-500 text-center mb-6">Start tracking your finances by adding your first transaction</p>
-          <button 
+          <button
             onClick={() => window.location.href = '/add'}
-            className="px-6 py-3 bg-primary-500 text-white rounded-xl font-medium shadow-lg active:bg-primary-600 touch-manipulation"
+            className="px-6 py-3 bg-primary-500 text-white rounded-xl font-medium shadow-lg active:bg-primary-600"
           >
             Add Transaction
           </button>
@@ -193,15 +247,83 @@ export const Transactions = () => {
                 {txs.map((tx) => {
                   const account = accounts.find(a => a.id === tx.account_id);
                   const category = categories.find(c => c.id === tx.category_id);
-                  
+                  const isEditing = editingTx === tx.id;
+
+                  // Edit mode
+                  if (isEditing) {
+                    return (
+                      <div key={tx.id} className="bg-white rounded-2xl p-4 shadow-sm border-2 border-primary-500">
+                        <div className="space-y-3">
+                          <input
+                            type="text"
+                            value={editForm.description || ''}
+                            onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
+                            placeholder="Description"
+                            className="w-full px-3 py-2 border rounded-lg"
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="number"
+                              value={editForm.amount || 0}
+                              onChange={(e) => setEditForm(f => ({ ...f, amount: parseFloat(e.target.value) }))}
+                              className="px-3 py-2 border rounded-lg"
+                            />
+                            <input
+                              type="date"
+                              value={editForm.date || ''}
+                              onChange={(e) => setEditForm(f => ({ ...f, date: e.target.value }))}
+                              className="px-3 py-2 border rounded-lg"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <select
+                              value={editForm.category_id || ''}
+                              onChange={(e) => setEditForm(f => ({ ...f, category_id: parseInt(e.target.value) || null }))}
+                              className="flex-1 px-3 py-2 border rounded-lg"
+                            >
+                              <option value="">Select Category</option>
+                              {categories.filter(c => c.type === editForm.type).map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                            <select
+                              value={editForm.account_id || ''}
+                              onChange={(e) => setEditForm(f => ({ ...f, account_id: parseInt(e.target.value) }))}
+                              className="flex-1 px-3 py-2 border rounded-lg"
+                            >
+                              <option value="">Select Account</option>
+                              {accounts.map(a => (
+                                <option key={a.id} value={a.id}>{a.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={cancelEdit}
+                              className="flex-1 py-2 bg-gray-100 text-gray-600 rounded-lg"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => saveEdit(tx.id)}
+                              className="flex-1 py-2 bg-primary-500 text-white rounded-lg flex items-center justify-center gap-2"
+                            >
+                              <Check className="w-4 h-4" /> Save
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Normal display mode
                   return (
                     <div 
                       key={tx.id}
-                      onClick={() => setSelectedTx(tx)}
-                      className="bg-white rounded-2xl p-4 shadow-sm active:bg-gray-50 touch-manipulation cursor-pointer"
+                      className="bg-white rounded-2xl p-4 shadow-sm active:bg-gray-50 cursor-pointer group"
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-1">
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                             tx.type === 'income' 
                               ? 'bg-success-100 text-success-600' 
@@ -216,20 +338,40 @@ export const Transactions = () => {
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-900 truncate">
-                              {tx.description || category?.name || (tx.type === 'income' ? 'Income' : 'Expense')}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-gray-900 truncate">
+                                {tx.description || category?.name || (tx.type === 'income' ? 'Income' : 'Expense')}
+                              </p>
+                              <SourceBadge type={tx.detection_type} />
+                            </div>
                             <p className="text-sm text-gray-500 truncate">
                               {category?.name || account?.name || 'Unknown'}
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className={`font-bold text-lg ${
-                            tx.type === 'income' ? 'text-success-600' : 'text-gray-900'
-                          }`}>
-                            {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className={`font-bold text-lg ${
+                              tx.type === 'income' ? 'text-success-600' : 'text-gray-900'
+                            }`}>
+                              {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                            </p>
+                          </div>
+                          {/* Action buttons */}
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); startEdit(tx); }}
+                              className="p-2 text-gray-400 hover:text-primary-500 hover:bg-gray-100 rounded-lg"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDelete(tx.id); }}
+                              className="p-2 text-gray-400 hover:text-danger-500 hover:bg-red-50 rounded-lg"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -239,81 +381,6 @@ export const Transactions = () => {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Transaction Detail Sheet */}
-      {selectedTx && (
-        <BottomSheet onClose={() => setSelectedTx(null)}>
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Transaction Details</h3>
-              <button 
-                onClick={() => setSelectedTx(null)}
-                className="p-2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center ${
-                selectedTx.type === 'income' ? 'bg-success-100' : 'bg-danger-100'
-              }`}>
-                {selectedTx.type === 'income' ? (
-                  <ArrowUpRight className="w-8 h-8 text-success-600" />
-                ) : (
-                  <ArrowDownRight className="w-8 h-8 text-danger-600" />
-                )}
-              </div>
-
-              <div className="text-center">
-                <p className={`text-3xl font-bold ${
-                  selectedTx.type === 'income' ? 'text-success-600' : 'text-gray-900'
-                }`}>
-                  {selectedTx.type === 'income' ? '+' : '-'}{formatCurrency(selectedTx.amount)}
-                </p>
-                <p className="text-gray-500 mt-1">{formatDate(selectedTx.date, 'full')}</p>
-              </div>
-
-              <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Description</span>
-                  <span className="font-medium text-gray-900">{selectedTx.description || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Type</span>
-                  <span className={`font-medium ${
-                    selectedTx.type === 'income' ? 'text-success-600' : 'text-danger-600'
-                  }`}>
-                    {selectedTx.type}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Account</span>
-                  <span className="font-medium text-gray-900">
-                    {accounts.find(a => a.id === selectedTx.account_id)?.name || '-'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Category</span>
-                  <span className="font-medium text-gray-900">
-                    {categories.find(c => c.id === selectedTx.category_id)?.name || '-'}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  handleDelete(selectedTx.id);
-                  setSelectedTx(null);
-                }}
-                className="w-full py-3 bg-danger-50 text-danger-600 rounded-xl font-medium active:bg-danger-100 touch-manipulation"
-              >
-                Delete Transaction
-              </button>
-            </div>
-          </div>
-        </BottomSheet>
       )}
 
       {/* Parser Modals */}
@@ -337,31 +404,4 @@ export const Transactions = () => {
   );
 };
 
-// Bottom Sheet Component
-const BottomSheet = ({ isOpen = true, onClose, children }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div 
-        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-xl animate-slideUp max-h-[85vh] overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Handle */}
-        <div className="flex justify-center py-3">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
-        </div>
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[80vh]">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export default Transactions;
-
-export { TextParserModal } from '../components/parser/TextParserModal';
-export { ReceiptScannerModal } from '../components/parser/ReceiptScannerModal';

@@ -16,6 +16,7 @@ class TransactionBase(BaseModel):
     category_id: Optional[int] = None
     account_id: int
     recurring_rule_id: Optional[int] = None
+    detection_type: str = Field(default="MANUAL")  # MANUAL, OCR_RECEIPT, QRIS_TEXT, SMS_BANK
 
 
 class TransactionCreate(TransactionBase):
@@ -35,6 +36,7 @@ class TransactionUpdate(BaseModel):
 
 class TransactionResponse(BaseModel):
     id: int
+    user_id: Optional[int]
     type: str
     amount: Decimal
     currency: str
@@ -48,7 +50,10 @@ class TransactionResponse(BaseModel):
     recurring_rule_id: Optional[int]
     is_recurring: bool
     is_deleted: bool
-    user_id: Optional[int]
+    detection_type: str
+    merchant_name: Optional[str]
+    raw_source_text: Optional[str]
+    confidence_score: Optional[float]
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
