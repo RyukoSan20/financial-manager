@@ -159,14 +159,33 @@ const AIAdvisor = () => {
         if (done) break;
         
         const chunk = decoder.decode(value);
-        fullResponse += chunk;
         
-        // Update last message with streamed content
-        setChatHistory(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: fullResponse, streaming: false };
-          return updated;
-        });
+        // Parse SSE data: format is "data: {...}\n\n"
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonData = JSON.parse(line.slice(6));
+              if (jsonData.type === 'chunk' || jsonData.type === 'done') {
+                fullResponse = jsonData.content || fullResponse;
+                // Update last message with streamed content
+                setChatHistory(prev => {
+                  const updated = [...prev];
+                  if (updated.length > 0) {
+                    updated[updated.length - 1] = { 
+                      role: "assistant", 
+                      content: fullResponse,
+                      streaming: jsonData.type !== 'done'
+                    };
+                  }
+                  return updated;
+                });
+              }
+            } catch (e) {
+              // Skip invalid JSON, might be partial
+            }
+          }
+        }
       }
     } catch (err) {
       console.error("Chat error:", err);

@@ -269,16 +269,16 @@ def add_payment(
     elif not payment_date:
         payment_date = date.today()
     
-    # Create payment record
+    # Create payment record with defaults for nullable fields
     db_payment = DebtPayment(
         debt_id=debt_id,
         amount=amount,
         currency=currency,
         payment_date=payment_date,
-        principal_portion=Decimal(str(payment.principal_portion)) if payment.principal_portion else None,
-        interest_portion=Decimal(str(payment.interest_portion)) if payment.interest_portion else None,
-        remaining_balance_after=Decimal(str(payment.remaining_balance_after)) if payment.remaining_balance_after else None,
-        payment_method=payment.payment_method,
+        principal_portion=payment.principal_portion if payment.principal_portion else amount,
+        interest_portion=payment.interest_portion if payment.interest_portion else Decimal("0"),
+        remaining_balance_after=payment.remaining_balance_after if payment.remaining_balance_after else (db_debt.current_balance - amount),
+        payment_method=payment.payment_method or "cash",
         notes=payment.notes,
         transaction_id=payment.transaction_id,
     )
