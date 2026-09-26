@@ -162,9 +162,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   const supabaseGuestLogin = async () => {
-    const sb = getSupabase();
-    const { data, error } = await sb.auth.signInAnonymously();
-    if (error) throw error;
+    // Use backend guest login, not Supabase anonymous
+    const res = await fetch(`${API_URL}/api/auth/guest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: crypto.randomUUID() }),
+    });
+    if (!res.ok) throw new Error('Guest login failed');
+    const data = await res.json();
+    // Store backend token
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    setToken(data.access_token);
+    setUser(data.user);
     return data;
   };
 

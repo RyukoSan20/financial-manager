@@ -115,7 +115,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-    me: () => api.request('/me'),
+    me: () => api.request('/auth/me'),
   },
 
   // Accounts
