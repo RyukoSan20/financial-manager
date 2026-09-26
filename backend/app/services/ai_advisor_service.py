@@ -230,7 +230,9 @@ Jawab pertanyaan di atas berdasarkan data keuangan pengguna. Berikan jawaban yan
                 print(f"Failed to parse Gemini response: {e}")
         
         # Fallback response
-        return self._get_fallback_chat(message, summary)
+        if isinstance(message, dict):
+            message = message.get("message", str(message))
+        return self._get_fallback_chat(str(message), summary)
 
     def _get_fallback_chat(self, message: str, summary: FinancialSummary) -> Dict[str, Any]:
         """Fallback chat when API is unavailable."""
