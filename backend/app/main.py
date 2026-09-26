@@ -55,6 +55,19 @@ app.include_router(parser.router, prefix="/api/parser", tags=["Parser"])
 app.include_router(ai_advisor.router, prefix="/api/ai", tags=["AI Advisor"])
 
 
+# Recurring auto-generator cron endpoint (for Railway cron)
+from app.services.recurring_generator import process_due_recurring_rules
+
+@app.post("/api/cron/process-recurring", tags=["Cron"])
+def cron_process_recurring():
+    """
+    Process all due recurring rules and auto-generate transactions.
+    Call this endpoint daily via Railway Cron.
+    """
+    results = process_due_recurring_rules()
+    return {"status": "completed", **results}
+
+
 # Root endpoint
 @app.get("/", tags=["Root"])
 def root():

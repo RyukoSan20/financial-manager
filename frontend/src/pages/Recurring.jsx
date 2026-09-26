@@ -36,13 +36,30 @@ export const Recurring = () => {
         api.recurring.upcoming(),
       ]);
       setRules(Array.isArray(rulesRes) ? rulesRes : []);
-      setCategories(catRes);
-      setAccounts(accRes);
+      setCategories(Array.isArray(catRes) ? catRes : []);
+      setAccounts(Array.isArray(accRes) ? accRes : []);
       setUpcoming(Array.isArray(upcomingRes) ? upcomingRes : []);
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error('Failed to fetch recurring data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Manual trigger for processing due recurring rules
+  const triggerProcess = async () => {
+    if (!confirm('Process all due recurring rules now? Transactions will be auto-generated.')) return;
+    try {
+      const response = await fetch('/api/cron/process-recurring', { method: 'POST' });
+      const result = await response.json();
+      if (result.created > 0) {
+        alert(`Created ${result.created} transactions!`);
+        fetchData();
+      } else {
+        alert('No transactions to generate.');
+      }
+    } catch (error) {
+      alert('Failed to process recurring rules.');
     }
   };
 
@@ -122,10 +139,15 @@ export const Recurring = () => {
           <h1 className="text-2xl font-bold text-gray-900">Recurring Transactions</h1>
           <p className="text-gray-500 mt-1">{activeRules.length} active recurring rules</p>
         </div>
-        <Button onClick={() => { setEditingRule(null); setShowModal(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Recurring
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={triggerProcess}>
+            <Play className="w-4 h-4 mr-1" /> Process Now
+          </Button>
+          <Button onClick={() => { setEditingRule(null); setShowModal(true); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            New Recurring
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
