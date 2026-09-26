@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { NotificationToast } from './components/notifications/NotificationBell';
 import { Layout } from './components/layout/Layout';
 import { AddTransactionPage, MorePage } from './components/layout/Navigation';
 import { 
@@ -64,7 +66,9 @@ const RedirectIfAuth = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <NotificationProvider>
+        <NotificationToast />
+        <BrowserRouter>
         <Routes>
           {/* Auth routes - redirect if already logged in */}
           <Route 
@@ -121,6 +125,7 @@ function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

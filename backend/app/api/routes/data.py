@@ -165,37 +165,44 @@ def export_transactions_csv(
 
 @router.delete("/delete-all")
 def delete_all_user_data(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Delete ALL user data. This action is irreversible."""
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    user_id = current_user.id
-    
-    # Delete in order (respecting foreign keys)
-    # 1. Delete transactions first (they reference accounts)
-    db.query(Transaction).filter(Transaction.user_id == user_id).delete(synchronize_session=False)
-    
-    # 2. Delete budgets
-    db.query(Budget).filter(Budget.user_id == user_id).delete(synchronize_session=False)
-    
-    # 3. Delete goals
-    db.query(Goal).filter(Goal.user_id == user_id).delete(synchronize_session=False)
-    
-    # 4. Delete debts
-    db.query(Debt).filter(Debt.user_id == user_id).delete(synchronize_session=False)
-    
-    # 5. Delete accounts (balances will be lost)
-    db.query(Account).filter(Account.user_id == user_id).delete(synchronize_session=False)
-    
-    # 6. Delete categories (only user-created ones, not defaults)
-    db.query(Category).filter(
-        Category.user_id == user_id,
-        Category.is_default == False
-    ).delete(synchronize_session=False)
-    
-    db.commit()
-    
-    return {"message": "All user data has been deleted successfully"}
+    try:
+        user_id = current_user.id
+        
+        # Delete in order (respecting foreign keys)
+        # 1. Delete transactions first (they reference accounts)
+        db.query(Transaction).filter(Transaction.user_id == user_id).delete(synchronize_session=False)
+        
+        # 2. Delete recurring rules
+        db.query(RecurringRule).filter(RecurringRule.user_id == user_id).delete(synchronize_session=False)
+        
+        # 3. Delete transfers
+        db.query(Transfer).filter(Transfer.user_id == user_id).delete(synchronize_session=False)
+        
+        # 4. Delete debts
+        db.query(Debt).filter(Debt.user_id == user_id).delete(synchronize_session=False)
+        
+        # 5. Delete goals
+        db.query(Goal).filter(Goal.user_id == user_id).delete(synchronize_session=False)
+        
+        # 6. Delete budgets
+        db.query(Budget).filter(Budget.user_id == user_id).delete(synchronize_session=False)
+        
+        # 7. Delete accounts (balances will be lost)
+        db.query(Account).filter(Account.user_id == user_id).delete(synchronize_session=False)
+        
+        # 8. Delete categories (only user-created ones, not defaults)
+        db.query(Category).filter(
+            Category.user_id == user_id,
+            Category.is_default == False
+        ).delete(synchronize_session=False)
+        
+        db.commit()
+        
+        return {"message": "All user data has been deleted successfully", "success": True}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete data: {str(e)}")

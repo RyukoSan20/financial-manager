@@ -323,11 +323,17 @@ const DataTab = ({ logout }) => {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete ALL your data? This action cannot be undone!')) {
+    // First confirmation
+    if (!window.confirm('⚠️ PERHATIAN: Semua data akan dihapus permanen!\n\nAksi ini TIDAK DAPAT dibatalkan.\n\nKlik OK untuk melanjutkan atau Cancel untuk membatalkan.')) {
       return;
     }
     
-    if (!confirm('This will permanently delete all your accounts, transactions, budgets, goals, and debts. Continue?')) {
+    // Second confirmation with explicit action
+    const confirmationText = window.prompt('Ketik "HAPUS" untuk konfirmasi penghapusan data:');
+    if (confirmationText !== 'HAPUS') {
+      if (confirmationText !== null) {
+        alert('Konfirmasi tidak valid. Penghapusan dibatalkan.');
+      }
       return;
     }
 
@@ -336,19 +342,37 @@ const DataTab = ({ logout }) => {
 
     try {
       await api.data.deleteAll();
-      setMessage('All data deleted successfully!');
+      setMessage('✓ Semua data berhasil dihapus!');
       
-      // Clear local storage
+      // Show notification
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: {
+          type: 'success',
+          title: 'Data Dihapus',
+          message: 'Semua data berhasil dihapus dari akun Anda.'
+        }
+      }));
+      
+      // Clear local storage and logout
       localStorage.clear();
       
-      // Logout and redirect
+      // Redirect to login
       setTimeout(() => {
-        logout();
         window.location.href = '/login';
       }, 2000);
     } catch (error) {
       console.error('Delete error:', error);
-      setMessage('Deletion failed: ' + (error.message || 'Unknown error'));
+      const errorMsg = error.message || 'Tidak dapat menghapus data';
+      setMessage('✗ Gagal: ' + errorMsg);
+      
+      // Show notification
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: {
+          type: 'error',
+          title: 'Gagal Menghapus',
+          message: errorMsg
+        }
+      }));
     } finally {
       setLoading(false);
     }
