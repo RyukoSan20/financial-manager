@@ -72,6 +72,7 @@ export const Transactions = () => {
     try {
       await api.transactions.delete(id);
       fetchData();
+      window.dispatchEvent(new Event('transactionUpdated'));
     } catch (err) {
       console.error('Failed to delete transaction:', err);
       alert('Failed to delete: ' + (err.message || 'Unknown error'));
@@ -102,6 +103,7 @@ export const Transactions = () => {
       setEditingTx(null);
       setEditForm({});
       fetchData();
+      window.dispatchEvent(new Event('transactionUpdated'));
     } catch (err) {
       console.error('Failed to update transaction:', err);
       alert('Failed to update: ' + (err.message || 'Unknown error'));

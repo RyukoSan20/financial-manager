@@ -23,6 +23,18 @@ export const Dashboard = () => {
 
   useEffect(() => {
     fetchData();
+    
+    // Auto refresh every 30 seconds
+    const interval = setInterval(fetchData, 30000);
+    
+    // Listen for transaction updates from other pages
+    const handleTransactionUpdate = () => fetchData();
+    window.addEventListener('transactionUpdated', handleTransactionUpdate);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('transactionUpdated', handleTransactionUpdate);
+    };
   }, []);
 
   const fetchData = async () => {
