@@ -225,10 +225,10 @@ def add_contribution(
     db_contribution = GoalContribution(
         goal_id=goal_id,
         amount=contribution.amount,
-        currency=contribution.currency,
+        currency=contribution.currency or "IDR",
         date=contribution_date,
         notes=contribution.notes,
-        transaction_id=contribution.transaction_id,
+        transaction_id=None,
     )
     db.add(db_contribution)
     
