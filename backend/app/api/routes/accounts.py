@@ -18,7 +18,7 @@ router = APIRouter()
 def list_accounts(
     skip: int = 0,
     limit: int = 100,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all accounts for current user (or all if not authenticated)."""
@@ -46,7 +46,7 @@ def get_total_balance(
 @router.get("/{account_id}", response_model=AccountResponse)
 def get_account(
     account_id: int,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get account by ID with ownership check."""
