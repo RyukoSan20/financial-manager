@@ -198,14 +198,7 @@ Format jawaban JSON:
     def chat(self, message: str, summary: FinancialSummary, system_prompt: str = None) -> Dict[str, Any]:
         """Chat with AI about finances. Optionally override system prompt based on topic."""
         if not system_prompt:
-            system_prompt = "Anda adalah asisten keuangan personal yang helpful dan friendly. Selalu jawab dalam Bahasa Indonesia yang natural dan tidak berulang-ulang."
-        # Check if message is finance related
-        if not is_finance_related(message):
-            return {
-                "response": f"Maaf, saya adalah asisten keuangan pribadi yang hanya bisa membantu pertanyaan seputar keuangan. Topik seperti '{message[:50]}...' tidak dalam keahlian saya.\n\nSaya bisa membantu pertanyaan tentang:\n- 💰 Saldo dan keuangan Anda\n- 📊 Pengeluaran dan pemasukan\n- 🎯 Tujuan finansial\n- 💳 Utang dan kredit\n- 📈 Investasi dan tabungan\n- 📋 Anggaran bulanan\n\nSilakan ajukan pertanyaan tentang keuangan Anda!",
-                "suggestions": DEFAULT_QUESTIONS[:3],
-                "is_finance_related": False
-            }
+            system_prompt = "Anda adalah asisten keuangan personal yang helpful dan friendly. Selalu jawab dalam Bahasa Indonesia yang natural."
         
         # Build context with user data and topic
         context = self.build_context(summary)
