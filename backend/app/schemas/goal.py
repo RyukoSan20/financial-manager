@@ -69,18 +69,10 @@ class GoalContributionBase(BaseModel):
 
 class GoalContributionCreate(BaseModel):
     """Create contribution - all fields optional except amount."""
-    amount: Decimal = Field(..., gt=0)
-    currency: Optional[str] = "IDR"
-    date: Optional[date] = None
-    notes: Optional[str] = None
-    
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {"amount": 100000, "currency": "IDR", "date": None, "notes": "Monthly savings"}
-            ]
-        }
-    }
+    amount: Decimal = Field(..., gt=0, title="Amount", description="Contribution amount")
+    currency: Optional[str] = Field(default="IDR", title="Currency")
+    date: Optional[date] = Field(default=None, title="Date")
+    notes: Optional[str] = Field(default=None, title="Notes")
 
 
 class GoalContributionResponse(GoalContributionBase):
