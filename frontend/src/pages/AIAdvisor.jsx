@@ -1,81 +1,27 @@
-// AI Financial Advisor Page - Enhanced Interactive Version
-// Provides personalized AI-powered financial insights with topic selection
+// AI Financial Advisor - Simple Clean Version
 
 import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
-import { useAuth } from "../context/AuthContext";
 
 const AIAdvisor = () => {
-  const { user } = useAuth();
   const [advice, setAdvice] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [chatMessage, setChatMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState([]);
-  const [chatLoading, setChatLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("advice");
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedTopic, setSelectedTopic] = useState(null);
-  const chatEndRef = useRef(null);
+  const [activeTopic, setActiveTopic] = useState("free");
+  const messagesEndRef = useRef(null);
 
-  // Topic categories for interactive chat
   const topics = [
-    {
-      id: "news",
-      icon: "📰",
-      title: "Berita Finansial",
-      desc: "Berita & tren ekonomi terkini",
-      prompt: "Berikan saya berita dan tren finansial terkini yang relevan untuk keuangan personal saya."
-    },
-    {
-      id: "future",
-      icon: "🎯",
-      title: "Proyeksi Masa Depan",
-      desc: "Rencanakan tujuan keuangan jangka panjang",
-      prompt: "Bantu saya membuat proyeksi dan perencanaan keuangan masa depan, termasuk pensiun, investasi jangka panjang, dan tujuan-tujuan besar saya."
-    },
-    {
-      id: "balance",
-      icon: "⚖️",
-      title: "Life-Finance Balance",
-      desc: "Seimbangkan usia, karier & gaya hidup",
-      prompt: "Analisis bagaimana saya bisa menyeimbangkan keuangan dengan usia saya saat ini, tahap karier, dan gaya hidup. Berikan rekomendasi yang realistis."
-    },
-    {
-      id: "debt",
-      icon: "💳",
-      title: "Strategi Utang",
-      desc: "Kelola dan lunasi utang dengan optimal",
-      prompt: "Saya ingin strategi optimal untuk mengelola dan melunasi utang saya. Pertimbangkan bunga, prioritas, dan dampak terhadap cash flow."
-    },
-    {
-      id: "invest",
-      icon: "📈",
-      title: "Strategi Investasi",
-      desc: "Diversifikasi & portofolio optimal",
-      prompt: "Bantu saya membuat strategi investasi yang terdiversifikasi. Pertimbangkan profil risiko, jangka waktu, dan alokasi aset."
-    },
-    {
-      id: "budget",
-      icon: "📊",
-      title: "Teknik Budgeting",
-      desc: "50/30/20, envelope, zero-based",
-      prompt: "Rekomendasikan teknik budgeting terbaik untuk situasi keuangan saya dan bantu buat sistem yang可持续."
-    },
-    {
-      id: "emergency",
-      icon: "🛡️",
-      title: "Dana Darurat & Asuransi",
-      desc: "Proteksi finansial keluarga",
-      prompt: "Berapa dana darurat yang saya butuhkan? Kapan perlu asuransi? Bagaimana proteksi finansial keluarga yang ideal?"
-    },
-    {
-      id: "free",
-      icon: "💬",
-      title: "Chat Bebas",
-      desc: "Tanya apa saja tentang keuangan",
-      prompt: ""
-    }
+    { id: "news", name: "📰 Berita", prompt: "Fokus pada berita dan tren ekonomi terkini di Indonesia." },
+    { id: "future", name: "🎯 Proyeksi", prompt: "Perencanaan keuangan jangka panjang dan tujuan masa depan." },
+    { id: "balance", name: "⚖️ Balance", prompt: "Seimbangkan keuangan dengan usia, karier, dan gaya hidup." },
+    { id: "debt", name: "💳 Utang", prompt: "Strategi optimal untuk mengelola dan melunasi utang." },
+    { id: "invest", name: "📈 Investasi", prompt: "Strategi investasi dan diversifikasi portofolio." },
+    { id: "budget", name: "📊 Budgeting", prompt: "Teknik budgeting terbaik untuk kondisi Anda." },
+    { id: "free", name: "💬 Bebas", prompt: "" }
   ];
 
   useEffect(() => {
@@ -83,321 +29,219 @@ const AIAdvisor = () => {
   }, []);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
       const [adviceRes, summaryRes] = await Promise.all([
         api.ai.advice(),
-        api.ai.summary(),
+        api.ai.summary()
       ]);
-      
       setAdvice(Array.isArray(adviceRes) ? adviceRes : []);
       setSummary(summaryRes);
     } catch (err) {
-      console.error("Error fetching AI data:", err);
-      if (err.message?.includes('401') || err.message?.includes('Unauthorized')) {
-        setError("Sesi habis. Silakan login ulang.");
-      } else if (err.message?.includes('Failed to fetch') || err.message?.includes('Network')) {
-        setError("Tidak dapat terhubung ke server. Periksa koneksi internet Anda.");
-      } else {
-        setError("Gagal memuat data AI: " + (err.message || 'Error tidak dikenal'));
-      }
+      console.error("Error:", err);
+      setError("Gagal memuat data");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTopicSelect = (topic) => {
-    setSelectedTopic(topic);
-    if (topic.id !== "free") {
-      setChatMessage(topic.prompt);
-    }
-  };
-
-  const handleChat = async (e) => {
+  const sendMessage = async (e) => {
     e.preventDefault();
-    if (!chatMessage.trim() || chatLoading) return;
-    
-    const userMessage = chatMessage;
-    const currentTopic = selectedTopic;
-    setChatMessage("");
-    setChatLoading(true);
-    setSelectedTopic(null);
+    if (!message.trim() || sending) return;
+
+    const userMsg = message;
+    setMessage("");
+    setSending(true);
 
     // Add user message
-    setChatHistory(prev => [...prev, { role: "user", content: userMessage }]);
+    setMessages(prev => [...prev, { role: "user", content: userMsg }]);
 
     try {
-      // Add initial AI message
-      setChatHistory(prev => [...prev, { role: "assistant", content: "", streaming: true }]);
-      
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/ai/chat/stream`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
-        body: JSON.stringify({ 
-          message: userMessage,
-          topic: currentTopic?.id || "free"
-        })
-      });
+      const topic = topics.find(t => t.id === activeTopic);
+      const topicContext = topic?.prompt || "";
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/ai/chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem("token")}`
+          },
+          body: JSON.stringify({ 
+            message: topicContext ? `${topicContext}\n\n${userMsg}` : userMsg,
+            topic: activeTopic
+          })
+        }
+      );
 
       if (!response.ok) throw new Error("Request failed");
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullResponse = "";
+      const data = await response.json();
+      const aiResponse = data.response || "Maaf, terjadi kesalahan.";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value);
-        
-        // Parse SSE data: format is "data: {...}\n\n"
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const jsonData = JSON.parse(line.slice(6));
-              if (jsonData.type === 'chunk' || jsonData.type === 'done') {
-                fullResponse = jsonData.content || fullResponse;
-                // Update last message with streamed content
-                setChatHistory(prev => {
-                  const updated = [...prev];
-                  if (updated.length > 0) {
-                    updated[updated.length - 1] = { 
-                      role: "assistant", 
-                      content: fullResponse,
-                      streaming: jsonData.type !== 'done'
-                    };
-                  }
-                  return updated;
-                });
-              }
-            } catch (e) {
-              // Skip invalid JSON, might be partial
-            }
-          }
-        }
-      }
+      setMessages(prev => [...prev, { role: "assistant", content: aiResponse }]);
     } catch (err) {
       console.error("Chat error:", err);
-      // Remove streaming message on error
-      setChatHistory(prev => prev.filter((_, i) => i < prev.length - 1));
-      // Add error message
-      setChatHistory(prev => [...prev, { 
+      setMessages(prev => [...prev, { 
         role: "assistant", 
         content: "Maaf, terjadi kesalahan. Silakan coba lagi." 
       }]);
     } finally {
-      setChatLoading(false);
+      setSending(false);
     }
   };
 
-  const clearChat = () => {
-    setChatHistory([]);
-    setSelectedTopic(null);
+  const selectTopic = (topicId) => {
+    setActiveTopic(topicId);
+    if (topicId !== "free") {
+      const topic = topics.find(t => t.id === topicId);
+      setMessage(topic?.prompt || "");
+    }
   };
 
   if (loading) {
     return (
       <div className="page">
-        <div className="loading-spinner">
+        <div style={{ textAlign: "center", padding: "2rem" }}>
           <div className="spinner"></div>
-          <p>Memuat AI Advisor...</p>
+          <p>Memuat...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="page ai-advisor-page">
-      <header className="page-header">
-        <h1>💰 AI Financial Advisor</h1>
-        <p>Asisten keuangan berbasis AI yang dipersonalisasi</p>
-      </header>
+    <div className="page" style={{ padding: "1rem", maxWidth: "800px", margin: "0 auto" }}>
+      <h1 style={{ fontSize: "1.5rem", marginBottom: "1rem" }}>AI Advisor</h1>
 
       {error && (
-        <div className="error-banner" onClick={fetchData}>
-          ⚠️ {error} (Klik untuk refresh)
+        <div style={{ background: "#fee", padding: "0.75rem", borderRadius: "8px", marginBottom: "1rem" }}>
+          {error} <button onClick={fetchData}>Refresh</button>
         </div>
       )}
 
-      {/* Summary Cards */}
+      {/* Summary */}
       {summary && (
-        <div className="summary-cards">
-          <div className="summary-card">
-            <span className="card-icon">💵</span>
-            <span className="card-label">Total Saldo</span>
-            <span className="card-value">{summary.formatted_balance || summary.total_balance?.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}</span>
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: "repeat(3, 1fr)", 
+          gap: "0.75rem", 
+          marginBottom: "1rem" 
+        }}>
+          <div style={{ background: "#f5f5f5", padding: "0.75rem", borderRadius: "8px", textAlign: "center" }}>
+            <div style={{ fontSize: "0.75rem", color: "#666" }}>Saldo</div>
+            <div style={{ fontWeight: "bold" }}>{summary.formatted_balance || `Rp ${(summary.total_balance || 0).toLocaleString('id-ID')}`}</div>
           </div>
-          <div className="summary-card">
-            <span className="card-icon">📊</span>
-            <span className="card-label">Tabungan/Bulan</span>
-            <span className="card-value">{summary.savings_rate?.toFixed(1) || 0}%</span>
+          <div style={{ background: "#f5f5f5", padding: "0.75rem", borderRadius: "8px", textAlign: "center" }}>
+            <div style={{ fontSize: "0.75rem", color: "#666" }}>Tabungan</div>
+            <div style={{ fontWeight: "bold" }}>{summary.savings_rate?.toFixed(1) || 0}%</div>
           </div>
-          <div className="summary-card">
-            <span className="card-icon">🎯</span>
-            <span className="card-label">Tujuan Aktif</span>
-            <span className="card-value">{summary.active_goals || 0}</span>
+          <div style={{ background: "#f5f5f5", padding: "0.75rem", borderRadius: "8px", textAlign: "center" }}>
+            <div style={{ fontSize: "0.75rem", color: "#666" }}>Tujuan</div>
+            <div style={{ fontWeight: "bold" }}>{summary.active_goals || 0}</div>
           </div>
         </div>
       )}
 
-      {/* Tab Navigation */}
-      <div className="tab-nav">
-        <button 
-          className={`tab-btn ${activeTab === "advice" ? "active" : ""}`}
-          onClick={() => setActiveTab("advice")}
-        >
-          📋 Saran AI
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === "chat" ? "active" : ""}`}
-          onClick={() => setActiveTab("chat")}
-        >
-          💬 Chat Advisor
-        </button>
+      {/* Topic Pills */}
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+        {topics.map(topic => (
+          <button
+            key={topic.id}
+            onClick={() => selectTopic(topic.id)}
+            style={{
+              padding: "0.5rem 0.75rem",
+              borderRadius: "20px",
+              border: activeTopic === topic.id ? "2px solid #007bff" : "1px solid #ddd",
+              background: activeTopic === topic.id ? "#e7f3ff" : "#fff",
+              cursor: "pointer",
+              fontSize: "0.85rem"
+            }}
+          >
+            {topic.name}
+          </button>
+        ))}
       </div>
 
-      {/* Tab Content */}
-      {activeTab === "advice" ? (
-        <div className="advice-section">
-          {advice.length > 0 ? (
-            <div className="advice-list">
-              {advice.map((item, index) => (
-                <div key={index} className={`advice-card priority-${item.priority}`}>
-                  <div className="advice-header">
-                    <span className="advice-icon">
-                      {item.category === "savings" ? "💰" : 
-                       item.category === "debt" ? "💳" : 
-                       item.category === "goals" ? "🎯" : "📊"}
-                    </span>
-                    <span className="advice-title">{item.title}</span>
-                    <span className={`priority-badge ${item.priority}`}>
-                      {item.priority === "high" ? "Prioritas Tinggi" : 
-                       item.priority === "medium" ? "Sedang" : "Rendah"}
-                    </span>
-                  </div>
-                  <p className="advice-description">{item.description}</p>
-                  {item.action_steps && item.action_steps.length > 0 && (
-                    <div className="advice-steps">
-                      <strong>Langkah-langkah:</strong>
-                      <ol>
-                        {item.action_steps.map((step, i) => (
-                          <li key={i}>{step}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
-                  {item.impact && (
-                    <div className="advice-impact">
-                      <strong>Dampak:</strong> {item.impact}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state">
-              <p>Belum ada saran AI. Tambahkan transaksi untuk mendapatkan insight.</p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="chat-section">
-          {/* Topic Selection */}
-          {chatHistory.length === 0 && (
-            <div className="topic-selection">
-              <h3>Pilih Topik yang Ingin Dibahas</h3>
-              <p className="topic-subtitle">Atau ketik pertanyaan bebas di bawah</p>
-              <div className="topic-grid">
-                {topics.map((topic) => (
-                  <button
-                    key={topic.id}
-                    className={`topic-card ${selectedTopic?.id === topic.id ? "selected" : ""}`}
-                    onClick={() => handleTopicSelect(topic)}
-                  >
-                    <span className="topic-icon">{topic.icon}</span>
-                    <span className="topic-title">{topic.title}</span>
-                    <span className="topic-desc">{topic.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Chat Messages */}
-          <div className="chat-messages">
-            {chatHistory.map((msg, index) => (
-              <div key={index} className={`chat-message ${msg.role}`}>
-                <div className="message-avatar">
-                  {msg.role === "user" ? "👤" : "🤖"}
-                </div>
-                <div className="message-content">
-                  {msg.content.split('\n').map((line, i) => {
-                    // Format markdown-like content
-                    let formattedLine = line;
-                    // Bold text **text**
-                    formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                    // Lists
-                    if (line.startsWith('•') || line.startsWith('-') || line.startsWith('• ')) {
-                      return <li key={i} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
-                    }
-                    // Numbered lists
-                    if (/^\d+\./.test(line)) {
-                      return <li key={i} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
-                    }
-                    // Regular paragraphs
-                    if (formattedLine.trim()) {
-                      return <p key={i} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
-                    }
-                    return <br key={i} />;
-                  })}
-                  {msg.streaming && <span className="typing-indicator">...</span>}
-                </div>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
+      {/* Chat Messages */}
+      <div style={{ 
+        border: "1px solid #e0e0e0", 
+        borderRadius: "12px", 
+        padding: "1rem", 
+        marginBottom: "1rem",
+        minHeight: "300px",
+        maxHeight: "calc(100vh - 350px)",
+        overflowY: "auto"
+      }}>
+        {messages.length === 0 ? (
+          <div style={{ textAlign: "center", color: "#999", padding: "2rem" }}>
+            Tanya tentang keuangan Anda
           </div>
-
-          {/* Selected Topic Indicator */}
-          {selectedTopic && chatHistory.length === 0 && (
-            <div className="selected-topic-indicator">
-              <span>{selectedTopic.icon} {selectedTopic.title}</span>
-              <button onClick={() => setSelectedTopic(null)}>×</button>
+        ) : (
+          messages.map((msg, i) => (
+            <div key={i} style={{ 
+              display: "flex", 
+              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+              marginBottom: "1rem"
+            }}>
+              <div style={{
+                maxWidth: "80%",
+                padding: "0.75rem 1rem",
+                borderRadius: msg.role === "user" ? "12px 12px 4px 12px" : "12px 12px 12px 4px",
+                background: msg.role === "user" ? "#007bff" : "#f0f0f0",
+                color: msg.role === "user" ? "#fff" : "#333",
+                whiteSpace: "pre-wrap"
+              }}>
+                {msg.content}
+              </div>
             </div>
-          )}
+          ))
+        )}
+        {sending && (
+          <div style={{ textAlign: "center", color: "#999" }}>
+            AI sedang mengetik...
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
 
-          {/* Chat Input */}
-          <form className="chat-input-form" onSubmit={handleChat}>
-            <div className="chat-input-wrapper">
-              <input
-                type="text"
-                value={chatMessage}
-                onChange={(e) => setChatMessage(e.target.value)}
-                placeholder={selectedTopic ? "Tekan enter untuk kirim..." : "Tanya tentang keuangan Anda..."}
-                disabled={chatLoading}
-              />
-              {chatHistory.length > 0 && (
-                <button type="button" className="clear-chat-btn" onClick={clearChat}>
-                  🗑️
-                </button>
-              )}
-            </div>
-            <button type="submit" disabled={chatLoading || !chatMessage.trim()}>
-              {chatLoading ? "⏳" : "➤"}
-            </button>
-          </form>
-        </div>
-      )}
+      {/* Input */}
+      <form onSubmit={sendMessage} style={{ display: "flex", gap: "0.5rem" }}>
+        <input
+          type="text"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Tanya AI tentang keuangan..."
+          disabled={sending}
+          style={{
+            flex: 1,
+            padding: "0.75rem 1rem",
+            border: "1px solid #ddd",
+            borderRadius: "24px",
+            fontSize: "1rem"
+          }}
+        />
+        <button 
+          type="submit" 
+          disabled={sending || !message.trim()}
+          style={{
+            padding: "0.75rem 1.5rem",
+            borderRadius: "24px",
+            border: "none",
+            background: sending ? "#ccc" : "#007bff",
+            color: "#fff",
+            fontWeight: "bold",
+            cursor: sending ? "not-allowed" : "pointer"
+          }}
+        >
+          {sending ? "..." : "Kirim"}
+        </button>
+      </form>
     </div>
   );
 };
