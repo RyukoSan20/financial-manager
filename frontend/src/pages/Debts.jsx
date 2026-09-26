@@ -463,20 +463,37 @@ const DebtModal = ({ isOpen, onClose, onSubmit, debt }) => {
 
 const PaymentModal = ({ isOpen, onClose, onSubmit, debt }) => {
   const [form, setForm] = useState({
-    amount: debt?.monthly_payment?.toString() || '',
+    amount: '',
     date: new Date().toISOString().split('T')[0],
     principal_portion: '',
     interest_portion: '',
     notes: '',
   });
 
+  // Update form when debt changes
+  useEffect(() => {
+    if (debt) {
+      setForm({
+        amount: debt.monthly_payment?.toString() || debt.current_balance?.toString() || '',
+        date: new Date().toISOString().split('T')[0],
+        principal_portion: '',
+        interest_portion: '',
+        notes: '',
+      });
+    }
+  }, [debt]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!form.amount || parseFloat(form.amount) <= 0) {
+      alert('Amount must be greater than 0');
+      return;
+    }
     onSubmit({
       ...form,
       amount: parseFloat(form.amount),
-      principal_portion: parseFloat(form.principal_portion) || undefined,
-      interest_portion: parseFloat(form.interest_portion) || undefined,
+      principal_portion: parseFloat(form.principal_portion) || 0,
+      interest_portion: parseFloat(form.interest_portion) || 0,
     });
   };
 

@@ -181,12 +181,51 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* Cash Flow Chart */}
+      {/* Cash Flow Chart - Enhanced */}
       {chartData.length > 0 && (
         <Card className="overflow-hidden">
           <div className="p-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900">Cash Flow</h3>
-            <p className="text-sm text-gray-500">Last 6 months</p>
+            <h3 className="font-semibold text-gray-900">📈 Cash Flow Analysis</h3>
+            <p className="text-sm text-gray-500">Income vs Expense - Last 6 months</p>
+          </div>
+          <div className="p-4">
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `${(v/1000000).toFixed(0)}M`} />
+                <Tooltip 
+                  formatter={(value, name) => [
+                    formatCurrency(value),
+                    name === 'income' ? '💰 Income' : name === 'expense' ? '💸 Expense' : '📊 Net'
+                  ]}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                />
+                <Area type="monotone" dataKey="income" stroke="#22c55e" fill="#22c55e" fillOpacity={0.3} strokeWidth={2} />
+                <Area type="monotone" dataKey="expense" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+            {/* Legend */}
+            <div className="flex justify-center gap-6 mt-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <span>Income (Pemasukan)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <span>Expense (Pengeluaran)</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Balance Trend Chart */}
+      {chartData.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="p-4 border-b border-gray-100">
+            <h3 className="font-semibold text-gray-900">💵 Balance Trend</h3>
+            <p className="text-sm text-gray-500">Total balance over time</p>
           </div>
           <div className="p-4">
             <ResponsiveContainer width="100%" height={200}>
@@ -198,10 +237,15 @@ export const Dashboard = () => {
                   formatter={(value) => formatCurrency(value)}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                 />
-                <Area type="monotone" dataKey="Income" stackId="1" stroke="#22c55e" fill="#22c55e" fillOpacity={0.15} />
-                <Area type="monotone" dataKey="Expense" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.15} />
+                <Area type="monotone" dataKey="balance" stroke="#667eea" fill="#667eea" fillOpacity={0.3} strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
+            <div className="flex justify-center mt-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#667eea' }}></div>
+                <span>Total Balance</span>
+              </div>
+            </div>
           </div>
         </Card>
       )}
