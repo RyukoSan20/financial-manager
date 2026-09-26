@@ -46,7 +46,6 @@ class TransactionResponse(BaseModel):
     account_id: int
     category_id: Optional[int]
     transfer_id: Optional[int]
-    transfer_to_transaction_id: Optional[int]
     recurring_rule_id: Optional[int]
     is_recurring: bool
     is_deleted: bool
