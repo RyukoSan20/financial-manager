@@ -25,24 +25,24 @@ export const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Auth guard - redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate('/login');
-      return;
     }
-    if (isAuthenticated) {
-      fetchData();
-    }
-  }, [isAuthenticated, authLoading]);
-  
-  // Auto refresh only when authenticated
+  }, [authLoading, isAuthenticated, navigate]);
+
+  // Fetch data only after auth is confirmed
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetchData();
+  }, [isAuthenticated]);
+
+  // Auto refresh when authenticated
   useEffect(() => {
     if (!isAuthenticated) return;
     
-    // Auto refresh every 30 seconds
     const interval = setInterval(fetchData, 30000);
-    
-    // Listen for transaction updates from other pages
     const handleTransactionUpdate = () => fetchData();
     window.addEventListener('transactionUpdated', handleTransactionUpdate);
     
