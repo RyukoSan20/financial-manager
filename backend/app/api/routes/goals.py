@@ -221,9 +221,14 @@ def add_contribution(
     from datetime import date as date_type
     from decimal import Decimal
     
+    # Validate amount - use default if None
+    amount_val = contribution.amount if contribution.amount else Decimal("0")
+    if amount_val <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+    
     # Create contribution with defaults
     contribution_date = contribution.date or date_type.today()
-    amount_decimal = Decimal(str(contribution.amount))
+    amount_decimal = Decimal(str(amount_val))
     
     db_contribution = GoalContribution(
         goal_id=goal_id,

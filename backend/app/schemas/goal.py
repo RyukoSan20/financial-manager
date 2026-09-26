@@ -61,9 +61,9 @@ class GoalWithProgress(GoalResponse):
 
 class GoalContributionCreate(BaseModel):
     """Create contribution - only amount is required."""
-    amount: float = Field(gt=0)
-    currency: str = "IDR"
-    date: Optional[date] = None
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    date: Optional[str] = None
     notes: Optional[str] = None
 
 

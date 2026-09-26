@@ -75,8 +75,17 @@ class DebtPaymentBase(BaseModel):
     notes: Optional[str] = None
 
 
-class DebtPaymentCreate(DebtPaymentBase):
-    debt_id: int
+class DebtPaymentCreate(BaseModel):
+    """Create payment - only amount is required."""
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    payment_date: Optional[str] = None
+    principal_portion: Optional[float] = None
+    interest_portion: Optional[float] = None
+    remaining_balance_after: Optional[float] = None
+    payment_method: Optional[str] = None
+    notes: Optional[str] = None
+    debt_id: Optional[int] = None
     transaction_id: Optional[int] = None
 
 
