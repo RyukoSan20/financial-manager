@@ -58,12 +58,63 @@ const AIAdvisor = () => {
     // Add user message to history
     setChatHistory(prev => [...prev, { role: "user", text: userMessage }]);
     
+    // Add placeholder for AI response
+    setChatHistory(prev => [...prev, { role: "ai", text: "" }]);
+    
     try {
-      const response = await api.ai.chat(userMessage);
-      setChatHistory(prev => [...prev, { role: "ai", text: response.response || "Maaf, saya tidak bisa menjawab saat ini." }]);
+      // Use streaming endpoint
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/ai/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ message: userMessage })
+      });
+      
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let aiResponse = "";
+      
+      // Update last message with streaming content
+      const updateLastMessage = (text) => {
+        setChatHistory(prev => {
+          const newHistory = [...prev];
+          if (newHistory.length > 0 && newHistory[newHistory.length - 1].role === "ai") {
+            newHistory[newHistory.length - 1].text = text;
+          }
+          return newHistory;
+        });
+      };
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+        
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === "chunk" || data.type === "done") {
+                aiResponse = data.content || "";
+                updateLastMessage(aiResponse);
+              }
+            } catch (e) {}
+          }
+        }
+      }
     } catch (err) {
       console.error("Chat error:", err);
-      setChatHistory(prev => [...prev, { role: "ai", text: "Terjadi kesalahan. Silakan coba lagi." }]);
+      setChatHistory(prev => {
+        const newHistory = [...prev];
+        if (newHistory.length > 0 && newHistory[newHistory.length - 1].role === "ai") {
+          newHistory[newHistory.length - 1].text = "Terjadi kesalahan. Silakan coba lagi.";
+        }
+        return newHistory;
+      });
     } finally {
       setChatLoading(false);
     }

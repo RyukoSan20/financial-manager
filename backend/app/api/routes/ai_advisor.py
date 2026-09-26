@@ -1,9 +1,12 @@
 """AI Financial Advisor API routes."""
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
+import json
+import asyncio
 
 from app.core.database import get_db
 from app.core.security import get_current_user_optional, get_current_user
@@ -163,6 +166,58 @@ def chat_with_advisor(
     result = ai_advisor.chat(user_message, summary)
     
     return result
+
+
+@router.post("/chat/stream")
+async def chat_stream(
+    message: ChatMessage,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Stream AI chat response for real-time feel.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    user_message = message.get("message", "")
+    
+    if not user_message:
+        raise HTTPException(status_code=400, detail="Message is required")
+    
+    if len(user_message) > 500:
+        raise HTTPException(status_code=400, detail="Message too long (max 500 chars)")
+    
+    # Get financial context
+    summary = get_financial_summary(db, current_user.id)
+    
+    async def generate():
+        # Send typing indicator
+        yield f"data: {json.dumps({'type': 'start', 'message': 'Mengetik...'})}\n\n"
+        await asyncio.sleep(0.5)
+        
+        # Get full response
+        result = ai_advisor.chat(user_message, summary)
+        response_text = result.get("response", "")
+        
+        # Stream word by word for real-time feel
+        words = response_text.split(" ")
+        for i, word in enumerate(words):
+            chunk = " ".join(words[:i+1])
+            yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+            await asyncio.sleep(0.05)  # 50ms delay between words
+        
+        # Send complete
+        yield f"data: {json.dumps({'type': 'done', 'content': response_text})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
 
 
 @router.get("/tips")
