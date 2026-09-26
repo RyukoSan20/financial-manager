@@ -545,7 +545,7 @@ def get_financial_summary(
             "description": t.description or "",
             "amount": float(t.amount or 0),
             "type": t.type or "expense",
-            "category": t.category or "Other"
+            "category": str(t.category) if t.category else "Other"
         }
         for t in recent
     ]

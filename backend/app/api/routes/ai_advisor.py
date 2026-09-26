@@ -71,7 +71,7 @@ def get_ai_advice(
     return [
         AdviceResponse(
             title=a.title,
-            category=a.category,
+            category=str(a.category) if a.category else "Other",
             priority=a.priority,
             insight=a.insight,
             action_items=a.action_items,
