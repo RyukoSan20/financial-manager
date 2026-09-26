@@ -620,12 +620,29 @@ export const AddTransactionPage = () => {
         </div>
       </div>
 
-      {/* Bottom Submit */}
+      {/* Bottom Submit - Mobile */}
       <div className="fixed bottom-4 left-4 right-4 lg:hidden">
         <button
           onClick={handleSubmit}
           disabled={!amount || loading}
           className={`w-full py-4 rounded-2xl font-semibold text-lg shadow-lg transition-all ${
+            amount && !loading
+              ? type === 'income'
+                ? 'bg-success-500 text-white active:bg-success-600'
+                : 'bg-primary-500 text-white active:bg-primary-600'
+              : 'bg-gray-200 text-gray-400'
+          }`}
+        >
+          {loading ? 'Saving...' : `Save ${type === 'income' ? 'Income' : 'Expense'}`}
+        </button>
+      </div>
+
+      {/* Submit Button - Desktop */}
+      <div className="hidden lg:block mt-4">
+        <button
+          onClick={handleSubmit}
+          disabled={!amount || loading}
+          className={`w-full py-3 rounded-xl font-semibold text-base transition-all ${
             amount && !loading
               ? type === 'income'
                 ? 'bg-success-500 text-white active:bg-success-600'
