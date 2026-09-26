@@ -218,12 +218,15 @@ def add_contribution(
     if db_goal.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    # Create contribution
+    from datetime import date as date_type
+    # Create contribution with defaults for optional fields
+    contribution_date = contribution.date or date_type.today()
+    
     db_contribution = GoalContribution(
         goal_id=goal_id,
         amount=contribution.amount,
         currency=contribution.currency,
-        date=contribution.date,
+        date=contribution_date,
         notes=contribution.notes,
         transaction_id=contribution.transaction_id,
     )

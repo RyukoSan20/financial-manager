@@ -146,17 +146,22 @@ def create_recurring_rule(
         raise HTTPException(status_code=403, detail="Cannot create rule for another user's account")
     
     # Calculate next occurrence
+    from datetime import date as date_type
+    start = rule.start_date or date_type.today()
     next_occ = calculate_next_occurrence(
         RecurringRule(
             frequency=rule.frequency,
             interval_value=rule.interval_value,
             day_of_month=rule.day_of_month
         ),
-        rule.start_date
+        start
     )
     
     rule_data = rule.model_dump(exclude={'next_occurrence'})
     rule_data["user_id"] = current_user.id
+    # Ensure start_date has a value
+    if not rule_data.get("start_date"):
+        rule_data["start_date"] = start
     
     db_rule = RecurringRule(
         **rule_data,

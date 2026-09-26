@@ -12,14 +12,14 @@ class RecurringRuleBase(BaseModel):
     currency: str = Field(default="IDR", max_length=10)
     description: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
-    account_id: int
+    account_id: Optional[int] = None
     to_account_id: Optional[int] = None
     category_id: Optional[int] = None
     frequency: str = Field(..., pattern="^(daily|weekly|biweekly|monthly|quarterly|yearly|custom)$")
     interval_value: int = Field(default=1, ge=1)
     day_of_month: Optional[int] = Field(None, ge=1, le=31)
     day_of_week: Optional[int] = Field(None, ge=0, le=6)
-    start_date: date
+    start_date: Optional[date] = None
     end_date: Optional[date] = None
     next_occurrence: Optional[date] = None
     is_active: bool = True

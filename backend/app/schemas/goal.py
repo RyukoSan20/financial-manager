@@ -63,7 +63,7 @@ class GoalWithProgress(GoalResponse):
 class GoalContributionBase(BaseModel):
     amount: Decimal = Field(..., gt=0)
     currency: str = Field(default="IDR", max_length=10)
-    date: date
+    date: Optional[date] = None
     notes: Optional[str] = None
 
 
