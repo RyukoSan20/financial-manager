@@ -145,7 +145,7 @@ export const Dashboard = () => {
       income: income,
       expense: expense,
       net: income - expense,
-      balance: summary?.total_balance || 0
+      balance: data?.total_balance || 0
     };
   });
 
