@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 from app.core.database import get_db
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user_optional, get_current_user
 from app.models.user import User
 from app.models.account import Account
 from app.models.transaction import Transaction
@@ -13,6 +13,8 @@ from app.models.category import Category
 from app.models.budget import Budget
 from app.models.goal import Goal
 from app.models.debt import Debt
+from app.models.recurring import RecurringRule
+from app.models.transfer import Transfer
 
 router = APIRouter(tags=["Data"])
 
