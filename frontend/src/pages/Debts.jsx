@@ -63,10 +63,13 @@ export const Debts = () => {
       console.log('Payment recorded successfully');
       setShowPaymentModal(false);
       setSelectedDebt(null);
+      // Force refresh by setting loading and fetching again
+      setLoading(true);
       fetchData();
       window.dispatchEvent(new Event('transactionUpdated'));
     } catch (err) {
       console.error('Payment failed:', err);
+      setLoading(false);
     }
   };
 
