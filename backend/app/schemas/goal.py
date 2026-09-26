@@ -67,9 +67,12 @@ class GoalContributionBase(BaseModel):
     notes: Optional[str] = None
 
 
-class GoalContributionCreate(GoalContributionBase):
-    goal_id: int
-    transaction_id: Optional[int] = None
+class GoalContributionCreate(BaseModel):
+    """Create contribution - all fields optional except amount."""
+    amount: Decimal = Field(..., gt=0)
+    currency: Optional[str] = "IDR"
+    date: Optional[date] = None
+    notes: Optional[str] = None
 
 
 class GoalContributionResponse(GoalContributionBase):

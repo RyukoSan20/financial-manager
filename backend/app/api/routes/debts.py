@@ -166,6 +166,20 @@ def create_debt(
     """Create a new debt."""
     debt_data = debt.model_dump()
     debt_data["user_id"] = current_user.id
+    
+    # Calculate remaining_months if not provided
+    if not debt_data.get("remaining_months"):
+        term = debt_data.get("term_months", 12)
+        start = debt_data.get("start_date")
+        if start and term:
+            from datetime import date
+            if isinstance(start, str):
+                start = date.fromisoformat(start)
+            months_diff = (date.today().year - start.year) * 12 + (date.today().month - start.month)
+            debt_data["remaining_months"] = max(0, term - months_diff)
+        else:
+            debt_data["remaining_months"] = debt_data.get("term_months", 12)
+    
     # Set default current_balance to principal if not provided
     if not debt_data.get("current_balance"):
         debt_data["current_balance"] = debt_data["principal"]
