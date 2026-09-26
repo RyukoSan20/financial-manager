@@ -1,6 +1,6 @@
 // Dashboard v2.1
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, Spinner } from '../components/ui';
 import { 
   TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, 
@@ -12,10 +12,13 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 export const Dashboard = () => {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [cashFlow, setCashFlow] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -23,7 +26,18 @@ export const Dashboard = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchData();
+    if (!authLoading && !isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    if (isAuthenticated) {
+      fetchData();
+    }
+  }, [isAuthenticated, authLoading]);
+  
+  // Auto refresh only when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
     
     // Auto refresh every 30 seconds
     const interval = setInterval(fetchData, 30000);
@@ -36,7 +50,7 @@ export const Dashboard = () => {
       clearInterval(interval);
       window.removeEventListener('transactionUpdated', handleTransactionUpdate);
     };
-  }, []);
+  }, [isAuthenticated]);
 
   const fetchData = async () => {
     setLoading(true);
