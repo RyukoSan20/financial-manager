@@ -102,10 +102,11 @@ export const Dashboard = () => {
   const total_expense_month = total_expense;
 
   const chartData = cashFlow?.monthly?.map(m => ({
-    month: m.month?.slice(0, 3) || '',
-    Income: parseFloat(m.income) || 0,
-    Expense: parseFloat(m.expense) || 0,
-    Net: parseFloat(m.net) || 0
+    month: m.month_name ? m.month_name.split(' ')[0] : (m.month?.slice(5) || ''),
+    income: parseFloat(m.income) || 0,
+    expense: parseFloat(m.expense) || 0,
+    net: parseFloat(m.net) || 0,
+    balance: parseFloat(m.income - m.expense) || 0
   })) || [];
 
   const pieData = Object.entries(expense_by_category)
