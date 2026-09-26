@@ -196,11 +196,8 @@ def delete_all_user_data(
         # 7. Delete accounts (balances will be lost)
         db.query(Account).filter(Account.user_id == user_id).delete(synchronize_session=False)
         
-        # 8. Delete categories (only user-created ones, not defaults)
-        db.query(Category).filter(
-            Category.user_id == user_id,
-            Category.is_default == False
-        ).delete(synchronize_session=False)
+        # 8. Delete user-created categories
+        db.query(Category).filter(Category.user_id == user_id).delete(synchronize_session=False)
         
         db.commit()
         
