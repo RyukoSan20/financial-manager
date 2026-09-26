@@ -1,6 +1,6 @@
 """FastAPI main application."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.core.database import init_db, seed_categories
@@ -58,8 +58,8 @@ app.include_router(ai_advisor.router, prefix="/api/ai", tags=["AI Advisor"])
 # Recurring auto-generator cron endpoint (for Railway cron)
 from app.services.recurring_generator import process_due_recurring_rules
 
-@app.post("/api/cron/process-recurring", tags=["Cron"])
-def cron_process_recurring():
+@app.api_route("/api/cron/process-recurring", methods=["GET", "POST"], tags=["Cron"])
+def cron_process_recurring(request: Request):
     """
     Process all due recurring rules and auto-generate transactions.
     Call this endpoint daily via Railway Cron.
