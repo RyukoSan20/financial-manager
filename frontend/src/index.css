@@ -372,6 +372,8 @@ input:focus, select:focus, textarea:focus {
   flex-direction: column;
   height: calc(100vh - 280px);
   min-height: 400px;
+  max-height: calc(100vh - 180px);
+  overflow: hidden;
 }
 
 .chat-messages {

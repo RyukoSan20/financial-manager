@@ -192,6 +192,16 @@ async def chat_stream(
     summary = get_financial_summary(db, current_user.id)
     topic = message.get("topic", "free")
     
+    # Build user context for AI
+    user_context = f"""DATA KEUANGAN PENGGUNA:
+- Saldo: Rp {summary.get('total_balance', 0):,.0f}
+- Total Pendapatan: Rp {summary.get('total_income', 0):,.0f}
+- Total Pengeluaran: Rp {summary.get('total_expense', 0):,.0f}
+- Tabungan: {summary.get('savings_rate', 0):.1f}%
+- Jumlah Tujuan Aktif: {summary.get('active_goals', 0)}
+- Total Utang: Rp {summary.get('total_debt', 0):,.0f}
+"""
+    
     # Topic-aware system prompts
     topic_prompts = {
         "news": "Anda adalah konsultan berita keuangan yang memberikan informasi terkini tentang ekonomi dan finansial. FOKUS pada berita dan tren terbaru, bukan ringkasan data user. Selalu jawab dalam Bahasa Indonesia yang engaging.",
