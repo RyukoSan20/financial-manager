@@ -27,6 +27,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { NotificationBell } from '../notifications/NotificationBell';
+import { showNotification } from '../notifications/NotificationHelper';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -434,7 +435,7 @@ export const AddTransactionPage = () => {
     const parsedAmount = parseFloat(amount.toString().replace(/,/g, ''));
     
     try {
-      await api.transactions.create({
+      const result = await api.transactions.create({
         type: type,
         amount: parsedAmount,
         description: description || (category ? `${category} expense` : `${type} transaction`),
@@ -442,6 +443,18 @@ export const AddTransactionPage = () => {
         category_id: category ? parseInt(category) : null,
         date: date,
       });
+      
+      // Show notification
+      showNotification({
+        type: 'success',
+        title: type === 'income' ? '💰 Pendapatan Ditambahkan' : '💸 Pengeluaran Ditambahkan',
+        message: description || `${type} transaction`,
+        description: `Rp ${parsedAmount.toLocaleString('id-ID')}`,
+        category: 'transaction'
+      });
+      
+      // Dispatch event for Dashboard to update
+      window.dispatchEvent(new Event('transactionUpdated'));
       
       // Success - redirect to dashboard
       navigate('/');

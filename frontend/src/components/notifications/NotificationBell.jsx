@@ -1,6 +1,7 @@
 import { Bell, X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { useState, useEffect } from 'react';
+import { showNotification } from './NotificationHelper';
 
 const iconMap = {
   success: CheckCircle,
