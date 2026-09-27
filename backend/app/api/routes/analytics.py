@@ -1014,7 +1014,7 @@ def get_merchant_map_data(
                 "longitude": float(m.longitude),
                 "visit_count": m.visit_count,
                 "total_spent": float(m.total_spent or 0),
-                "avg_spent": float(m.avg_spent or 0),
+                "avg_transaction": float(m.avg_spent or 0),
             })
     
     return {
