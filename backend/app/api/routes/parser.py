@@ -18,7 +18,7 @@ from app.services.parser_service import (
     parse_receipt,
     ParsedTransaction
 )
-from app.services.ocr_service import parse_receipt_image, parse_receipt_text, ocr_service
+from app.services.ocr_service import ocr_service, OCRResult
 from app.services.geocoding_service import geocoding_service, geocode_merchant
 
 router = APIRouter(tags=["Parser"])
@@ -135,8 +135,8 @@ async def parse_receipt_image_endpoint(
         raise HTTPException(status_code=400, detail="File too large (max 10MB)")
     
     try:
-        # Process with OCR service
-        receipt = parse_receipt_image(content)
+        # Process with OCR service (EasyOCR)
+        receipt = ocr_service.process_image(content)
         
         # Geocode merchant if available
         latitude = None
@@ -150,25 +150,25 @@ async def parse_receipt_image_endpoint(
                 merchant_address = geo.formatted_address
         
         # Determine transaction type (receipts are typically expenses)
-        transaction_type = "DEBIT" if receipt.total_amount else "DEBIT"
+        transaction_type = "DEBIT" if receipt.amount else "DEBIT"
         
         return {
             "status": "success",
             "detection_type": "OCR_RECEIPT",
             "merchant_name": receipt.merchant_name,
-            "amount": str(receipt.total_amount) if receipt.total_amount else "0",
+            "amount": str(receipt.amount) if receipt.amount else "0",
             "transaction_type": transaction_type,
-            "date": receipt.date.isoformat() if receipt.date else None,
+            "date": receipt.date,
             "payment_method": receipt.payment_method,
-            "card_number": receipt.card_number,
-            "phone": receipt.phone,
-            "address": receipt.address,
-            "items_count": len(receipt.items),
-            "confidence_score": receipt.confidence_score,
-            "category_hint": receipt.category_hint,
+            "card_number": None,
+            "phone": None,
+            "address": merchant_address,
+            "items_count": 0,
+            "confidence_score": receipt.confidence,
+            "category_hint": "shopping",
             "suggested_type": "expense",
             "description": f"Pembelian di {receipt.merchant_name}" if receipt.merchant_name else "Pembelian",
-            "raw_text": receipt.raw_text[:1000] if receipt.raw_text else None,
+            "raw_text": receipt.text[:1000] if receipt.text else None,
             "latitude": latitude,
             "longitude": longitude,
             "merchant_address": merchant_address,

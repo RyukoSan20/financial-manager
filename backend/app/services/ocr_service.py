@@ -1,444 +1,350 @@
 """
-Advanced OCR Service using Tesseract + AI-powered transaction parsing.
-Supports Indonesian receipts, SMS, and multi-language OCR.
+OCR Service using EasyOCR - No system dependencies required.
+EasyOCR includes its own models and works out of the box on Railway.
 """
 
 import io
 import re
-from datetime import datetime
-from decimal import Decimal
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, Tuple, List, Dict, Any
 from dataclasses import dataclass
-import base64
+from PIL import Image, ImageEnhance, ImageFilter
+import logging
 
-from PIL import Image
-import pytesseract
+logger = logging.getLogger(__name__)
 
+# EasyOCR lazy import - only load when needed
+easyocr_reader = None
 
-@dataclass
-class ReceiptField:
-    """Extracted field from receipt."""
-    field_name: str
-    value: str
-    confidence: float
-    position: Optional[Tuple[int, int, int, int]] = None
-
-
-@dataclass
-class ParsedReceipt:
-    """Structured receipt data."""
-    merchant_name: Optional[str] = None
-    total_amount: Optional[Decimal] = None
-    date: Optional[datetime] = None
-    items: List[Dict] = None
-    payment_method: Optional[str] = None
-    card_number: Optional[str] = None
-    tax_amount: Optional[Decimal] = None
-    discount_amount: Optional[Decimal] = None
-    address: Optional[str] = None
-    phone: Optional[str] = None
-    receipt_number: Optional[str] = None
-    raw_text: str = ""
-    confidence_score: float = 0.0
-    category_hint: Optional[str] = None  # AI-suggested category
-    
-    def __post_init__(self):
-        if self.items is None:
-            self.items = []
-
-
-class IndonesianReceiptParser:
-    """
-    Parser khusus untuk struk/kwitansi Indonesia.
-    Optimized patterns untuk merchant Indonesia.
-    """
-    
-    # Pola untuk nama merchant
-    MERCHANT_PATTERNS = [
-        r'^(TOKO|TOKO|Toko)[:\s]*([A-Za-z0-9\s&,\.]+)',
-        r'^([A-Z][A-Z\s&,\.]+?)(?:\s+\d|\s*$|\s+NAMA)',  # All caps name at start
-        r'(?:NAMA\s*(?:TOKO|MERCHANT|STORE)?)[:\s]*([A-Za-z0-9\s&,\.]+)',
-        r'(?:MERCHANT)[:\s]*([A-Za-z0-9\s&,\.]+)',
-        # Common Indonesian merchants
-        r'(ALFAMART|INDOMARET|MINI\s*MARKET|Alfamart|Indomaret)[:\s-]*([A-Za-z0-9\s]*)',
-        r'(MCDONALD|McDonald|MCD)[:\s]*([A-Za-z0-9\s]*)',
-        r'(STARBUCKS|STARBUCK)[:\s]*([A-Za-z0-9\s]*)',
-        r'(GOJEK|GRAB|Grab)[:\s]*([A-Za-z0-9\s]*)',
-        r'(WARKOP|KEDAI|KAFE|CAFE|RESTORAN|WARUNG)[:\s]*([A-Za-z0-9\s]*)',
-    ]
-    
-    # Pola untuk jumlah total
-    TOTAL_PATTERNS = [
-        r'(?:TOTAL|JUMLAH|SUB\s*TOTAL|GRAND\s*TOTAL|Bayar|harus\s*dibayar)[:\s]*Rp?\s*([\d,\.]+)',
-        r'(?:Rp\s*)?([\d,\.]+)\s*(?:TOTAL|BAYAR|JUMLAH|$)',
-        r'(?:Rp\s*)?([\d,\.]+)\s*[-=]\s*(?:Rp\s*)?([\d,\.]+)',  # Subtotal = Total
-        r'(?:TOTAL|BAYAR)[:\s]*\s*([\d,\.]+)',
-        r'(?:Rp\.?\s*)?([\d]{1,3}(?:[.,]\d{3})*)',
-    ]
-    
-    # Pola tanggal Indonesia
-    DATE_PATTERNS = [
-        r'(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})',
-        r'(\d{1,2})\s+(Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agt|Aug|Sep|Oct|Nov|Des)[a-z]*\s+(\d{4})',
-        r'(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})',
-    ]
-    
-    # Pola metode pembayaran
-    PAYMENT_METHOD_PATTERNS = [
-        r'(?:CASH|TUNAI|DEBIT|KREDIT|CARD|ECASH|OVO|GOPAY|DANA|QRIS)',
-        r'(?:PEMBAYARAN|METODE)[:\s]*([A-Za-z]+)',
-    ]
-    
-    # Pola nomor kartu
-    CARD_PATTERNS = [
-        r'\*+(\d{4})\s*\*+(\d{4})\s*\*+(\d{4})\s*\*+(\d{4})',
-        r'(?:CARD|MC|VISA)[:\s]*([\d\*]+)',
-    ]
-    
-    # Pola nomor telepon
-    PHONE_PATTERNS = [
-        r'(?:TELP?|TEL|HP|PHONE)[:\s]*([\d\-\s]+)',
-        r'0\d{2,4}[-\s]?\d{3,4}[-\s]?\d{3,4}',
-    ]
-    
-    # Pola alamat
-    ADDRESS_PATTERNS = [
-        r'(?:JL|JALAN|JL\.|ALAMAT|ADDRESS)[:\s.]*([A-Za-z0-9\s.,\-]+?)(?:\d{5}|\n|$)',
-        r'(?:KOTA|KECAMATAN|KELURAHAN)[:\s]*([A-Za-z0-9\s,\-]+)',
-    ]
-    
-    def __init__(self):
-        self.month_map = {
-            'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
-            'mei': 5, 'jun': 6, 'jul': 7, 'agt': 8, 'aug': 8,
-            'sep': 9, 'oct': 10, 'nov': 11, 'des': 12
-        }
-    
-    def parse_amount(self, amount_str: str) -> Optional[Decimal]:
-        """Convert amount string to Decimal."""
-        if not amount_str:
-            return None
-        # Remove Rp, spaces, dots (thousand separator), replace comma with dot
-        cleaned = amount_str.replace('Rp', '').replace(' ', '').replace('.', '').replace(',', '.')
-        # Remove any non-numeric except dot
-        cleaned = re.sub(r'[^\d.]', '', cleaned)
-        if not cleaned:
-            return None
+def get_easyocr_reader():
+    """Get or create EasyOCR reader (lazy initialization)."""
+    global easyocr_reader
+    if easyocr_reader is None:
         try:
-            return Decimal(cleaned)
-        except:
-            return None
-    
-    def parse_date(self, text: str) -> Optional[datetime]:
-        """Extract date from text."""
-        for pattern in self.DATE_PATTERNS:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                try:
-                    groups = match.groups()
-                    if len(groups) == 3:
-                        # Check if it's YYYY-MM-DD or DD-MM-YYYY
-                        if len(groups[0]) == 4:  # YYYY-MM-DD
-                            return datetime(int(groups[0]), int(groups[1]), int(groups[2]))
-                        else:
-                            day, month, year = int(groups[0]), int(groups[1]), int(groups[2])
-                            if year < 100:
-                                year += 2000
-                            # Handle month name
-                            if isinstance(groups[1], str) and not groups[1].isdigit():
-                                month = self.month_map.get(groups[1][:3].lower(), 1)
-                            return datetime(year, month, day)
-                except (ValueError, IndexError):
-                    continue
-        return None
-    
-    def extract_merchant(self, lines: List[str]) -> Tuple[Optional[str], float]:
-        """Extract merchant name from first few lines."""
-        for i, line in enumerate(lines[:10]):
-            line = line.strip()
-            if len(line) < 3:
-                continue
-            # Skip lines that are mostly numbers or special chars
-            if sum(c.isdigit() for c in line) > len(line) * 0.5:
-                continue
-            # Try merchant patterns
-            for pattern in self.MERCHANT_PATTERNS:
-                match = re.search(pattern, line, re.IGNORECASE)
-                if match:
-                    groups = match.groups()
-                    merchant = groups[-1].strip() if groups else line
-                    if len(merchant) > 2:
-                        return merchant, 0.85
-            # Fallback: all caps line
-            if line.isupper() and len(line) > 3 and len(line) < 50:
-                return line, 0.70
-        return None, 0.0
-    
-    def extract_total(self, text: str) -> Tuple[Optional[Decimal], float]:
-        """Extract total amount from text."""
-        amounts = []
-        
-        for pattern in self.TOTAL_PATTERNS:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
-                groups = match.groups()
-                for g in groups:
-                    if g:
-                        amount = self.parse_amount(g)
-                        if amount and amount > 0:
-                            amounts.append((amount, match.start()))
-        
-        if not amounts:
-            return None, 0.0
-        
-        # Take the largest amount (usually the total)
-        amounts.sort(key=lambda x: x[0], reverse=True)
-        return amounts[0]
-    
-    def extract_payment_method(self, text: str) -> Tuple[Optional[str], float]:
-        """Extract payment method from text."""
-        text_upper = text.upper()
-        
-        if 'QRIS' in text_upper:
-            return 'QRIS', 0.95
-        if 'OVO' in text_upper:
-            return 'OVO', 0.95
-        if 'GOPAY' in text_upper or 'GOJEK' in text_upper:
-            return 'GOPAY', 0.95
-        if 'DANA' in text_upper:
-            return 'DANA', 0.95
-        if 'CASH' in text_upper or 'TUNAI' in text_upper:
-            return 'CASH', 0.90
-        if 'DEBIT' in text_upper:
-            return 'DEBIT', 0.85
-        if 'KREDIT' in text_upper or 'CARD' in text_upper:
-            return 'KREDIT', 0.85
-        
-        return None, 0.0
-    
-    def extract_card_number(self, text: str) -> Optional[str]:
-        """Extract masked card number."""
-        for pattern in self.CARD_PATTERNS:
-            match = re.search(pattern, text)
-            if match:
-                return match.group(0)
-        return None
-    
-    def extract_phone(self, text: str) -> Optional[str]:
-        """Extract phone number."""
-        for pattern in self.PHONE_PATTERNS:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                return match.group(0)
-        return None
-    
-    def extract_address(self, text: str) -> Optional[str]:
-        """Extract address from text."""
-        for pattern in self.ADDRESS_PATTERNS:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                return match.group(1).strip()
-        return None
-    
-    def extract_items(self, lines: List[str]) -> List[Dict]:
-        """Extract line items from receipt."""
-        items = []
-        item_pattern = r'([A-Za-z0-9\s&\-]+?)\s+([\d,\.]+)\s*$'
-        
-        for line in lines:
-            match = re.search(item_pattern, line)
-            if match:
-                name, price = match.groups()
-                amount = self.parse_amount(price)
-                if amount and amount > 0 and len(name.strip()) > 1:
-                    items.append({
-                        'name': name.strip(),
-                        'price': float(amount)
-                    })
-        
-        return items[:20]  # Limit items
-    
-    def suggest_category(self, merchant: Optional[str], text: str) -> str:
-        """Suggest category based on merchant name and text content."""
-        text_lower = (text + ' ' + (merchant or '')).lower()
-        
-        # Food & Beverages
-        if any(k in text_lower for k in ['cafe', 'kopi', 'coffee', 'kafe', 'warung', 'restoran', 
-                                          'makan', 'food', 'grill', 'steak', 'pizza', 'burger',
-                                          'nasi', 'mie', 'ayam', 'soto', 'bakso', 'sate',
-                                          'starbucks', 'kfc', 'mcdonald', 'jco', 'dunkin',
-                                          'alfamart', 'indomaret', 'family mart', ' Lawson']):
-            return 'food_beverages'
-        
-        # Transport
-        if any(k in text_lower for k in ['grab', 'gojek', 'taxi', 'transport', 'parkir', 'tol',
-                                         'bensin', 'shell', 'pertamina', 'vix', 'bp']):
-            return 'transport'
-        
-        # Shopping
-        if any(k in text_lower for k in ['toko', 'shop', 'mart', 'supermarket', 'minimarket',
-                                         'fashion', 'boutique', 'cloth', 'shoes', 'sepatu',
-                                         'electronics', 'gadget', 'hp', 'laptop']):
-            return 'shopping'
-        
-        # Bills & Utilities
-        if any(k in text_lower for k in ['listrik', 'pln', 'air', 'pdam', 'telkom', 'internet',
-                                         'bpjs', 'asuransi', 'pulsa', 'token', 'paket']):
-            return 'bills_utilities'
-        
-        # Entertainment
-        if any(k in text_lower for k in ['bioskop', 'cinema', 'game', 'netflix', 'spotify',
-                                         'tiket', 'museum', 'theme park', 'hiburan']):
-            return 'entertainment'
-        
-        # Healthcare
-        if any(k in text_lower for k in ['apotek', 'pharmacy', 'rumah sakit', 'clinic', 'dokter',
-                                         'health', 'vitamin', 'obat', 'medical']):
-            return 'healthcare'
-        
-        # Default
-        return 'other'
-    
-    def parse(self, ocr_text: str) -> ParsedReceipt:
-        """Parse OCR text and extract receipt data."""
-        lines = [l.strip() for l in ocr_text.split('\n') if l.strip()]
-        
-        # Extract all fields
-        merchant, merchant_conf = self.extract_merchant(lines)
-        total, total_conf = self.extract_total(ocr_text)
-        date = self.parse_date(ocr_text)
-        payment_method, payment_conf = self.extract_payment_method(ocr_text)
-        card_number = self.extract_card_number(ocr_text)
-        phone = self.extract_phone(ocr_text)
-        address = self.extract_address(ocr_text)
-        items = self.extract_items(lines)
-        category = self.suggest_category(merchant, ocr_text)
-        
-        # Calculate overall confidence
-        confidence = 0.0
-        if merchant:
-            confidence += 0.2
-        if total:
-            confidence += 0.4
-        if date:
-            confidence += 0.1
-        if payment_method:
-            confidence += 0.1
-        if items:
-            confidence += 0.2
-        
-        return ParsedReceipt(
-            merchant_name=merchant,
-            total_amount=total,
-            date=date,
-            items=items,
-            payment_method=payment_method,
-            card_number=card_number,
-            phone=phone,
-            address=address,
-            raw_text=ocr_text,
-            confidence_score=min(confidence, 0.95),
-            category_hint=category
-        )
+            import easyocr
+            # Initialize with Indonesian and English
+            easyocr_reader = easyocr.Reader(['id', 'en'], gpu=False, verbose=False)
+            logger.info("EasyOCR reader initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize EasyOCR: {e}")
+            raise
+    return easyocr_reader
 
+@dataclass
+class OCRResult:
+    """Result from OCR processing."""
+    text: str
+    confidence: float
+    bounding_boxes: List[Dict[str, Any]]
+    merchant_name: Optional[str] = None
+    amount: Optional[str] = None
+    date: Optional[str] = None
+    payment_method: Optional[str] = None
 
 class OCRService:
-    """
-    Main OCR Service - Combines Tesseract with smart parsing.
-    """
+    """OCR Service using EasyOCR for receipt scanning."""
+    
+    # Indonesian merchant patterns
+    MERCHANT_PATTERNS = {
+        # Retail
+        r'alfamart|alfamat': ('Alfamart', 'Retail'),
+        r'indomaret': ('Indomaret', 'Retail'),
+        r'family mart|familymart': ('Family Mart', 'Retail'),
+        r' Lawson': ('Lawson', 'Retail'),
+        r'minimart|mini mart': ('Mini Mart', 'Retail'),
+        
+        # Fast Food
+        r"mcd|macdonald|mcdonald": ('McDonald\'s', 'Food & Beverage'),
+        r'kfc': ('KFC', 'Food & Beverage'),
+        r'subway': ('Subway', 'Food & Beverage'),
+        r'pizza hut': ('Pizza Hut', 'Food & Beverage'),
+        r'hokben|hokki': ('HokBen', 'Food & Beverage'),
+        r'burger king': ('Burger King', 'Food & Beverage'),
+        r'wendy': ('Wendy\'s', 'Food & Beverage'),
+        r'texas chicken': ('Texas Chicken', 'Food & Beverage'),
+        r'jco': ('JCO', 'Food & Beverage'),
+        r'starbucks': ('Starbucks', 'Food & Beverage'),
+        r'kopi ove|koopi|coffee': ('Coffee Shop', 'Food & Beverage'),
+        r'tea baru|teh kotak|teh botolan': ('Beverage', 'Food & Beverage'),
+        
+        # E-commerce
+        r'shopee': ('Shopee', 'Shopping'),
+        r'tokopedia': ('Tokopedia', 'Shopping'),
+        r'lazada': ('Lazada', 'Shopping'),
+        r'bukalapak': ('Bukalapak', 'Shopping'),
+        r'tiktok shop': ('TikTok Shop', 'Shopping'),
+        r'blibli': ('Blibli', 'Shopping'),
+        r'amazon': ('Amazon', 'Shopping'),
+        
+        # Transport
+        r'grab': ('Grab', 'Transport'),
+        r'gojek': ('Gojek', 'Transport'),
+        r'blue bird|bluebird': ('Blue Bird', 'Transport'),
+        r'silver bird': ('Silver Bird', 'Transport'),
+        r'go ride': ('GoRide', 'Transport'),
+        r'go car': ('GoCar', 'Transport'),
+        r'grab bike': ('GrabBike', 'Transport'),
+        r'grab car': ('GrabCar', 'Transport'),
+        
+        # E-Wallet
+        r'gopay': ('GoPay', 'E-Wallet'),
+        r'dana': ('DANA', 'E-Wallet'),
+        r'ovo': ('OVO', 'E-Wallet'),
+        r'shopee pay|shopeepay': ('ShopeePay', 'E-Wallet'),
+        r'linkaja|link aja': ('LinkAja', 'E-Wallet'),
+        r'isaku|i.saku': ('i.Saku', 'E-Wallet'),
+        r'qris': ('QRIS', 'E-Wallet'),
+        
+        # Bills & Utilities
+        r'pln': ('PLN', 'Bills'),
+        r'pdam': ('PDAM', 'Bills'),
+        r'telkom|indihome': ('Telkom', 'Bills'),
+        r'bpjs': ('BPJS', 'Bills'),
+        r'transvision': ('Transvision', 'Bills'),
+        r'indovision': ('Indovision', 'Bills'),
+        r'xl axiata': ('XL Axiata', 'Bills'),
+        r'telkomsel': ('Telkomsel', 'Bills'),
+        r'im3': ('IM3', 'Bills'),
+        r'tri': ('Tri', 'Bills'),
+        r'smartfren': ('Smartfren', 'Bills'),
+        
+        # Supermarket
+        r'hypermart': ('Hypermart', 'Supermarket'),
+        r'carrefour': ('Carrefour', 'Supermarket'),
+        r'giant': ('Giant', 'Supermarket'),
+        r'matahari': ('Matahari', 'Supermarket'),
+        r'superindo': ('Superindo', 'Supermarket'),
+        r' ranch market|ranch': ('Ranch Market', 'Supermarket'),
+        r'jakarta': ('Jakarta', 'Supermarket'),
+        
+        # Pharmacy
+        r'guardian': ('Guardian', 'Pharmacy'),
+        r'watson': ('Watsons', 'Pharmacy'),
+        r'kimia farma|apotek kimia': ('Kimia Farma', 'Pharmacy'),
+        r'apotek': ('Apotek', 'Pharmacy'),
+    }
+    
+    # Amount patterns
+    AMOUNT_PATTERNS = [
+        r'(?:total|jumlah|nominal|jml|hrg|price|amount|ttl)[:\s]*[Rr]p\.?\s*([\d.,]+)',
+        r'[Rr]p\.?\s*([\d][\d.,]*)',
+        r'([\d]+(?:[.,]\d{3})*(?:[.,]\d{2})?)',
+    ]
+    
+    # Date patterns
+    DATE_PATTERNS = [
+        r'(\d{1,2})\s*[\/\-]\s*(\d{1,2})\s*[\/\-]\s*(\d{2,4})',
+        r'(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})',
+        r'(\w+)\s+(\d{1,2}),?\s+(\d{4})',
+        r'(\d{1,2})\s+(\w+)\s+(\d{4})',
+    ]
+    
+    # Category mapping
+    CATEGORY_MAPPING = {
+        'Retail': 'shopping',
+        'Food & Beverage': 'food_beverages',
+        'Shopping': 'shopping',
+        'Transport': 'transport',
+        'E-Wallet': 'other',
+        'Bills': 'bills_utilities',
+        'Supermarket': 'shopping',
+        'Pharmacy': 'health',
+    }
     
     def __init__(self):
-        self.receipt_parser = IndonesianReceiptParser()
-        
-        # Tesseract config for Indonesian receipts
-        self.tesseract_config = '--oem 3 --psm 6 -l ind+eng'
-        
-    def preprocess_image(self, image: Image.Image) -> Image.Image:
-        """Preprocess image for better OCR accuracy."""
-        # Convert to grayscale
-        img = image.convert('L')
-        
-        # Increase contrast
-        from PIL import ImageEnhance
-        enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.5)
+        self.reader = None
+        logger.info("OCRService initialized")
+    
+    def _preprocess_image(self, image: Image.Image) -> Image.Image:
+        """Preprocess image for better OCR results."""
+        # Convert to RGB if needed
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
         
         # Resize if too small
-        if img.width < 300:
-            scale = 300 / img.width
-            new_size = (int(img.width * scale), int(img.height * scale))
-            img = img.resize(new_size, Image.Resampling.LANCZOS)
+        width, height = image.size
+        if width < 300 or height < 300:
+            scale = max(300 / width, 300 / height)
+            new_size = (int(width * scale), int(height * scale))
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
         
-        return img
+        # Increase contrast
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(1.5)
+        
+        # Sharpen
+        image = image.filter(ImageFilter.SHARPEN)
+        
+        return image
     
-    def extract_text(self, image: Image.Image, language: str = 'ind+eng') -> Tuple[str, float]:
-        """Extract text from image using Tesseract."""
-        # Preprocess
-        processed = self.preprocess_image(image)
-        
-        # OCR with Tesseract
-        custom_config = f'--oem 3 --psm 6 -l {language}'
-        text = pytesseract.image_to_string(processed, config=custom_config)
-        
-        # Estimate confidence (Tesseract doesn't give per-image confidence easily)
-        # Use length as proxy for quality
-        if len(text.strip()) > 50:
-            confidence = 0.80
-        elif len(text.strip()) > 20:
-            confidence = 0.60
-        else:
-            confidence = 0.40
-        
-        return text, confidence
-    
-    def process_image(
-        self, 
-        image_data: bytes | str,  # bytes or base64 string
-        use_ai_enhancement: bool = False
-    ) -> ParsedReceipt:
-        """
-        Process receipt image and extract transaction data.
-        
-        Args:
-            image_data: Image bytes or base64 string
-            use_ai_enhancement: Use AI to enhance parsing (optional)
+    def _extract_text(self, image: Image.Image) -> Tuple[str, float, List[Dict]]:
+        """Extract text from image using EasyOCR."""
+        try:
+            reader = get_easyocr_reader()
+            results = reader.readtext(
+                image,
+                paragraph=False,
+                detail=1,
+                decoder='greedy'
+            )
             
-        Returns:
-            ParsedReceipt with extracted data
-        """
-        # Load image
-        if isinstance(image_data, str):
-            # Base64 string
-            if image_data.startswith('data:image'):
-                image_data = image_data.split(',')[1]
-            image_bytes = base64.b64decode(image_data)
-        else:
-            image_bytes = image_data
+            if not results:
+                return "", 0.0, []
+            
+            # Combine all text
+            all_text = []
+            total_confidence = 0
+            bounding_boxes = []
+            
+            for (bbox, text, confidence) in results:
+                if text.strip():
+                    all_text.append(text.strip())
+                    total_confidence += confidence
+                    bounding_boxes.append({
+                        'text': text.strip(),
+                        'bbox': bbox,
+                        'confidence': confidence
+                    })
+            
+            avg_confidence = total_confidence / len(results) if results else 0
+            combined_text = '\n'.join(all_text)
+            
+            return combined_text, avg_confidence, bounding_boxes
+            
+        except Exception as e:
+            logger.error(f"EasyOCR extraction failed: {e}")
+            raise
+    
+    def _parse_amount(self, text: str) -> Tuple[Optional[str], Optional[float]]:
+        """Extract amount from text."""
+        lines = text.split('\n')
         
-        image = Image.open(io.BytesIO(image_bytes))
+        # Look for patterns in reverse order (amount usually at top)
+        for line in reversed(lines):
+            line = line.strip()
+            
+            # Skip if too short or contains non-numeric
+            if len(line) < 3:
+                continue
+            
+            # Try to find amount with Rp prefix
+            rp_match = re.search(r'[Rr]p\.?\s*([\d.,]+)', line)
+            if rp_match:
+                amount_str = rp_match.group(1).replace(',', '.')
+                try:
+                    # Handle both formats: 81.500 and 81,500
+                    if ',' in rp_match.group(1):
+                        amount_str = amount_str.replace('.', '')
+                    amount = float(amount_str.replace('.', '').replace(',', '.'))
+                    return rp_match.group(0), amount
+                except:
+                    continue
+            
+            # Try plain number (assume large numbers are amounts)
+            num_match = re.findall(r'([\d]+(?:[.,]\d{3})*)', line)
+            for num_str in reversed(num_match):
+                try:
+                    clean_num = num_str.replace(',', '')
+                    amount = float(clean_num)
+                    if amount > 1000:  # Likely an amount
+                        return num_str, amount
+                except:
+                    continue
         
-        # Extract text
-        text, ocr_conf = self.extract_text(image)
+        return None, None
+    
+    def _parse_date(self, text: str) -> Optional[str]:
+        """Extract date from text."""
+        date_patterns = [
+            (r'(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})', '%d/%m/%Y'),
+            (r'(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})', '%d/%m/%y'),
+            (r'(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})', '%Y/%m/%d'),
+        ]
         
-        # Parse with Indonesian parser
-        receipt = self.receipt_parser.parse(text)
+        for pattern, fmt in date_patterns:
+            match = re.search(pattern, text)
+            if match:
+                try:
+                    from datetime import datetime
+                    if len(match.group(3)) == 4:
+                        date_str = f"{match.group(1)}/{match.group(2)}/{match.group(3)}"
+                    else:
+                        year = int(match.group(3))
+                        if year < 100:
+                            year += 2000
+                        date_str = f"{match.group(1)}/{match.group(2)}/{year}"
+                    return date_str
+                except:
+                    continue
         
-        # Update confidence with OCR quality
-        receipt.confidence_score = receipt.confidence_score * ocr_conf
+        return None
+    
+    def _parse_merchant(self, text: str) -> Tuple[Optional[str], Optional[str]]:
+        """Identify merchant from text."""
+        text_lower = text.lower()
         
-        return receipt
+        for pattern, (merchant_name, category) in self.MERCHANT_PATTERNS.items():
+            if re.search(pattern, text_lower):
+                mapped_category = self.CATEGORY_MAPPING.get(category, 'other')
+                return merchant_name, mapped_category
+        
+        return None, None
+    
+    def _parse_payment_method(self, text: str) -> Optional[str]:
+        """Identify payment method."""
+        text_lower = text.lower()
+        
+        methods = {
+            'gopay': r'gopay',
+            'dana': r'dana',
+            'ovo': r'ovo',
+            'shopeepay': r'shopee\s*pay|shopeepay',
+            'linkaja': r'link\s*aja|linkaja',
+            'cash': r'cash|tunai',
+            'debit': r'debit',
+            'credit': r'credit|kredit',
+            'qris': r'qris',
+        }
+        
+        for method, pattern in methods.items():
+            if re.search(pattern, text_lower):
+                return method.upper()
+        
+        return None
+    
+    def process_image(self, image_bytes: bytes) -> OCRResult:
+        """Process receipt image and extract structured data."""
+        try:
+            # Load image
+            image = Image.open(io.BytesIO(image_bytes))
+            
+            # Preprocess
+            processed_image = self._preprocess_image(image)
+            
+            # Extract text
+            text, confidence, bounding_boxes = self._extract_text(processed_image)
+            
+            if not text.strip():
+                raise ValueError("No text detected in image")
+            
+            # Parse structured data
+            merchant, category = self._parse_merchant(text)
+            amount_str, amount = self._parse_amount(text)
+            date = self._parse_date(text)
+            payment_method = self._parse_payment_method(text)
+            
+            return OCRResult(
+                text=text,
+                confidence=confidence,
+                bounding_boxes=bounding_boxes,
+                merchant_name=merchant,
+                amount=amount_str,
+                date=date,
+                payment_method=payment_method
+            )
+            
+        except Exception as e:
+            logger.error(f"OCR processing failed: {e}")
+            raise
 
-
-# Global service instance
+# Singleton instance
 ocr_service = OCRService()
-
-
-def parse_receipt_image(image_data: bytes | str, use_ai: bool = False) -> ParsedReceipt:
-    """Main entry point for receipt parsing."""
-    return ocr_service.process_image(image_data, use_ai_enhancement=use_ai)
-
-
-def parse_receipt_text(ocr_text: str) -> ParsedReceipt:
-    """Parse receipt from pre-OCR'd text."""
-    parser = IndonesianReceiptParser()
-    return parser.parse(ocr_text)
