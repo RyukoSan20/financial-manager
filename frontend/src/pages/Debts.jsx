@@ -8,14 +8,15 @@ export const Debts = () => {
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [editingDebt, setEditingDebt] = useState(null);
   const [selectedDebt, setSelectedDebt] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [amortization, setAmortization] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [refreshKey]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -66,13 +67,11 @@ export const Debts = () => {
       console.log('Payment recorded successfully');
       setShowPaymentModal(false);
       setSelectedDebt(null);
-      // Force refresh by setting loading and fetching again
-      setLoading(true);
-      fetchData();
+      // Force refresh with new key
+      setRefreshKey(k => k + 1);
       window.dispatchEvent(new Event('transactionUpdated'));
     } catch (err) {
       console.error('Payment failed:', err);
-      setLoading(false);
     }
   };
 
