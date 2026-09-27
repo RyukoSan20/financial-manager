@@ -22,6 +22,9 @@ class OCRResult:
     amount_value: Optional[float] = None
     date: Optional[str] = None
     payment_method: Optional[str] = None
+    items: Optional[List[Dict]] = None  # List of extracted items
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class OCRService:
     """OCR Service using Tesseract for receipt scanning."""
@@ -168,6 +171,38 @@ class OCRService:
         
         return None, None
     
+    def _extract_items(self, text: str) -> List[Dict]:
+        """Extract individual items from receipt text."""
+        items = []
+        
+        # Common receipt patterns for items
+        # Pattern: item name followed by price
+        patterns = [
+            # "Item Name ... Rp 10.000"
+            r'([A-Za-z0-9\s]+?)\s+(?:x\d+\s+)?(?:@[^,]+,\s*)?[Rr]p\.?\s*([\d.,]+)',
+            # "1. Item Name ........ 10.000"
+            r'(?:^\d+[\.\)]\s*)?([A-Za-z][A-Za-z0-9\s]+?)\s+\.+\s*([\d,]+)',
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, text, re.MULTILINE)
+            for match in matches:
+                if len(match) == 2:
+                    name = match[0].strip()
+                    price_str = match[1].strip().replace('.', '').replace(',', '.')
+                    try:
+                        price = float(price_str)
+                        if price > 0 and len(name) > 2:
+                            items.append({
+                                "name": name,
+                                "price": price,
+                                "quantity": 1
+                            })
+                    except:
+                        pass
+        
+        return items[:20]  # Limit to 20 items
+    
     def _parse_merchant(self, text: str) -> Optional[str]:
         """Extract merchant name from text."""
         text_lower = text.lower()
@@ -214,8 +249,9 @@ class OCRService:
             amount_str, amount_value = self._parse_amount(text)
             merchant_name = self._parse_merchant(text)
             payment_method = self._parse_payment_method(text)
+            items = self._extract_items(text)
             
-            logger.info(f"OCR Result: merchant={merchant_name}, amount={amount_str}, confidence={confidence:.1f}%")
+            logger.info(f"OCR Result: merchant={merchant_name}, amount={amount_str}, items={len(items)}, confidence={confidence:.1f}%")
             
             return OCRResult(
                 text=text[:500],
@@ -224,7 +260,8 @@ class OCRService:
                 amount=amount_str,
                 amount_value=amount_value,
                 date=None,
-                payment_method=payment_method
+                payment_method=payment_method,
+                items=items
             )
             
         except Exception as e:
