@@ -24,7 +24,7 @@ GEMINI_API_KEYS = [k for k in GEMINI_API_KEYS if k]
 
 # Model configuration
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1/models/{GEMINI_MODEL}:generateContent"
 
 # Free tier limits
 MAX_TOKENS = 8192
