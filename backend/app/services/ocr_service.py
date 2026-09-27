@@ -6,7 +6,7 @@ Fast, no model download needed.
 import io
 import re
 import logging
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, List, Dict
 from dataclasses import dataclass
 from PIL import Image, ImageEnhance
 
