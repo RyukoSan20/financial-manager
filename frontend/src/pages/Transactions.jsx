@@ -3,8 +3,9 @@ import { Card, Spinner } from '../components/ui';
 import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ScanText, MessageSquare, Edit2, Check } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import { TextParserModal } from '../components/parser/TextParserModal';
-import { notifyTransactionAdded, notifyTransactionDeleted, notifyTransactionUpdated, notifyError } from '../components/notifications/NotificationHelper';
+import { QRScannerModal } from '../components/parser/QRScannerModal';
 import { ReceiptScannerModal } from '../components/parser/ReceiptScannerModal';
+import { notifyTransactionAdded, notifyTransactionDeleted, notifyTransactionUpdated, notifyError } from '../components/notifications/NotificationHelper';
 import api from '../services/api';
 
 const typeOptions = [
@@ -40,6 +41,8 @@ export const Transactions = () => {
   const [selectedTx, setSelectedTx] = useState(null);
   const [showTextParser, setShowTextParser] = useState(false);
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [prefillQRText, setPreFillQRText] = useState('');
   
   // Edit mode state
   const [editingTx, setEditingTx] = useState(null);
@@ -165,14 +168,21 @@ export const Transactions = () => {
           className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 active:bg-blue-100"
         >
           <MessageSquare className="w-5 h-5" />
-          <span className="font-medium">Parse SMS / QRIS</span>
+          <span className="font-medium">SMS</span>
         </button>
         <button
-          onClick={() => setShowReceiptScanner(true)}
+          onClick={() => setShowQRScanner(true)}
           className="flex-1 flex items-center justify-center gap-2 py-3 bg-purple-50 text-purple-600 rounded-xl border border-purple-200 active:bg-purple-100"
         >
           <ScanText className="w-5 h-5" />
-          <span className="font-medium">Scan Receipt</span>
+          <span className="font-medium">QR Code</span>
+        </button>
+        <button
+          onClick={() => setShowReceiptScanner(true)}
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-50 text-green-600 rounded-xl border border-green-200 active:bg-green-100"
+        >
+          <Camera className="w-5 h-5" />
+          <span className="font-medium">Struk</span>
         </button>
       </div>
 
@@ -401,6 +411,15 @@ export const Transactions = () => {
         onSuccess={() => {
           setShowReceiptScanner(false);
           fetchData();
+        }}
+      />
+      <QRScannerModal
+        isOpen={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScan={(qrData) => {
+          setShowQRScanner(false);
+          setPreFillQRText(qrData);
+          setShowTextParser(true);
         }}
       />
     </div>
