@@ -6,6 +6,7 @@ Uses Google's Gemini to extract text from receipt images.
 import io
 import re
 import base64
+import time
 import logging
 from typing import Optional, Tuple, List, Dict, Any
 from dataclasses import dataclass
@@ -74,14 +75,53 @@ class OCRService:
         """Convert image to base64 for Gemini."""
         return base64.b64encode(image_bytes).decode('utf-8')
     
+    def _call_gemini_with_retry(self, url: str, data: dict, headers: dict, max_retries: int = 3) -> Optional[dict]:
+        """Call Gemini API with exponential backoff retry for 503 errors."""
+        import urllib.request
+        import json
+        
+        for attempt in range(max_retries):
+            try:
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(data).encode('utf-8'),
+                    headers=headers,
+                    method='POST'
+                )
+                
+                with urllib.request.urlopen(req, timeout=45) as response:
+                    result = json.loads(response.read().decode('utf-8'))
+                    logger.info("Gemini API call successful")
+                    return result
+                    
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode('utf-8')
+                error_code = e.code
+                
+                if error_code == 503 and attempt < max_retries - 1:
+                    # Service unavailable - retry with backoff
+                    wait_time = (attempt + 1) * 2  # 2, 4, 6 seconds
+                    logger.warning(f"Gemini API 503, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    logger.error(f"Gemini API HTTP Error {error_code}: {error_body}")
+                    return None
+                    
+            except Exception as e:
+                logger.error(f"Gemini API call failed: {e}")
+                return None
+        
+        return None
+    
     def _extract_with_ai(self, image_bytes: bytes) -> Optional[Dict]:
-        """Extract data using Gemini AI."""
+        """Extract data using Gemini AI with retry logic."""
         try:
             import os
             
             # Get Gemini API key and model from environment
             api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GEMINI_API_KEY_1')
-            model = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
+            model = os.environ.get('GEMINI_MODEL', 'gemini-3.5-flash')
             
             logger.info(f"Gemini OCR using model: {model}")
             logger.info(f"Gemini OCR API key present: {bool(api_key)}")
@@ -90,13 +130,10 @@ class OCRService:
                 logger.warning("No Gemini API key found")
                 return None
             
-            import urllib.request
-            import json
-            
             # Prepare image
             image_base64 = self._preprocess_image(image_bytes)
             
-            # Gemini API call - v1 endpoint (v1beta deprecated)
+            # Gemini API call - use query param for compatibility
             url = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={api_key}"
             logger.info(f"Gemini OCR URL: {url[:80]}...")
             
@@ -128,29 +165,28 @@ If you cannot read the receipt clearly, still try your best. Return empty string
                 }
             }
             
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(data).encode('utf-8'),
-                headers={'Content-Type': 'application/json'},
-                method='POST'
-            )
+            headers = {'Content-Type': 'application/json'}
             
-            try:
-                with urllib.request.urlopen(req, timeout=30) as response:
-                    result = json.loads(response.read().decode('utf-8'))
-            except urllib.error.HTTPError as e:
-                error_body = e.read().decode('utf-8')
-                logger.error(f"Gemini API HTTP Error {e.code}: {error_body}")
+            result = self._call_gemini_with_retry(url, data, headers)
+            
+            if not result:
+                logger.error("Gemini API call failed after all retries")
                 return None
             
             # Parse response
             text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+            logger.info(f"Gemini response text length: {len(text)}")
             
             # Extract JSON from response
-            json_match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
+            json_match = re.search(r'\{[\s\S]*\}', text)
             if json_match:
-                return json.loads(json_match.group(0))
+                try:
+                    return json.loads(json_match.group())
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON parse error: {e}")
+                    return None
             
+            logger.warning("No JSON found in Gemini response")
             return None
             
         except Exception as e:
@@ -163,8 +199,6 @@ If you cannot read the receipt clearly, still try your best. Return empty string
             image = Image.open(io.BytesIO(image_bytes))
             
             # Try to get any visible text from image metadata
-            # This is a last resort - mainly for receipt numbers, etc.
-            
             return "", 0.0
             
         except Exception as e:
