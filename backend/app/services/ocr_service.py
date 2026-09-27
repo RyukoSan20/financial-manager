@@ -175,16 +175,20 @@ If you cannot read the receipt clearly, still try your best. Return empty string
             
             # Parse response
             text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-            logger.info(f"Gemini response text length: {len(text)}")
+            logger.info(f"Gemini response text: {text[:500]}...")
             
             # Extract JSON from response
-            json_match = re.search(r'\{[\s\S]*\}', text)
-            if json_match:
-                try:
-                    return json.loads(json_match.group())
-                except json.JSONDecodeError as e:
-                    logger.error(f"JSON parse error: {e}")
-                    return None
+            # Try to find JSON object - handle nested braces
+            try:
+                # Find first { and last }
+                start = text.find('{')
+                end = text.rfind('}')
+                if start != -1 and end != -1 and end > start:
+                    json_str = text[start:end+1]
+                    return json.loads(json_str)
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON parse error: {e}, text: {text[:200]}")
+                return None
             
             logger.warning("No JSON found in Gemini response")
             return None
