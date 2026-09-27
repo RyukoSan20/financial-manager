@@ -92,7 +92,8 @@ class OCRService:
             image_base64 = self._preprocess_image(image_bytes)
             
             # Gemini API call
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+            # Use gemini-1.5-flash which is widely available
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
             
             prompt = """You are an Indonesian receipt parser. Extract the following from this receipt image:
 1. merchant_name: The store/merchant name (in Indonesian or English)
