@@ -14,20 +14,62 @@ logger = logging.getLogger(__name__)
 
 # EasyOCR lazy import - only load when needed
 easyocr_reader = None
+ocr_initialized = False
+ocr_init_error = None
+_ocr_init_start_time = None
 
-def get_easyocr_reader():
-    """Get or create EasyOCR reader (lazy initialization)."""
-    global easyocr_reader
-    if easyocr_reader is None:
+def get_easyocr_reader(timeout_seconds: int = 30):
+    """Get or create EasyOCR reader (lazy initialization with timeout)."""
+    global easyocr_reader, ocr_initialized, ocr_init_error, _ocr_init_start_time
+    
+    if ocr_initialized:
+        if ocr_init_error:
+            raise ocr_init_error
+        return easyocr_reader
+    
+    import signal
+    import functools
+    
+    def timeout_handler(signum, frame):
+        raise TimeoutError("EasyOCR initialization timed out")
+    
+    try:
+        import easyocr
+        
+        # Set timeout alarm (only works on Unix)
+        if hasattr(signal, 'SIGALRM'):
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(timeout_seconds)
+        
+        logger.info("Initializing EasyOCR reader (downloading models if needed)...")
+        _ocr_init_start_time = __import__('time').time()
+        
         try:
-            import easyocr
-            # Initialize with Indonesian and English
             easyocr_reader = easyocr.Reader(['id', 'en'], gpu=False, verbose=False)
-            logger.info("EasyOCR reader initialized successfully")
+            ocr_initialized = True
+            
+            if hasattr(signal, 'SIGALRM'):
+                signal.alarm(0)  # Cancel alarm
+            
+            elapsed = __import__('time').time() - _ocr_init_start_time
+            logger.info(f"EasyOCR reader initialized in {elapsed:.1f}s")
+            return easyocr_reader
+        except TimeoutError:
+            logger.warning(f"EasyOCR init timed out after {timeout_seconds}s, using fallback")
+            ocr_init_error = TimeoutError(f"EasyOCR initialization timed out after {timeout_seconds}s")
+            ocr_initialized = True
+            return None
         except Exception as e:
             logger.error(f"Failed to initialize EasyOCR: {e}")
-            raise
-    return easyocr_reader
+            ocr_init_error = e
+            ocr_initialized = True
+            return None
+            
+    except ImportError:
+        logger.error("EasyOCR not installed")
+        ocr_init_error = ImportError("EasyOCR not installed")
+        ocr_initialized = True
+        return None
 
 @dataclass
 class OCRResult:
@@ -180,6 +222,11 @@ class OCRService:
         """Extract text from image using EasyOCR."""
         try:
             reader = get_easyocr_reader()
+            
+            if reader is None:
+                logger.warning("EasyOCR not available, returning empty result")
+                return "", 0.0, []
+            
             results = reader.readtext(
                 image,
                 paragraph=False,
@@ -212,7 +259,7 @@ class OCRService:
             
         except Exception as e:
             logger.error(f"EasyOCR extraction failed: {e}")
-            raise
+            return "", 0.0, []
     
     def _parse_amount(self, text: str) -> Tuple[Optional[str], Optional[float]]:
         """Extract amount from text."""
