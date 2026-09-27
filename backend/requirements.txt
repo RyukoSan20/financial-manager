@@ -24,6 +24,6 @@ httpx==0.27.2
 python-dateutil==2.9.0
 requests==2.32.0
 
-# OCR - EasyOCR (auto-downloads models on first use)
+# OCR - Tesseract (installed via Dockerfile)
 Pillow>=10.0.0
-easyocr>=1.7.0
+pytesseract>=0.3.10
