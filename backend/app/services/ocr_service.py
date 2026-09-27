@@ -1,15 +1,12 @@
 """
-OCR Service using Gemini AI - No model download needed!
-Uses Google's Gemini to extract text from receipt images.
+OCR Service using Tesseract OCR - Free, no API key needed.
+Installed during Docker build.
 """
 
 import io
 import re
-import json
-import base64
-import time
 import logging
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional, Tuple, Dict
 from dataclasses import dataclass
 from PIL import Image, ImageEnhance, ImageFilter
 
@@ -27,7 +24,7 @@ class OCRResult:
     payment_method: Optional[str] = None
 
 class OCRService:
-    """OCR Service using Gemini AI for receipt scanning."""
+    """OCR Service using Tesseract for receipt scanning."""
     
     # Indonesian merchant patterns
     MERCHANT_PATTERNS = {
@@ -46,16 +43,21 @@ class OCRService:
         r'burger king': ('Burger King', 'food_beverages'),
         r'starbucks': ('Starbucks', 'food_beverages'),
         r'jco': ('JCO', 'food_beverages'),
+        r'celsius': ('Celsius', 'food_beverages'),
+        r'kopi kini': ('Kopi Kini', 'food_beverages'),
         
         # E-commerce
         r'shopee': ('Shopee', 'shopping'),
         r'tokopedia': ('Tokopedia', 'shopping'),
         r'lazada': ('Lazada', 'shopping'),
+        r'blibli': ('Blibli', 'shopping'),
         
         # Transport
         r'grab': ('Grab', 'transport'),
         r'gojek': ('Gojek', 'transport'),
         r'blue bird|bluebird': ('Blue Bird', 'transport'),
+        r'shell': ('Shell', 'transport'),
+        r'pertamina': ('Pertamina', 'transport'),
         
         # E-Wallet
         r'gopay': ('GoPay', 'other'),
@@ -70,161 +72,106 @@ class OCRService:
         r'pdam': ('PDAM', 'bills_utilities'),
         r'telkom|indihome': ('Telkom', 'bills_utilities'),
         r'bpjs': ('BPJS', 'bills_utilities'),
+        
+        # Supermarket
+        r'carrefour': ('Carrefour', 'shopping'),
+        r'hypermart': ('Hypermart', 'shopping'),
+        r'giant': ('Giant', 'shopping'),
+        r'matahari': ('Matahari', 'shopping'),
+        r'tokopedia': ('Tokopedia', 'shopping'),
     }
     
-    def _preprocess_image(self, image_bytes: bytes) -> str:
-        """Convert image to base64 for Gemini."""
-        return base64.b64encode(image_bytes).decode('utf-8')
-    
-    def _call_gemini_with_retry(self, url: str, data: dict, headers: dict, max_retries: int = 3) -> Optional[dict]:
-        """Call Gemini API with exponential backoff retry for 503 errors."""
-        import urllib.request
-        import json
-        
-        for attempt in range(max_retries):
-            try:
-                req = urllib.request.Request(
-                    url,
-                    data=json.dumps(data).encode('utf-8'),
-                    headers=headers,
-                    method='POST'
-                )
-                
-                with urllib.request.urlopen(req, timeout=45) as response:
-                    result = json.loads(response.read().decode('utf-8'))
-                    logger.info("Gemini API call successful")
-                    return result
-                    
-            except urllib.error.HTTPError as e:
-                error_body = e.read().decode('utf-8')
-                error_code = e.code
-                
-                if error_code == 503 and attempt < max_retries - 1:
-                    # Service unavailable - retry with backoff
-                    wait_time = (attempt + 1) * 2  # 2, 4, 6 seconds
-                    logger.warning(f"Gemini API 503, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
-                    time.sleep(wait_time)
-                    continue
-                else:
-                    logger.error(f"Gemini API HTTP Error {error_code}: {error_body}")
-                    return None
-                    
-            except Exception as e:
-                logger.error(f"Gemini API call failed: {e}")
-                return None
-        
-        return None
-    
-    def _extract_with_ai(self, image_bytes: bytes) -> Optional[Dict]:
-        """Extract data using Gemini AI with retry logic."""
-        try:
-            import os
-            
-            # Get Gemini API key and model from environment
-            api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GEMINI_API_KEY_1')
-            model = os.environ.get('GEMINI_MODEL', 'gemini-3.5-flash')
-            
-            logger.info(f"Gemini OCR using model: {model}")
-            logger.info(f"Gemini OCR API key present: {bool(api_key)}")
-            
-            if not api_key:
-                logger.warning("No Gemini API key found")
-                return None
-            
-            # Prepare image
-            image_base64 = self._preprocess_image(image_bytes)
-            
-            # Gemini API call - use query param for compatibility
-            url = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={api_key}"
-            logger.info(f"Gemini OCR URL: {url[:80]}...")
-            
-            prompt = """You are an Indonesian receipt parser. Extract the following from this receipt image:
-1. merchant_name: The store/merchant name (in Indonesian or English)
-2. amount: The total amount paid (just the number, no currency symbol)
-3. date: Transaction date if visible (YYYY-MM-DD format)
-4. payment_method: Payment method (cash, debit, credit, e-wallet name, etc.)
-5. category: Best category for this transaction (food_beverages, shopping, transport, bills_utilities, entertainment, health, other)
-
-Return ONLY valid JSON like this:
-{"merchant_name": "McDonald's", "amount": "25000", "date": "2024-01-15", "payment_method": "GoPay", "category": "food_beverages"}
-
-If you cannot read the receipt clearly, still try your best. Return empty string for unknown fields."""
-
-            data = {
-                "contents": [{
-                    "parts": [
-                        {"text": prompt},
-                        {"inline_data": {
-                            "mime_type": "image/jpeg",
-                            "data": image_base64
-                        }}
-                    ]
-                }],
-                "generationConfig": {
-                    "temperature": 0.1,
-                    "maxOutputTokens": 500
-                }
-            }
-            
-            headers = {'Content-Type': 'application/json'}
-            
-            result = self._call_gemini_with_retry(url, data, headers)
-            
-            if not result:
-                logger.error("Gemini API call failed after all retries")
-                return None
-            
-            # Parse response
-            text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-            logger.info(f"Gemini response text: {text[:500]}...")
-            
-            # Extract JSON from response
-            # Try to find JSON object - handle nested braces
-            try:
-                # Find first { and last }
-                start = text.find('{')
-                end = text.rfind('}')
-                if start != -1 and end != -1 and end > start:
-                    json_str = text[start:end+1]
-                    return json.loads(json_str)
-            except json.JSONDecodeError as e:
-                logger.error(f"JSON parse error: {e}, text: {text[:200]}")
-                return None
-            
-            logger.warning("No JSON found in Gemini response")
-            return None
-            
-        except Exception as e:
-            logger.error(f"Gemini OCR failed: {e}")
-            return None
-    
-    def _fallback_parse(self, image_bytes: bytes) -> Tuple[str, float]:
-        """Fallback: basic image to text using PIL and pattern matching."""
+    def _preprocess_image(self, image_bytes: bytes) -> Image.Image:
+        """Preprocess image for better OCR."""
         try:
             image = Image.open(io.BytesIO(image_bytes))
             
-            # Try to get any visible text from image metadata
-            return "", 0.0
+            # Convert to RGB if needed
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            
+            # Resize if too small (Tesseract works better with larger images)
+            width, height = image.size
+            if width < 800:
+                scale = 800 / width
+                new_size = (int(width * scale), int(height * scale))
+                image = image.resize(new_size, Image.LANCZOS)
+            
+            # Increase contrast
+            enhancer = ImageEnhance.Contrast(image)
+            image = enhancer.enhance(1.5)
+            
+            # Sharpen
+            enhancer = ImageEnhance.Sharpness(image)
+            image = enhancer.enhance(1.5)
+            
+            # Convert to grayscale
+            image = image.convert('L')
+            
+            return image
             
         except Exception as e:
-            logger.error(f"Fallback parse failed: {e}")
-            return "", 0.0
+            logger.error(f"Image preprocessing failed: {e}")
+            raise
     
-    def _parse_amount(self, amount_str: str) -> Optional[float]:
-        """Parse amount string to float."""
-        if not amount_str:
-            return None
-        
-        # Remove currency symbols and spaces
-        cleaned = re.sub(r'[Rp\s.,]', '', str(amount_str))
-        
+    def _extract_with_tesseract(self, image_bytes: bytes) -> Tuple[str, float]:
+        """Extract text using Tesseract OCR."""
         try:
-            return float(cleaned)
-        except:
-            return None
+            import pytesseract
+            
+            # Preprocess image
+            image = self._preprocess_image(image_bytes)
+            
+            # OCR with Indonesian + English
+            text = pytesseract.image_to_string(
+                image, 
+                lang='eng+ind',
+                config='--psm 6'
+            )
+            
+            # Get confidence
+            try:
+                data = pytesseract.image_to_data(image, lang='eng+ind', output_type=pytesseract.Output.DICT)
+                confidences = [int(c) for c in data['conf'] if int(c) > 0]
+                confidence = sum(confidences) / len(confidences) if confidences else 0
+            except:
+                confidence = 70  # Default confidence
+            
+            logger.info(f"Tesseract extracted {len(text)} chars, confidence: {confidence:.1f}%")
+            return text.strip(), confidence
+            
+        except ImportError:
+            logger.error("pytesseract not installed")
+            return "", 0
+        except Exception as e:
+            logger.error(f"Tesseract OCR failed: {e}")
+            return "", 0
     
-    def _parse_merchant_fallback(self, text: str) -> Optional[str]:
-        """Try to identify merchant from any text."""
+    def _parse_amount(self, text: str) -> Tuple[Optional[str], Optional[float]]:
+        """Extract amount from text."""
+        # Common patterns for Indonesian amounts
+        patterns = [
+            r'(?:total|jumlah|amount|nominal|bayar)[:\s]*[Rr]p\.?\s*([\d.,]+)',
+            r'[Rr]p\.?\s*([\d.,]+)',
+            r'([\d.,]+)\s*(?:k|rb|ribu|juta)',
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, text.lower())
+            if matches:
+                amount_str = matches[-1]  # Take last match (usually total)
+                amount_str = amount_str.replace('.', '').replace(',', '.')
+                try:
+                    value = float(amount_str)
+                    if value > 0:
+                        return amount_str, value
+                except:
+                    pass
+        
+        return None, None
+    
+    def _parse_merchant(self, text: str) -> Optional[str]:
+        """Extract merchant name from text."""
         text_lower = text.lower()
         
         for pattern, (merchant_name, _) in self.MERCHANT_PATTERNS.items():
@@ -233,36 +180,81 @@ If you cannot read the receipt clearly, still try your best. Return empty string
         
         return None
     
+    def _parse_category(self, text: str) -> str:
+        """Determine category from text."""
+        text_lower = text.lower()
+        
+        for pattern, (merchant_name, category) in self.MERCHANT_PATTERNS.items():
+            if re.search(pattern, text_lower):
+                return category
+        
+        return "other"
+    
+    def _parse_date(self, text: str) -> Optional[str]:
+        """Extract date from text."""
+        # Common date patterns
+        patterns = [
+            r'(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,4})',
+            r'(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})',
+            r'(\d{1,2})\s+(?:jan|feb|mar|apr|mei|jun|jul|agu|sep|okt|nov|des)[a-z]*\s+(\d{2,4})',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                # Return as-is for now
+                return match.group(0)
+        
+        return None
+    
+    def _parse_payment_method(self, text: str) -> Optional[str]:
+        """Extract payment method from text."""
+        text_lower = text.lower()
+        
+        methods = {
+            r'gopay': 'GoPay',
+            r'dana': 'DANA',
+            r'ovo': 'OVO',
+            r'shopeepay|shopee pay': 'ShopeePay',
+            r'linkaja|link aja': 'LinkAja',
+            r'qris': 'QRIS',
+            r'cash|tunai': 'Cash',
+            r'debit|kartu debit': 'Debit',
+            r'credit|kartu kredit|kredit': 'Credit',
+        }
+        
+        for pattern, method in methods.items():
+            if re.search(pattern, text_lower):
+                return method
+        
+        return None
+    
     def process_image(self, image_bytes: bytes) -> OCRResult:
-        """Process receipt image and extract structured data using AI."""
+        """Process receipt image and extract structured data."""
         try:
-            # Try AI extraction first
-            ai_result = self._extract_with_ai(image_bytes)
+            # Extract text using Tesseract
+            text, confidence = self._extract_with_tesseract(image_bytes)
             
-            if ai_result:
-                amount_value = self._parse_amount(ai_result.get('amount', ''))
-                
-                return OCRResult(
-                    text=f"Merchant: {ai_result.get('merchant_name', 'Unknown')}",
-                    confidence=0.85,
-                    merchant_name=ai_result.get('merchant_name'),
-                    amount=ai_result.get('amount'),
-                    amount_value=amount_value,
-                    date=ai_result.get('date'),
-                    payment_method=ai_result.get('payment_method')
-                )
+            if not text:
+                logger.warning("No text extracted from image")
+                return OCRResult(text="", confidence=0)
             
-            # Fallback to basic parsing
-            logger.info("Using fallback parser - AI extraction failed")
-            text, confidence = self._fallback_parse(image_bytes)
+            # Parse extracted data
+            amount_str, amount_value = self._parse_amount(text)
+            merchant_name = self._parse_merchant(text)
+            date = self._parse_date(text)
+            payment_method = self._parse_payment_method(text)
             
-            # Try to find merchant from text
-            merchant = self._parse_merchant_fallback(text)
+            logger.info(f"OCR Result: merchant={merchant_name}, amount={amount_str}, confidence={confidence:.1f}%")
             
             return OCRResult(
-                text=text,
+                text=text[:500],  # First 500 chars
                 confidence=confidence,
-                merchant_name=merchant
+                merchant_name=merchant_name,
+                amount=amount_str,
+                amount_value=amount_value,
+                date=date,
+                payment_method=payment_method
             )
             
         except Exception as e:
