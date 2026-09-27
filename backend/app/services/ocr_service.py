@@ -5,6 +5,7 @@ Uses Google's Gemini to extract text from receipt images.
 
 import io
 import re
+import json
 import base64
 import time
 import logging
