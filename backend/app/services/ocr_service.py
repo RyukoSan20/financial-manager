@@ -1,14 +1,15 @@
 """
-OCR Service using Tesseract OCR - Free, no API key needed.
-Installed during Docker build.
+OCR Service using EasyOCR - Lazy loading, auto-caching models.
+Models downloaded once and cached.
 """
 
 import io
 import re
+import os
 import logging
 from typing import Optional, Tuple, Dict
 from dataclasses import dataclass
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageEnhance
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class OCRResult:
     payment_method: Optional[str] = None
 
 class OCRService:
-    """OCR Service using Tesseract for receipt scanning."""
+    """OCR Service using EasyOCR for receipt scanning."""
     
     # Indonesian merchant patterns
     MERCHANT_PATTERNS = {
@@ -43,14 +44,11 @@ class OCRService:
         r'burger king': ('Burger King', 'food_beverages'),
         r'starbucks': ('Starbucks', 'food_beverages'),
         r'jco': ('JCO', 'food_beverages'),
-        r'celsius': ('Celsius', 'food_beverages'),
-        r'kopi kini': ('Kopi Kini', 'food_beverages'),
         
         # E-commerce
         r'shopee': ('Shopee', 'shopping'),
         r'tokopedia': ('Tokopedia', 'shopping'),
         r'lazada': ('Lazada', 'shopping'),
-        r'blibli': ('Blibli', 'shopping'),
         
         # Transport
         r'grab': ('Grab', 'transport'),
@@ -72,41 +70,77 @@ class OCRService:
         r'pdam': ('PDAM', 'bills_utilities'),
         r'telkom|indihome': ('Telkom', 'bills_utilities'),
         r'bpjs': ('BPJS', 'bills_utilities'),
-        
-        # Supermarket
-        r'carrefour': ('Carrefour', 'shopping'),
-        r'hypermart': ('Hypermart', 'shopping'),
-        r'giant': ('Giant', 'shopping'),
-        r'matahari': ('Matahari', 'shopping'),
-        r'tokopedia': ('Tokopedia', 'shopping'),
     }
+    
+    def __init__(self):
+        self._reader = None
+        self._init_error = None
+    
+    def _get_reader(self):
+        """Lazy init EasyOCR reader with timeout."""
+        if self._reader is not None or self._init_error:
+            return self._reader
+        
+        import signal
+        import threading
+        
+        def init_reader(result_container):
+            try:
+                import easyocr
+                # Download models to persistent location
+                cache_dir = os.environ.get('EASYOCR_CACHE_DIR', '/tmp/easyocr')
+                os.makedirs(cache_dir, exist_ok=True)
+                
+                reader = easyocr.Reader(
+                    ['en', 'id'],  # English + Indonesian
+                    gpu=False,
+                    download=True,
+                    model_storage_directory=cache_dir
+                )
+                result_container['reader'] = reader
+            except Exception as e:
+                result_container['error'] = str(e)
+        
+        result = {}
+        timeout = 120  # 2 minutes for first download
+        
+        # Run in thread with timeout
+        thread = threading.Thread(target=init_reader, args=(result,))
+        thread.daemon = True
+        thread.start()
+        thread.join(timeout=timeout)
+        
+        if 'error' in result:
+            self._init_error = result['error']
+            logger.error(f"EasyOCR init failed: {self._init_error}")
+            return None
+        
+        if 'reader' in result:
+            self._reader = result['reader']
+            logger.info("EasyOCR initialized successfully")
+            return self._reader
+        
+        # Timeout
+        self._init_error = "Timeout initializing EasyOCR"
+        logger.error(self._init_error)
+        return None
     
     def _preprocess_image(self, image_bytes: bytes) -> Image.Image:
         """Preprocess image for better OCR."""
         try:
             image = Image.open(io.BytesIO(image_bytes))
             
-            # Convert to RGB if needed
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # Resize if too small (Tesseract works better with larger images)
             width, height = image.size
             if width < 800:
                 scale = 800 / width
                 new_size = (int(width * scale), int(height * scale))
                 image = image.resize(new_size, Image.LANCZOS)
             
-            # Increase contrast
             enhancer = ImageEnhance.Contrast(image)
-            image = enhancer.enhance(1.5)
-            
-            # Sharpen
-            enhancer = ImageEnhance.Sharpness(image)
-            image = enhancer.enhance(1.5)
-            
-            # Convert to grayscale
-            image = image.convert('L')
+            image = enhancer.enhance(1.3)
             
             return image
             
@@ -114,42 +148,45 @@ class OCRService:
             logger.error(f"Image preprocessing failed: {e}")
             raise
     
-    def _extract_with_tesseract(self, image_bytes: bytes) -> Tuple[str, float]:
-        """Extract text using Tesseract OCR."""
+    def _extract_with_easyocr(self, image_bytes: bytes) -> Tuple[str, float]:
+        """Extract text using EasyOCR."""
+        reader = self._get_reader()
+        
+        if reader is None:
+            return "", 0
+        
         try:
-            import pytesseract
-            
-            # Preprocess image
             image = self._preprocess_image(image_bytes)
             
-            # OCR with Indonesian + English
-            text = pytesseract.image_to_string(
-                image, 
-                lang='eng+ind',
-                config='--psm 6'
-            )
+            # Convert PIL Image to numpy array for EasyOCR
+            import numpy as np
+            img_array = np.array(image)
             
-            # Get confidence
-            try:
-                data = pytesseract.image_to_data(image, lang='eng+ind', output_type=pytesseract.Output.DICT)
-                confidences = [int(c) for c in data['conf'] if int(c) > 0]
-                confidence = sum(confidences) / len(confidences) if confidences else 0
-            except:
-                confidence = 70  # Default confidence
+            # OCR
+            results = reader.readtext(img_array)
             
-            logger.info(f"Tesseract extracted {len(text)} chars, confidence: {confidence:.1f}%")
-            return text.strip(), confidence
+            if not results:
+                return "", 0
             
-        except ImportError:
-            logger.error("pytesseract not installed")
-            return "", 0
+            # Combine all text
+            full_text = ""
+            confidences = []
+            
+            for (bbox, text, conf) in results:
+                full_text += text + "\n"
+                confidences.append(conf)
+            
+            avg_confidence = sum(confidences) / len(confidences) * 100 if confidences else 0
+            
+            logger.info(f"EasyOCR extracted {len(full_text)} chars, confidence: {avg_confidence:.1f}%")
+            return full_text.strip(), avg_confidence
+            
         except Exception as e:
-            logger.error(f"Tesseract OCR failed: {e}")
+            logger.error(f"EasyOCR failed: {e}")
             return "", 0
     
     def _parse_amount(self, text: str) -> Tuple[Optional[str], Optional[float]]:
         """Extract amount from text."""
-        # Common patterns for Indonesian amounts
         patterns = [
             r'(?:total|jumlah|amount|nominal|bayar)[:\s]*[Rr]p\.?\s*([\d.,]+)',
             r'[Rr]p\.?\s*([\d.,]+)',
@@ -159,7 +196,7 @@ class OCRService:
         for pattern in patterns:
             matches = re.findall(pattern, text.lower())
             if matches:
-                amount_str = matches[-1]  # Take last match (usually total)
+                amount_str = matches[-1]
                 amount_str = amount_str.replace('.', '').replace(',', '.')
                 try:
                     value = float(amount_str)
@@ -180,33 +217,6 @@ class OCRService:
         
         return None
     
-    def _parse_category(self, text: str) -> str:
-        """Determine category from text."""
-        text_lower = text.lower()
-        
-        for pattern, (merchant_name, category) in self.MERCHANT_PATTERNS.items():
-            if re.search(pattern, text_lower):
-                return category
-        
-        return "other"
-    
-    def _parse_date(self, text: str) -> Optional[str]:
-        """Extract date from text."""
-        # Common date patterns
-        patterns = [
-            r'(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,4})',
-            r'(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})',
-            r'(\d{1,2})\s+(?:jan|feb|mar|apr|mei|jun|jul|agu|sep|okt|nov|des)[a-z]*\s+(\d{2,4})',
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                # Return as-is for now
-                return match.group(0)
-        
-        return None
-    
     def _parse_payment_method(self, text: str) -> Optional[str]:
         """Extract payment method from text."""
         text_lower = text.lower()
@@ -219,8 +229,8 @@ class OCRService:
             r'linkaja|link aja': 'LinkAja',
             r'qris': 'QRIS',
             r'cash|tunai': 'Cash',
-            r'debit|kartu debit': 'Debit',
-            r'credit|kartu kredit|kredit': 'Credit',
+            r'debit': 'Debit',
+            r'credit|kartu kredit': 'Credit',
         }
         
         for pattern, method in methods.items():
@@ -232,34 +242,52 @@ class OCRService:
     def process_image(self, image_bytes: bytes) -> OCRResult:
         """Process receipt image and extract structured data."""
         try:
-            # Extract text using Tesseract
-            text, confidence = self._extract_with_tesseract(image_bytes)
+            text, confidence = self._extract_with_easyocr(image_bytes)
             
             if not text:
                 logger.warning("No text extracted from image")
                 return OCRResult(text="", confidence=0)
             
-            # Parse extracted data
             amount_str, amount_value = self._parse_amount(text)
             merchant_name = self._parse_merchant(text)
-            date = self._parse_date(text)
             payment_method = self._parse_payment_method(text)
             
             logger.info(f"OCR Result: merchant={merchant_name}, amount={amount_str}, confidence={confidence:.1f}%")
             
             return OCRResult(
-                text=text[:500],  # First 500 chars
+                text=text[:500],
                 confidence=confidence,
                 merchant_name=merchant_name,
                 amount=amount_str,
                 amount_value=amount_value,
-                date=date,
+                date=None,
                 payment_method=payment_method
             )
             
         except Exception as e:
             logger.error(f"OCR processing failed: {e}")
             raise ValueError(f"OCR processing failed: {str(e)}")
+    
+    def get_status(self) -> Dict:
+        """Get OCR status."""
+        if self._init_error:
+            return {
+                "status": "error",
+                "message": self._init_error,
+                "ready": False
+            }
+        elif self._reader:
+            return {
+                "status": "ready",
+                "message": "OCR ready",
+                "ready": True
+            }
+        else:
+            return {
+                "status": "initializing",
+                "message": "Initializing OCR models...",
+                "ready": False
+            }
 
 # Singleton instance
 ocr_service = OCRService()
