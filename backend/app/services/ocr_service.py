@@ -128,7 +128,7 @@ class OCRService:
                 config='--psm 6'
             )
             
-            # Get confidence
+            # Get confidence (average, not sum)
             try:
                 data = pytesseract.image_to_data(image, lang='eng+ind', output_type=pytesseract.Output.DICT)
                 confidences = [int(c) for c in data['conf'] if int(c) > 0]
@@ -136,8 +136,8 @@ class OCRService:
             except:
                 confidence = 70
             
-            logger.info(f"Tesseract extracted {len(text)} chars, confidence: {confidence:.1f}%")
-            return text.strip(), confidence
+            logger.info(f"Tesseract extracted {len(text)} chars, confidence: {min(confidence, 100):.1f}%")
+            return text.strip(), min(confidence, 100)  # Cap at 100%
             
         except ImportError as e:
             logger.error(f"pytesseract not installed: {e}")
