@@ -96,8 +96,8 @@ class OCRService:
             # Prepare image
             image_base64 = self._preprocess_image(image_bytes)
             
-            # Gemini API call
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            # Gemini API call - v1 endpoint (v1beta deprecated)
+            url = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={api_key}"
             logger.info(f"Gemini OCR URL: {url[:80]}...")
             
             prompt = """You are an Indonesian receipt parser. Extract the following from this receipt image:
