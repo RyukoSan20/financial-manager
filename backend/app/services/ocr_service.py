@@ -79,8 +79,10 @@ class OCRService:
         try:
             import os
             
-            # Get Gemini API key
+            # Get Gemini API key and model from environment
+            import os
             api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GEMINI_API_KEY_1')
+            model = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
             if not api_key:
                 logger.warning("No Gemini API key found")
                 return None
@@ -91,9 +93,8 @@ class OCRService:
             # Prepare image
             image_base64 = self._preprocess_image(image_bytes)
             
-            # Gemini API call
-            # Use gemini-1.5-flash which is widely available
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+            # Gemini API call - use environment model or default
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
             
             prompt = """You are an Indonesian receipt parser. Extract the following from this receipt image:
 1. merchant_name: The store/merchant name (in Indonesian or English)
