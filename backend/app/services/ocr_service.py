@@ -80,9 +80,12 @@ class OCRService:
             import os
             
             # Get Gemini API key and model from environment
-            import os
             api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GEMINI_API_KEY_1')
             model = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
+            
+            logger.info(f"Gemini OCR using model: {model}")
+            logger.info(f"Gemini OCR API key present: {bool(api_key)}")
+            
             if not api_key:
                 logger.warning("No Gemini API key found")
                 return None
@@ -93,8 +96,9 @@ class OCRService:
             # Prepare image
             image_base64 = self._preprocess_image(image_bytes)
             
-            # Gemini API call - use environment model or default
+            # Gemini API call
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            logger.info(f"Gemini OCR URL: {url[:80]}...")
             
             prompt = """You are an Indonesian receipt parser. Extract the following from this receipt image:
 1. merchant_name: The store/merchant name (in Indonesian or English)
@@ -131,8 +135,13 @@ If you cannot read the receipt clearly, still try your best. Return empty string
                 method='POST'
             )
             
-            with urllib.request.urlopen(req, timeout=30) as response:
-                result = json.loads(response.read().decode('utf-8'))
+            try:
+                with urllib.request.urlopen(req, timeout=30) as response:
+                    result = json.loads(response.read().decode('utf-8'))
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode('utf-8')
+                logger.error(f"Gemini API HTTP Error {e.code}: {error_body}")
+                return None
             
             # Parse response
             text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
