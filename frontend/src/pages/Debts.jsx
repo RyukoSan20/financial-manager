@@ -20,11 +20,14 @@ export const Debts = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
+      console.log('Fetching debts...');
       const data = await api.debts.list();
+      console.log('Debts fetched:', data);
       setDebts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to fetch debts:', err);
       setDebts([]);
+      alert('Gagal mengambil data: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
