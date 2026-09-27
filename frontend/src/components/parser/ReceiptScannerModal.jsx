@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
-import { Modal, Button, Input } from '../ui';
-import { Camera, Upload, Loader2, AlertCircle } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Modal, Button, Input, Select } from '../ui';
+import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 
@@ -11,15 +11,32 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   const [parsedData, setParsedData] = useState(null);
   const [step, setStep] = useState('upload'); // upload, preview, confirm
   const [accounts, setAccounts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedAccount, setSelectedAccount] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [confirming, setConfirming] = useState(false);
   const fileInputRef = useRef(null);
 
-  const loadAccounts = async () => {
+  // Load data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadData();
+    }
+  }, [isOpen]);
+
+  const loadData = async () => {
     try {
-      const response = await api.accounts.list();
-      setAccounts(Array.isArray(response) ? response : []);
+      const [accRes, catRes] = await Promise.all([
+        api.accounts.list(),
+        api.categories.list('expense'),
+      ]);
+      setAccounts(Array.isArray(accRes) ? accRes : []);
+      setCategories(Array.isArray(catRes) ? catRes : []);
+      if (accRes?.length > 0) {
+        setSelectedAccount(accRes[0].id.toString());
+      }
     } catch (err) {
-      console.error('Failed to load accounts:', err);
+      console.error('Failed to load data:', err);
     }
   };
 
@@ -30,13 +47,13 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      setError('Invalid file type. Please upload JPG, PNG, or WebP image.');
+      setError('Format tidak valid. Gunakan JPG, PNG, atau WebP.');
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File too large. Maximum size is 5MB.');
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File terlalu besar. Maksimal 10MB.');
       return;
     }
 
@@ -44,12 +61,11 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       setPreview(e.target.result);
+      setStep('preview');
+      setParsedData(null);
+      setError('');
     };
     reader.readAsDataURL(file);
-
-    // Load accounts
-    await loadAccounts();
-    setStep('preview');
   };
 
   const handleDrop = async (e) => {
@@ -86,9 +102,9 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       const formData = new FormData();
       formData.append('file', file);
 
-      // Use direct fetch for FormData (api.request doesn't support FormData)
+      // Get token
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://financial-manager-production-a042.up.railway.app';
       
       const result = await fetch(`${apiUrl}/api/parser/parse-receipt`, {
         method: 'POST',
@@ -96,45 +112,75 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
         body: formData,
       }).then(r => r.json());
 
-      if (result.status === 'requires_ocr' || result.detail?.includes('OCR')) {
-        setError('OCR processing not configured. For receipt scanning, you can use the SMS/QRIS parser instead.');
-        setLoading(false);
-        return;
+      if (result.error || result.detail) {
+        throw new Error(result.detail || result.error || 'OCR gagal');
       }
 
+      console.log('OCR Result:', result);
+      
+      // Set parsed data with AI-suggested category
+      const aiCategory = mapCategoryHint(result.category_hint);
+      if (aiCategory && !selectedCategory) {
+        setSelectedCategory(aiCategory);
+      }
+      
       setParsedData(result);
       setStep('confirm');
     } catch (err) {
-      console.error('Parse error:', err);
-      setError('Failed to process image: ' + (err.message || 'Unknown error'));
+      console.error('OCR Error:', err);
+      setError('Gagal memproses gambar: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConfirm = async (accountId) => {
+  // Map AI category hint to actual category ID
+  const mapCategoryHint = (hint) => {
+    const mapping = {
+      'food_beverages': categories.find(c => c.name?.toLowerCase().includes('makan') || c.name?.toLowerCase().includes('food'))?.id,
+      'transport': categories.find(c => c.name?.toLowerCase().includes('transport') || c.name?.toLowerCase().includes('bensin'))?.id,
+      'shopping': categories.find(c => c.name?.toLowerCase().includes('belanja') || c.name?.toLowerCase().includes('shop'))?.id,
+      'bills_utilities': categories.find(c => c.name?.toLowerCase().includes('tagihan') || c.name?.toLowerCase().includes('listrik'))?.id,
+      'entertainment': categories.find(c => c.name?.toLowerCase().includes('hiburan') || c.name?.toLowerCase().includes('game'))?.id,
+      'healthcare': categories.find(c => c.name?.toLowerCase().includes('kesehatan') || c.name?.toLowerCase().includes('obat'))?.id,
+    };
+    return mapping[hint] || null;
+  };
+
+  const handleConfirm = async () => {
     if (!parsedData) return;
+    
+    if (!selectedAccount) {
+      setError('Pilih akun terlebih dahulu');
+      return;
+    }
 
     setConfirming(true);
     setError('');
 
     try {
+      const amount = parseFloat(parsedData.amount) || 0;
+      
       await api.transactions.create({
-        amount: parseFloat(parsedData.amount),
-        type: 'expense', // Receipts are usually expenses
+        amount: amount,
+        type: parsedData.suggested_type === 'income' ? 'income' : 'expense',
         description: parsedData.description || 'Pembelian',
-        date: parsedData.date || new Date().toISOString().split('T')[0],
-        account_id: accountId,
+        date: parsedData.date ? parsedData.date.split('T')[0] : new Date().toISOString().split('T')[0],
+        account_id: parseInt(selectedAccount),
+        category_id: selectedCategory ? parseInt(selectedCategory) : null,
         merchant_name: parsedData.merchant_name,
         confidence_score: parsedData.confidence_score,
         detection_type: 'OCR_RECEIPT',
+        latitude: parsedData.latitude,
+        longitude: parsedData.longitude,
+        notes: `Metode: ${parsedData.payment_method || 'Tidak diketahui'}\n${parsedData.address ? 'Alamat: ' + parsedData.address : ''}`,
       });
 
       onSuccess?.();
       handleClose();
     } catch (err) {
-      console.error('Confirm error:', err);
-      setError('Failed to save transaction: ' + (err.message || 'Unknown error'));
+      console.error('Save error:', err);
+      setError('Gagal menyimpan: ' + (err.message || 'Unknown error'));
     } finally {
       setConfirming(false);
     }
@@ -145,25 +191,40 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     setParsedData(null);
     setError('');
     setStep('upload');
+    setSelectedCategory('');
     onClose();
+  };
+
+  const getCategoryLabel = (hint) => {
+    const labels = {
+      'food_beverages': '🍔 Makanan & Minuman',
+      'transport': '🚗 Transportasi',
+      'shopping': '🛒 Belanja',
+      'bills_utilities': '📄 Tagihan',
+      'entertainment': '🎮 Hiburan',
+      'healthcare': '💊 Kesehatan',
+      'other': '📦 Lainnya',
+    };
+    return labels[hint] || '📦 Lainnya';
   };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Scan Receipt"
+      title="Scan Struk"
       size="lg"
     >
+      {/* Step 1: Upload */}
       {step === 'upload' && (
         <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <Camera className="w-5 h-5 text-blue-600 mt-0.5" />
+              <Sparkles className="w-6 h-6 text-purple-600 mt-0.5" />
               <div>
-                <p className="font-medium text-blue-900">Upload Receipt Image</p>
-                <p className="text-sm text-blue-700 mt-1">
-                  Take a photo or upload an image of your receipt. OCR will extract the transaction data.
+                <p className="font-medium text-purple-900">OCR + AI Scanner</p>
+                <p className="text-sm text-purple-700 mt-1">
+                  Ambil foto atau upload struk pembayaran. AI akan otomatis mengekstrak data dan menyarankan kategori.
                 </p>
               </div>
             </div>
@@ -173,12 +234,14 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-primary-400 hover:bg-gray-50 transition-colors"
+            className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50/50 transition-all"
           >
-            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="font-medium text-gray-700">Drop receipt image here</p>
-            <p className="text-sm text-gray-500 mt-1">or click to browse</p>
-            <p className="text-xs text-gray-400 mt-2">JPG, PNG, WebP (max 5MB)</p>
+            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Upload className="w-8 h-8 text-purple-600" />
+            </div>
+            <p className="font-medium text-gray-700">Drop gambar struk di sini</p>
+            <p className="text-sm text-gray-500 mt-1">atau klik untuk browse</p>
+            <p className="text-xs text-gray-400 mt-2">JPG, PNG, WebP (maks 10MB)</p>
           </div>
 
           <input
@@ -198,12 +261,13 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
           <div className="flex justify-end">
             <Button variant="secondary" onClick={handleClose}>
-              Cancel
+              Batal
             </Button>
           </div>
         </div>
       )}
 
+      {/* Step 2: Preview & Process */}
       {step === 'preview' && preview && (
         <div className="space-y-4">
           {/* Image preview */}
@@ -211,16 +275,31 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
             <img
               src={preview}
               alt="Receipt preview"
-              className="w-full max-h-64 object-contain rounded-lg border"
+              className="w-full max-h-64 object-contain rounded-xl border"
             />
+            {loading && (
+              <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
+                <div className="text-center text-white">
+                  <Loader2 className="w-10 h-10 animate-spin mx-auto mb-2" />
+                  <p className="font-medium">Memproses OCR...</p>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="font-medium text-yellow-900">OCR Not Configured</p>
-            <p className="text-sm text-yellow-700 mt-1">
-              Server-side OCR requires Tesseract or cloud OCR API integration.
-              For now, you can manually enter the data.
-            </p>
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-600" />
+              <p className="font-medium text-purple-900">AI akan mengekstrak:</p>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-purple-700">
+              <span>• Nama Merchant</span>
+              <span>• Total Pembayaran</span>
+              <span>• Tanggal Transaksi</span>
+              <span>• Metode Pembayaran</span>
+              <span>• Saran Kategori</span>
+              <span>• Lokasi Merchant</span>
+            </div>
           </div>
 
           {error && (
@@ -231,55 +310,89 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
           <div className="flex justify-between">
             <Button variant="secondary" onClick={() => setStep('upload')}>
-              Back
+              Kembali
             </Button>
             <Button onClick={handleParseImage} disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Process Image
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Camera className="w-4 h-4 mr-2" />}
+              {loading ? 'Memproses...' : 'Proses OCR'}
             </Button>
           </div>
         </div>
       )}
 
+      {/* Step 3: Confirm */}
       {step === 'confirm' && parsedData && (
         <div className="space-y-4">
+          {/* Success indicator */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="font-medium text-green-900">Receipt Processed!</p>
-            <p className="text-sm text-green-700 mt-1">
-              Transaction data extracted successfully
-            </p>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                <Check className="w-4 h-4 text-white" />
+              </div>
+              <p className="font-medium text-green-900">Berhasil Diekstrak!</p>
+            </div>
           </div>
 
           {/* Parsed data preview */}
-          <div className="border rounded-lg divide-y">
-            <div className="p-3 flex justify-between">
+          <div className="border rounded-xl divide-y">
+            <div className="p-4 flex items-center justify-between">
               <span className="text-gray-500">Merchant</span>
-              <span className="font-medium">{parsedData.merchant_name || 'Unknown'}</span>
+              <span className="font-medium">{parsedData.merchant_name || 'Tidak terdeteksi'}</span>
             </div>
-            <div className="p-3 flex justify-between">
-              <span className="text-gray-500">Amount</span>
-              <span className="font-medium text-red-600">
-                -{formatCurrency(parsedData.amount)}
+            <div className="p-4 flex items-center justify-between">
+              <span className="text-gray-500">Total</span>
+              <span className="font-bold text-xl text-red-600">
+                -{formatCurrency(parseFloat(parsedData.amount) || 0)}
               </span>
             </div>
-            <div className="p-3 flex justify-between">
-              <span className="text-gray-500">Confidence</span>
+            <div className="p-4 flex items-center justify-between">
+              <span className="text-gray-500">Tanggal</span>
               <span className="text-sm">
-                {Math.round(parsedData.confidence_score * 100)}%
+                {parsedData.date ? new Date(parsedData.date).toLocaleDateString('id-ID', { 
+                  day: 'numeric', month: 'long', year: 'numeric' 
+                }) : 'Hari ini'}
               </span>
             </div>
-            <div className="p-3 flex justify-between">
-              <span className="text-gray-500">Type</span>
-              <span className="text-sm">Expense</span>
+            <div className="p-4 flex items-center justify-between">
+              <span className="text-gray-500">Metode</span>
+              <span className="text-sm">{parsedData.payment_method || 'Tidak diketahui'}</span>
             </div>
+            <div className="p-4 flex items-center justify-between">
+              <span className="text-gray-500">Akurasi OCR</span>
+              <span className="text-sm font-medium">
+                {Math.round((parsedData.confidence_score || 0) * 100)}%
+              </span>
+            </div>
+            {parsedData.category_hint && (
+              <div className="p-4 flex items-center justify-between bg-purple-50">
+                <span className="text-gray-500">AI Suggestion</span>
+                <span className="text-sm font-medium text-purple-700">
+                  {getCategoryLabel(parsedData.category_hint)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Account selector */}
           <Select
-            label="Save to Account"
+            label="Simpan ke Akun"
+            value={selectedAccount}
+            onChange={(e) => setSelectedAccount(e.target.value)}
             options={accounts.map(a => ({ value: a.id, label: a.name }))}
-            onChange={(e) => handleConfirm(parseInt(e.target.value))}
           />
+
+          {/* Category selector with AI suggestion */}
+          <div>
+            <Select
+              label="Kategori (AI suggestion tersedia)"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              options={[
+                { value: '', label: parsedData.category_hint ? `${getCategoryLabel(parsedData.category_hint)} (disarankan)` : 'Pilih kategori...' },
+                ...categories.map(c => ({ value: c.id, label: c.name }))
+              ]}
+            />
+          </div>
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
@@ -287,9 +400,13 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
           )}
 
-          <div className="flex justify-between">
+          <div className="flex justify-between pt-2">
             <Button variant="secondary" onClick={() => setStep('preview')}>
-              Back
+              Kembali
+            </Button>
+            <Button onClick={handleConfirm} disabled={confirming || !selectedAccount}>
+              {confirming ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+              Simpan Transaksi
             </Button>
           </div>
         </div>

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
-import { Camera, FileText, Loader2, Check } from 'lucide-react';
+import { Camera, FileText, Loader2, Check, Sparkles, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 
@@ -16,7 +16,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
   const [step, setStep] = useState('input'); // input, preview, confirm
 
   // Load accounts and categories on open
-  useState(() => {
+  useEffect(() => {
     if (isOpen) {
       loadData();
     }
@@ -26,7 +26,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       const [accRes, catRes] = await Promise.all([
         api.accounts.list(),
-        api.categories.list('expense'),
+        api.categories.list(),
       ]);
       setAccounts(Array.isArray(accRes) ? accRes : []);
       setCategories(Array.isArray(catRes) ? catRes : []);
@@ -37,7 +37,12 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
 
   const handleParse = async () => {
     if (!rawText.trim()) {
-      setError('Please enter SMS or text to parse');
+      setError('Masukkan teks SMS atau QRIS terlebih dahulu');
+      return;
+    }
+
+    if (rawText.trim().length < 10) {
+      setError('Teks terlalu pendek. Minimal 10 karakter.');
       return;
     }
 
@@ -49,27 +54,36 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
         method: 'POST',
         body: JSON.stringify({ raw_text: rawText }),
       });
+      
       const parsed = Array.isArray(response) ? response : [];
       
       if (parsed.length === 0) {
-        setError('No transactions detected. Try a different format.');
+        setError('Tidak ada transaksi terdeteksi. Coba format SMS yang berbeda.');
         return;
       }
 
       setResults(parsed);
-      setSelectedResult(parsed[0]);
+      setSelectedResult({
+        ...parsed[0],
+        account_id: parsed[0].account_id || accounts[0]?.id || ''
+      });
       setStep('preview');
     } catch (err) {
       console.error('Parse error:', err);
-      setError('Failed to parse text: ' + (err.message || 'Unknown error'));
+      setError('Gagal parse: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleConfirm = async () => {
-    if (!selectedResult || !selectedResult.account_id) {
-      setError('Please select an account');
+    if (!selectedResult) {
+      setError('Pilih transaksi terlebih dahulu');
+      return;
+    }
+    
+    if (!selectedResult.account_id) {
+      setError('Pilih akun terlebih dahulu');
       return;
     }
 
@@ -77,24 +91,28 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
     setError('');
 
     try {
+      const amount = parseFloat(selectedResult.amount) || 0;
+      
       await api.transactions.create({
-        amount: parseFloat(selectedResult.amount),
+        amount: amount,
         type: selectedResult.suggested_type === 'income' ? 'income' : 'expense',
         description: selectedResult.description || selectedResult.merchant_name || 'Parsed Transaction',
-        date: selectedResult.date || new Date().toISOString().split('T')[0],
+        date: selectedResult.date ? selectedResult.date.split('T')[0] : new Date().toISOString().split('T')[0],
         account_id: parseInt(selectedResult.account_id),
         category_id: selectedResult.category_id || null,
         merchant_name: selectedResult.merchant_name,
         raw_source_text: rawText,
         confidence_score: selectedResult.confidence_score,
         detection_type: selectedResult.detection_type,
+        latitude: selectedResult.latitude,
+        longitude: selectedResult.longitude,
       });
 
       onSuccess?.();
       handleClose();
     } catch (err) {
       console.error('Confirm error:', err);
-      setError('Failed to save transaction: ' + (err.message || 'Unknown error'));
+      setError('Gagal menyimpan: ' + (err.message || 'Unknown error'));
     } finally {
       setConfirming(false);
     }
@@ -110,98 +128,124 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const getTypeLabel = (type) => {
-    return type === 'CREDIT' ? 'Pemasukan' : 'Pengeluaran';
+    return type === 'CREDIT' || type === 'income' ? 'Pemasukan' : 'Pengeluaran';
   };
 
   const getTypeColor = (type) => {
-    return type === 'CREDIT' ? 'text-green-600' : 'text-red-600';
+    return type === 'CREDIT' || type === 'income' ? 'text-green-600' : 'text-red-600';
+  };
+
+  const getTypeIcon = (type) => {
+    return type === 'CREDIT' || type === 'income' ? '+' : '-';
   };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Parse SMS / QRIS Text"
+      title="Parse SMS / QRIS"
       size="lg"
     >
+      {/* Step 1: Input */}
       {step === 'input' && (
         <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-blue-600 mt-0.5" />
+              <FileText className="w-6 h-6 text-blue-600 mt-0.5" />
               <div>
-                <p className="font-medium text-blue-900">Paste SMS or QRIS text</p>
+                <p className="font-medium text-blue-900">Parse SMS atau QRIS</p>
                 <p className="text-sm text-blue-700 mt-1">
-                  Copy the text from your bank SMS, e-wallet notification, or QRIS payment confirmation.
+                  Tempel teks notifikasi bank, e-wallet, atau konfirmasi QRIS untuk di-parse otomatis.
                 </p>
               </div>
             </div>
           </div>
 
-          <textarea
-            value={rawText}
-            onChange={(e) => setRawText(e.target.value)}
-            placeholder={`Contoh SMS BCA:\nPEMBAYARAN GOJEK 15/09/26 17:30 ke GOPAY-8612 Sejumlah Rp50.000.\n\nContoh QRIS:\nQRIS Payment di WARKOP MAMA Sejumlah Rp25.000.`}
-            className="w-full h-48 p-3 border border-gray-300 rounded-lg font-mono text-sm resize-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          />
+          <div>
+            <textarea
+              value={rawText}
+              onChange={(e) => {
+                setRawText(e.target.value);
+                setError('');
+              }}
+              placeholder={`Tempel teks di sini...\n\nContoh SMS BCA:\nPEMBAYARAN GOJEK 15/09/26 17:30 ke GOPAY-8612 Sejumlah Rp50.000.\n\nContoh QRIS:\nQRIS Payment di WARKOP MAMA Sejumlah Rp25.000.`}
+              className="w-full h-48 p-4 border border-gray-200 rounded-xl font-mono text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            />
+            <p className="text-xs text-gray-400 mt-1 text-right">
+              {rawText.length} karakter
+            </p>
+          </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               {error}
             </div>
           )}
 
           <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={handleClose}>
-              Cancel
+              Batal
             </Button>
-            <Button onClick={handleParse} disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Parse Text
+            <Button onClick={handleParse} disabled={loading || !rawText.trim()}>
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+              {loading ? 'Parsing...' : 'Parse Teks'}
             </Button>
           </div>
         </div>
       )}
 
+      {/* Step 2: Preview Results */}
       {step === 'preview' && results.length > 0 && (
         <div className="space-y-4">
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="font-medium text-green-900">
-              Ditemukan {results.length} transaksi
-            </p>
-            <p className="text-sm text-green-700 mt-1">
-              Pilih transaksi yang ingin disimpan
-            </p>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                <Check className="w-4 h-4 text-white" />
+              </div>
+              <p className="font-medium text-green-900">
+                Ditemukan {results.length} transaksi
+              </p>
+            </div>
           </div>
 
           {/* Results list */}
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+          <div className="space-y-2 max-h-72 overflow-y-auto">
             {results.map((result, index) => (
               <div
                 key={index}
-                onClick={() => setSelectedResult({ ...result, account_id: selectedResult?.account_id })}
-                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                  selectedResult === result
-                    ? 'border-primary-500 bg-primary-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                onClick={() => setSelectedResult({ ...result, account_id: selectedResult?.account_id || accounts[0]?.id || '' })}
+                className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                  selectedResult === result || selectedResult?.amount === result.amount
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
                 <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium">
-                      {result.merchant_name || result.description || 'Unknown Merchant'}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {result.detection_type} • {result.account_source || 'Bank'}
-                    </p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-lg font-bold ${getTypeColor(result.transaction_type)}`}>
+                        {getTypeIcon(result.transaction_type)}
+                      </span>
+                      <p className="font-medium">
+                        {result.merchant_name || result.description || 'Unknown'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                      <span className="px-2 py-0.5 bg-gray-100 rounded-full">
+                        {result.detection_type}
+                      </span>
+                      <span>{result.account_source || 'Bank'}</span>
+                      {result.confidence_score && (
+                        <span className="text-blue-600">
+                          {Math.round(result.confidence_score * 100)}% match
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-semibold ${getTypeColor(result.transaction_type)}`}>
-                      {result.transaction_type === 'CREDIT' ? '+' : '-'}
-                      {formatCurrency(result.amount)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Confidence: {Math.round(result.confidence_score * 100)}%
+                    <p className={`font-bold text-lg ${getTypeColor(result.transaction_type)}`}>
+                      {getTypeIcon(result.transaction_type)}{formatCurrency(parseFloat(result.amount) || 0)}
                     </p>
                   </div>
                 </div>
@@ -210,16 +254,14 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
           </div>
 
           {/* Account selector */}
-          {selectedResult && (
-            <div className="border-t pt-4">
-              <Select
-                label="Simpan ke Akun"
-                value={selectedResult.account_id || ''}
-                onChange={(e) => setSelectedResult({ ...selectedResult, account_id: e.target.value })}
-                options={accounts.map(a => ({ value: a.id, label: a.name }))}
-              />
-            </div>
-          )}
+          <div>
+            <Select
+              label="Simpan ke Akun"
+              value={selectedResult?.account_id || ''}
+              onChange={(e) => setSelectedResult({ ...selectedResult, account_id: e.target.value })}
+              options={accounts.map(a => ({ value: a.id, label: a.name }))}
+            />
+          </div>
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
@@ -229,9 +271,12 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
 
           <div className="flex justify-between">
             <Button variant="secondary" onClick={() => setStep('input')}>
-              Back
+              Kembali
             </Button>
-            <Button onClick={handleConfirm} disabled={confirming || !selectedResult?.account_id}>
+            <Button 
+              onClick={handleConfirm} 
+              disabled={confirming || !selectedResult?.account_id}
+            >
               {confirming ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
               Simpan Transaksi
             </Button>

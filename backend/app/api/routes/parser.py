@@ -18,6 +18,7 @@ from app.services.parser_service import (
     parse_receipt,
     ParsedTransaction
 )
+from app.services.ocr_service import parse_receipt_image, parse_receipt_text, ocr_service
 from app.services.geocoding_service import geocoding_service, geocode_merchant
 
 router = APIRouter(tags=["Parser"])
@@ -107,20 +108,19 @@ def parse_text(
 
 
 @router.post("/parse-receipt")
-async def parse_receipt_image(
+async def parse_receipt_image_endpoint(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
-    Parse receipt image using OCR.
+    Parse receipt image using Tesseract OCR + AI-powered parsing.
     
     Accepts image file (PNG, JPG) and returns extracted transaction data.
-    Note: This endpoint requires OCR integration (Tesseract or cloud API).
-    For now, it returns a placeholder response.
+    Uses Indonesian-optimized patterns for local merchants.
     """
     # Validate file type
-    allowed_types = ["image/jpeg", "image/png", "image/webp"]
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
     if file.content_type not in allowed_types:
         raise HTTPException(
             status_code=400,
@@ -130,44 +130,69 @@ async def parse_receipt_image(
     # Read file content
     content = await file.read()
     
-    # Check file size (max 5MB)
-    if len(content) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large (max 5MB)")
+    # Check file size (max 10MB)
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
     
-    # For actual OCR, you would integrate with:
-    # 1. Tesseract OCR: pytesseract.image_to_string()
-    # 2. Google Cloud Vision API
-    # 3. AWS Textract
-    # 4. OpenAI/Gemini Vision API
-    
-    # Placeholder response - requires OCR integration
-    return {
-        "status": "requires_ocr",
-        "message": "OCR processing not configured. Please provide OCR API credentials.",
-        "alternatives": [
-            "1. Install Tesseract: brew install tesseract",
-            "2. Use Google Cloud Vision API",
-            "3. Use OpenAI/Gemini Vision API",
-        ],
-        "file_received": {
-            "filename": file.filename,
-            "size": len(content),
-            "content_type": file.content_type,
+    try:
+        # Process with OCR service
+        receipt = parse_receipt_image(content)
+        
+        # Geocode merchant if available
+        latitude = None
+        longitude = None
+        merchant_address = None
+        if receipt.merchant_name:
+            geo = geocode_merchant(receipt.merchant_name)
+            if geo:
+                latitude = geo.latitude
+                longitude = geo.longitude
+                merchant_address = geo.formatted_address
+        
+        # Determine transaction type (receipts are typically expenses)
+        transaction_type = "DEBIT" if receipt.total_amount else "DEBIT"
+        
+        return {
+            "status": "success",
+            "detection_type": "OCR_RECEIPT",
+            "merchant_name": receipt.merchant_name,
+            "amount": str(receipt.total_amount) if receipt.total_amount else "0",
+            "transaction_type": transaction_type,
+            "date": receipt.date.isoformat() if receipt.date else None,
+            "payment_method": receipt.payment_method,
+            "card_number": receipt.card_number,
+            "phone": receipt.phone,
+            "address": receipt.address,
+            "items_count": len(receipt.items),
+            "confidence_score": receipt.confidence_score,
+            "category_hint": receipt.category_hint,
+            "suggested_type": "expense",
+            "description": f"Pembelian di {receipt.merchant_name}" if receipt.merchant_name else "Pembelian",
+            "raw_text": receipt.raw_text[:1000] if receipt.raw_text else None,
+            "latitude": latitude,
+            "longitude": longitude,
+            "merchant_address": merchant_address,
         }
-    }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"OCR processing failed: {str(e)}"
+        )
 
 
 @router.post("/parse-receipt-base64")
-def parse_receipt_base64(
+def parse_receipt_base64_endpoint(
     request: dict,
     current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
-    Parse receipt from base64-encoded image.
+    Parse receipt from base64-encoded image or OCR text.
     
-    Accepts JSON: { "image_base64": "...", "ocr_text": "..." }
-    Either provide base64 image for server-side OCR, or OCR text directly.
+    Accepts JSON with either:
+    - image_base64: base64-encoded image for OCR
+    - ocr_text: pre-OCR'd text to parse directly
     """
     ocr_text = request.get("ocr_text")
     image_base64 = request.get("image_base64")
@@ -178,28 +203,32 @@ def parse_receipt_base64(
             detail="Provide either 'ocr_text' or 'image_base64'"
         )
     
-    # If OCR text provided, parse it directly
-    if ocr_text:
-        parsed = parse_receipt(ocr_text)
-        return ParsedTransactionResponse(
-            amount=str(parsed.amount),
-            transaction_type=parsed.transaction_type,
-            merchant_name=parsed.merchant_name,
-            description=parsed.description,
-            date=parsed.date_time.isoformat() if parsed.date_time else None,
-            account_source=parsed.account_source,
-            reference_number=parsed.reference_number,
-            confidence_score=parsed.confidence_score,
-            detection_type=parsed.detection_type,
-            raw_text=parsed.raw_text[:500] if parsed.raw_text else None,
-            suggested_type="expense",
+    try:
+        if image_base64:
+            # Process image with OCR
+            receipt = parse_receipt_image(image_base64)
+        else:
+            # Parse pre-OCR'd text
+            receipt = parse_receipt_text(ocr_text)
+        
+        return {
+            "status": "success",
+            "merchant_name": receipt.merchant_name,
+            "amount": str(receipt.total_amount) if receipt.total_amount else "0",
+            "transaction_type": "DEBIT",
+            "date": receipt.date.isoformat() if receipt.date else None,
+            "payment_method": receipt.payment_method,
+            "confidence_score": receipt.confidence_score,
+            "category_hint": receipt.category_hint,
+            "suggested_type": "expense",
+            "description": f"Pembelian di {receipt.merchant_name}" if receipt.merchant_name else "Pembelian",
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Parsing failed: {str(e)}"
         )
-    
-    # If base64 image, would need OCR integration
-    return {
-        "status": "requires_ocr",
-        "message": "Base64 image processing requires OCR integration",
-    }
 
 
 @router.post("/confirm")
