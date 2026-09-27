@@ -111,11 +111,68 @@ class TextParserService:
         r"(\d{1,2})\s+(?:Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agt|Sep|Oct|Nov|Des)[a-z]*\s+(\d{4})",
     ]
     
-    def parse_amount(self, amount_str: str) -> Decimal:
-        """Convert amount string to Decimal."""
-        # Remove spaces, dots (thousand separator), replace comma with dot
-        cleaned = amount_str.replace(" ", "").replace(".", "").replace(",", ".")
-        return Decimal(cleaned)
+    # Enhanced amount patterns - handle various Indonesian formats
+    # Must match the FULL amount including thousand separators
+    AMOUNT_PATTERNS = {
+        # Standard: Rp81.500 or Rp 81.500 or Rp81.500,00
+        "full": [
+            r'Rp\.?\s*([\d]{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)',
+            r'([\d]{1,3}(?:[.,]\d{3})*)\s*(?:Rp\.?|Rupiah)',
+        ],
+        # For SMS format: "Nomor Rp81.500" or " Sejumlah Rp50.000"
+        "sms": [
+            r'(?:Sejumlah|Nominal|Total|Bayar)[:\s]*Rp\.?\s*([\d.,]+)',
+            r'Rp\.?\s*([\d.,]+)',
+        ],
+    }
+    
+    def parse_amount(self, amount_str: str) -> Optional[Decimal]:
+        """Convert amount string to Decimal, handling Indonesian format."""
+        if not amount_str:
+            return None
+        # Remove spaces
+        cleaned = amount_str.strip()
+        # Check if it contains Rp
+        has_rp = 'rp' in cleaned.lower()
+        # Remove Rp prefix
+        cleaned = re.sub(r'rp\.?\s*', '', cleaned, flags=re.IGNORECASE)
+        # Handle thousand separator: 81.500 -> 81500
+        # Handle decimal: 81.500,00 -> 81500.00
+        # First, normalize: replace . with '' (thousand sep), replace , with '.'
+        cleaned = cleaned.replace('.', '').replace(',', '.')
+        # Remove any remaining non-numeric except dot
+        cleaned = re.sub(r'[^\d.]', '', cleaned)
+        if not cleaned:
+            return None
+        try:
+            return Decimal(cleaned)
+        except:
+            return None
+    
+    def extract_amount_from_sms(self, text: str) -> Optional[Decimal]:
+        """Extract amount from Indonesian bank SMS with field labels."""
+        # Try to find "Nominal" or "Sejumlah" field first (most reliable)
+        patterns = [
+            # Nominal: Rp81.500
+            r'Nominal\s*[:\s]*Rp\.?\s*([\d.,]+)',
+            # Sejumlah: Sejumlah Rp50.000
+            r'Sejumlah\s*[:\s]*Rp\.?\s*([\d.,]+)',
+            # Total: Total Rp81.500
+            r'Total\s*(?:pembayaran)?\s*[:\s]*Rp\.?\s*([\d.,]+)',
+            # Nominal field
+            r'(?:Nominal|Total)\s+pembayaran\s+[:\s]*Rp\.?\s*([\d.,]+)',
+            # Generic Rp followed by amount
+            r'Rp\.?\s*([\d]{1,3}(?:[.,]\d{3})+)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                amount = self.parse_amount(match.group(1))
+                if amount and amount > 0:
+                    return amount
+        
+        return None
     
     def parse_date(self, text: str) -> Optional[datetime]:
         """Extract date from text."""
@@ -265,10 +322,14 @@ class TextParserService:
                     merchant = None
                     
                     for g in groups:
-                        if g and re.search(r"[\d,]+", g):
+                        if g and re.search(r'[\d,]+\s*', g):
                             amount = self.parse_amount(g)
                         elif g and len(g.strip()) > 1:
                             merchant = g.strip()
+                    
+                    # Also try to extract from SMS fields
+                    if not amount or amount < 1000:
+                        amount = self.extract_amount_from_sms(text)
                     
                     if amount:
                         results.append(ParsedTransaction(
@@ -278,12 +339,39 @@ class TextParserService:
                             description=f"{wallet_name}: {merchant}" if merchant else wallet_name,
                             date_time=self.parse_date(text),
                             account_source=wallet_name,
-                            confidence_score=0.80,
+                            confidence_score=0.85,
                             detection_type="SMS_BANK",
                             raw_text=raw_text,
                         ))
                 except Exception:
                     continue
+        
+        # If no results from patterns, try SMS field extraction (most reliable for bank SMS)
+        if not results:
+            amount = self.extract_amount_from_sms(text)
+            if amount:
+                # Detect merchant from various fields
+                merchant = None
+                merchant_match = re.search(r'Dibayarkan ke\s+([^\n]+)', text)
+                if merchant_match:
+                    merchant = merchant_match.group(1).strip().split('-')[0].strip()
+                
+                # Detect type from context
+                tx_type = "DEBIT"
+                if "Transfer masuk" in text.lower() or "penerimaan" in text.lower():
+                    tx_type = "CREDIT"
+                
+                results.append(ParsedTransaction(
+                    amount=amount,
+                    transaction_type=tx_type,
+                    merchant_name=merchant,
+                    description=merchant or "Transaksi",
+                    date_time=self.parse_date(text),
+                    account_source="BANK",
+                    confidence_score=0.90,
+                    detection_type="SMS_BANK",
+                    raw_text=raw_text,
+                ))
         
         # If no results, try generic patterns
         if not results:
