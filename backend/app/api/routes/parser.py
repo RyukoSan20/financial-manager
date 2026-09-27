@@ -311,6 +311,45 @@ def get_detection_types(
     }
 
 
+@router.get("/ocr-status")
+def get_ocr_status():
+    """
+    Check OCR service status - is EasyOCR ready?
+    """
+    from app.services.ocr_service import ocr_initialized, ocr_init_error, easyocr_reader
+    
+    is_ready = easyocr_reader is not None and ocr_init_error is None
+    
+    return {
+        "status": "ready" if is_ready else ("loading" if not ocr_initialized else "error"),
+        "ready": is_ready,
+        "error": str(ocr_init_error) if ocr_init_error else None,
+        "message": "OCR ready" if is_ready else ("Downloading models..." if not ocr_initialized else "OCR error"),
+    }
+
+
+@router.post("/ocr-warmup")
+def warmup_ocr():
+    """
+    Trigger OCR model download/warmup.
+    This pre-loads the EasyOCR models so the first scan is fast.
+    """
+    import threading
+    
+    def init_ocr():
+        from app.services.ocr_service import get_easyocr_reader
+        try:
+            get_easyocr_reader(timeout_seconds=120)
+        except Exception as e:
+            pass
+    
+    # Start in background thread
+    thread = threading.Thread(target=init_ocr, daemon=True)
+    thread.start()
+    
+    return {"status": "started", "message": "OCR warmup started in background"}
+
+
 @router.get("/sample-texts")
 def get_sample_texts():
     """

@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
-import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles } from 'lucide-react';
+import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles, Download, RefreshCw } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 
 export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [ocrStatus, setOcrStatus] = useState({ ready: false, loading: false });
+  const [warmupLoading, setWarmupLoading] = useState(false);
   const [preview, setPreview] = useState(null);
   const [parsedData, setParsedData] = useState(null);
   const [step, setStep] = useState('upload'); // upload, preview, confirm
@@ -21,6 +23,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   useEffect(() => {
     if (isOpen) {
       loadData();
+      checkOcrStatus();
     }
   }, [isOpen]);
 
@@ -37,6 +40,51 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       }
     } catch (err) {
       console.error('Failed to load data:', err);
+    }
+  };
+
+  // Check OCR status
+  const checkOcrStatus = async () => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
+      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-a042.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/parser/ocr-status`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      const data = await response.json();
+      setOcrStatus({ ready: data.ready, loading: !data.ready });
+    } catch (err) {
+      console.error('OCR status check failed:', err);
+      setOcrStatus({ ready: false, loading: false });
+    }
+  };
+
+  // Warmup OCR (download models)
+  const warmupOcr = async () => {
+    setWarmupLoading(true);
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
+      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-a042.up.railway.app';
+      
+      await fetch(`${apiUrl}/api/parser/ocr-warmup`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      
+      // Poll status until ready
+      const pollStatus = async () => {
+        await new Promise(r => setTimeout(r, 5000)); // Wait 5 seconds
+        await checkOcrStatus();
+        if (!ocrStatus.ready && warmupLoading) {
+          pollStatus();
+        }
+      };
+      pollStatus();
+    } catch (err) {
+      console.error('OCR warmup failed:', err);
+    } finally {
+      setWarmupLoading(false);
     }
   };
 
@@ -230,18 +278,83 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
           </div>
 
+          {/* OCR Status / Download Button */}
+          {!ocrStatus.ready && !warmupLoading && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Download className="w-5 h-5 text-amber-600" />
+                  <div>
+                    <p className="font-medium text-amber-900">Download Model OCR</p>
+                    <p className="text-sm text-amber-700">
+                      OCR memerlukan download model (~50MB) untuk pertama kali.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="warning"
+                  size="sm"
+                  onClick={warmupOcr}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* OCR Loading */}
+          {(warmupLoading || ocrStatus.loading) && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                <div>
+                  <p className="font-medium text-blue-900">Mendownload Model OCR...</p>
+                  <p className="text-sm text-blue-700">
+                    Mohon tunggu beberapa menit. Proses ini hanya sekali.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* OCR Ready indicator */}
+          {ocrStatus.ready && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-600" />
+              <p className="text-sm text-emerald-700">OCR siap digunakan</p>
+              <button
+                onClick={checkOcrStatus}
+                className="ml-auto text-emerald-600 hover:text-emerald-800"
+                title="Refresh status"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50/50 transition-all"
+            onClick={() => ocrStatus.ready ? fileInputRef.current?.click() : null}
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+              ocrStatus.ready
+                ? 'border-gray-300 hover:border-purple-400 hover:bg-purple-50/50 cursor-pointer'
+                : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+            }`}
           >
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Upload className="w-8 h-8 text-purple-600" />
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${ocrStatus.ready ? 'bg-purple-100' : 'bg-gray-200'}`}>
+              <Upload className={`w-8 h-8 ${ocrStatus.ready ? 'text-purple-600' : 'text-gray-400'}`} />
             </div>
             <p className="font-medium text-gray-700">Drop gambar struk di sini</p>
             <p className="text-sm text-gray-500 mt-1">atau klik untuk browse</p>
             <p className="text-xs text-gray-400 mt-2">JPG, PNG, WebP (maks 10MB)</p>
+            {!ocrStatus.ready && (
+              <p className="text-xs text-amber-600 mt-2 font-medium">
+                ⚠️ Download model OCR terlebih dahulu
+              </p>
+            )}
           </div>
 
           <input
