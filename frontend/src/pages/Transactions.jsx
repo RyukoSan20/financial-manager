@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Spinner } from '../components/ui';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ScanText, MessageSquare, Edit2, Check } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ScanText, MessageSquare, Edit2, Check, Camera } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import { TextParserModal } from '../components/parser/TextParserModal';
 import { QRScannerModal } from '../components/parser/QRScannerModal';
