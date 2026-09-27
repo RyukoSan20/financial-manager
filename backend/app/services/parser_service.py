@@ -3,8 +3,10 @@
 import re
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from dataclasses import dataclass
+
+from app.services.merchant_classifier import classify_transaction, suggest_category, merchant_classifier
 
 
 @dataclass
@@ -225,7 +227,7 @@ class TextParserService:
         return "GENERIC"
     
     def parse_text(self, raw_text: str) -> List[ParsedTransaction]:
-        """Parse raw SMS/text and extract transaction data."""
+        """Parse raw SMS/text and extract transaction data using AI classification."""
         results = []
         
         # Normalize text
@@ -238,160 +240,127 @@ class TextParserService:
         if "qris" in text.lower():
             detection_type = "QRIS_TEXT"
         
-        bank = self.detect_bank(text)
+        # Use AI classifier for merchant and category detection
+        classification = classify_transaction(text)
         
-        # Try to parse with bank's specific patterns
-        patterns = self.BANK_PATTERNS.get(bank, self.BANK_PATTERNS["GENERIC"])
+        # Try to extract amount using enhanced SMS field extraction
+        amount = self.extract_amount_from_sms(text)
         
-        # Try debit patterns
-        for pattern in patterns.get("debit", []):
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
-                groups = match.groups()
-                if len(groups) >= 2:
-                    try:
-                        # Try to find amount and merchant from groups
-                        amount = None
-                        merchant = None
-                        
-                        for g in groups:
-                            if g and re.search(r"[\d,]+", g):
-                                try:
-                                    amount = self.parse_amount(g)
-                                except:
-                                    pass
-                            elif g and len(g) > 1:
-                                merchant = g.strip()
-                        
-                        if amount:
-                            results.append(ParsedTransaction(
-                                amount=amount,
-                                transaction_type="DEBIT",
-                                merchant_name=merchant,
-                                description=merchant,
-                                date_time=self.parse_date(text),
-                                account_source=bank,
-                                confidence_score=0.75,
-                                detection_type=detection_type,
-                                raw_text=raw_text,
-                            ))
-                    except Exception:
-                        continue
-        
-        # Try credit patterns
-        for pattern in patterns.get("credit", []):
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
-                groups = match.groups()
-                if len(groups) >= 2:
-                    try:
-                        amount = None
-                        source = None
-                        
-                        for g in groups:
-                            if g and re.search(r"[\d,]+", g):
-                                try:
-                                    amount = self.parse_amount(g)
-                                except:
-                                    pass
-                            elif g and len(g) > 1:
-                                source = g.strip()
-                        
-                        if amount:
-                            results.append(ParsedTransaction(
-                                amount=amount,
-                                transaction_type="CREDIT",
-                                merchant_name=source,
-                                description=f"Transfer dari {source}" if source else "Penerimaan",
-                                date_time=self.parse_date(text),
-                                account_source=bank,
-                                confidence_score=0.75,
-                                detection_type=detection_type,
-                                raw_text=raw_text,
-                            ))
-                    except Exception:
-                        continue
-        
-        # Try e-wallet patterns
-        for wallet_name, config in self.EWALLET_PATTERNS.items():
-            matches = re.finditer(config["pattern"], text, re.IGNORECASE)
-            for match in matches:
-                groups = match.groups()
-                try:
-                    amount = None
-                    merchant = None
-                    
-                    for g in groups:
-                        if g and re.search(r'[\d,]+\s*', g):
-                            amount = self.parse_amount(g)
-                        elif g and len(g.strip()) > 1:
-                            merchant = g.strip()
-                    
-                    # Also try to extract from SMS fields
-                    if not amount or amount < 1000:
-                        amount = self.extract_amount_from_sms(text)
-                    
-                    if amount:
-                        results.append(ParsedTransaction(
-                            amount=amount,
-                            transaction_type=config["type"].upper(),
-                            merchant_name=merchant,
-                            description=f"{wallet_name}: {merchant}" if merchant else wallet_name,
-                            date_time=self.parse_date(text),
-                            account_source=wallet_name,
-                            confidence_score=0.85,
-                            detection_type="SMS_BANK",
-                            raw_text=raw_text,
-                        ))
-                except Exception:
-                    continue
-        
-        # If no results from patterns, try SMS field extraction (most reliable for bank SMS)
-        if not results:
+        # If still no amount, try patterns
+        if not amount or amount < 100:
             amount = self.extract_amount_from_sms(text)
-            if amount:
-                # Detect merchant from various fields
-                merchant = None
-                merchant_match = re.search(r'Dibayarkan ke\s+([^\n]+)', text)
-                if merchant_match:
-                    merchant = merchant_match.group(1).strip().split('-')[0].strip()
-                
-                # Detect type from context
-                tx_type = "DEBIT"
-                if "Transfer masuk" in text.lower() or "penerimaan" in text.lower():
-                    tx_type = "CREDIT"
-                
-                results.append(ParsedTransaction(
-                    amount=amount,
-                    transaction_type=tx_type,
-                    merchant_name=merchant,
-                    description=merchant or "Transaksi",
-                    date_time=self.parse_date(text),
-                    account_source="BANK",
-                    confidence_score=0.90,
-                    detection_type="SMS_BANK",
-                    raw_text=raw_text,
-                ))
         
-        # If no results, try generic patterns
+        # Extract merchant from various fields
+        merchant = None
+        
+        # Try "Dibayarkan ke" field (for bank SMS)
+        merchant_match = re.search(r'Dibayarkan ke\s+([^\n\-]+)', text, re.IGNORECASE)
+        if merchant_match:
+            raw_merchant = merchant_match.group(1).strip()
+            # Clean up: remove card numbers, extra info
+            merchant = re.sub(r'[\d\*]+.*$', '', raw_merchant).strip()
+            if '-' in merchant:
+                merchant = merchant.split('-')[0].strip()
+        
+        # Try "Diterima dari" field (for incoming transfers)
+        if not merchant:
+            received_match = re.search(r'(?:Diterima dari|Dari)\s+([^\n\-]+)', text, re.IGNORECASE)
+            if received_match:
+                merchant = received_match.group(1).strip()
+        
+        # If merchant found, re-classify with known merchant
+        if merchant:
+            classification = classify_transaction(text, merchant)
+        
+        # Detect transaction type from context
+        tx_type = "DEBIT"
+        if any(k in text.lower() for k in ['transfer masuk', 'penerimaan', 'diterima', 'masuk dari', 'dari:', 'dari ']):
+            tx_type = "CREDIT"
+        
+        # Use classification to determine transaction type
+        if classification.transaction_type_hint:
+            if tx_type == "DEBIT":  # Only override if it's a debit
+                pass  # Keep the detected type
+        
+        # Get category suggestion from classifier
+        category_hint = merchant_classifier.get_category_suggestion(classification)
+        
+        # If classification confidence is low, try text-based category
+        if classification.confidence < 0.7:
+            cat_suggestion, cat_conf = suggest_category(text)
+            if cat_conf > classification.confidence:
+                category_hint = cat_suggestion
+        
+        # Parse date
+        date_time = self.parse_date(text)
+        
+        # Calculate confidence
+        confidence = classification.confidence
+        if amount and amount >= 1000:
+            confidence += 0.1
+        if merchant:
+            confidence += 0.05
+        
+        # Build description
+        description = merchant or classification.display_name or "Transaksi"
+        if tx_type == "CREDIT":
+            description = f"Terima dari {merchant}" if merchant else "Penerimaan"
+        
+        # Create result
+        if amount and amount > 0:
+            results.append(ParsedTransaction(
+                amount=amount,
+                transaction_type=tx_type,
+                merchant_name=merchant or classification.display_name,
+                description=description,
+                date_time=date_time,
+                account_source=classification.source_type.replace("_", " ").title(),
+                confidence_score=min(confidence, 0.95),
+                detection_type=detection_type,
+                raw_text=raw_text,
+            ))
+        
+        # If no results from classifier, try pattern matching
         if not results:
-            # Try to find any amount in the text
-            amount_matches = re.findall(r"Rp[\s.]*([\d,]+)", text, re.IGNORECASE)
-            if amount_matches:
-                for amt_str in amount_matches:
+            # Try e-wallet patterns
+            for wallet_name, config in self.EWALLET_PATTERNS.items():
+                matches = re.finditer(config["pattern"], text, re.IGNORECASE)
+                for match in matches:
+                    groups = match.groups()
                     try:
-                        amount = self.parse_amount(amt_str)
-                        results.append(ParsedTransaction(
-                            amount=amount,
-                            transaction_type="DEBIT",  # Default to debit for unknown sources
-                            description=text[:100],
-                            date_time=self.parse_date(text),
-                            confidence_score=0.30,  # Low confidence for generic parse
-                            detection_type=detection_type,
-                            raw_text=raw_text,
-                        ))
+                        extracted_amount = amount  # Use already extracted amount
+                        
+                        if extracted_amount and extracted_amount >= 1000:
+                            results.append(ParsedTransaction(
+                                amount=extracted_amount,
+                                transaction_type=config["type"].upper(),
+                                merchant_name=wallet_name.upper(),
+                                description=f"{wallet_name}: {config['type']}",
+                                date_time=date_time,
+                                account_source=wallet_name.upper(),
+                                confidence_score=0.85,
+                                detection_type="SMS_BANK",
+                                raw_text=raw_text,
+                            ))
+                            break
                     except Exception:
                         continue
+                if results:
+                    break
+        
+        # If still no results, try generic patterns with enhanced extraction
+        if not results and amount and amount >= 100:
+            results.append(ParsedTransaction(
+                amount=amount,
+                transaction_type=tx_type,
+                merchant_name=merchant or "Unknown",
+                description=merchant or "Transaksi",
+                date_time=date_time,
+                account_source="BANK",
+                confidence_score=0.70,
+                detection_type=detection_type,
+                raw_text=raw_text,
+            ))
         
         return results
 
