@@ -104,7 +104,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
       // Get token
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://financial-manager-production-a042.up.railway.app';
+      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-a042.up.railway.app';
       
       const result = await fetch(`${apiUrl}/api/parser/parse-receipt`, {
         method: 'POST',
