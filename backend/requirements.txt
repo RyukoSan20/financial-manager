@@ -24,6 +24,5 @@ httpx==0.27.2
 python-dateutil==2.9.0
 requests==2.32.0
 
-# OCR - EasyOCR (includes models, no system dependencies)
+# OCR - Gemini AI (no model download needed)
 Pillow>=10.0.0
-easyocr>=1.7.0

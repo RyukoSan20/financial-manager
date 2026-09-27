@@ -156,7 +156,7 @@ async def parse_receipt_image_endpoint(
             "status": "success",
             "detection_type": "OCR_RECEIPT",
             "merchant_name": receipt.merchant_name,
-            "amount": str(receipt.amount) if receipt.amount else "0",
+            "amount": str(receipt.amount_value) if receipt.amount_value else "0",
             "transaction_type": transaction_type,
             "date": receipt.date,
             "payment_method": receipt.payment_method,
