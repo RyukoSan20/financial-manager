@@ -1,33 +1,57 @@
 """
-Robust Receipt Parser Engine
-RTL Tokenization + State Machine + Mathematical Guardrails
+Production Receipt Parser Engine
+RTL Tokenization + Strict State Machine + Multi-Line Buffer + Mathematical Guardrails
 """
 
 import re
+import logging
 from typing import List, Dict, Any, Optional
 
-class RobustReceiptParserEngine:
+logger = logging.getLogger(__name__)
+
+
+class ProductionReceiptParserEngine:
+    """
+    Production-grade receipt parser with:
+    - Strict State Machine (HEADER -> ITEMS -> FOOTER)
+    - RTL Tokenization (numbers from right)
+    - Name Buffer for multi-line items
+    - Mathematical Guardrails & Holistic Confidence
+    """
+    
     def __init__(self):
         self.clean_digit = re.compile(r'[^\d]')
-        self.pat_footer = re.compile(
-            r'^(HARGA\s*JUAL|TOTAL|SUBTOTAL|TUNAI|KEMBALI|CASH|BAYAR|GRAND\s*TOTAL)',
+        
+        # Header detection patterns
+        self.pat_header_trigger = re.compile(
+            r'(INDOMARET|ALFAMART|ALFAGIFT|FAMILY MART|SUPERINDO|YOGYA|'
+            r'TRANSFE|STATION|MERAH PUTIH|CARREFOUR|HYPERMART|GIANT)',
             re.IGNORECASE
         )
+        
+        # Footer detection patterns
+        self.pat_footer_trigger = re.compile(
+            r'^(HARGA\s*JUAL|TOTAL|SUBTOTAL|TUNAI|KEMBALI|CASH|BAYAR|'
+            r'EDC|BANK|GRAND\s*TOTAL|TOTAL\s*BAYAR|SISA\s*KEMBALI)',
+            re.IGNORECASE
+        )
+        
+        # Phone number pattern to filter from items
+        self.pat_phone = re.compile(r'\b08[12][\d\s\-]{7,12}\b')
+        
+        # Date pattern (marks transition from header to items)
         self.pat_date = re.compile(r'\d{2}[\.\/\-]\d{2}[\.\/\-]\d{2,4}')
-        self.pat_number = re.compile(r'^[\d]+$')
         
         # Indonesian merchant patterns
         self.merchant_patterns = [
             'indomaret', 'alfamart', 'alfagift', 'family mart', 'familymart',
             'lawson', 'carrefour', 'superindo', 'hypermart', 'giant',
-            'transmart', 'indomaret', 'alfamart', 'mcdonald', "mcd",
-            'kfc', 'starbucks', 'hokben', 'burger king', 'pizza hut',
-            'grab', 'gojek', 'shopee', 'tokopedia', 'lazada',
-            'seven eleven', '7-eleven', 'cvs', 'guardian', 'watsons',
-            'century', 'apotek', 'rs', 'rumah sakit'
+            'transmart', 'seven eleven', '7-eleven', 'cvs', 'guardian',
+            'mcdonald', 'mcd', 'kfc', 'starbucks', 'hokben', 'burger king',
+            'grab', 'gojek', 'shopee', 'tokopedia', 'lazada'
         ]
 
-    def sanitize_number(self, val_str: str) -> float:
+    def sanitize_num(self, val_str: str) -> float:
         """Clean OCR artifacts from number strings."""
         if not val_str:
             return 0.0
@@ -43,144 +67,143 @@ class RobustReceiptParserEngine:
         for old, new in substitutions.items():
             val_str = val_str.replace(old, new)
         
-        # Remove non-digits
         cleaned = self.clean_digit.sub('', val_str)
         return float(cleaned) if cleaned else 0.0
 
-    def is_likely_item_line(self, line: str) -> bool:
-        """Check if line is likely an item (has price-like numbers)."""
-        # Skip if it's a header/footer marker
-        skip_words = ['diskon', 'promo', 'potongan', 'kembalian', 'tunai', 
-                     'card', 'master', 'visa', 'debit', 'credit', 'qr',
-                     'ppn', 'tax', 'service', 'charge', 'member', 'poin',
-                     'welcome', 'thank', 'struk', 'receipt', 'transaksi']
-        
+    def is_valid_item_line(self, line: str) -> bool:
+        """Check if line is likely an item (not header/footer/promo)."""
+        line_upper = line.upper()
         line_lower = line.lower()
-        if any(word in line_lower for word in skip_words):
+        
+        # Skip footer/header markers
+        skip_words = [
+            'DISKON', 'PROMO', 'POTONGAN', 'KEMBALI', 'TUNAI', 
+            'CARD', 'MASTER', 'VISA', 'DEBIT', 'CREDIT', 'QRIS',
+            'PPN', 'TAX', 'SERVICE', 'CHARGE', 'MEMBER', 'POIN',
+            'WELCOME', 'THANK', 'STRUK', 'RECEIPT', 'TRANSAKSI',
+            'GOPAY', 'DANA', 'OVO', 'SHOPEPAY', 'LINKAJA'
+        ]
+        
+        if any(word in line_upper for word in skip_words):
             return False
         
-        # Must have at least some digits
+        # Must contain digits
         if not re.search(r'\d', line):
             return False
         
+        # Filter phone numbers (header artifacts)
+        if self.pat_phone.search(line):
+            # If line is ONLY a phone number, skip it
+            cleaned = re.sub(r'[\s\-\(\)]', '', line)
+            if re.match(r'^08[\d]{8,12}$', cleaned):
+                return False
+        
         return True
 
-    def extract_numbers_from_line(self, line: str) -> List[str]:
-        """RTL Tokenization: Extract numeric tokens from right to left."""
-        tokens = line.split()
-        numeric_tokens = []
-        text_tokens = []
-        
-        # Process tokens from right to left
-        for token in reversed(tokens):
-            num_val = self.sanitize_number(token)
-            
-            # If it's a valid price/number and we don't have too many
-            if num_val > 0 and len(numeric_tokens) < 3:
-                numeric_tokens.append(token)
-            else:
-                text_tokens.append(token)
-        
-        # Reverse back to correct order
-        numeric_tokens.reverse()
-        text_tokens.reverse()
-        
-        return {
-            'numbers': numeric_tokens,
-            'text': ' '.join(text_tokens),
-            'parsed_numbers': [self.sanitize_number(n) for n in numeric_tokens]
-        }
-
     def parse(self, raw_lines: List[str]) -> Dict[str, Any]:
-        """Main parsing function with state machine."""
+        """
+        Parse receipt with strict state machine.
+        
+        States:
+        - HEADER: Merchant name, address, phone (no item parsing)
+        - ITEMS: Item parsing with RTL tokenizer (only this state parses items)
+        - FOOTER: Total, payment method (no item parsing)
+        """
         
         items = []
         subtotal = 0.0
         discount_total = 0.0
         total_amount = 0.0
         merchant_name = "Unknown Merchant"
-        address_lines = []
         payment_method = "Cash"
         
-        name_buffer = []
-        in_items_section = False
-        header_done = False
-        has_discount = False
+        # State machine
+        state = "HEADER"
+        name_buffer: List[str] = []
         
-        for index, line in enumerate(raw_lines):
+        for line in raw_lines:
             line_str = line.strip()
             if not line_str:
                 continue
             
             line_upper = line_str.upper()
+            line_lower = line_str.lower()
             
-            # === HEADER DETECTION ===
-            if not header_done:
-                # Merchant name detection
+            # ==========================================
+            # STATE 1: HEADER
+            # ==========================================
+            if state == "HEADER":
+                # Detect merchant name
                 for pattern in self.merchant_patterns:
-                    line_lower = line_str.lower()
                     if pattern in line_lower:
                         merchant_name = line_str.title()
                         break
                 
-                # Address detection
-                if 'JL.' in line_upper or 'JALAN' in line_upper:
-                    address_lines.append(line_str)
-                
-                # Date or item-like content marks end of header
-                if self.pat_date.search(line_str) or index > 5:
-                    header_done = True
-                    in_items_section = True
+                # Transition to ITEMS on date or first item-like content
+                if self.pat_date.search(line_str) or 'S/ROTI' in line_upper:
+                    state = "ITEMS"
                     continue
             
-            # === FOOTER DETECTION ===
-            if self.pat_footer.search(line_str):
-                in_items_section = False
+            # ==========================================
+            # FOOTER DETECTION (can happen from ITEMS)
+            # ==========================================
+            if self.pat_footer_trigger.search(line_str):
+                state = "FOOTER"
                 
-                if 'TOTAL' in line_upper and 'DISCOUNT' not in line_upper:
-                    total_amount = self.sanitize_number(line_str)
+                # Parse footer values
+                if 'TOTAL' in line_upper and 'DISCOUNT' not in line_upper and total_amount == 0.0:
+                    total_amount = self.sanitize_num(line_str)
                 elif 'HARGA JUAL' in line_upper or 'SUBTOTAL' in line_upper:
-                    subtotal = self.sanitize_number(line_str)
+                    subtotal = self.sanitize_num(line_str)
                 elif 'TUNAI' in line_upper:
                     payment_method = 'Cash'
-                continue
-            
-            # === DISCOUNT/PROMO LINE ===
-            if 'DISKON' in line_upper or 'PROMO' in line_upper or 'POTONGAN' in line_upper:
-                has_discount = True
-                disc_val = self.sanitize_number(line_str)
-                if disc_val > 0:
-                    discount_total += disc_val
-                continue
-            
-            # === PAYMENT METHOD DETECTION ===
-            payment_methods = {
-                'gopay': 'GoPay', 'dana': 'DANA', 'ovo': 'OVO',
-                'shopee pay': 'ShopeePay', 'shopeepay': 'ShopeePay',
-                'linkaja': 'LinkAja', 'qris': 'QRIS',
-                'debit': 'Debit', 'cash': 'Cash', 'tunai': 'Cash',
-                'credit': 'Credit', 'kartu kredit': 'Credit Card'
-            }
-            for pattern, method in payment_methods.items():
-                if pattern in line_lower:
-                    payment_method = method
-                    break
-            
-            # === ITEM PARSING (RTL Tokenization) ===
-            if in_items_section and self.is_likely_item_line(line_str):
-                parsed = self.extract_numbers_from_line(line_str)
                 
-                if parsed['numbers']:
-                    nums = parsed['parsed_numbers']
+                continue
+            
+            # ==========================================
+            # STATE 2: ITEMS (RTL Tokenization Active)
+            # ==========================================
+            if state == "ITEMS":
+                # Skip discount/promo lines
+                if 'DISKON' in line_upper or 'PROMO' in line_upper or 'POTONGAN' in line_upper:
+                    disc_match = re.search(r'[\(:=]?\s*[-]?\s*([0-9OIDI|.,\s]+)[\)]?', line_str)
+                    if disc_match:
+                        discount_total += self.sanitize_num(disc_match.group(1))
+                    continue
+                
+                # Only process valid item lines
+                if not self.is_valid_item_line(line_str):
+                    continue
+                
+                # RTL Tokenization: Extract numbers from right to left
+                tokens = line_str.split()
+                numeric_tokens = []
+                text_tokens = []
+                
+                for token in reversed(tokens):
+                    num_val = self.sanitize_num(token)
                     
-                    # Determine quantity, unit price, total price
+                    # Valid price: 100-99999999
+                    if 100 <= num_val <= 99999999 and len(numeric_tokens) < 3:
+                        numeric_tokens.append(token)
+                    else:
+                        text_tokens.append(token)
+                
+                numeric_tokens.reverse()
+                text_tokens.reverse()
+                line_item_name = " ".join(text_tokens).strip()
+                
+                if numeric_tokens:
+                    nums = [self.sanitize_num(n) for n in numeric_tokens]
+                    
+                    # Parse quantity, unit price, total price
                     if len(nums) == 3:
                         qty = int(nums[0]) if nums[0] <= 99 else 1
                         unit_price = nums[1]
                         total_price = nums[2]
                     elif len(nums) == 2:
                         qty = 1
-                        # Check if first is quantity (small) or part of price
+                        # If first number is small (<=10), it's likely qty
                         if nums[0] <= 10:
                             qty = int(nums[0])
                             unit_price = nums[1]
@@ -192,32 +215,51 @@ class RobustReceiptParserEngine:
                         unit_price = nums[0]
                         total_price = nums[0]
                     
-                    # Build full item name from buffer
-                    full_name = ' '.join(name_buffer + [parsed['text']]).strip()
+                    # Flush name buffer (multi-line item names)
+                    full_name = " ".join(name_buffer + [line_item_name]).strip()
                     name_buffer = []
                     
-                    # Only add if looks like a real item
+                    # Only add if looks like real item
                     if total_price >= 100 and len(full_name) > 1:
                         items.append({
-                            'name': full_name,
-                            'quantity': qty,
-                            'price_per_unit': unit_price,
-                            'total_price': total_price
+                            "name": full_name,
+                            "quantity": qty,
+                            "price_per_unit": unit_price,
+                            "total_price": total_price
                         })
                 else:
-                    # Buffer multi-line item names
+                    # No numbers found - buffer for next line (multi-line item name)
                     if len(name_buffer) < 2:
                         name_buffer.append(line_str)
             
-            elif not in_items_section and line_str:
-                # Buffer potential multi-line item names
-                if len(name_buffer) < 2:
-                    name_buffer.append(line_str)
-
-        # === MATHEMATICAL GUARDRAILS ===
+            # ==========================================
+            # STATE 3: FOOTER
+            # ==========================================
+            if state == "FOOTER":
+                if 'TOTAL' in line_upper and 'DISCOUNT' not in line_upper and total_amount == 0.0:
+                    total_amount = self.sanitize_num(line_str)
+                elif 'HARGA JUAL' in line_upper or 'SUBTOTAL' in line_upper:
+                    subtotal = self.sanitize_num(line_str)
+                
+                # Detect payment method
+                payment_methods = {
+                    'gopay': 'GoPay', 'dana': 'DANA', 'ovo': 'OVO',
+                    'shopee pay': 'ShopeePay', 'shopeepay': 'ShopeePay',
+                    'linkaja': 'LinkAja', 'qris': 'QRIS',
+                    'cash': 'Cash', 'tunai': 'Cash',
+                    'debit': 'Debit', 'credit': 'Credit'
+                }
+                for pattern, method in payment_methods.items():
+                    if pattern in line_lower:
+                        payment_method = method
+                        break
+        
+        # ==========================================
+        # MATHEMATICAL GUARDRAILS
+        # ==========================================
         sum_items = sum(item['total_price'] for item in items)
         
-        # If TOTAL is missing/zero, calculate from items
+        # If TOTAL missing/zero, calculate from items
         if total_amount == 0.0:
             if subtotal > 0:
                 total_amount = subtotal
@@ -227,20 +269,38 @@ class RobustReceiptParserEngine:
         # If subtotal missing, use sum of items
         if subtotal == 0.0 and items:
             subtotal = sum_items
-
+        
+        # ==========================================
+        # HOLISTIC CONFIDENCE SCORE
+        # ==========================================
+        # 50% base + 25% item completeness + 25% math validity
+        confidence = 0.50
+        if len(items) > 0:
+            confidence += 0.25
+        if len(items) >= 3:
+            confidence += 0.10
+        
+        # Math validation: total should equal subtotal - discount
+        expected_total = subtotal - discount_total
+        if total_amount > 0:
+            if abs(total_amount - expected_total) <= 100:
+                confidence += 0.25  # Math is valid
+            elif abs(total_amount - sum_items) <= 100:
+                confidence += 0.15  # Math is close (discount not parsed)
+        
         return {
-            'merchant_name': merchant_name,
-            'address': ' '.join(address_lines) if address_lines else None,
-            'payment_method': payment_method,
-            'subtotal': subtotal,
-            'discount_total': discount_total,
-            'amount': total_amount,
-            'items': items,
-            'items_count': len(items)
+            "merchant_name": merchant_name,
+            "payment_method": payment_method,
+            "subtotal": subtotal,
+            "discount_total": discount_total,
+            "amount": total_amount,
+            "confidence_score": round(min(confidence, 1.0), 2),
+            "items": items,
+            "items_count": len(items)
         }
 
 
 def parse_receipt_text(raw_lines: List[str]) -> Dict[str, Any]:
     """Convenience function for parsing receipt text."""
-    engine = RobustReceiptParserEngine()
+    engine = ProductionReceiptParserEngine()
     return engine.parse(raw_lines)

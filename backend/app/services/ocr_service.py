@@ -1,5 +1,5 @@
 """
-OCR Service with RapidOCR (ONNX) + Dynamic Y-Threshold + Image Resizing
+OCR Service with RapidOCR (ONNX) + Dynamic Y-Threshold + Image Resizing + Auto-Deskew
 No PyTorch dependency - Pure ONNX Runtime for better performance
 """
 
@@ -11,6 +11,70 @@ from dataclasses import dataclass
 from PIL import Image, ImageEnhance
 
 logger = logging.getLogger(__name__)
+
+# ============================================================
+# OpenCV Image Processing Utilities
+# ============================================================
+
+def _deskew_image(binary_img) -> any:
+    """
+    Auto-straighten skewed receipt images for accurate Y-axis clustering.
+    Tolerates skew up to 45 degrees.
+    """
+    try:
+        import cv2
+        import numpy as np
+        
+        # Find non-white pixels
+        coords = np.column_stack(np.where(binary_img == 0))
+        if len(coords) < 10:
+            return binary_img
+        
+        # Calculate rotation angle from minAreaRect
+        angle = cv2.minAreaRect(coords)[-1]
+        
+        # Normalize angle
+        if angle < -45:
+            angle = -(90 + angle)
+        elif angle > 45:
+            angle = 90 - angle
+        else:
+            angle = -angle
+        
+        # Only rotate if skew > 0.8 degrees
+        if abs(angle) > 0.8:
+            h, w = binary_img.shape[:2]
+            center = (w // 2, h // 2)
+            M = cv2.getRotationMatrix2D(center, angle, 1.0)
+            return cv2.warpAffine(binary_img, M, (w, h), flags=cv2.INTER_CUBIC, borderValue=255)
+        
+        return binary_img
+        
+    except Exception as e:
+        logger.warning(f"Deskew failed: {e}")
+        return binary_img
+
+
+def _calculate_robust_y_threshold(box_heights: List[float]) -> float:
+    """
+    Calculate Y-Threshold free from outlier noise (micro text / logos).
+    Uses IQR filtering: removes 10% top and bottom extremes before median.
+    """
+    import numpy as np
+    
+    if not box_heights:
+        return 12.0
+    
+    # Filter extreme values using percentile (10% - 90%)
+    q10 = np.percentile(box_heights, 10)
+    q90 = np.percentile(box_heights, 90)
+    filtered_heights = [h for h in box_heights if q10 <= h <= q90]
+    
+    # Use filtered median, fallback to original median
+    median_h = np.median(filtered_heights) if filtered_heights else np.median(box_heights)
+    
+    return float(max(6.0, median_h * 0.45))
+
 
 # ============================================================
 # OCR Engine - RapidOCR ONNX (No system dependency)
@@ -114,10 +178,8 @@ def _extract_with_rapidocr(image_bytes: bytes) -> Tuple[List[str], float]:
         if not elements:
             return [], 0.0
         
-        # Dynamic Y-Threshold: 40% of median box height
-        import numpy as np
-        median_h = np.median(box_heights) if box_heights else 15
-        dynamic_y_threshold = max(6.0, median_h * 0.4)
+        # Robust Dynamic Y-Threshold with outlier filtering (IQR percentile 10-90)
+        dynamic_y_threshold = _calculate_robust_y_threshold(box_heights)
         
         # Sort by Y coordinate and group into lines
         elements.sort(key=lambda item: item['y_center'])

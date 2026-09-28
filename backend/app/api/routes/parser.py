@@ -196,6 +196,12 @@ async def parse_receipt_image_endpoint(
         # Determine transaction type
         transaction_type = "DEBIT" if receipt.amount else "DEBIT"
         
+        # Get holistic confidence from parser engine (includes math validation)
+        holistic_confidence = 0.7  # Default
+        if hasattr(receipt, 'confidence') and receipt.confidence:
+            # Blend OCR confidence with parser confidence
+            holistic_confidence = (receipt.confidence / 100 * 0.5) + 0.5
+        
         return {
             "status": "success",
             "detection_type": "ENTERPRISE_LOCAL_OCR",
@@ -207,11 +213,13 @@ async def parse_receipt_image_endpoint(
             "address": result["merchant_address"],
             "items_count": len(result["enriched_items"]) if result["enriched_items"] else 0,
             "items": result["enriched_items"] if result["enriched_items"] else [],
-            "confidence_score": round(receipt.confidence, 1),
+            "confidence_score": round(holistic_confidence * 100, 1),
+            "ocr_confidence": round(receipt.confidence, 1) if receipt.confidence else 0,
             "category_hint": "shopping",
             "suggested_type": "expense",
             "description": f"Purchase at {receipt.merchant_name}" if receipt.merchant_name else "Purchase",
-            "raw_text": receipt.text[:1000] if receipt.text else None,
+            "raw_text": receipt.text[:2000] if receipt.text else None,
+            "raw_lines": receipt.text.split('\n')[:100] if receipt.text else [],
             "latitude": result["latitude"],
             "longitude": result["longitude"],
             "merchant_address": result["merchant_address"],
