@@ -130,7 +130,14 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       setStep('confirm');
     } catch (err) {
       console.error('OCR Error:', err);
-      setError('Failed to process image: ' + (err.message || 'Unknown error'));
+      // More detailed error message
+      let errorMsg = 'Failed to process image';
+      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+        errorMsg = 'Connection error: Cannot reach OCR server. Please check your internet connection.';
+      } else {
+        errorMsg = 'Failed to process image: ' + (err.message || 'Unknown error');
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
