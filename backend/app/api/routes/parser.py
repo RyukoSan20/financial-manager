@@ -197,12 +197,12 @@ async def parse_receipt_image_endpoint(
         # Determine transaction type
         transaction_type = "DEBIT" if receipt.amount else "DEBIT"
         
-        # Get engine confidence (from parser engine - includes math validation)
-        # Parser engine calculates: 50% base + 15% has items + 10% item count + 25% math validity
+        # Get OCR confidence (physical text recognition) and engine confidence (math validation)
         ocr_confidence = receipt.confidence if hasattr(receipt, 'confidence') and receipt.confidence else 70.0
+        engine_confidence = getattr(receipt, 'engine_confidence', 70.0)
         
-        # Combined holistic confidence: 50% OCR + 50% Engine (math validation)
-        holistic_confidence = round((ocr_confidence * 0.5) + (70.0 * 0.5), 1)
+        # Combined holistic confidence: 50% OCR + 50% Engine Math Validation
+        holistic_confidence = round((ocr_confidence * 0.5) + (engine_confidence * 0.5), 1)
         
         return {
             "status": "success",

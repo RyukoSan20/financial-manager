@@ -311,6 +311,7 @@ class OCRResult:
     text: str
     confidence: float
     raw_lines: List[str] = None  # Store raw lines for audit trail
+    engine_confidence: float = 70.0  # Confidence from parser engine (math validation)
     merchant_name: Optional[str] = None
     amount: Optional[str] = None
     amount_value: Optional[float] = None
@@ -385,6 +386,7 @@ class OCRService:
                     text=text[:500],
                     confidence=confidence,
                     raw_lines=lines,
+                    engine_confidence=parsed.get('confidence_score', 70.0),
                     merchant_name=parsed.get('merchant_name'),
                     amount=f"Rp {int(parsed.get('amount', 0)):,}".replace(',', '.'),
                     amount_value=parsed.get('amount', 0),
