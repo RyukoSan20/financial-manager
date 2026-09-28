@@ -128,7 +128,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       setStep('confirm');
     } catch (err) {
       console.error('OCR Error:', err);
-      setError('Gagal memproses gambar: ' + (err.message || 'Unknown error'));
+      setError('Failed to process image: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -174,14 +174,14 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
         latitude: parsedData.latitude,
         longitude: parsedData.longitude,
         merchant_address: parsedData.address,
-        notes: `Metode: ${parsedData.payment_method || 'Tidak diketahui'}\n${parsedData.address ? 'Alamat: ' + parsedData.address : ''}${parsedData.items_count > 0 ? '\nItems: ' + parsedData.items_count + ' item(s)' : ''}`,
+        notes: `Method: ${parsedData.payment_method || 'Not detected'}\n${parsedData.address ? 'Address: ' + parsedData.address : ''}${parsedData.items_count > 0 ? '\nItems: ' + parsedData.items_count + ' item(s)' : ''}`,
       });
 
       onSuccess?.();
       handleClose();
     } catch (err) {
       console.error('Save error:', err);
-      setError('Gagal menyimpan: ' + (err.message || 'Unknown error'));
+      setError('Failed to save: ' + (err.message || 'Unknown error'));
     } finally {
       setConfirming(false);
     }
@@ -213,7 +213,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Scan Struk"
+      title="Receipt Scanner"
       size="lg"
     >
       {/* Step 1: Upload */}
@@ -223,9 +223,9 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
             <div className="flex items-start gap-3">
               <Sparkles className="w-6 h-6 text-purple-600 mt-0.5" />
               <div>
-                <p className="font-medium text-purple-900">OCR + AI Scanner</p>
+                <p className="font-medium text-purple-900">Receipt Scanner</p>
                 <p className="text-sm text-purple-700 mt-1">
-                  Ambil foto atau upload struk pembayaran. AI akan otomatis mengekstrak data dan menyarankan kategori.
+                  Take a photo or upload a receipt. AI will automatically extract data and suggest a category.
                 </p>
               </div>
             </div>
@@ -291,15 +291,15 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-600" />
-              <p className="font-medium text-purple-900">AI akan mengekstrak:</p>
+              <p className="font-medium text-purple-900">AI will extract:</p>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-purple-700">
-              <span>• Nama Merchant</span>
-              <span>• Total Pembayaran</span>
-              <span>• Tanggal Transaksi</span>
-              <span>• Metode Pembayaran</span>
-              <span>• Saran Kategori</span>
-              <span>• Lokasi Merchant</span>
+              <span>• Merchant Name</span>
+              <span>• Total Amount</span>
+              <span>• Date</span>
+              <span>• Payment Method</span>
+              <span>• Category Suggestion</span>
+              <span>• Store Location</span>
             </div>
           </div>
 
@@ -315,7 +315,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
             </Button>
             <Button onClick={handleParseImage} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Camera className="w-4 h-4 mr-2" />}
-              {loading ? 'Memproses...' : 'Proses OCR'}
+              {loading ? 'Processing...' : 'Process Receipt'}
             </Button>
           </div>
         </div>
@@ -330,7 +330,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                 <Check className="w-4 h-4 text-white" />
               </div>
-              <p className="font-medium text-green-900">Berhasil Diekstrak!</p>
+              <p className="font-medium text-green-900">Extraction Success!</p>
             </div>
           </div>
 
@@ -338,7 +338,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
           <div className="border rounded-xl divide-y">
             <div className="p-4 flex items-center justify-between">
               <span className="text-gray-500">Merchant</span>
-              <span className="font-medium">{parsedData.merchant_name || 'Tidak terdeteksi'}</span>
+              <span className="font-medium">{parsedData.merchant_name || 'Not detected'}</span>
             </div>
             <div className="p-4 flex items-center justify-between">
               <span className="text-gray-500">Total</span>
@@ -347,19 +347,19 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               </span>
             </div>
             <div className="p-4 flex items-center justify-between">
-              <span className="text-gray-500">Tanggal</span>
+              <span className="text-gray-500">Date</span>
               <span className="text-sm">
                 {parsedData.date ? new Date(parsedData.date).toLocaleDateString('id-ID', { 
                   day: 'numeric', month: 'long', year: 'numeric' 
-                }) : 'Hari ini'}
+                }) : 'Today'}
               </span>
             </div>
             <div className="p-4 flex items-center justify-between">
-              <span className="text-gray-500">Metode</span>
-              <span className="text-sm">{parsedData.payment_method || 'Tidak diketahui'}</span>
+              <span className="text-gray-500">Method</span>
+              <span className="text-sm">{parsedData.payment_method || 'Not detected'}</span>
             </div>
             <div className="p-4 flex items-center justify-between">
-              <span className="text-gray-500">Akurasi OCR</span>
+              <span className="text-gray-500">Accuracy</span>
               <span className="text-sm font-medium">
                 {Math.round(parsedData.confidence_score || 0)}%
               </span>
@@ -396,7 +396,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
           {/* Account selector */}
           <Select
-            label="Simpan ke Akun"
+            label="Save to Account"
             value={selectedAccount}
             onChange={(e) => setSelectedAccount(e.target.value)}
             options={accounts.map(a => ({ value: a.id, label: a.name }))}
@@ -427,7 +427,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
             </Button>
             <Button onClick={handleConfirm} disabled={confirming || !selectedAccount}>
               {confirming ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-              Simpan Transaksi
+              Save Transaction
             </Button>
           </div>
         </div>
