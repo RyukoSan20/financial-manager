@@ -36,6 +36,9 @@ class Transaction(Base):
     is_recurring = Column(Boolean, default=False)
     recurring_rule_id = Column(Integer, ForeignKey("recurring_rules.id"), nullable=True)
     
+    # OCR/Receipt linking
+    receipt_scan_id = Column(Integer, ForeignKey("receipt_scans.id"), nullable=True)
+    
     # Metadata
     is_deleted = Column(Boolean, default=False)  # Soft delete
     
@@ -56,3 +59,4 @@ class Transaction(Base):
     category = relationship("Category", back_populates="transactions")
     transfer = relationship("Transfer", back_populates="transactions")
     recurring_rule = relationship("RecurringRule", back_populates="generated_transactions")
+    receipt_scan = relationship("ReceiptScan", back_populates="transaction")

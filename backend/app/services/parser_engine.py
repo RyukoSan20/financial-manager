@@ -1,6 +1,6 @@
 """
-Production Receipt Parser Engine v2
-Fixed: HEADER stuck fallback, Footer false-positive, name_buffer flush, engine confidence
+Production Receipt Parser Engine v3
+Fixed: Resi number filter, strict footer, negative total guardrail, global merchant scan, 2-digit date
 """
 
 import re
@@ -22,47 +22,52 @@ class ProductionReceiptParserEngine:
     def __init__(self):
         self.clean_digit = re.compile(r'[^\d]')
         
-        # Header detection patterns
-        self.pat_header_trigger = re.compile(
+        # Extended Merchant Keywords (searchable anywhere)
+        self.pat_merchant = re.compile(
             r'(INDOMARET|ALFAMART|ALFAGIFT|FAMILY MART|SUPERINDO|YOGYA|'
-            r'TRANSFE|STATION|MERAH PUTIH|CARREFOUR|HYPERMART|GIANT)',
+            r'CARREFOUR|HYPERMART|GIANT|TRANSMART|LAWSON|MCDONALD|KFC|STARBUCKS)',
             re.IGNORECASE
         )
         
-        # Footer detection - MUST be followed by actual total amount or specific keywords
-        # Prevents "TOTAL CARE" / "CASHWEIN" from triggering footer
+        # Strict Footer Trigger - only specific keywords
         self.pat_footer_trigger = re.compile(
             r'^(HARGA\s*JUAL|SUBTOTAL|TUNAI|KEMBALI|BAYAR|EDC|BANK|GRAND\s*TOTAL|'
-            r'TOTAL\s*BAYAR|SISA\s*KEMBALI|TOTAL\s+JUAL)'
+            r'TOTAL\s*BAYAR|ANDA\s*HEMAT|LAYANAN\s*KONSUMEN|CS\s*CALL)'
             r'|'
-            r'^TOTAL\s*[:=]?\s*[\d]'
-            r'|'
-            r'^(TOTAL|BAYAR)\s+[\d.,]{4,}$',
+            r'^(TOTAL\s*[:=])',
             re.IGNORECASE
         )
         
-        # Phone number pattern to filter from items
-        self.pat_phone = re.compile(r'\b08[12][\d\s\-]{7,12}\b')
-        
-        # Date patterns (extended to handle more formats)
-        self.pat_date = re.compile(
-            r'(\d{2}[\.\/\-]\d{2}[\.\/\-]\d{2,4}|'
-            r'\d{4}[\.\/\-]\d{2}[\.\/\-]\d{2})'
+        # Phone, Transaction Ref, Resi Number Pattern (ignore these)
+        self.pat_noise = re.compile(
+            r'(\b08[12][\d\s\-]{7,12}\b|'  # Phone: 081234567890
+            r'\d{5,}/[A-Z0-9]+|'            # Resi: 914115/ALIA
+            r'\bCALL\b|\bSMS\b|'             # CALL/SMS
+            r'\d{2}:\d{2}|'                  # Time: 06:46
+            r'^=+$|'                          # Separator: ====
+            r'\b15\d{3,}\b)',                # Call center: 1500580
+            re.IGNORECASE
         )
         
-        # Indonesian merchant patterns
-        self.merchant_patterns = [
-            'indomaret', 'alfamart', 'alfagift', 'family mart', 'familymart',
-            'lawson', 'carrefour', 'superindo', 'hypermart', 'giant',
-            'transmart', 'seven eleven', '7-eleven', 'cvs', 'guardian',
-            'mcdonald', 'mcd', 'kfc', 'starbucks', 'hokben', 'burger king',
-            'grab', 'gojek', 'shopee', 'tokopedia', 'lazada'
-        ]
+        # Date Pattern (supports 2-digit year: DD.MM.YY)
+        self.pat_date = re.compile(
+            r'(\d{2}[\.\/\-]\d{2}[\.\/\-]\d{2,4})'
+        )
+        
+        # Discard words (not real items)
+        self.pat_discard = re.compile(
+            r'^(TOTAL|TUNAI|KEMBALI|DISKON|PROMO|BAYAR|HARGA|STRUK|RECEIPT|TERIMA|'
+            r'KASIH|UNTUNG|SEHAT|HEMAT|ANDA|CARD|VISA|MASTER|DEBIT|QRIS)$',
+            re.IGNORECASE
+        )
 
     def sanitize_num(self, val_str: str) -> float:
         """Clean OCR artifacts from number strings."""
         if not val_str:
             return 0.0
+        
+        # Remove parentheses (discount format like "(1,300)")
+        val_str = val_str.replace('(', '').replace(')', '')
         
         # OCR character substitutions
         substitutions = {
@@ -78,43 +83,41 @@ class ProductionReceiptParserEngine:
         cleaned = self.clean_digit.sub('', val_str)
         return float(cleaned) if cleaned else 0.0
 
+    def is_valid_price_token(self, token: str, line: str) -> bool:
+        """Check if token is a valid price (not resi, phone, date)."""
+        # Ignore if line has noise patterns
+        if self.pat_noise.search(line):
+            return False
+        
+        # Ignore if token contains special chars (resi format)
+        if '/' in token or ':' in token:
+            return False
+        
+        # Validate numeric range for retail prices
+        num = self.sanitize_num(token)
+        
+        # Valid retail price: Rp 100 to Rp 5,000,000
+        return 100 <= num <= 5000000
+
     def is_valid_item_line(self, line: str) -> bool:
-        """Check if line is likely an item (not header/footer/promo)."""
-        line_upper = line.upper()
-        line_lower = line.lower()
+        """Check if line is likely a real item (not noise)."""
+        # Skip separator lines
+        if line.startswith('=') or line.startswith('-'):
+            return False
         
-        # Skip footer/header markers
-        skip_words = [
-            'DISKON', 'PROMO', 'POTONGAN', 'KEMBALI', 'TUNAI', 
-            'CARD', 'MASTER', 'VISA', 'DEBIT', 'CREDIT', 'QRIS',
-            'PPN', 'TAX', 'SERVICE', 'CHARGE', 'MEMBER', 'POIN',
-            'WELCOME', 'THANK', 'STRUK', 'RECEIPT', 'TRANSAKSI',
-            'GOPAY', 'DANA', 'OVO', 'SHOPEPAY', 'LINKAJA'
-        ]
-        
-        if any(word in line_upper for word in skip_words):
+        # Skip if contains discard words
+        if self.pat_discard.search(line.strip()):
             return False
         
         # Must contain digits
         if not re.search(r'\d', line):
             return False
         
-        # Filter phone numbers (header artifacts)
-        if self.pat_phone.search(line):
-            cleaned = re.sub(r'[\s\-\(\)]', '', line)
-            if re.match(r'^08[\d]{8,12}$', cleaned):
-                return False
+        # Skip if entire line is noise
+        if self.pat_noise.search(line):
+            return False
         
         return True
-
-    def has_numeric_price_token(self, line: str) -> bool:
-        """Check if line has numeric token that looks like a price (>= 3 digits)."""
-        tokens = line.split()
-        for token in tokens:
-            num_val = self.sanitize_num(token)
-            if num_val >= 100:  # Real price (not qty)
-                return True
-        return False
 
     def parse(self, raw_lines: List[str]) -> Dict[str, Any]:
         """
@@ -132,66 +135,71 @@ class ProductionReceiptParserEngine:
         total_amount = 0.0
         merchant_name = "Unknown Merchant"
         payment_method = "Cash"
+        extracted_date = None
         
         # State machine
         state = "HEADER"
         name_buffer: List[str] = []
+        
+        # Global scan for merchant (fallback if header is logo/image)
+        full_text = " ".join(raw_lines)
+        merchant_match = self.pat_merchant.search(full_text)
+        if merchant_match:
+            merchant_name = merchant_match.group(0).title()
         
         for line in raw_lines:
             line_str = line.strip()
             if not line_str:
                 continue
             
+            # Skip separator lines
+            if line_str.startswith('=') or line_str.startswith('-'):
+                continue
+            
             line_upper = line_str.upper()
-            line_lower = line_str.lower()
             tokens = line_str.split()
             
-            # Check if line has price-like numeric token (for fallback detection)
-            has_price_token = self.has_numeric_price_token(line_str)
+            # Extract date (support 2-digit year)
+            if not extracted_date:
+                date_match = self.pat_date.search(line_str)
+                if date_match:
+                    extracted_date = date_match.group(1)
+            
+            # Check if line has valid price token
+            has_valid_price = any(self.is_valid_price_token(t, line_str) for t in tokens)
             
             # ==========================================
             # STATE 1: HEADER
             # ==========================================
             if state == "HEADER":
-                # Detect merchant name
-                for pattern in self.merchant_patterns:
-                    if pattern in line_lower:
-                        merchant_name = line_str.title()
-                        break
+                # Look for merchant in header
+                merchant_match = self.pat_merchant.search(line_str)
+                if merchant_match:
+                    merchant_name = merchant_match.group(0).title()
                 
-                # CRITICAL FIX: Transition to ITEMS if:
-                # 1. Date is found, OR
-                # 2. Line has price-like token AND no phone number (fallback heuristic)
-                # This prevents parser from being stuck in HEADER forever
-                date_found = self.pat_date.search(line_str)
-                should_transition = date_found or (has_price_token and not self.pat_phone.search(line_str))
-                
-                if should_transition:
+                # Transition to ITEMS if:
+                # 1. Date found, OR
+                # 2. Valid price token AND no noise patterns
+                if self.pat_date.search(line_str) or (has_valid_price and not self.pat_noise.search(line_str)):
                     state = "ITEMS"
-                    # Don't continue - let ITEMS process handle this line too
-                    # This fixes the "stuck in HEADER" bug
             
             # ==========================================
-            # FOOTER DETECTION (can happen from ITEMS)
-            # CRITICAL FIX: Only trigger on actual footer patterns
-            # Prevents "TOTAL CARE" / "CASHWEIN" from stopping parsing
+            # FOOTER DETECTION
             # ==========================================
             if self.pat_footer_trigger.search(line_str):
-                # Flush any pending name buffer before footer
                 name_buffer.clear()
                 state = "FOOTER"
                 
                 # Parse footer values
-                if total_amount == 0.0:
-                    if 'TOTAL' in line_upper and 'DISCOUNT' not in line_upper:
-                        total_amount = self.sanitize_num(line_str)
-                    elif 'BAYAR' in line_upper:
-                        total_amount = self.sanitize_num(line_str)
-                
-                if 'HARGA JUAL' in line_upper or 'SUBTOTAL' in line_upper:
+                if "TOTAL" in line_upper and "HARGA" not in line_upper and total_amount == 0.0:
+                    tot_val = self.sanitize_num(line_str)
+                    # Safety: only accept reasonable totals
+                    if 0 < tot_val < 50000000:
+                        total_amount = tot_val
+                elif "HARGA JUAL" in line_upper:
                     subtotal = self.sanitize_num(line_str)
-                elif 'TUNAI' in line_upper:
-                    payment_method = 'Cash'
+                elif "TUNAI" in line_upper:
+                    payment_method = "Cash"
                 
                 continue
             
@@ -199,14 +207,14 @@ class ProductionReceiptParserEngine:
             # STATE 2: ITEMS (RTL Tokenization Active)
             # ==========================================
             if state == "ITEMS":
-                # Skip discount/promo lines
-                if 'DISKON' in line_upper or 'PROMO' in line_upper or 'POTONGAN' in line_upper:
-                    disc_match = re.search(r'[\(:=]?\s*[-]?\s*([0-9OIDI|.,\s]+)[\)]?', line_str)
+                # Skip discount lines (except FRISIAN FLAG promo)
+                if "DISKON" in line_upper and "FRISIAN" not in line_upper:
+                    disc_match = re.search(r'[\(:=]?\s*([0-9.,]+)[\)]?', line_str)
                     if disc_match:
-                        discount_total += self.sanitize_num(disc_match.group(1))
+                        discount_total += abs(self.sanitize_num(disc_match.group(1)))
                     continue
                 
-                # Only process valid item lines
+                # Skip invalid lines
                 if not self.is_valid_item_line(line_str):
                     continue
                 
@@ -216,9 +224,8 @@ class ProductionReceiptParserEngine:
                 
                 for token in reversed(tokens):
                     num_val = self.sanitize_num(token)
-                    
-                    # Valid price: 100-99999999
-                    if 100 <= num_val <= 99999999 and len(numeric_tokens) < 3:
+                    # Valid price and within limit
+                    if 100 <= num_val <= 5000000 and len(numeric_tokens) < 3:
                         numeric_tokens.append(token)
                     else:
                         text_tokens.append(token)
@@ -227,7 +234,7 @@ class ProductionReceiptParserEngine:
                 text_tokens.reverse()
                 line_item_name = " ".join(text_tokens).strip()
                 
-                if numeric_tokens:
+                if numeric_tokens and not self.pat_noise.search(line_str):
                     nums = [self.sanitize_num(n) for n in numeric_tokens]
                     
                     # Parse quantity, unit price, total price
@@ -248,67 +255,57 @@ class ProductionReceiptParserEngine:
                         unit_price = nums[0]
                         total_price = nums[0]
                     
-                    # CRITICAL FIX: Flush name buffer when item is found
+                    # Flush name buffer (multi-line item names)
                     full_name = " ".join(name_buffer + [line_item_name]).strip()
                     name_buffer.clear()
                     
-                    # Only add if looks like real item
+                    # Validate item
                     if total_price >= 100 and len(full_name) > 1:
-                        items.append({
-                            "name": full_name,
-                            "quantity": qty,
-                            "price_per_unit": unit_price,
-                            "total_price": total_price
-                        })
+                        # Skip if name contains discard words
+                        if not any(k in full_name.upper() for k in ['TOTAL', 'TUNAI', 'KEMBALI', 'DISKON']):
+                            items.append({
+                                "name": full_name,
+                                "quantity": qty,
+                                "price_per_unit": unit_price,
+                                "total_price": total_price
+                            })
                 else:
-                    # No numbers found - buffer for next line (multi-line item name)
-                    if len(line_str) > 2 and not self.pat_phone.search(line_str):
-                        if len(name_buffer) < 3:  # Max 3 lines for item name
+                    # Buffer multi-line item names
+                    if len(line_str) > 2 and not self.pat_noise.search(line_str) and not self.pat_discard.search(line_str):
+                        if len(name_buffer) < 3:
                             name_buffer.append(line_str)
             
             # ==========================================
             # STATE 3: FOOTER
             # ==========================================
             if state == "FOOTER":
-                # CRITICAL FIX: Flush any remaining name buffer at footer
+                # Flush buffer at footer
                 name_buffer.clear()
                 
-                if total_amount == 0.0:
-                    if 'TOTAL' in line_upper and 'DISCOUNT' not in line_upper:
-                        total_amount = self.sanitize_num(line_str)
-                    elif 'BAYAR' in line_upper:
-                        total_amount = self.sanitize_num(line_str)
-                
-                if 'HARGA JUAL' in line_upper or 'SUBTOTAL' in line_upper:
+                if "TOTAL" in line_upper and "HARGA" not in line_upper and total_amount == 0.0:
+                    tot_val = self.sanitize_num(line_str)
+                    if 0 < tot_val < 50000000:
+                        total_amount = tot_val
+                elif "HARGA JUAL" in line_upper:
                     subtotal = self.sanitize_num(line_str)
                 
                 # Detect payment method
-                payment_methods = {
-                    'gopay': 'GoPay', 'dana': 'DANA', 'ovo': 'OVO',
-                    'shopee pay': 'ShopeePay', 'shopeepay': 'ShopeePay',
-                    'linkaja': 'LinkAja', 'qris': 'QRIS',
-                    'cash': 'Cash', 'tunai': 'Cash',
-                    'debit': 'Debit', 'credit': 'Credit'
-                }
-                for pattern, method in payment_methods.items():
-                    if pattern in line_lower:
-                        payment_method = method
-                        break
-        
-        # ==========================================
-        # CRITICAL FIX: Flush remaining name buffer at end
-        # (for items that end the receipt without footer)
-        # ==========================================
-        # If we still have items but no valid total, flush remaining buffer
-        # Note: This is a soft flush - we don't add partial names as items
+                if 'GOPAY' in line_upper:
+                    payment_method = "GoPay"
+                elif 'OVO' in line_upper:
+                    payment_method = "OVO"
+                elif 'DANA' in line_upper:
+                    payment_method = "DANA"
+                elif 'QRIS' in line_upper:
+                    payment_method = "QRIS"
         
         # ==========================================
         # MATHEMATICAL GUARDRAILS
         # ==========================================
         sum_items = sum(item['total_price'] for item in items)
         
-        # If TOTAL missing/zero, calculate from items
-        if total_amount == 0.0:
+        # If TOTAL missing/zero/unreasonable, calculate from items
+        if total_amount == 0.0 or total_amount > 50000000:
             if subtotal > 0:
                 total_amount = subtotal
             else:
@@ -318,27 +315,30 @@ class ProductionReceiptParserEngine:
         if subtotal == 0.0 and items:
             subtotal = sum_items
         
+        # Force positive total
+        total_amount = abs(total_amount)
+        
         # ==========================================
-        # HOLISTIC CONFIDENCE SCORE (from engine)
+        # HOLISTIC CONFIDENCE SCORE
         # ==========================================
-        # 50% base + 25% item completeness + 25% math validity
-        confidence = 50.0  # Start at 50%
+        confidence = 50.0
         
         if len(items) > 0:
-            confidence += 15.0  # Has items
+            confidence += 15.0
         if len(items) >= 3:
-            confidence += 10.0  # Good item count
+            confidence += 10.0
         
-        # Math validation: total should equal subtotal - discount
+        # Math validation
         expected_total = subtotal - discount_total
         if total_amount > 0:
             if abs(total_amount - expected_total) <= 100:
-                confidence += 25.0  # Math is valid
+                confidence += 25.0
             elif abs(total_amount - sum_items) <= 100:
-                confidence += 15.0  # Math is close (discount not parsed)
+                confidence += 15.0
         
         return {
             "merchant_name": merchant_name,
+            "date": extracted_date,
             "payment_method": payment_method,
             "subtotal": subtotal,
             "discount_total": discount_total,

@@ -47,3 +47,4 @@ class User(Base):
     transfers = relationship("Transfer", back_populates="user")
     categories = relationship("Category", back_populates="user")
     net_worth_snapshots = relationship("NetWorthSnapshot", back_populates="user")
+    receipt_scans = relationship("ReceiptScan", back_populates="user")
