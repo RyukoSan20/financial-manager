@@ -361,13 +361,42 @@ class OCRService:
     def process_image(self, image_bytes: bytes) -> OCRResult:
         """Process receipt image and extract structured data."""
         try:
-            # Extract text with spatial clustering
-            lines, confidence = _extract_with_rapidocr(image_bytes)
-            text = '\n'.join(lines)
+            # Log raw OCR output for debugging
+            logger.info(f"--- RAW OCR OUTPUT ---\n{text}\n--- LINES: {len(lines)} ---\n----------------------")
             
-            if not text:
-                logger.warning("No text extracted from image")
-                return OCRResult(text="", confidence=0, raw_lines=[])
+            # Validate OCR result - explicitly check for empty/poor extraction
+            if not text or not text.strip():
+                logger.warning("OCR Engine returned empty text - possible image quality issue")
+                return OCRResult(
+                    text="",
+                    confidence=0.0,
+                    raw_lines=[],
+                    merchant_name=None,
+                    amount="Rp 0",
+                    amount_value=0.0,
+                    items=[],
+                    address=None
+                )
+            
+            if len(text.strip()) < 10:
+                logger.warning(f"OCR returned too little text ({len(text)} chars) - attempting Gemini Vision fallback")
+                return self._gemini_vision_fallback(image_bytes)
+            
+            # If parser returned 0 amount with items, also try Gemini
+            try:
+                from app.services.parser_engine import parse_receipt_text
+                parsed = parse_receipt_text(lines)
+                
+                amount_val = parsed.get('amount', 0)
+                items_count = len(parsed.get('items', []))
+                conf = parsed.get('confidence_score', 0)
+                
+                # If low confidence and 0 amount, try Gemini
+                if conf < 30 and amount_val == 0 and items_count == 0:
+                    logger.warning(f"Low parser confidence ({conf}%), trying Gemini Vision")
+                    return self._gemini_vision_fallback(image_bytes)
+            except:
+                pass
             
             # Try enterprise parser
             try:
@@ -412,6 +441,43 @@ class OCRService:
         except Exception as e:
             logger.error(f"OCR processing failed: {e}")
             raise ValueError(f"OCR processing failed: {str(e)}")
+
+    def _gemini_vision_fallback(self, image_bytes: bytes) -> OCRResult:
+        """Use Gemini Vision AI when local OCR fails."""
+        from app.core.config import get_settings
+        from app.services.gemini_vision import extract_receipt_with_gemini, format_gemini_result
+        
+        settings = get_settings()
+        
+        if not settings.GEMINI_API_KEY:
+            logger.warning("GEMINI_API_KEY not set - cannot use Vision fallback")
+            return OCRResult(
+                text="",
+                confidence=0.0,
+                raw_lines=[],
+                merchant_name=None,
+                amount="Rp 0",
+                amount_value=0.0,
+                items=[],
+                address=None
+            )
+        
+        logger.info("Attempting Gemini Vision AI fallback...")
+        result = extract_receipt_with_gemini(image_bytes, settings.GEMINI_API_KEY)
+        
+        if result:
+            return format_gemini_result(result)
+        
+        return OCRResult(
+            text="",
+            confidence=0.0,
+            raw_lines=[],
+            merchant_name=None,
+            amount="Rp 0",
+            amount_value=0.0,
+            items=[],
+            address=None
+        )
 
     def _fallback_parse(self, text: str, confidence: float, lines: List[str]) -> OCRResult:
         """Fallback parsing when enterprise parser fails."""

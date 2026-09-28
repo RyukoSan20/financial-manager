@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     DEFAULT_CURRENCY: str = "IDR"
     CURRENCY_SYMBOL: dict[str, str] = {"IDR": "Rp", "USD": "$"}
     
+    # Gemini API for Vision OCR fallback
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_VISION_MODEL: str = "gemini-1.5-flash"
+    
     # Calculation defaults
     DAYS_IN_MONTH: int = 30
     MONTHS_IN_YEAR: int = 12
