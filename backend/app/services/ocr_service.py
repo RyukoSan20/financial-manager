@@ -25,6 +25,7 @@ class OCRResult:
     items: Optional[List[Dict]] = None  # List of extracted items
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    address: Optional[str] = None  # Store address from OCR
 
 class OCRService:
     """OCR Service using Tesseract for receipt scanning."""
@@ -315,7 +316,8 @@ class OCRService:
                 payment_method=payment_method,
                 items=items,
                 latitude=None,
-                longitude=None
+                longitude=None,
+                address=address
             )
             
         except Exception as e:
