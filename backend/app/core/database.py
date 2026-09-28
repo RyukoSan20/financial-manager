@@ -1,6 +1,6 @@
 """Database configuration - supports SQLite and PostgreSQL."""
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import get_settings
 
@@ -34,7 +34,7 @@ def get_db():
 
 
 def init_db():
-    """Initialize database tables."""
+    """Initialize database tables and run migrations."""
     # Import ALL models to register with SQLAlchemy BEFORE create_all
     from app.models import (
         Account, Category, Transaction, Budget,
@@ -43,7 +43,27 @@ def init_db():
     )
     # Import User model for auth
     from app.models.user import User
+    
+    # Run migrations first
+    run_migrations()
+    
     Base.metadata.create_all(bind=engine)
+
+
+def run_migrations():
+    """Run database migrations for new columns."""
+    with engine.connect() as conn:
+        # Add receipt_scan_id column to transactions if not exists
+        try:
+            conn.execute(text("""
+                ALTER TABLE transactions 
+                ADD COLUMN IF NOT EXISTS receipt_scan_id INTEGER REFERENCES receipt_scans(id)
+            """))
+            conn.commit()
+        except Exception as e:
+            # Column might already exist or table doesn't exist
+            conn.rollback()
+            print(f"Migration note: {e}")
 
 
 def seed_categories():
