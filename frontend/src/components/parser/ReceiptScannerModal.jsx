@@ -110,13 +110,15 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
-      }).then(r => r.json());
-
-      if (result.error || result.detail) {
-        throw new Error(result.detail || result.error || 'OCR gagal');
+      });
+      
+      const data = await result.json();
+      
+      if (!result.ok || data.error || data.detail) {
+        throw new Error(data.detail || data.error || 'OCR gagal');
       }
 
-      console.log('OCR Result:', result);
+      console.log('OCR Result:', data);
       
       // Set parsed data with AI-suggested category
       const aiCategory = mapCategoryHint(result.category_hint);
