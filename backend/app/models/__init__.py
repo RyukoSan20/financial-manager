@@ -9,6 +9,7 @@ from app.models.recurring import RecurringRule
 from app.models.goal import Goal, GoalContribution
 from app.models.debt import Debt, DebtPayment
 from app.models.net_worth import NetWorthSnapshot
+from app.models.receipt import ReceiptScan, ReceiptItem
 
 __all__ = [
     "Account",
@@ -22,4 +23,6 @@ __all__ = [
     "Debt",
     "DebtPayment",
     "NetWorthSnapshot",
+    "ReceiptScan",
+    "ReceiptItem",
 ]

@@ -12,6 +12,9 @@ from app.api.routes import (
     auth, data, parser, ai_advisor
 )
 
+# Import models to register with SQLAlchemy
+from app.models import *  # noqa: F401, F403
+
 settings = get_settings()
 
 app = FastAPI(
