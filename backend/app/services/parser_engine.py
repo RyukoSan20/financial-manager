@@ -1,6 +1,8 @@
 """
-Production Receipt Parser Engine v3
-Fixed: Resi number filter, strict footer, negative total guardrail, global merchant scan, 2-digit date
+Production Receipt Parser Engine v3.2 (Anti-Crash)
+- 100% exception-safe
+- Always returns complete dictionary
+- Proper error logging
 """
 
 import re
@@ -17,6 +19,7 @@ class ProductionReceiptParserEngine:
     - RTL Tokenization (numbers from right)
     - Name Buffer for multi-line items
     - Mathematical Guardrails & Holistic Confidence
+    - ANTI-CRASH: Never throws exceptions to caller
     """
     
     def __init__(self):
@@ -24,7 +27,7 @@ class ProductionReceiptParserEngine:
         
         # Extended Merchant Keywords (searchable anywhere)
         self.pat_merchant = re.compile(
-            r'(INDOMARET|ALFAMART|ALFAGIFT|FAMILY MART|SUPERINDO|YOGYA|'
+            r'(INDOMARET|ALFAMART|ALFAGIFT|FAMILY\s*MART|SUPERINDO|YOGYA|'
             r'CARREFOUR|HYPERMART|GIANT|TRANSMART|LAWSON|MCDONALD|KFC|STARBUCKS)',
             re.IGNORECASE
         )
@@ -38,7 +41,7 @@ class ProductionReceiptParserEngine:
             r'|^BAYAR\s*[:=]?\s*[\d]'
             r'|^GRAND\s*TOTAL\s*[:=]?\s*[\d]'
             r'|^TOTAL\s+[:=]\s*[\d]'
-            r'|^TOTAL\s+[\d]{4,}'  # TOTAL followed by large number
+            r'|^TOTAL\s+[\d]{4,}'
             r'|ANDA\s*HEMAT'
             r'|LAYANAN\s*KONSUMEN',
             re.IGNORECASE
@@ -46,22 +49,21 @@ class ProductionReceiptParserEngine:
         
         # Phone, Transaction Ref, Resi Number Pattern (ignore these)
         self.pat_noise = re.compile(
-            r'(\b08[12][\d\s\-]{7,12}\b|'  # Phone: 081234567890
-            r'\d{5,}/[A-Z0-9]+|'            # Resi: 914115/ALIA
-            r'\bCALL\b|\bSMS\b|'             # CALL/SMS
-            r'\d{2}:\d{2}|'                  # Time: 06:46
-            r'^=+$|'                          # Separator: ====
-            r'\b15\d{3,}\b)',                # Call center: 1500580
+            r'(\b08[12][\d\s\-]{7,12}\b|'
+            r'\d{5,}/[A-Z0-9]+|'
+            r'\bCALL\b|\bSMS\b|'
+            r'\d{2}:\d{2}|'
+            r'^=+$|'
+            r'\b15\d{3,}\b)',
             re.IGNORECASE
         )
         
-        # Date Pattern (supports 2-digit year: DD.MM.YY)
-        # Also matches OCR-warped dates like "1409.16" (missing space)
+        # Date Pattern (supports multiple formats)
         self.pat_date = re.compile(
             r'(\d{2}[\.\/\-]\d{2}[\.\/\-]\d{2,4})'
-            r'|(\d{4}[\.\/\-]\d{2}[\.\/\-]\d{2})'  # YMD format
-            r'|(\d{4}\.\d{2})'  # YMD format without year separator (1409.16)
-            r'|(\d{2}\.\d{2}\.\d{2})'  # DMY with dots (14.09.16)
+            r'|(\d{4}[\.\/\-]\d{2}[\.\/\-]\d{2})'
+            r'|(\d{4}\.\d{2})'
+            r'|(\d{2}\.\d{2}\.\d{2})'
         )
         
         # Discard words (not real items)
@@ -76,310 +78,290 @@ class ProductionReceiptParserEngine:
         if not val_str:
             return 0.0
         
-        # Remove parentheses (discount format like "(1,300)")
-        val_str = val_str.replace('(', '').replace(')', '')
-        
-        # OCR character substitutions
-        substitutions = {
-            'O': '0', 'o': '0', 'D': '0',
-            'I': '1', 'l': '1', '|': '1',
-            'S': '5', 'B': '8', 'Z': '2',
-            ',': '', ' ': ''
-        }
-        
-        for old, new in substitutions.items():
-            val_str = val_str.replace(old, new)
-        
-        cleaned = self.clean_digit.sub('', val_str)
-        return float(cleaned) if cleaned else 0.0
+        try:
+            val_str = str(val_str).replace('(', '').replace(')', '')
+            subs = {
+                'O': '0', 'o': '0', 'D': '0',
+                'I': '1', 'l': '1', '|': '1',
+                'S': '5', 'B': '8', 'Z': '2', ',': '', ' ': ''
+            }
+            for old, new in subs.items():
+                val_str = val_str.replace(old, new)
+            
+            cleaned = self.clean_digit.sub('', val_str)
+            return float(cleaned) if cleaned else 0.0
+        except (ValueError, TypeError):
+            return 0.0
 
     def is_valid_price_token(self, token: str, line: str) -> bool:
         """Check if token is a valid price (not resi, phone, date)."""
-        # Ignore if line has noise patterns
-        if self.pat_noise.search(line):
+        if not token:
             return False
         
-        # Ignore if token contains special chars (resi format)
-        if '/' in token or ':' in token:
+        try:
+            if self.pat_noise.search(line):
+                return False
+            
+            if '/' in str(token) or ':' in str(token):
+                return False
+            
+            num = self.sanitize_num(token)
+            return 100 <= num <= 5000000
+        except Exception:
             return False
-        
-        # Validate numeric range for retail prices
-        num = self.sanitize_num(token)
-        
-        # Valid retail price: Rp 100 to Rp 5,000,000
-        return 100 <= num <= 5000000
 
     def is_valid_item_line(self, line: str) -> bool:
         """Check if line is likely a real item (not noise)."""
-        # Skip separator lines
-        if line.startswith('=') or line.startswith('-'):
+        if not line:
             return False
         
-        # Skip if contains discard words
-        if self.pat_discard.search(line.strip()):
+        try:
+            if line.startswith('=') or line.startswith('-'):
+                return False
+            
+            if self.pat_discard.search(line.strip()):
+                return False
+            
+            if not re.search(r'\d', line):
+                return False
+            
+            if self.pat_noise.search(line):
+                return False
+            
+            return True
+        except Exception:
             return False
-        
-        # Must contain digits
-        if not re.search(r'\d', line):
-            return False
-        
-        # Skip if entire line is noise
-        if self.pat_noise.search(line):
-            return False
-        
-        return True
 
-    def parse(self, raw_lines: List[str]) -> Dict[str, Any]:
+    def parse(self, raw_lines: Any) -> Dict[str, Any]:
         """
         Parse receipt with strict state machine.
-        
-        States:
-        - HEADER: Merchant name, address, phone (no item parsing)
-        - ITEMS: Item parsing with RTL tokenizer (only this state parses items)
-        - FOOTER: Total, payment method (no item parsing)
+        ANTI-CRASH: Always returns valid dictionary with all required keys.
         """
-        
-        items = []
-        subtotal = 0.0
-        discount_total = 0.0
-        total_amount = 0.0
-        merchant_name = "Unknown Merchant"
-        payment_method = "Cash"
-        extracted_date = None
-        
-        # State machine
-        state = "HEADER"
-        name_buffer: List[str] = []
-        
-        # Global scan for merchant (fallback if header is logo/image)
-        full_text = " ".join(raw_lines)
-        merchant_match = self.pat_merchant.search(full_text)
-        if merchant_match:
-            merchant_name = merchant_match.group(0).title()
-        
-        for line in raw_lines:
-            line_str = line.strip()
-            if not line_str:
-                continue
-            
-            # Skip separator lines
-            if line_str.startswith('=') or line_str.startswith('-'):
-                continue
-            
-            line_upper = line_str.upper()
-            tokens = line_str.split()
-            
-            # Extract date (support 2-digit year)
-            if not extracted_date:
-                date_match = self.pat_date.search(line_str)
-                if date_match:
-                    # Get first non-None capture group
-                    for g in date_match.groups():
-                        if g:
-                            extracted_date = g
-                            break
-            
-            # Check if line has valid price token
-            has_valid_price = any(self.is_valid_price_token(t, line_str) for t in tokens)
-            
-            # ==========================================
-            # STATE 1: HEADER
-            # ==========================================
-            if state == "HEADER":
-                # Look for merchant in header
-                merchant_match = self.pat_merchant.search(line_str)
-                if merchant_match:
-                    merchant_name = merchant_match.group(0).title()
-                
-                # Transition to ITEMS if:
-                # 1. Date found, OR
-                # 2. Valid price token AND no noise patterns
-                if self.pat_date.search(line_str) or (has_valid_price and not self.pat_noise.search(line_str)):
-                    state = "ITEMS"
-            
-            # ==========================================
-            # FOOTER DETECTION
-            # ==========================================
-            if self.pat_footer_trigger.search(line_str):
-                name_buffer.clear()
-                state = "FOOTER"
-                
-                # Parse footer values
-                if "TOTAL" in line_upper and "HARGA" not in line_upper and total_amount == 0.0:
-                    tot_val = self.sanitize_num(line_str)
-                    # Safety: only accept reasonable totals
-                    if 0 < tot_val < 50000000:
-                        total_amount = tot_val
-                elif "HARGA JUAL" in line_upper:
-                    subtotal = self.sanitize_num(line_str)
-                elif "TUNAI" in line_upper:
-                    payment_method = "Cash"
-                
-                continue
-            
-            # ==========================================
-            # STATE 2: ITEMS (RTL Tokenization Active)
-            # ==========================================
-            if state == "ITEMS":
-                # Handle discount lines (all variations)
-                if "DISKON" in line_upper or "POTONGAN" in line_upper or "PROMO" in line_upper:
-                    # Extract discount value
-                    disc_match = re.search(r'[\(:=]?\s*[-]?\s*([0-9.,]+)[\)]?', line_str)
-                    if disc_match:
-                        disc_val = abs(self.sanitize_num(disc_match.group(1)))
-                        if disc_val > 0:
-                            discount_total += disc_val
-                    continue
-                
-                # Skip invalid lines
-                if not self.is_valid_item_line(line_str):
-                    continue
-                
-                # RTL Tokenization: Extract numbers from right to left
-                numeric_tokens = []
-                text_tokens = []
-                
-                for token in reversed(tokens):
-                    num_val = self.sanitize_num(token)
-                    # Valid price and within limit
-                    if 100 <= num_val <= 5000000 and len(numeric_tokens) < 3:
-                        numeric_tokens.append(token)
-                    else:
-                        text_tokens.append(token)
-                
-                numeric_tokens.reverse()
-                text_tokens.reverse()
-                
-                # Remove discard words from item name
-                discard_strip = re.compile(
-                    r'\b(TOTAL|TUNAI|KEMBALI|DISKON|PROMO|BAYAR)\b',
-                    re.IGNORECASE
-                )
-                line_item_name = discard_strip.sub('', ' '.join(text_tokens)).strip()
-                
-                if numeric_tokens and not self.pat_noise.search(line_str):
-                    nums = [self.sanitize_num(n) for n in numeric_tokens]
-                    
-                    # Parse quantity, unit price, total price
-                    if len(nums) == 3:
-                        qty = int(nums[0]) if nums[0] <= 99 else 1
-                        unit_price = nums[1]
-                        total_price = nums[2]
-                    elif len(nums) == 2:
-                        qty = 1
-                        if nums[0] <= 10:
-                            qty = int(nums[0])
-                            unit_price = nums[1]
-                        else:
-                            unit_price = nums[0]
-                        total_price = nums[1]
-                    else:
-                        qty = 1
-                        unit_price = nums[0]
-                        total_price = nums[0]
-                    
-                    # Flush name buffer (multi-line item names)
-                    full_name = " ".join(name_buffer + [line_item_name]).strip()
-                    name_buffer.clear()
-                    
-                    # Validate item
-                    if total_price >= 100 and len(full_name) > 1:
-                        items.append({
-                            "name": full_name,
-                            "quantity": qty,
-                            "price_per_unit": unit_price,
-                            "total_price": total_price
-                            })
-                else:
-                    # Buffer multi-line item names
-                    if len(line_str) > 2 and not self.pat_noise.search(line_str) and not self.pat_discard.search(line_str):
-                        if len(name_buffer) < 3:
-                            name_buffer.append(line_str)
-            
-            # ==========================================
-            # STATE 3: FOOTER
-            # ==========================================
-            if state == "FOOTER":
-                # Flush buffer at footer
-                name_buffer.clear()
-                
-                # Handle discount in footer too
-                if "DISKON" in line_upper or "POTONGAN" in line_upper or "PROMO" in line_upper:
-                    disc_match = re.search(r'[\(:=]?\s*[-]?\s*([0-9.,]+)[\)]?', line_str)
-                    if disc_match:
-                        disc_val = abs(self.sanitize_num(disc_match.group(1)))
-                        if disc_val > 0:
-                            discount_total += disc_val
-                    continue
-                
-                if "TOTAL" in line_upper and "HARGA" not in line_upper and total_amount == 0.0:
-                    tot_val = self.sanitize_num(line_str)
-                    if 0 < tot_val < 50000000:
-                        total_amount = tot_val
-                elif "HARGA JUAL" in line_upper:
-                    subtotal = self.sanitize_num(line_str)
-                
-                # Detect payment method
-                if 'GOPAY' in line_upper:
-                    payment_method = "GoPay"
-                elif 'OVO' in line_upper:
-                    payment_method = "OVO"
-                elif 'DANA' in line_upper:
-                    payment_method = "DANA"
-                elif 'QRIS' in line_upper:
-                    payment_method = "QRIS"
-        
-        # ==========================================
-        # MATHEMATICAL GUARDRAILS
-        # ==========================================
-        sum_items = sum(item['total_price'] for item in items)
-        
-        # If TOTAL missing/zero/unreasonable, calculate from items
-        if total_amount == 0.0 or total_amount > 50000000:
-            if subtotal > 0:
-                total_amount = subtotal
-            else:
-                total_amount = sum_items - discount_total if sum_items > discount_total else sum_items
-        
-        # If subtotal missing, use sum of items
-        if subtotal == 0.0 and items:
-            subtotal = sum_items
-        
-        # Force positive total
-        total_amount = abs(total_amount)
-        
-        # ==========================================
-        # HOLISTIC CONFIDENCE SCORE
-        # ==========================================
-        confidence = 50.0
-        
-        if len(items) > 0:
-            confidence += 15.0
-        if len(items) >= 3:
-            confidence += 10.0
-        
-        # Math validation
-        expected_total = subtotal - discount_total
-        if total_amount > 0:
-            if abs(total_amount - expected_total) <= 100:
-                confidence += 25.0
-            elif abs(total_amount - sum_items) <= 100:
-                confidence += 15.0
-        
-        return {
-            "merchant_name": merchant_name,
-            "date": extracted_date,
-            "payment_method": payment_method,
-            "subtotal": subtotal,
-            "discount_total": discount_total,
-            "amount": total_amount,
-            "confidence_score": round(min(confidence, 100.0), 1),
-            "items": items,
-            "items_count": len(items)
+        # Safe default response with ALL required keys
+        default_res = {
+            "merchant_name": "Unknown Merchant",
+            "amount": 0.0,
+            "date": None,
+            "payment_method": "Cash",
+            "subtotal": 0.0,
+            "discount_total": 0.0,
+            "items": [],
+            "items_count": 0,
+            "confidence_score": 50.0
         }
+        
+        # Validate input
+        if not raw_lines:
+            logger.warning("parse() called with empty raw_lines")
+            return default_res
+        
+        # Ensure raw_lines is a list of strings
+        try:
+            if isinstance(raw_lines, str):
+                # If single string, split by newlines
+                lines = [l.strip() for l in raw_lines.split('\n') if l.strip()]
+            elif isinstance(raw_lines, (list, tuple)):
+                lines = [str(l).strip() for l in raw_lines if l]
+            else:
+                lines = []
+            
+            if not lines:
+                return default_res
+        except Exception as e:
+            logger.error(f"Failed to process raw_lines: {e}")
+            return default_res
+        
+        try:
+            items = []
+            subtotal = 0.0
+            discount_total = 0.0
+            total_amount = 0.0
+            merchant_name = "Unknown Merchant"
+            payment_method = "Cash"
+            extracted_date = None
+            
+            state = "HEADER"
+            name_buffer = []
+            
+            # Global scan for merchant (fallback if header is logo/image)
+            full_text = " ".join(lines)
+            merchant_match = self.pat_merchant.search(full_text)
+            if merchant_match:
+                merchant_name = merchant_match.group(0).title()
+            
+            for line in lines:
+                try:
+                    line_str = str(line).strip()
+                    if not line_str:
+                        continue
+                    
+                    if line_str.startswith('=') or line_str.startswith('-'):
+                        continue
+                    
+                    line_upper = line_str.upper()
+                    tokens = line_str.split()
+                    
+                    # Extract date
+                    if not extracted_date:
+                        date_match = self.pat_date.search(line_str)
+                        if date_match:
+                            for g in date_match.groups():
+                                if g:
+                                    extracted_date = g
+                                    break
+                    
+                    has_valid_price = any(self.is_valid_price_token(t, line_str) for t in tokens)
+                    
+                    # HEADER state
+                    if state == "HEADER":
+                        if self.pat_date.search(line_str) or (has_valid_price and not self.pat_noise.search(line_str)):
+                            state = "ITEMS"
+                    
+                    # FOOTER detection
+                    if self.pat_footer_trigger.search(line_str):
+                        name_buffer.clear()
+                        state = "FOOTER"
+                        continue
+                    
+                    # ITEMS state
+                    if state == "ITEMS":
+                        if "DISKON" in line_upper or "POTONGAN" in line_upper or "PROMO" in line_upper:
+                            disc_match = re.search(r'[\(:=]?\s*[-]?\s*([0-9.,]+)[\)]?', line_str)
+                            if disc_match:
+                                disc_val = abs(self.sanitize_num(disc_match.group(1)))
+                                if disc_val > 0:
+                                    discount_total += disc_val
+                            continue
+                        
+                        if not self.is_valid_item_line(line_str):
+                            continue
+                        
+                        # RTL Tokenization
+                        numeric_tokens = []
+                        text_tokens = []
+                        
+                        for token in reversed(tokens):
+                            num_val = self.sanitize_num(token)
+                            if 100 <= num_val <= 5000000 and len(numeric_tokens) < 3:
+                                numeric_tokens.append(token)
+                            else:
+                                text_tokens.append(token)
+                        
+                        numeric_tokens.reverse()
+                        text_tokens.reverse()
+                        
+                        # Remove discard words from item name
+                        discard_strip = re.compile(
+                            r'\b(TOTAL|TUNAI|KEMBALI|DISKON|PROMO|BAYAR)\b',
+                            re.IGNORECASE
+                        )
+                        line_item_name = discard_strip.sub('', ' '.join(text_tokens)).strip()
+                        
+                        if numeric_tokens and not self.pat_noise.search(line_str):
+                            nums = [self.sanitize_num(n) for n in numeric_tokens]
+                            
+                            if len(nums) == 3:
+                                qty = int(nums[0]) if nums[0] <= 99 else 1
+                                unit_price = nums[1]
+                                total_price = nums[2]
+                            elif len(nums) == 2:
+                                qty = 1
+                                if nums[0] <= 10:
+                                    qty = int(nums[0])
+                                    unit_price = nums[1]
+                                else:
+                                    unit_price = nums[0]
+                                total_price = nums[1]
+                            else:
+                                qty = 1
+                                unit_price = nums[0]
+                                total_price = nums[0]
+                            
+                            full_name = " ".join(name_buffer + [line_item_name]).strip()
+                            name_buffer.clear()
+                            
+                            if total_price >= 100 and len(full_name) > 1:
+                                items.append({
+                                    "name": full_name,
+                                    "quantity": qty,
+                                    "price_per_unit": unit_price,
+                                    "total_price": total_price
+                                })
+                        else:
+                            if len(line_str) > 2 and not self.pat_noise.search(line_str):
+                                if len(name_buffer) < 3:
+                                    name_buffer.append(line_str)
+                    
+                    # FOOTER state
+                    if state == "FOOTER":
+                        name_buffer.clear()
+                        
+                        if "TOTAL" in line_upper and "HARGA" not in line_upper and total_amount == 0.0:
+                            tot_val = self.sanitize_num(line_str)
+                            if 0 < tot_val < 50000000:
+                                total_amount = tot_val
+                        elif "HARGA JUAL" in line_upper:
+                            subtotal = self.sanitize_num(line_str)
+                        
+                        if 'GOPAY' in line_upper:
+                            payment_method = "GoPay"
+                        elif 'OVO' in line_upper:
+                            payment_method = "OVO"
+                        elif 'DANA' in line_upper:
+                            payment_method = "DANA"
+                        elif 'QRIS' in line_upper:
+                            payment_method = "QRIS"
+                
+                except Exception as e:
+                    logger.warning(f"Error processing line '{line_str[:30]}': {e}")
+                    continue
+            
+            # Mathematical Guardrails
+            sum_items = sum(item.get('total_price', 0) for item in items)
+            
+            if total_amount == 0.0 or total_amount > 50000000:
+                if subtotal > 0:
+                    total_amount = subtotal
+                else:
+                    total_amount = sum_items - discount_total if sum_items > discount_total else sum_items
+            
+            if subtotal == 0.0 and items:
+                subtotal = sum_items
+            
+            total_amount = abs(total_amount)
+            
+            # Calculate confidence
+            confidence = 50.0
+            if len(items) > 0:
+                confidence += 15.0
+            if len(items) >= 3:
+                confidence += 10.0
+            
+            expected_total = subtotal - discount_total
+            if total_amount > 0:
+                if abs(total_amount - expected_total) <= 100:
+                    confidence += 25.0
+                elif abs(total_amount - sum_items) <= 100:
+                    confidence += 15.0
+            
+            return {
+                "merchant_name": merchant_name,
+                "amount": total_amount,
+                "date": extracted_date,
+                "payment_method": payment_method,
+                "subtotal": subtotal,
+                "discount_total": discount_total,
+                "items": items,
+                "items_count": len(items),
+                "confidence_score": round(min(confidence, 100.0), 1)
+            }
+            
+        except Exception as e:
+            logger.error(f"FATAL ERROR in parse(): {e}", exc_info=True)
+            return default_res
 
 
-def parse_receipt_text(raw_lines: List[str]) -> Dict[str, Any]:
+def parse_receipt_text(raw_lines: Any) -> Dict[str, Any]:
     """Convenience function for parsing receipt text."""
     engine = ProductionReceiptParserEngine()
     return engine.parse(raw_lines)

@@ -382,14 +382,20 @@ class OCRService:
                         'quantity': item.get('quantity', 1)
                     })
                 
+                # Safely format amount
+                amount_val = parsed.get('amount', 0)
+                if isinstance(amount_val, str):
+                    amount_val = float(amount_val.replace('Rp ', '').replace('.', '').replace(',', '.')) if amount_val else 0
+                amount_val = int(float(amount_val))
+                
                 return OCRResult(
                     text=text[:500],
                     confidence=confidence,
                     raw_lines=lines,
                     engine_confidence=parsed.get('confidence_score', 70.0),
                     merchant_name=parsed.get('merchant_name'),
-                    amount=f"Rp {int(parsed.get('amount', 0)):,}".replace(',', '.'),
-                    amount_value=parsed.get('amount', 0),
+                    amount=f"Rp {amount_val:,}".replace(',', '.'),
+                    amount_value=float(amount_val),
                     date=None,
                     payment_method=parsed.get('payment_method'),
                     items=items,
@@ -398,7 +404,7 @@ class OCRService:
                     address=parsed.get('address')
                 )
             except Exception as e:
-                logger.warning(f"Enterprise parser failed: {e}")
+                logger.exception(f"CRITICAL PARSER ERROR: {e}")
             
             # Fallback parsing
             return self._fallback_parse(text, confidence, lines)
