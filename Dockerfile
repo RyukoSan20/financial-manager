@@ -2,12 +2,10 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies (tesseract + opencv deps)
+# Install minimal system dependencies (RapidOCR uses ONNX, no tesseract needed)
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
-    tesseract-ocr \
-    tesseract-ocr-ind \
     libgl1 \
     libglib2.0-0 \
     libsm6 \

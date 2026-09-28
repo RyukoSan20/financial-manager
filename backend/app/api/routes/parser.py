@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 from typing import Optional, List
 from decimal import Decimal
 from pydantic import BaseModel
@@ -111,6 +112,54 @@ def parse_text(
     return response
 
 
+# ============================================================
+# CPU-Bound Task Wrapper (Non-blocking)
+# ============================================================
+
+def _process_receipt_cpu_bound(image_bytes: bytes) -> dict:
+    """
+    CPU-bound OCR processing wrapped for thread pool execution.
+    This runs synchronously in a separate thread to avoid blocking FastAPI event loop.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # 1. OCR Extraction (RapidOCR/Tesseract)
+    receipt = ocr_service.process_image(image_bytes)
+    
+    # 2. Geocoding
+    latitude = None
+    longitude = None
+    merchant_address = receipt.address or receipt.merchant_name
+    
+    if merchant_address:
+        try:
+            geo = geocode_merchant(merchant_address)
+            if geo:
+                latitude = geo.latitude
+                longitude = geo.longitude
+                merchant_address = geo.formatted_address or merchant_address
+        except Exception as e:
+            logger.warning(f"Geocoding failed: {e}")
+    
+    # 3. Catalog matching
+    enriched_items = []
+    if receipt.items:
+        try:
+            enriched_items = match_items_to_catalog(receipt.items)
+        except Exception as e:
+            logger.warning(f"Catalog matching failed: {e}")
+            enriched_items = receipt.items
+    
+    return {
+        "receipt": receipt,
+        "latitude": latitude,
+        "longitude": longitude,
+        "merchant_address": merchant_address,
+        "enriched_items": enriched_items
+    }
+
+
 @router.post("/parse-receipt")
 async def parse_receipt_image_endpoint(
     file: UploadFile = File(...),
@@ -118,10 +167,10 @@ async def parse_receipt_image_endpoint(
     db: Session = Depends(get_db)
 ):
     """
-    Parse receipt image using Tesseract OCR + AI-powered parsing.
+    Parse receipt image using Enterprise OCR Engine.
     
-    Accepts image file (PNG, JPG) and returns extracted transaction data.
-    Uses Indonesian-optimized patterns for local merchants.
+    Uses RapidOCR ONNX + Dynamic Y-Threshold + FAISS catalog matching.
+    CPU-bound tasks run in thread pool to avoid blocking FastAPI event loop.
     """
     # Validate file type
     allowed_types = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
@@ -139,31 +188,12 @@ async def parse_receipt_image_endpoint(
         raise HTTPException(status_code=400, detail="File too large (max 10MB)")
     
     try:
-        # Process with OCR service (Enterprise OCR Engine)
-        receipt = ocr_service.process_image(content)
+        # Run CPU-bound OCR processing in thread pool (non-blocking)
+        result = await run_in_threadpool(_process_receipt_cpu_bound, content)
         
-        # Geocode merchant if available (using merchant name + extracted address)
-        latitude = None
-        longitude = None
-        merchant_address = receipt.address or receipt.merchant_name
+        receipt = result["receipt"]
         
-        if merchant_address:
-            geo = geocode_merchant(merchant_address)
-            if geo:
-                latitude = geo.latitude
-                longitude = geo.longitude
-                merchant_address = geo.formatted_address or merchant_address
-        
-        # Enrich items with catalog matching and auto-categorization
-        enriched_items = []
-        if receipt.items:
-            try:
-                enriched_items = match_items_to_catalog(receipt.items)
-            except Exception as e:
-                logger.warning(f"Catalog matching failed: {e}")
-                enriched_items = receipt.items
-        
-        # Determine transaction type (receipts are typically expenses)
+        # Determine transaction type
         transaction_type = "DEBIT" if receipt.amount else "DEBIT"
         
         return {
@@ -174,20 +204,21 @@ async def parse_receipt_image_endpoint(
             "transaction_type": transaction_type,
             "date": receipt.date,
             "payment_method": receipt.payment_method,
-            "address": merchant_address,
-            "items_count": len(enriched_items) if enriched_items else 0,
-            "items": enriched_items if enriched_items else [],
+            "address": result["merchant_address"],
+            "items_count": len(result["enriched_items"]) if result["enriched_items"] else 0,
+            "items": result["enriched_items"] if result["enriched_items"] else [],
             "confidence_score": round(receipt.confidence, 1),
             "category_hint": "shopping",
             "suggested_type": "expense",
             "description": f"Purchase at {receipt.merchant_name}" if receipt.merchant_name else "Purchase",
             "raw_text": receipt.text[:1000] if receipt.text else None,
-            "latitude": latitude,
-            "longitude": longitude,
-            "merchant_address": merchant_address,
+            "latitude": result["latitude"],
+            "longitude": result["longitude"],
+            "merchant_address": result["merchant_address"],
         }
         
     except Exception as e:
+        logger.error(f"OCR processing failed: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"OCR processing failed: {str(e)}"

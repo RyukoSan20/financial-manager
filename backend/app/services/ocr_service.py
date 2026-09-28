@@ -1,154 +1,247 @@
 """
-OCR Service using Tesseract OCR with OpenCV preprocessing.
-Enhanced with Sauvola Adaptive Thresholding + Spatial Y-Axis Grouping.
+OCR Service with RapidOCR (ONNX) + Dynamic Y-Threshold + Image Resizing
+No PyTorch dependency - Pure ONNX Runtime for better performance
 """
 
 import io
 import re
 import logging
-from typing import Optional, Tuple, List, Dict
+from typing import Optional, Tuple, List, Dict, Any
 from dataclasses import dataclass
 from PIL import Image, ImageEnhance
 
 logger = logging.getLogger(__name__)
 
 # ============================================================
-# OpenCV Preprocessing Functions
+# OCR Engine - RapidOCR ONNX (No system dependency)
 # ============================================================
 
-def _preprocess_opencv(image_bytes: bytes) -> any:
-    """Advanced preprocessing with OpenCV + Sauvola thresholding."""
-    try:
-        import cv2
-        import numpy as np
-        
-        # Decode image
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        if img is None:
-            return None
-        
-        # Convert to grayscale
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        
-        # CLAHE enhancement for better contrast
-        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-        enhanced = clahe.apply(gray)
-        
-        # Sauvola Adaptive Thresholding
-        # window_size = 25, k = 0.2
-        img_float = enhanced.astype(np.float32)
-        mean = cv2.boxFilter(img_float, -1, (25, 25))
-        sqr_mean = cv2.boxFilter(img_float * img_float, -1, (25, 25))
-        std = np.sqrt(np.maximum(sqr_mean - mean * mean, 0))
-        
-        # Sauvola formula: T = mean * (1 + k * (std/128 - 1))
-        k = 0.2
-        threshold = mean * (1.0 + k * (std / 128.0 - 1.0))
-        
-        # Binary image
-        binary = np.zeros_like(enhanced, dtype=np.uint8)
-        binary[img_float > threshold] = 255
-        
-        # Denoise
-        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, np.ones((2, 2), np.uint8))
-        
-        return binary
-        
-    except ImportError:
-        logger.warning("OpenCV not available, using PIL preprocessing")
-        return None
-    except Exception as e:
-        logger.error(f"OpenCV preprocessing failed: {e}")
-        return None
+def _get_ocr_engine():
+    """Lazy load RapidOCR engine."""
+    if not hasattr(_get_ocr_engine, '_engine'):
+        try:
+            from rapidocr_onnxruntime import RapidOCR
+            _get_ocr_engine._engine = RapidOCR()
+            logger.info("RapidOCR engine loaded successfully")
+        except ImportError:
+            logger.warning("RapidOCR not available, using Tesseract fallback")
+            _get_ocr_engine._engine = None
+    return _get_ocr_engine._engine
 
 
-def _extract_spatial_lines(image_bytes: bytes, y_threshold: int = 12) -> Tuple[List[str], float]:
-    """Extract OCR text with Y-axis spatial clustering."""
-    import pytesseract
-    import numpy as np
-    from PIL import Image
-    
-    # Try OpenCV preprocessing first
-    binary_img = _preprocess_opencv(image_bytes)
-    
-    if binary_img is None:
-        # Fallback to PIL preprocessing
-        pil_img = _preprocess_pil_fallback(image_bytes)
-        data = pytesseract.image_to_data(pil_img, lang='eng+ind', output_type=pytesseract.Output.DICT)
-    else:
-        data = pytesseract.image_to_data(binary_img, lang='eng+ind', output_type=pytesseract.Output.DICT)
-    
-    # Collect elements with coordinates
-    elements = []
-    confidences = []
-    n_boxes = len(data['text'])
-    
-    for i in range(n_boxes):
-        text = data['text'][i].strip()
-        conf = int(data['conf'][i])
-        
-        if conf > 20 and text:
-            x = data['left'][i]
-            y = data['top'][i]
-            w = data['width'][i]
-            h = data['height'][i]
-            
-            elements.append({
-                'text': text,
-                'y_center': y + (h / 2.0),
-                'x_min': x
-            })
-            confidences.append(conf)
-    
-    # Sort by Y coordinate and group into lines
-    elements.sort(key=lambda item: item['y_center'])
-    lines = []
-    current_line = []
-    
-    for elem in elements:
-        if not current_line:
-            current_line.append(elem)
-        else:
-            avg_y = sum(e['y_center'] for e in current_line) / len(current_line)
-            if abs(elem['y_center'] - avg_y) <= y_threshold:
-                current_line.append(elem)
-            else:
-                # Sort current line by X coordinate
-                current_line.sort(key=lambda e: e['x_min'])
-                lines.append(" ".join([e['text'] for e in current_line]))
-                current_line = [elem]
-    
-    # Don't forget the last line
-    if current_line:
-        current_line.sort(key=lambda e: e['x_min'])
-        lines.append(" ".join([e['text'] for e in current_line]))
-    
-    avg_conf = sum(confidences) / len(confidences) if confidences else 0
-    return lines, min(avg_conf, 100)
-
-
-def _preprocess_pil_fallback(image_bytes: bytes) -> Image.Image:
-    """Fallback PIL preprocessing if OpenCV unavailable."""
+def _preprocess_image_pil(image_bytes: bytes) -> bytes:
+    """Preprocess image with PIL before OCR."""
     image = Image.open(io.BytesIO(image_bytes))
     if image.mode != 'RGB':
         image = image.convert('RGB')
     
-    # Resize if too small
+    # Resize if too large (max 1600px)
     width, height = image.size
-    if width < 800:
-        scale = 800 / width
+    max_dim = 1600
+    if max(width, height) > max_dim:
+        scale = max_dim / max(width, height)
         new_size = (int(width * scale), int(height * scale))
         image = image.resize(new_size, Image.LANCZOS)
     
-    # Enhance
+    # Enhance contrast
     enhancer = ImageEnhance.Contrast(image)
-    image = enhancer.enhance(1.5)
-    enhancer = ImageEnhance.Sharpness(image)
-    image = enhancer.enhance(1.5)
+    image = enhancer.enhance(1.3)
     
-    return image.convert('L')
+    # Sharpen
+    enhancer = ImageEnhance.Sharpness(image)
+    image = enhancer.enhance(1.2)
+    
+    # Convert to bytes
+    output = io.BytesIO()
+    image.save(output, format='PNG')
+    return output.getvalue()
+
+
+def _extract_with_rapidocr(image_bytes: bytes) -> Tuple[List[str], float]:
+    """
+    Extract text using RapidOCR with Y-axis spatial clustering.
+    Returns lines and average confidence score.
+    """
+    ocr_engine = _get_ocr_engine()
+    
+    if ocr_engine is None:
+        # Fallback to Tesseract
+        return _extract_with_tesseract_fallback(image_bytes)
+    
+    try:
+        # Preprocess image
+        preprocessed_bytes = _preprocess_image_pil(image_bytes)
+        
+        # Run RapidOCR
+        result, elapse = ocr_engine(preprocessed_bytes)
+        
+        if not result:
+            return [], 0.0
+        
+        # Collect elements with coordinates
+        elements = []
+        box_heights = []
+        confidences = []
+        
+        # result format: [[box, text, score], ...]
+        for line in result:
+            box = line[0]  # [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+            text = line[1]
+            score = line[2]
+            
+            if score < 0.25 or not text.strip():
+                continue
+            
+            # Calculate bounding box metrics
+            y_coords = [p[1] for p in box]
+            x_coords = [p[0] for p in box]
+            
+            y_min, y_max = min(y_coords), max(y_coords)
+            x_min = min(x_coords)
+            
+            height = y_max - y_min
+            y_center = (y_min + y_max) / 2.0
+            
+            box_heights.append(height)
+            elements.append({
+                'text': text.strip(),
+                'y_center': y_center,
+                'x_min': x_min,
+                'height': height
+            })
+            confidences.append(score)
+        
+        if not elements:
+            return [], 0.0
+        
+        # Dynamic Y-Threshold: 40% of median box height
+        import numpy as np
+        median_h = np.median(box_heights) if box_heights else 15
+        dynamic_y_threshold = max(6.0, median_h * 0.4)
+        
+        # Sort by Y coordinate and group into lines
+        elements.sort(key=lambda item: item['y_center'])
+        lines = []
+        current_line = []
+        
+        for elem in elements:
+            if not current_line:
+                current_line.append(elem)
+            else:
+                avg_y = sum(e['y_center'] for e in current_line) / len(current_line)
+                if abs(elem['y_center'] - avg_y) <= dynamic_y_threshold:
+                    current_line.append(elem)
+                else:
+                    # Sort by X coordinate (left to right)
+                    current_line.sort(key=lambda e: e['x_min'])
+                    lines.append(" ".join([e['text'] for e in current_line]))
+                    current_line = [elem]
+        
+        # Last line
+        if current_line:
+            current_line.sort(key=lambda e: e['x_min'])
+            lines.append(" ".join([e['text'] for e in current_line]))
+        
+        avg_conf = sum(confidences) / len(confidences) if confidences else 0
+        return lines, avg_conf * 100
+        
+    except Exception as e:
+        logger.error(f"RapidOCR extraction failed: {e}")
+        return _extract_with_tesseract_fallback(image_bytes)
+
+
+def _extract_with_tesseract_fallback(image_bytes: bytes) -> Tuple[List[str], float]:
+    """Fallback to Tesseract OCR with spatial clustering."""
+    try:
+        import pytesseract
+        import numpy as np
+        
+        # Preprocess image
+        image = Image.open(io.BytesIO(image_bytes))
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Resize if too large
+        width, height = image.size
+        if width > 1600:
+            scale = 1600 / width
+            image = image.resize((1600, int(height * scale)), Image.LANCZOS)
+        
+        # Convert to grayscale
+        gray = image.convert('L')
+        
+        # Enhance
+        enhancer = ImageEnhance.Contrast(gray)
+        gray = enhancer.enhance(1.3)
+        
+        # Get OCR data with bounding boxes
+        data = pytesseract.image_to_data(gray, lang='eng+ind', output_type=pytesseract.Output.DICT)
+        
+        elements = []
+        box_heights = []
+        confidences = []
+        n_boxes = len(data['text'])
+        
+        for i in range(n_boxes):
+            text = data['text'][i].strip()
+            conf = int(data['conf'][i])
+            
+            if conf > 20 and text:
+                x = data['left'][i]
+                y = data['top'][i]
+                w = data['width'][i]
+                h = data['height'][i]
+                
+                y_center = y + (h / 2.0)
+                box_heights.append(h)
+                
+                elements.append({
+                    'text': text,
+                    'y_center': y_center,
+                    'x_min': x,
+                    'height': h
+                })
+                confidences.append(conf)
+        
+        if not elements:
+            return [], 0.0
+        
+        # Dynamic Y-Threshold
+        median_h = np.median(box_heights) if box_heights else 15
+        dynamic_y_threshold = max(6.0, median_h * 0.4)
+        
+        # Sort and group
+        elements.sort(key=lambda item: item['y_center'])
+        lines = []
+        current_line = []
+        
+        for elem in elements:
+            if not current_line:
+                current_line.append(elem)
+            else:
+                avg_y = sum(e['y_center'] for e in current_line) / len(current_line)
+                if abs(elem['y_center'] - avg_y) <= dynamic_y_threshold:
+                    current_line.append(elem)
+                else:
+                    current_line.sort(key=lambda e: e['x_min'])
+                    lines.append(" ".join([e['text'] for e in current_line]))
+                    current_line = [elem]
+        
+        if current_line:
+            current_line.sort(key=lambda e: e['x_min'])
+            lines.append(" ".join([e['text'] for e in current_line]))
+        
+        avg_conf = sum(confidences) / len(confidences) if confidences else 0
+        return lines, min(avg_conf, 100)
+        
+    except Exception as e:
+        logger.error(f"Tesseract fallback failed: {e}")
+        return [], 0.0
+
+
+# ============================================================
+# OCR Result Dataclass
+# ============================================================
 
 @dataclass
 class OCRResult:
@@ -160,286 +253,59 @@ class OCRResult:
     amount_value: Optional[float] = None
     date: Optional[str] = None
     payment_method: Optional[str] = None
-    items: Optional[List[Dict]] = None  # List of extracted items
+    items: Optional[List[Dict]] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    address: Optional[str] = None  # Store address from OCR
+    address: Optional[str] = None
+
+
+# ============================================================
+# OCR Service Class (Legacy compatibility)
+# ============================================================
 
 class OCRService:
-    """OCR Service using Tesseract for receipt scanning."""
+    """OCR Service using RapidOCR + Tesseract fallback."""
     
     # Indonesian merchant patterns
     MERCHANT_PATTERNS = {
-        # Retail
         r'alfamart|alfamat': ('Alfamart', 'shopping'),
         r'indomaret': ('Indomaret', 'shopping'),
         r'family mart|familymart': ('Family Mart', 'shopping'),
         r'lawson': ('Lawson', 'shopping'),
-        
-        # Fast Food
-        r"mcd|macdonald|mcdonald": ('McDonald\'s', 'food_beverages'),
-        r'kfc': ('KFC', 'food_beverages'),
-        r'subway': ('Subway', 'food_beverages'),
-        r'pizza hut': ('Pizza Hut', 'food_beverages'),
-        r'hokben|hokki': ('HokBen', 'food_beverages'),
-        r'burger king': ('Burger King', 'food_beverages'),
-        r'starbucks': ('Starbucks', 'food_beverages'),
-        r'jco': ('JCO', 'food_beverages'),
-        r'celsius': ('Celsius', 'food_beverages'),
-        r'kopi kini': ('Kopi Kini', 'food_beverages'),
-        
-        # E-commerce
+        r"mcd|macdonald|mcdonald": ('McDonald\'s', 'food'),
+        r'kfc': ('KFC', 'food'),
+        r'subway': ('Subway', 'food'),
+        r'pizza hut': ('Pizza Hut', 'food'),
+        r'hokben|hokki': ('HokBen', 'food'),
+        r'burger king': ('Burger King', 'food'),
+        r'starbucks': ('Starbucks', 'food'),
         r'shopee': ('Shopee', 'shopping'),
         r'tokopedia': ('Tokopedia', 'shopping'),
-        r'lazada': ('Lazada', 'shopping'),
-        r'blibli': ('Blibli', 'shopping'),
-        
-        # Transport
         r'grab': ('Grab', 'transport'),
         r'gojek': ('Gojek', 'transport'),
-        r'blue bird|bluebird': ('Blue Bird', 'transport'),
-        r'shell': ('Shell', 'transport'),
-        r'pertamina': ('Pertamina', 'transport'),
-        
-        # E-Wallet
-        r'gopay': ('GoPay', 'other'),
-        r'dana': ('DANA', 'other'),
-        r'ovo': ('OVO', 'other'),
-        r'shopee pay|shopeepay': ('ShopeePay', 'other'),
-        r'linkaja|link aja': ('LinkAja', 'other'),
-        r'qris': ('QRIS', 'other'),
-        
-        # Bills
-        r'pln': ('PLN', 'bills_utilities'),
-        r'pdam': ('PDAM', 'bills_utilities'),
-        r'telkom|indihome': ('Telkom', 'bills_utilities'),
-        r'bpjs': ('BPJS', 'bills_utilities'),
-        
-        # Supermarket
-        r'carrefour': ('Carrefour', 'shopping'),
-        r'hypermart': ('Hypermart', 'shopping'),
-        r'giant': ('Giant', 'shopping'),
-        r'matahari': ('Matahari', 'shopping'),
+        r'gopay': ('GoPay', 'payment'),
+        r'dana': ('DANA', 'payment'),
+        r'ovo': ('OVO', 'payment'),
+        r'shopee pay|shopeepay': ('ShopeePay', 'payment'),
+        r'linkaja|link aja': ('LinkAja', 'payment'),
     }
-    
-    # Indonesian city/region patterns
-    CITY_PATTERNS = [
-        r'(?:jalan|jl\.?)\s*([A-Za-z0-9\s,]+?)(?:,|\n)',
-        r'([A-Za-z]+(?: Utara| Selatan| Timur| Barat)?)(?:,|\n)',
-        r'(?:kota|kabupaten)\s+([A-Za-z\s]+?)(?:,|\n)',
-        r'([A-Za-z]+)(?:\s+-\s+\d+)',
-    ]
-    
-    def _preprocess_image(self, image_bytes: bytes) -> Image.Image:
-        """Preprocess image for better OCR."""
-        try:
-            image = Image.open(io.BytesIO(image_bytes))
-            
-            # Convert to RGB if needed
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            
-            # Resize if too small
-            width, height = image.size
-            if width < 800:
-                scale = 800 / width
-                new_size = (int(width * scale), int(height * scale))
-                image = image.resize(new_size, Image.LANCZOS)
-            
-            # Increase contrast
-            enhancer = ImageEnhance.Contrast(image)
-            image = enhancer.enhance(1.5)
-            
-            # Sharpen
-            enhancer = ImageEnhance.Sharpness(image)
-            image = enhancer.enhance(1.5)
-            
-            # Convert to grayscale
-            image = image.convert('L')
-            
-            return image
-            
-        except Exception as e:
-            logger.error(f"Image preprocessing failed: {e}")
-            raise
-    
-    def _extract_with_tesseract(self, image_bytes: bytes) -> Tuple[str, float]:
-        """Extract text using Tesseract OCR."""
-        try:
-            import pytesseract
-            
-            # Preprocess image
-            image = self._preprocess_image(image_bytes)
-            
-            # OCR with Indonesian + English
-            text = pytesseract.image_to_string(
-                image, 
-                lang='eng+ind',
-                config='--psm 6'
-            )
-            
-            # Get confidence (average, not sum)
-            try:
-                data = pytesseract.image_to_data(image, lang='eng+ind', output_type=pytesseract.Output.DICT)
-                confidences = [int(c) for c in data['conf'] if int(c) > 0]
-                confidence = sum(confidences) / len(confidences) if confidences else 0
-            except:
-                confidence = 70
-            
-            logger.info(f"Tesseract extracted {len(text)} chars, confidence: {min(confidence, 100):.1f}%")
-            return text.strip(), min(confidence, 100)  # Cap at 100%
-            
-        except ImportError as e:
-            logger.error(f"pytesseract not installed: {e}")
-            return "", 0
-        except Exception as e:
-            logger.error(f"Tesseract OCR failed: {e}")
-            return "", 0
-    
-    def _parse_amount(self, text: str) -> Tuple[Optional[str], Optional[float]]:
-        """Extract amount from text."""
-        # Clean text for better matching
-        text_clean = text.replace(',', '.').replace('\n', ' ')
-        
-        patterns = [
-            # Total patterns (highest priority)
-            r'(?:total|total\s+belanja|jumlah\s+total|grand\s+total)[:\s]*[Rr]p\.?\s*([\d.]+)',
-            
-            # Standard amount with Rp
-            r'[Rr]p\.?\s*([\d.]+)',
-            
-            # Plain numbers with thousand separator
-            r'([\d]\.[\d]{3}(?:\.[\d]{3})+)',
-            
-            # Amount with suffix (k, rb, ribu, juta)
-            r'([\d.,]+)\s*(?:k|rb|ribu|juta)',
-        ]
-        
-        amounts = []
-        for pattern in patterns:
-            matches = re.findall(pattern, text_clean.lower())
-            for match in matches:
-                # Clean the match - remove dots used as thousand separators
-                amount_str = match.replace('.', '')
-                try:
-                    value = float(amount_str)
-                    # Filter unrealistic amounts
-                    if 100 <= value <= 100000000:
-                        amounts.append((value, match))
-                except:
-                    pass
-        
-        # Return largest amount (usually the total)
-        if amounts:
-            amounts.sort(key=lambda x: x[0], reverse=True)
-            best = amounts[0]
-            return f"Rp {int(best[0]):,}".replace(',', '.'), best[0]
-        
-        return None, None
-    
-    def _parse_address(self, text: str, merchant_name: str = None) -> Optional[str]:
-        """Extract address/location from receipt text."""
-        # Try to find address patterns
-        patterns = [
-            r'(?:jalan|jl\.?)\s*([A-Za-z0-9\s,]+?)(?:\n|,)',
-            r'(?:jl\.?)\s*([A-Za-z0-9\s]+?\s+(?:no\.?|No\.?)\s*\d+)',
-            r'([A-Za-z]+(?: Utara| Selatan| Timur| Barat| Pusat)?)\s*,',
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                addr = match.group(1).strip()
-                if len(addr) > 5:
-                    return addr
-        
-        # If merchant found, try to return region
-        if merchant_name:
-            return f"{merchant_name} Store"
-        
-        return None
-    
-    def _extract_items(self, text: str) -> List[Dict]:
-        """Extract individual items from receipt text."""
-        items = []
-        
-        # Common receipt patterns for items
-        # Pattern: item name followed by price
-        patterns = [
-            # "Item Name ... Rp 10.000"
-            r'([A-Za-z0-9\s]+?)\s+(?:x\d+\s+)?(?:@[^,]+,\s*)?[Rr]p\.?\s*([\d.,]+)',
-            # "1. Item Name ........ 10.000"
-            r'(?:^\d+[\.\)]\s*)?([A-Za-z][A-Za-z0-9\s]+?)\s+\.+\s*([\d,]+)',
-        ]
-        
-        for pattern in patterns:
-            matches = re.findall(pattern, text, re.MULTILINE)
-            for match in matches:
-                if len(match) == 2:
-                    name = match[0].strip()
-                    price_str = match[1].strip().replace('.', '').replace(',', '.')
-                    try:
-                        price = float(price_str)
-                        if price > 0 and len(name) > 2:
-                            items.append({
-                                "name": name,
-                                "price": price,
-                                "quantity": 1
-                            })
-                    except:
-                        pass
-        
-        return items[:20]  # Limit to 20 items
-    
-    def _parse_merchant(self, text: str) -> Optional[str]:
-        """Extract merchant name from text."""
-        text_lower = text.lower()
-        
-        for pattern, (merchant_name, _) in self.MERCHANT_PATTERNS.items():
-            if re.search(pattern, text_lower):
-                return merchant_name
-        
-        return None
-    
-    def _parse_payment_method(self, text: str) -> Optional[str]:
-        """Extract payment method from text."""
-        text_lower = text.lower()
-        
-        methods = {
-            r'gopay': 'GoPay',
-            r'dana': 'DANA',
-            r'ovo': 'OVO',
-            r'shopeepay|shopee pay': 'ShopeePay',
-            r'linkaja|link aja': 'LinkAja',
-            r'qris': 'QRIS',
-            r'cash|tunai': 'Cash',
-            r'debit': 'Debit',
-            r'credit|kartu kredit': 'Credit',
-        }
-        
-        for pattern, method in methods.items():
-            if re.search(pattern, text_lower):
-                return method
-        
-        return None
-    
+
     def process_image(self, image_bytes: bytes) -> OCRResult:
         """Process receipt image and extract structured data."""
         try:
-            # Extract text using spatial Y-axis clustering
-            lines, confidence = _extract_spatial_lines(image_bytes)
+            # Extract text with spatial clustering
+            lines, confidence = _extract_with_rapidocr(image_bytes)
             text = '\n'.join(lines)
             
             if not text:
                 logger.warning("No text extracted from image")
                 return OCRResult(text="", confidence=0)
             
-            # Try enterprise parser first
+            # Try enterprise parser
             try:
                 from app.services.parser_engine import parse_receipt_text
                 parsed = parse_receipt_text(lines)
                 
-                # Build items from parsed data
                 items = []
                 for item in parsed.get('items', []):
                     items.append({
@@ -461,52 +327,90 @@ class OCRService:
                     longitude=None,
                     address=parsed.get('address')
                 )
-                
             except Exception as e:
-                logger.warning(f"Enterprise parser failed: {e}, using fallback")
+                logger.warning(f"Enterprise parser failed: {e}")
             
-            # Fallback: original parsing
-            amount_str, amount_value = self._parse_amount(text)
-            merchant_name = self._parse_merchant(text)
-            payment_method = self._parse_payment_method(text)
-            items = self._extract_items(text)
-            address = self._parse_address(text, merchant_name)
-            
-            logger.info(f"OCR Result: merchant={merchant_name}, amount={amount_str}, items={len(items)}, address={address}, confidence={confidence:.1f}%")
-            
-            return OCRResult(
-                text=text[:500],
-                confidence=confidence,
-                merchant_name=merchant_name,
-                amount=amount_str,
-                amount_value=amount_value,
-                date=None,
-                payment_method=payment_method,
-                items=items,
-                latitude=None,
-                longitude=None,
-                address=address
-            )
+            # Fallback parsing
+            return self._fallback_parse(text, confidence, lines)
             
         except Exception as e:
             logger.error(f"OCR processing failed: {e}")
             raise ValueError(f"OCR processing failed: {str(e)}")
-    
-    def get_status(self) -> Dict:
+
+    def _fallback_parse(self, text: str, confidence: float, lines: List[str]) -> OCRResult:
+        """Fallback parsing when enterprise parser fails."""
+        text_lower = text.lower()
+        
+        # Merchant
+        merchant_name = None
+        for pattern, (name, _) in self.MERCHANT_PATTERNS.items():
+            if re.search(pattern, text_lower):
+                merchant_name = name
+                break
+        
+        # Amount
+        amount_value = None
+        amount_str = None
+        amounts = []
+        for line in lines:
+            matches = re.findall(r'[\d.]+', line)
+            for m in matches:
+                try:
+                    val = float(m.replace('.', ''))
+                    if 1000 <= val <= 100000000:
+                        amounts.append(val)
+                except:
+                    pass
+        
+        if amounts:
+            amount_value = max(amounts)
+            amount_str = f"Rp {int(amount_value):,}".replace(',', '.')
+        
+        # Payment method
+        payment_method = None
+        payment_patterns = {
+            r'gopay': 'GoPay',
+            r'dana': 'DANA',
+            r'ovo': 'OVO',
+            r'cash|tunai': 'Cash',
+            r'debit': 'Debit',
+            r'qris': 'QRIS',
+        }
+        for pattern, method in payment_patterns.items():
+            if re.search(pattern, text_lower):
+                payment_method = method
+                break
+        
+        # Address
+        address = None
+        for line in lines[:5]:
+            if re.search(r'jl\.?\s|jalan|jl\s', line, re.I):
+                address = line.strip()
+                break
+        
+        return OCRResult(
+            text=text[:500],
+            confidence=confidence,
+            merchant_name=merchant_name,
+            amount=amount_str,
+            amount_value=amount_value,
+            date=None,
+            payment_method=payment_method,
+            items=[],
+            latitude=None,
+            longitude=None,
+            address=address
+        )
+
+    def get_status(self) -> Dict[str, Any]:
         """Get OCR status."""
-        try:
-            import pytesseract
-            return {
-                "status": "ready",
-                "message": "Tesseract OCR ready",
-                "ready": True
-            }
-        except ImportError:
-            return {
-                "status": "error",
-                "message": "Tesseract not installed",
-                "ready": False
-            }
+        ocr = _get_ocr_engine()
+        return {
+            "status": "ready",
+            "engine": "RapidOCR" if ocr else "Tesseract",
+            "message": "OCR ready"
+        }
+
 
 # Singleton instance
 ocr_service = OCRService()
