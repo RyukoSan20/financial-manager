@@ -35,10 +35,11 @@ def get_db():
 
 def init_db():
     """Initialize database tables."""
+    # Import ALL models to register with SQLAlchemy BEFORE create_all
     from app.models import (
         Account, Category, Transaction, Budget,
         Transfer, RecurringRule, Goal, GoalContribution,
-        Debt, DebtPayment, NetWorthSnapshot
+        Debt, DebtPayment, NetWorthSnapshot, ReceiptScan, ReceiptItem
     )
     # Import User model for auth
     from app.models.user import User
