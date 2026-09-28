@@ -1,6 +1,6 @@
 """
-OCR Service using Tesseract OCR - Installed via Dockerfile.
-Fast, no model download needed.
+OCR Service using Tesseract OCR with OpenCV preprocessing.
+Enhanced with Sauvola Adaptive Thresholding + Spatial Y-Axis Grouping.
 """
 
 import io
@@ -11,6 +11,144 @@ from dataclasses import dataclass
 from PIL import Image, ImageEnhance
 
 logger = logging.getLogger(__name__)
+
+# ============================================================
+# OpenCV Preprocessing Functions
+# ============================================================
+
+def _preprocess_opencv(image_bytes: bytes) -> any:
+    """Advanced preprocessing with OpenCV + Sauvola thresholding."""
+    try:
+        import cv2
+        import numpy as np
+        
+        # Decode image
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            return None
+        
+        # Convert to grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # CLAHE enhancement for better contrast
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
+        
+        # Sauvola Adaptive Thresholding
+        # window_size = 25, k = 0.2
+        img_float = enhanced.astype(np.float32)
+        mean = cv2.boxFilter(img_float, -1, (25, 25))
+        sqr_mean = cv2.boxFilter(img_float * img_float, -1, (25, 25))
+        std = np.sqrt(np.maximum(sqr_mean - mean * mean, 0))
+        
+        # Sauvola formula: T = mean * (1 + k * (std/128 - 1))
+        k = 0.2
+        threshold = mean * (1.0 + k * (std / 128.0 - 1.0))
+        
+        # Binary image
+        binary = np.zeros_like(enhanced, dtype=np.uint8)
+        binary[img_float > threshold] = 255
+        
+        # Denoise
+        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, np.ones((2, 2), np.uint8))
+        
+        return binary
+        
+    except ImportError:
+        logger.warning("OpenCV not available, using PIL preprocessing")
+        return None
+    except Exception as e:
+        logger.error(f"OpenCV preprocessing failed: {e}")
+        return None
+
+
+def _extract_spatial_lines(image_bytes: bytes, y_threshold: int = 12) -> Tuple[List[str], float]:
+    """Extract OCR text with Y-axis spatial clustering."""
+    import pytesseract
+    import numpy as np
+    from PIL import Image
+    
+    # Try OpenCV preprocessing first
+    binary_img = _preprocess_opencv(image_bytes)
+    
+    if binary_img is None:
+        # Fallback to PIL preprocessing
+        pil_img = _preprocess_pil_fallback(image_bytes)
+        data = pytesseract.image_to_data(pil_img, lang='eng+ind', output_type=pytesseract.Output.DICT)
+    else:
+        data = pytesseract.image_to_data(binary_img, lang='eng+ind', output_type=pytesseract.Output.DICT)
+    
+    # Collect elements with coordinates
+    elements = []
+    confidences = []
+    n_boxes = len(data['text'])
+    
+    for i in range(n_boxes):
+        text = data['text'][i].strip()
+        conf = int(data['conf'][i])
+        
+        if conf > 20 and text:
+            x = data['left'][i]
+            y = data['top'][i]
+            w = data['width'][i]
+            h = data['height'][i]
+            
+            elements.append({
+                'text': text,
+                'y_center': y + (h / 2.0),
+                'x_min': x
+            })
+            confidences.append(conf)
+    
+    # Sort by Y coordinate and group into lines
+    elements.sort(key=lambda item: item['y_center'])
+    lines = []
+    current_line = []
+    
+    for elem in elements:
+        if not current_line:
+            current_line.append(elem)
+        else:
+            avg_y = sum(e['y_center'] for e in current_line) / len(current_line)
+            if abs(elem['y_center'] - avg_y) <= y_threshold:
+                current_line.append(elem)
+            else:
+                # Sort current line by X coordinate
+                current_line.sort(key=lambda e: e['x_min'])
+                lines.append(" ".join([e['text'] for e in current_line]))
+                current_line = [elem]
+    
+    # Don't forget the last line
+    if current_line:
+        current_line.sort(key=lambda e: e['x_min'])
+        lines.append(" ".join([e['text'] for e in current_line]))
+    
+    avg_conf = sum(confidences) / len(confidences) if confidences else 0
+    return lines, min(avg_conf, 100)
+
+
+def _preprocess_pil_fallback(image_bytes: bytes) -> Image.Image:
+    """Fallback PIL preprocessing if OpenCV unavailable."""
+    image = Image.open(io.BytesIO(image_bytes))
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    
+    # Resize if too small
+    width, height = image.size
+    if width < 800:
+        scale = 800 / width
+        new_size = (int(width * scale), int(height * scale))
+        image = image.resize(new_size, Image.LANCZOS)
+    
+    # Enhance
+    enhancer = ImageEnhance.Contrast(image)
+    image = enhancer.enhance(1.5)
+    enhancer = ImageEnhance.Sharpness(image)
+    image = enhancer.enhance(1.5)
+    
+    return image.convert('L')
 
 @dataclass
 class OCRResult:
@@ -288,14 +426,46 @@ class OCRService:
     def process_image(self, image_bytes: bytes) -> OCRResult:
         """Process receipt image and extract structured data."""
         try:
-            # Extract text using Tesseract
-            text, confidence = self._extract_with_tesseract(image_bytes)
+            # Extract text using spatial Y-axis clustering
+            lines, confidence = _extract_spatial_lines(image_bytes)
+            text = '\n'.join(lines)
             
             if not text:
                 logger.warning("No text extracted from image")
                 return OCRResult(text="", confidence=0)
             
-            # Parse extracted data
+            # Try enterprise parser first
+            try:
+                from app.services.parser_engine import parse_receipt_text
+                parsed = parse_receipt_text(lines)
+                
+                # Build items from parsed data
+                items = []
+                for item in parsed.get('items', []):
+                    items.append({
+                        'name': item.get('name', ''),
+                        'price': item.get('total_price', 0),
+                        'quantity': item.get('quantity', 1)
+                    })
+                
+                return OCRResult(
+                    text=text[:500],
+                    confidence=confidence,
+                    merchant_name=parsed.get('merchant_name'),
+                    amount=f"Rp {int(parsed.get('amount', 0)):,}".replace(',', '.'),
+                    amount_value=parsed.get('amount', 0),
+                    date=None,
+                    payment_method=parsed.get('payment_method'),
+                    items=items,
+                    latitude=None,
+                    longitude=None,
+                    address=parsed.get('address')
+                )
+                
+            except Exception as e:
+                logger.warning(f"Enterprise parser failed: {e}, using fallback")
+            
+            # Fallback: original parsing
             amount_str, amount_value = self._parse_amount(text)
             merchant_name = self._parse_merchant(text)
             payment_method = self._parse_payment_method(text)

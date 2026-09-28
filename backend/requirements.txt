@@ -27,3 +27,10 @@ requests==2.32.0
 # OCR - Tesseract (installed via Dockerfile)
 Pillow>=10.0.0
 pytesseract>=0.3.10
+opencv-python-headless>=4.8.0
+
+# Enterprise OCR Engine
+sentence-transformers>=2.2.0
+faiss-cpu>=1.7.0
+rapidfuzz>=3.0.0
+numpy>=1.24.0

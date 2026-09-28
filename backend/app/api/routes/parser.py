@@ -7,6 +7,9 @@ from decimal import Decimal
 from pydantic import BaseModel
 import base64
 import io
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.core.security import get_current_user_optional
@@ -20,6 +23,7 @@ from app.services.parser_service import (
 )
 from app.services.ocr_service import ocr_service, OCRResult
 from app.services.geocoding_service import geocoding_service, geocode_merchant
+from app.services.catalog_service import match_items_to_catalog
 
 router = APIRouter(tags=["Parser"])
 
@@ -135,7 +139,7 @@ async def parse_receipt_image_endpoint(
         raise HTTPException(status_code=400, detail="File too large (max 10MB)")
     
     try:
-        # Process with OCR service (EasyOCR)
+        # Process with OCR service (Enterprise OCR Engine)
         receipt = ocr_service.process_image(content)
         
         # Geocode merchant if available (using merchant name + extracted address)
@@ -150,26 +154,33 @@ async def parse_receipt_image_endpoint(
                 longitude = geo.longitude
                 merchant_address = geo.formatted_address or merchant_address
         
+        # Enrich items with catalog matching and auto-categorization
+        enriched_items = []
+        if receipt.items:
+            try:
+                enriched_items = match_items_to_catalog(receipt.items)
+            except Exception as e:
+                logger.warning(f"Catalog matching failed: {e}")
+                enriched_items = receipt.items
+        
         # Determine transaction type (receipts are typically expenses)
         transaction_type = "DEBIT" if receipt.amount else "DEBIT"
         
         return {
             "status": "success",
-            "detection_type": "OCR_RECEIPT",
+            "detection_type": "ENTERPRISE_LOCAL_OCR",
             "merchant_name": receipt.merchant_name,
-            "amount": str(receipt.amount_value) if receipt.amount_value else "0",
+            "amount": str(int(receipt.amount_value)) if receipt.amount_value else "0",
             "transaction_type": transaction_type,
             "date": receipt.date,
             "payment_method": receipt.payment_method,
-            "card_number": None,
-            "phone": None,
             "address": merchant_address,
-            "items_count": len(receipt.items) if receipt.items else 0,
-            "items": receipt.items if receipt.items else [],
-            "confidence_score": receipt.confidence,
+            "items_count": len(enriched_items) if enriched_items else 0,
+            "items": enriched_items if enriched_items else [],
+            "confidence_score": round(receipt.confidence, 1),
             "category_hint": "shopping",
             "suggested_type": "expense",
-            "description": f"Pembelian di {receipt.merchant_name}" if receipt.merchant_name else "Pembelian",
+            "description": f"Purchase at {receipt.merchant_name}" if receipt.merchant_name else "Purchase",
             "raw_text": receipt.text[:1000] if receipt.text else None,
             "latitude": latitude,
             "longitude": longitude,
