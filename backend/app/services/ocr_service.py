@@ -160,34 +160,32 @@ class OCRService:
     
     def _parse_amount(self, text: str) -> Tuple[Optional[str], Optional[float]]:
         """Extract amount from text."""
-        # Normalize text
-        text_normalized = text.replace(' ', '').replace('\n', ' ')
+        # Clean text for better matching
+        text_clean = text.replace(',', '.').replace('\n', ' ')
         
         patterns = [
-            # Total patterns
-            r'(?:total|total\s+belanja|jumlah\s+total|grand\s+total)[:\s]*[Rr]p\.?\s*([\d]+)',
-            r'(?:total)[:\s]*([\d]+)',
+            # Total patterns (highest priority)
+            r'(?:total|total\s+belanja|jumlah\s+total|grand\s+total)[:\s]*[Rr]p\.?\s*([\d.]+)',
             
-            # Standard amount patterns
-            r'(?:jumlah|amount|nominal|bayar|tagihan)[:\s]*[Rr]p\.?\s*([\d.,]+)',
-            r'[Rr]p\.?\s*([\d.,]+)',
+            # Standard amount with Rp
+            r'[Rr]p\.?\s*([\d.]+)',
             
-            # Rp without space
-            r'[Rr]p([\d]+)',
+            # Plain numbers with thousand separator
+            r'([\d]\.[\d]{3}(?:\.[\d]{3})+)',
             
-            # Amount with K/RB suffix
+            # Amount with suffix (k, rb, ribu, juta)
             r'([\d.,]+)\s*(?:k|rb|ribu|juta)',
         ]
         
         amounts = []
         for pattern in patterns:
-            matches = re.findall(pattern, text.lower())
+            matches = re.findall(pattern, text_clean.lower())
             for match in matches:
-                # Clean the match
-                amount_str = match.replace('.', '').replace(',', '.')
+                # Clean the match - remove dots used as thousand separators
+                amount_str = match.replace('.', '')
                 try:
                     value = float(amount_str)
-                    # Filter out unrealistic amounts (too small or too large)
+                    # Filter unrealistic amounts
                     if 100 <= value <= 100000000:
                         amounts.append((value, match))
                 except:
