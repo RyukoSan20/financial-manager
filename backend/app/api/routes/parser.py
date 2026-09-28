@@ -138,16 +138,17 @@ async def parse_receipt_image_endpoint(
         # Process with OCR service (EasyOCR)
         receipt = ocr_service.process_image(content)
         
-        # Geocode merchant if available
+        # Geocode merchant if available (using merchant name + extracted address)
         latitude = None
         longitude = None
-        merchant_address = None
-        if receipt.merchant_name:
-            geo = geocode_merchant(receipt.merchant_name)
+        merchant_address = receipt.address or receipt.merchant_name
+        
+        if merchant_address:
+            geo = geocode_merchant(merchant_address)
             if geo:
                 latitude = geo.latitude
                 longitude = geo.longitude
-                merchant_address = geo.formatted_address
+                merchant_address = geo.formatted_address or merchant_address
         
         # Determine transaction type (receipts are typically expenses)
         transaction_type = "DEBIT" if receipt.amount else "DEBIT"

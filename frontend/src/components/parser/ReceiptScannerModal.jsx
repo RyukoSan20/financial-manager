@@ -15,40 +15,14 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   const [selectedAccount, setSelectedAccount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [confirming, setConfirming] = useState(false);
-  const [location, setLocation] = useState(null); // {lat, lng}
-  const [gettingLocation, setGettingLocation] = useState(false);
   const fileInputRef = useRef(null);
 
   // Load data when modal opens
   useEffect(() => {
     if (isOpen) {
       loadData();
-      getCurrentLocation();
     }
   }, [isOpen]);
-
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      console.log('Geolocation not supported');
-      return;
-    }
-    
-    setGettingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-        setGettingLocation(false);
-      },
-      (err) => {
-        console.error('Geolocation error:', err);
-        setGettingLocation(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
 
   const loadData = async () => {
     try {
@@ -197,8 +171,9 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
         merchant_name: parsedData.merchant_name,
         confidence_score: parsedData.confidence_score,
         detection_type: 'OCR_RECEIPT',
-        latitude: location?.lat || parsedData.latitude,
-        longitude: location?.lng || parsedData.longitude,
+        latitude: parsedData.latitude,
+        longitude: parsedData.longitude,
+        merchant_address: parsedData.address,
         notes: `Metode: ${parsedData.payment_method || 'Tidak diketahui'}\n${parsedData.address ? 'Alamat: ' + parsedData.address : ''}${parsedData.items_count > 0 ? '\nItems: ' + parsedData.items_count + ' item(s)' : ''}`,
       });
 
@@ -408,12 +383,12 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               </div>
             )}
             
-            {/* Location */}
-            {(location || parsedData.latitude) && (
+            {/* Location from merchant */}
+            {parsedData.address && (
               <div className="p-4 flex items-center justify-between bg-green-50">
-                <span className="text-gray-500">Lokasi</span>
+                <span className="text-gray-500">Lokasi Merchant</span>
                 <span className="text-sm font-medium text-green-700">
-                  {location ? '📍 Terdetek' : '🌐 Dari merchant'}
+                  📍 {parsedData.address}
                 </span>
               </div>
             )}

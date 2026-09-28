@@ -83,6 +83,14 @@ class OCRService:
         r'matahari': ('Matahari', 'shopping'),
     }
     
+    # Indonesian city/region patterns
+    CITY_PATTERNS = [
+        r'(?:jalan|jl\.?)\s*([A-Za-z0-9\s,]+?)(?:,|\n)',
+        r'([A-Za-z]+(?: Utara| Selatan| Timur| Barat)?)(?:,|\n)',
+        r'(?:kota|kabupaten)\s+([A-Za-z\s]+?)(?:,|\n)',
+        r'([A-Za-z]+)(?:\s+-\s+\d+)',
+    ]
+    
     def _preprocess_image(self, image_bytes: bytes) -> Image.Image:
         """Preprocess image for better OCR."""
         try:
@@ -171,6 +179,28 @@ class OCRService:
         
         return None, None
     
+    def _parse_address(self, text: str, merchant_name: str = None) -> Optional[str]:
+        """Extract address/location from receipt text."""
+        # Try to find address patterns
+        patterns = [
+            r'(?:jalan|jl\.?)\s*([A-Za-z0-9\s,]+?)(?:\n|,)',
+            r'(?:jl\.?)\s*([A-Za-z0-9\s]+?\s+(?:no\.?|No\.?)\s*\d+)',
+            r'([A-Za-z]+(?: Utara| Selatan| Timur| Barat| Pusat)?)\s*,',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                addr = match.group(1).strip()
+                if len(addr) > 5:
+                    return addr
+        
+        # If merchant found, try to return region
+        if merchant_name:
+            return f"{merchant_name} Store"
+        
+        return None
+    
     def _extract_items(self, text: str) -> List[Dict]:
         """Extract individual items from receipt text."""
         items = []
@@ -250,8 +280,9 @@ class OCRService:
             merchant_name = self._parse_merchant(text)
             payment_method = self._parse_payment_method(text)
             items = self._extract_items(text)
+            address = self._parse_address(text, merchant_name)
             
-            logger.info(f"OCR Result: merchant={merchant_name}, amount={amount_str}, items={len(items)}, confidence={confidence:.1f}%")
+            logger.info(f"OCR Result: merchant={merchant_name}, amount={amount_str}, items={len(items)}, address={address}, confidence={confidence:.1f}%")
             
             return OCRResult(
                 text=text[:500],
@@ -261,7 +292,9 @@ class OCRService:
                 amount_value=amount_value,
                 date=None,
                 payment_method=payment_method,
-                items=items
+                items=items,
+                latitude=None,
+                longitude=None
             )
             
         except Exception as e:
