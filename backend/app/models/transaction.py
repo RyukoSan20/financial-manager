@@ -57,4 +57,4 @@ class Transaction(Base):
     category = relationship("Category", back_populates="transactions")
     transfer = relationship("Transfer", back_populates="transactions")
     recurring_rule = relationship("RecurringRule", back_populates="generated_transactions")
-    receipt_scan = relationship("ReceiptScan", back_populates="transaction", foreign_keys=[receipt_scan_id])
+    receipt_scan = relationship("ReceiptScan", foreign_keys=[receipt_scan_id])

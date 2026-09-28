@@ -56,7 +56,7 @@ class ReceiptScan(Base):
 
     # Relationships
     user = relationship("User", back_populates="receipt_scans")
-    transaction = relationship("Transaction", back_populates="receipt_scan", foreign_keys=[transaction_id])
+    # Note: Transaction.receipt_scan uses one-way relationship
     items = relationship("ReceiptItem", back_populates="receipt_scan", cascade="all, delete-orphan")
 
 
