@@ -56,8 +56,12 @@ class ProductionReceiptParserEngine:
         )
         
         # Date Pattern (supports 2-digit year: DD.MM.YY)
+        # Also matches OCR-warped dates like "1409.16" (missing space)
         self.pat_date = re.compile(
             r'(\d{2}[\.\/\-]\d{2}[\.\/\-]\d{2,4})'
+            r'|(\d{4}[\.\/\-]\d{2}[\.\/\-]\d{2})'  # YMD format
+            r'|(\d{4}\.\d{2})'  # YMD format without year separator (1409.16)
+            r'|(\d{2}\.\d{2}\.\d{2})'  # DMY with dots (14.09.16)
         )
         
         # Discard words (not real items)
@@ -169,7 +173,11 @@ class ProductionReceiptParserEngine:
             if not extracted_date:
                 date_match = self.pat_date.search(line_str)
                 if date_match:
-                    extracted_date = date_match.group(1)
+                    # Get first non-None capture group
+                    for g in date_match.groups():
+                        if g:
+                            extracted_date = g
+                            break
             
             # Check if line has valid price token
             has_valid_price = any(self.is_valid_price_token(t, line_str) for t in tokens)
