@@ -159,23 +159,44 @@ class OCRService:
     
     def _parse_amount(self, text: str) -> Tuple[Optional[str], Optional[float]]:
         """Extract amount from text."""
+        # Normalize text
+        text_normalized = text.replace(' ', '').replace('\n', ' ')
+        
         patterns = [
-            r'(?:total|jumlah|amount|nominal|bayar)[:\s]*[Rr]p\.?\s*([\d.,]+)',
+            # Total patterns
+            r'(?:total|total\s+belanja|jumlah\s+total|grand\s+total)[:\s]*[Rr]p\.?\s*([\d]+)',
+            r'(?:total)[:\s]*([\d]+)',
+            
+            # Standard amount patterns
+            r'(?:jumlah|amount|nominal|bayar|tagihan)[:\s]*[Rr]p\.?\s*([\d.,]+)',
             r'[Rr]p\.?\s*([\d.,]+)',
+            
+            # Rp without space
+            r'[Rr]p([\d]+)',
+            
+            # Amount with K/RB suffix
             r'([\d.,]+)\s*(?:k|rb|ribu|juta)',
         ]
         
+        amounts = []
         for pattern in patterns:
             matches = re.findall(pattern, text.lower())
-            if matches:
-                amount_str = matches[-1]
-                amount_str = amount_str.replace('.', '').replace(',', '.')
+            for match in matches:
+                # Clean the match
+                amount_str = match.replace('.', '').replace(',', '.')
                 try:
                     value = float(amount_str)
-                    if value > 0:
-                        return amount_str, value
+                    # Filter out unrealistic amounts (too small or too large)
+                    if 100 <= value <= 100000000:
+                        amounts.append((value, match))
                 except:
                     pass
+        
+        # Return largest amount (usually the total)
+        if amounts:
+            amounts.sort(key=lambda x: x[0], reverse=True)
+            best = amounts[0]
+            return f"Rp {int(best[0]):,}".replace(',', '.'), best[0]
         
         return None, None
     
