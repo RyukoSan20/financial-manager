@@ -29,12 +29,18 @@ class ProductionReceiptParserEngine:
             re.IGNORECASE
         )
         
-        # Strict Footer Trigger - only specific keywords
+        # Strict Footer Trigger - ONLY these exact patterns
         self.pat_footer_trigger = re.compile(
-            r'^(HARGA\s*JUAL|SUBTOTAL|TUNAI|KEMBALI|BAYAR|EDC|BANK|GRAND\s*TOTAL|'
-            r'TOTAL\s*BAYAR|ANDA\s*HEMAT|LAYANAN\s*KONSUMEN|CS\s*CALL)'
-            r'|'
-            r'^(TOTAL\s*[:=])',
+            r'^HARGA\s*JUAL\s*[:=]?\s*[\d]'
+            r'|^SUBTOTAL\s*[:=]?\s*[\d]'
+            r'|^TUNAI\s*[:=]?\s*[\d]'
+            r'|^KEMBALI\s*[:=]?\s*[\d]'
+            r'|^BAYAR\s*[:=]?\s*[\d]'
+            r'|^GRAND\s*TOTAL\s*[:=]?\s*[\d]'
+            r'|^TOTAL\s+[:=]\s*[\d]'
+            r'|^TOTAL\s+[\d]{4,}'  # TOTAL followed by large number
+            r'|ANDA\s*HEMAT'
+            r'|LAYANAN\s*KONSUMEN',
             re.IGNORECASE
         )
         
@@ -207,11 +213,14 @@ class ProductionReceiptParserEngine:
             # STATE 2: ITEMS (RTL Tokenization Active)
             # ==========================================
             if state == "ITEMS":
-                # Skip discount lines (except FRISIAN FLAG promo)
-                if "DISKON" in line_upper and "FRISIAN" not in line_upper:
-                    disc_match = re.search(r'[\(:=]?\s*([0-9.,]+)[\)]?', line_str)
+                # Handle discount lines (all variations)
+                if "DISKON" in line_upper or "POTONGAN" in line_upper or "PROMO" in line_upper:
+                    # Extract discount value
+                    disc_match = re.search(r'[\(:=]?\s*[-]?\s*([0-9.,]+)[\)]?', line_str)
                     if disc_match:
-                        discount_total += abs(self.sanitize_num(disc_match.group(1)))
+                        disc_val = abs(self.sanitize_num(disc_match.group(1)))
+                        if disc_val > 0:
+                            discount_total += disc_val
                     continue
                 
                 # Skip invalid lines
@@ -232,7 +241,13 @@ class ProductionReceiptParserEngine:
                 
                 numeric_tokens.reverse()
                 text_tokens.reverse()
-                line_item_name = " ".join(text_tokens).strip()
+                
+                # Remove discard words from item name
+                discard_strip = re.compile(
+                    r'\b(TOTAL|TUNAI|KEMBALI|DISKON|PROMO|BAYAR)\b',
+                    re.IGNORECASE
+                )
+                line_item_name = discard_strip.sub('', ' '.join(text_tokens)).strip()
                 
                 if numeric_tokens and not self.pat_noise.search(line_str):
                     nums = [self.sanitize_num(n) for n in numeric_tokens]
@@ -261,13 +276,11 @@ class ProductionReceiptParserEngine:
                     
                     # Validate item
                     if total_price >= 100 and len(full_name) > 1:
-                        # Skip if name contains discard words
-                        if not any(k in full_name.upper() for k in ['TOTAL', 'TUNAI', 'KEMBALI', 'DISKON']):
-                            items.append({
-                                "name": full_name,
-                                "quantity": qty,
-                                "price_per_unit": unit_price,
-                                "total_price": total_price
+                        items.append({
+                            "name": full_name,
+                            "quantity": qty,
+                            "price_per_unit": unit_price,
+                            "total_price": total_price
                             })
                 else:
                     # Buffer multi-line item names
@@ -281,6 +294,15 @@ class ProductionReceiptParserEngine:
             if state == "FOOTER":
                 # Flush buffer at footer
                 name_buffer.clear()
+                
+                # Handle discount in footer too
+                if "DISKON" in line_upper or "POTONGAN" in line_upper or "PROMO" in line_upper:
+                    disc_match = re.search(r'[\(:=]?\s*[-]?\s*([0-9.,]+)[\)]?', line_str)
+                    if disc_match:
+                        disc_val = abs(self.sanitize_num(disc_match.group(1)))
+                        if disc_val > 0:
+                            discount_total += disc_val
+                    continue
                 
                 if "TOTAL" in line_upper and "HARGA" not in line_upper and total_amount == 0.0:
                     tot_val = self.sanitize_num(line_str)
