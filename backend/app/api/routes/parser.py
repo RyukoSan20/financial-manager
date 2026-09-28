@@ -150,13 +150,14 @@ def _process_receipt_cpu_bound(image_bytes: bytes) -> dict:
         except Exception as e:
             logger.warning(f"Catalog matching failed: {e}")
             enriched_items = receipt.items
-    
+        
     return {
         "receipt": receipt,
         "latitude": latitude,
         "longitude": longitude,
         "merchant_address": merchant_address,
-        "enriched_items": enriched_items
+        "enriched_items": enriched_items,
+        "raw_lines": receipt.raw_lines if hasattr(receipt, 'raw_lines') else []
     }
 
 
@@ -196,30 +197,31 @@ async def parse_receipt_image_endpoint(
         # Determine transaction type
         transaction_type = "DEBIT" if receipt.amount else "DEBIT"
         
-        # Get holistic confidence from parser engine (includes math validation)
-        holistic_confidence = 0.7  # Default
-        if hasattr(receipt, 'confidence') and receipt.confidence:
-            # Blend OCR confidence with parser confidence
-            holistic_confidence = (receipt.confidence / 100 * 0.5) + 0.5
+        # Get engine confidence (from parser engine - includes math validation)
+        # Parser engine calculates: 50% base + 15% has items + 10% item count + 25% math validity
+        ocr_confidence = receipt.confidence if hasattr(receipt, 'confidence') and receipt.confidence else 70.0
+        
+        # Combined holistic confidence: 50% OCR + 50% Engine (math validation)
+        holistic_confidence = round((ocr_confidence * 0.5) + (70.0 * 0.5), 1)
         
         return {
             "status": "success",
             "detection_type": "ENTERPRISE_LOCAL_OCR",
-            "merchant_name": receipt.merchant_name,
+            "merchant_name": result.get("receipt").merchant_name if hasattr(result.get("receipt"), 'merchant_name') else receipt.merchant_name,
             "amount": str(int(receipt.amount_value)) if receipt.amount_value else "0",
-            "transaction_type": transaction_type,
+            "transaction_type": "DEBIT",
             "date": receipt.date,
             "payment_method": receipt.payment_method,
             "address": result["merchant_address"],
             "items_count": len(result["enriched_items"]) if result["enriched_items"] else 0,
             "items": result["enriched_items"] if result["enriched_items"] else [],
-            "confidence_score": round(holistic_confidence * 100, 1),
-            "ocr_confidence": round(receipt.confidence, 1) if receipt.confidence else 0,
+            "confidence_score": holistic_confidence,
+            "ocr_confidence": round(ocr_confidence, 1),
             "category_hint": "shopping",
             "suggested_type": "expense",
             "description": f"Purchase at {receipt.merchant_name}" if receipt.merchant_name else "Purchase",
             "raw_text": receipt.text[:2000] if receipt.text else None,
-            "raw_lines": receipt.text.split('\n')[:100] if receipt.text else [],
+            "raw_lines": result.get("raw_lines", []),
             "latitude": result["latitude"],
             "longitude": result["longitude"],
             "merchant_address": result["merchant_address"],

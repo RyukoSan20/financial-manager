@@ -310,6 +310,7 @@ class OCRResult:
     """Result from OCR processing."""
     text: str
     confidence: float
+    raw_lines: List[str] = None  # Store raw lines for audit trail
     merchant_name: Optional[str] = None
     amount: Optional[str] = None
     amount_value: Optional[float] = None
@@ -319,6 +320,10 @@ class OCRResult:
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     address: Optional[str] = None
+    
+    def __post_init__(self):
+        if self.raw_lines is None:
+            self.raw_lines = []
 
 
 # ============================================================
@@ -361,7 +366,7 @@ class OCRService:
             
             if not text:
                 logger.warning("No text extracted from image")
-                return OCRResult(text="", confidence=0)
+                return OCRResult(text="", confidence=0, raw_lines=[])
             
             # Try enterprise parser
             try:
@@ -379,6 +384,7 @@ class OCRService:
                 return OCRResult(
                     text=text[:500],
                     confidence=confidence,
+                    raw_lines=lines,
                     merchant_name=parsed.get('merchant_name'),
                     amount=f"Rp {int(parsed.get('amount', 0)):,}".replace(',', '.'),
                     amount_value=parsed.get('amount', 0),
@@ -453,6 +459,7 @@ class OCRService:
         return OCRResult(
             text=text[:500],
             confidence=confidence,
+            raw_lines=lines,
             merchant_name=merchant_name,
             amount=amount_str,
             amount_value=amount_value,

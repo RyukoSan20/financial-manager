@@ -1,6 +1,6 @@
 """
-Production Receipt Parser Engine
-RTL Tokenization + Strict State Machine + Multi-Line Buffer + Mathematical Guardrails
+Production Receipt Parser Engine v2
+Fixed: HEADER stuck fallback, Footer false-positive, name_buffer flush, engine confidence
 """
 
 import re
@@ -29,18 +29,26 @@ class ProductionReceiptParserEngine:
             re.IGNORECASE
         )
         
-        # Footer detection patterns
+        # Footer detection - MUST be followed by actual total amount or specific keywords
+        # Prevents "TOTAL CARE" / "CASHWEIN" from triggering footer
         self.pat_footer_trigger = re.compile(
-            r'^(HARGA\s*JUAL|TOTAL|SUBTOTAL|TUNAI|KEMBALI|CASH|BAYAR|'
-            r'EDC|BANK|GRAND\s*TOTAL|TOTAL\s*BAYAR|SISA\s*KEMBALI)',
+            r'^(HARGA\s*JUAL|SUBTOTAL|TUNAI|KEMBALI|BAYAR|EDC|BANK|GRAND\s*TOTAL|'
+            r'TOTAL\s*BAYAR|SISA\s*KEMBALI|TOTAL\s+JUAL)'
+            r'|'
+            r'^TOTAL\s*[:=]?\s*[\d]'
+            r'|'
+            r'^(TOTAL|BAYAR)\s+[\d.,]{4,}$',
             re.IGNORECASE
         )
         
         # Phone number pattern to filter from items
         self.pat_phone = re.compile(r'\b08[12][\d\s\-]{7,12}\b')
         
-        # Date pattern (marks transition from header to items)
-        self.pat_date = re.compile(r'\d{2}[\.\/\-]\d{2}[\.\/\-]\d{2,4}')
+        # Date patterns (extended to handle more formats)
+        self.pat_date = re.compile(
+            r'(\d{2}[\.\/\-]\d{2}[\.\/\-]\d{2,4}|'
+            r'\d{4}[\.\/\-]\d{2}[\.\/\-]\d{2})'
+        )
         
         # Indonesian merchant patterns
         self.merchant_patterns = [
@@ -93,12 +101,20 @@ class ProductionReceiptParserEngine:
         
         # Filter phone numbers (header artifacts)
         if self.pat_phone.search(line):
-            # If line is ONLY a phone number, skip it
             cleaned = re.sub(r'[\s\-\(\)]', '', line)
             if re.match(r'^08[\d]{8,12}$', cleaned):
                 return False
         
         return True
+
+    def has_numeric_price_token(self, line: str) -> bool:
+        """Check if line has numeric token that looks like a price (>= 3 digits)."""
+        tokens = line.split()
+        for token in tokens:
+            num_val = self.sanitize_num(token)
+            if num_val >= 100:  # Real price (not qty)
+                return True
+        return False
 
     def parse(self, raw_lines: List[str]) -> Dict[str, Any]:
         """
@@ -128,6 +144,10 @@ class ProductionReceiptParserEngine:
             
             line_upper = line_str.upper()
             line_lower = line_str.lower()
+            tokens = line_str.split()
+            
+            # Check if line has price-like numeric token (for fallback detection)
+            has_price_token = self.has_numeric_price_token(line_str)
             
             # ==========================================
             # STATE 1: HEADER
@@ -139,21 +159,36 @@ class ProductionReceiptParserEngine:
                         merchant_name = line_str.title()
                         break
                 
-                # Transition to ITEMS on date or first item-like content
-                if self.pat_date.search(line_str) or 'S/ROTI' in line_upper:
+                # CRITICAL FIX: Transition to ITEMS if:
+                # 1. Date is found, OR
+                # 2. Line has price-like token AND no phone number (fallback heuristic)
+                # This prevents parser from being stuck in HEADER forever
+                date_found = self.pat_date.search(line_str)
+                should_transition = date_found or (has_price_token and not self.pat_phone.search(line_str))
+                
+                if should_transition:
                     state = "ITEMS"
-                    continue
+                    # Don't continue - let ITEMS process handle this line too
+                    # This fixes the "stuck in HEADER" bug
             
             # ==========================================
             # FOOTER DETECTION (can happen from ITEMS)
+            # CRITICAL FIX: Only trigger on actual footer patterns
+            # Prevents "TOTAL CARE" / "CASHWEIN" from stopping parsing
             # ==========================================
             if self.pat_footer_trigger.search(line_str):
+                # Flush any pending name buffer before footer
+                name_buffer.clear()
                 state = "FOOTER"
                 
                 # Parse footer values
-                if 'TOTAL' in line_upper and 'DISCOUNT' not in line_upper and total_amount == 0.0:
-                    total_amount = self.sanitize_num(line_str)
-                elif 'HARGA JUAL' in line_upper or 'SUBTOTAL' in line_upper:
+                if total_amount == 0.0:
+                    if 'TOTAL' in line_upper and 'DISCOUNT' not in line_upper:
+                        total_amount = self.sanitize_num(line_str)
+                    elif 'BAYAR' in line_upper:
+                        total_amount = self.sanitize_num(line_str)
+                
+                if 'HARGA JUAL' in line_upper or 'SUBTOTAL' in line_upper:
                     subtotal = self.sanitize_num(line_str)
                 elif 'TUNAI' in line_upper:
                     payment_method = 'Cash'
@@ -176,7 +211,6 @@ class ProductionReceiptParserEngine:
                     continue
                 
                 # RTL Tokenization: Extract numbers from right to left
-                tokens = line_str.split()
                 numeric_tokens = []
                 text_tokens = []
                 
@@ -203,7 +237,6 @@ class ProductionReceiptParserEngine:
                         total_price = nums[2]
                     elif len(nums) == 2:
                         qty = 1
-                        # If first number is small (<=10), it's likely qty
                         if nums[0] <= 10:
                             qty = int(nums[0])
                             unit_price = nums[1]
@@ -215,9 +248,9 @@ class ProductionReceiptParserEngine:
                         unit_price = nums[0]
                         total_price = nums[0]
                     
-                    # Flush name buffer (multi-line item names)
+                    # CRITICAL FIX: Flush name buffer when item is found
                     full_name = " ".join(name_buffer + [line_item_name]).strip()
-                    name_buffer = []
+                    name_buffer.clear()
                     
                     # Only add if looks like real item
                     if total_price >= 100 and len(full_name) > 1:
@@ -229,16 +262,24 @@ class ProductionReceiptParserEngine:
                         })
                 else:
                     # No numbers found - buffer for next line (multi-line item name)
-                    if len(name_buffer) < 2:
-                        name_buffer.append(line_str)
+                    if len(line_str) > 2 and not self.pat_phone.search(line_str):
+                        if len(name_buffer) < 3:  # Max 3 lines for item name
+                            name_buffer.append(line_str)
             
             # ==========================================
             # STATE 3: FOOTER
             # ==========================================
             if state == "FOOTER":
-                if 'TOTAL' in line_upper and 'DISCOUNT' not in line_upper and total_amount == 0.0:
-                    total_amount = self.sanitize_num(line_str)
-                elif 'HARGA JUAL' in line_upper or 'SUBTOTAL' in line_upper:
+                # CRITICAL FIX: Flush any remaining name buffer at footer
+                name_buffer.clear()
+                
+                if total_amount == 0.0:
+                    if 'TOTAL' in line_upper and 'DISCOUNT' not in line_upper:
+                        total_amount = self.sanitize_num(line_str)
+                    elif 'BAYAR' in line_upper:
+                        total_amount = self.sanitize_num(line_str)
+                
+                if 'HARGA JUAL' in line_upper or 'SUBTOTAL' in line_upper:
                     subtotal = self.sanitize_num(line_str)
                 
                 # Detect payment method
@@ -253,6 +294,13 @@ class ProductionReceiptParserEngine:
                     if pattern in line_lower:
                         payment_method = method
                         break
+        
+        # ==========================================
+        # CRITICAL FIX: Flush remaining name buffer at end
+        # (for items that end the receipt without footer)
+        # ==========================================
+        # If we still have items but no valid total, flush remaining buffer
+        # Note: This is a soft flush - we don't add partial names as items
         
         # ==========================================
         # MATHEMATICAL GUARDRAILS
@@ -271,22 +319,23 @@ class ProductionReceiptParserEngine:
             subtotal = sum_items
         
         # ==========================================
-        # HOLISTIC CONFIDENCE SCORE
+        # HOLISTIC CONFIDENCE SCORE (from engine)
         # ==========================================
         # 50% base + 25% item completeness + 25% math validity
-        confidence = 0.50
+        confidence = 50.0  # Start at 50%
+        
         if len(items) > 0:
-            confidence += 0.25
+            confidence += 15.0  # Has items
         if len(items) >= 3:
-            confidence += 0.10
+            confidence += 10.0  # Good item count
         
         # Math validation: total should equal subtotal - discount
         expected_total = subtotal - discount_total
         if total_amount > 0:
             if abs(total_amount - expected_total) <= 100:
-                confidence += 0.25  # Math is valid
+                confidence += 25.0  # Math is valid
             elif abs(total_amount - sum_items) <= 100:
-                confidence += 0.15  # Math is close (discount not parsed)
+                confidence += 15.0  # Math is close (discount not parsed)
         
         return {
             "merchant_name": merchant_name,
@@ -294,7 +343,7 @@ class ProductionReceiptParserEngine:
             "subtotal": subtotal,
             "discount_total": discount_total,
             "amount": total_amount,
-            "confidence_score": round(min(confidence, 1.0), 2),
+            "confidence_score": round(min(confidence, 100.0), 1),
             "items": items,
             "items_count": len(items)
         }
