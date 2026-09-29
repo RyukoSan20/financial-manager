@@ -392,6 +392,8 @@ class OCRService:
                 from app.services.parser_engine_v31 import parse_receipt_text_v31, should_use_gemini_fallback_v31
                 parsed = parse_receipt_text_v31(lines)
                 
+                logger.info(f"Parser v3.1 result: items={len(parsed.get('items', []))}, amount={parsed.get('amount')}, conf={parsed.get('confidence_score')}")
+                
                 # Check if Gemini fallback is needed (tightened triggers)
                 should_fallback, reason = should_use_gemini_fallback_v31(parsed, len(text))
                 if should_fallback:
