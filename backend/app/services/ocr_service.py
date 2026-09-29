@@ -386,15 +386,15 @@ class OCRService:
                 logger.warning(f"OCR returned too little text ({len(text)} chars) - attempting Gemini Vision fallback")
                 return self._gemini_vision_fallback(image_bytes)
             
-            # Use Parser v3.0 with 4-stage pipeline
+            # Use Parser v3.1 with single-line item support
             try:
-                from app.services.parser_engine_v3 import parse_receipt_text_v3, should_use_gemini_fallback_v3
-                parsed = parse_receipt_text_v3(lines)
+                from app.services.parser_engine_v31 import parse_receipt_text_v31, should_use_gemini_fallback_v31
+                parsed = parse_receipt_text_v31(lines)
                 
-                # Check if Gemini fallback is needed
-                should_fallback, reason = should_use_gemini_fallback_v3(parsed, len(text))
+                # Check if Gemini fallback is needed (tightened triggers)
+                should_fallback, reason = should_use_gemini_fallback_v31(parsed, len(text))
                 if should_fallback:
-                    logger.warning(f"Parser v3 failed ({reason}) - attempting Gemini Vision fallback")
+                    logger.warning(f"Parser v3.1 failed ({reason}) - attempting Gemini Vision fallback")
                     return self._gemini_vision_fallback(image_bytes)
                 
                 items = []
