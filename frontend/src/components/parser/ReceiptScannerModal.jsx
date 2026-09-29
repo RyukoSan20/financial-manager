@@ -221,6 +221,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
         merchant_name: parsedData.merchant_name,
         confidence_score: parsedData.confidence_score,
         detection_type: 'OCR_RECEIPT',
+        receipt_scan_id: parsedData.receipt_scan_id || null,
         latitude: parsedData.latitude,
         longitude: parsedData.longitude,
         merchant_address: parsedData.address,

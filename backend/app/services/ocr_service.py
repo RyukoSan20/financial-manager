@@ -321,6 +321,7 @@ class OCRResult:
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     address: Optional[str] = None
+    receipt_scan_id: Optional[int] = None  # ID of saved receipt scan
     
     def __post_init__(self):
         if self.raw_lines is None:

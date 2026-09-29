@@ -17,6 +17,7 @@ from app.core.security import get_current_user_optional
 from app.models.user import User
 from app.models.account import Account
 from app.models.transaction import Transaction
+from app.models.receipt import ReceiptScan, ReceiptItem
 from app.services.parser_service import (
     parse_sms_or_qris,
     parse_receipt,
@@ -204,6 +205,46 @@ async def parse_receipt_image_endpoint(
         # Combined holistic confidence: 50% OCR + 50% Engine Math Validation
         holistic_confidence = round((ocr_confidence * 0.5) + (engine_confidence * 0.5), 1)
         
+        # Save receipt and items to database
+        receipt_scan_id = None
+        if current_user and receipt.merchant_name:
+            try:
+                receipt_scan = ReceiptScan(
+                    user_id=current_user.id,
+                    merchant_name=receipt.merchant_name,
+                    total_amount=Decimal(str(receipt.amount_value)) if receipt.amount_value else None,
+                    payment_method=receipt.payment_method,
+                    receipt_date=receipt.date,
+                    address=receipt.address,
+                    latitude=receipt.latitude,
+                    longitude=receipt.longitude,
+                    ocr_confidence=Decimal(str(ocr_confidence)),
+                    engine_confidence=Decimal(str(engine_confidence)),
+                    holistic_confidence=Decimal(str(holistic_confidence)),
+                    detection_type="ENTERPRISE_LOCAL_OCR",
+                    raw_text=receipt.text[:5000] if receipt.text else None,
+                    raw_lines=receipt.raw_lines,
+                )
+                db.add(receipt_scan)
+                db.flush()  # Get the ID
+                receipt_scan_id = receipt_scan.id
+                
+                # Save items
+                for item in result.get("enriched_items", []):
+                    receipt_item = ReceiptItem(
+                        receipt_scan_id=receipt_scan_id,
+                        name=item.get("name", ""),
+                        quantity=item.get("quantity", 1),
+                        price_per_unit=Decimal(str(item.get("price_per_unit", 0))),
+                        total_price=Decimal(str(item.get("total_price", 0))),
+                    )
+                    db.add(receipt_item)
+                
+                db.commit()
+            except Exception as e:
+                logger.error(f"Failed to save receipt scan: {e}")
+                db.rollback()
+        
         return {
             "status": "success",
             "detection_type": "ENTERPRISE_LOCAL_OCR",
@@ -225,6 +266,7 @@ async def parse_receipt_image_endpoint(
             "latitude": result["latitude"],
             "longitude": result["longitude"],
             "merchant_address": result["merchant_address"],
+            "receipt_scan_id": receipt_scan_id,
         }
         
     except Exception as e:

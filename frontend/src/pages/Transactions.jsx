@@ -374,13 +374,17 @@ export const Transactions = () => {
                               {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                             </p>
                           </div>
-                          {/* Action buttons */}
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity items-center">
-                            {hasItems && (
-                              <button className="p-1.5 text-gray-400 hover:text-gray-600">
-                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                              </button>
-                            )}
+                          {/* Chevron dropdown - always visible */}
+                          {hasItems && (
+                            <button 
+                              className="p-1 text-gray-400 hover:text-gray-600"
+                              onClick={(e) => { e.stopPropagation(); setExpandedTxId(isExpanded ? null : tx.id); }}
+                            >
+                              {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                            </button>
+                          )}
+                          {/* Action buttons - hidden until hover */}
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={(e) => { e.stopPropagation(); startEdit(tx); }}
                               className="p-2 text-gray-400 hover:text-primary-500 hover:bg-gray-100 rounded-lg"
