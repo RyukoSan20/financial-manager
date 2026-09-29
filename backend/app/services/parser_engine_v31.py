@@ -275,16 +275,27 @@ DATE_PATTERNS = [
 ]
 
 def extract_date(text: str) -> Optional[str]:
-    """Extract date from receipt text."""
+    """Extract date from receipt text. Returns ISO format YYYY-MM-DD."""
+    from datetime import datetime
     for pattern in DATE_PATTERNS:
         match = re.search(pattern, text)
         if match:
             groups = match.groups()
-            # Normalize format
-            if len(groups[2]) == 2:
-                return f"{groups[0]}.{groups[1]}.{groups[2]}"
-            else:
-                return f"{groups[0]}.{groups[1]}.{groups[2][-2:]}"
+            try:
+                day = int(groups[0])
+                month = int(groups[1])
+                year = int(groups[2][-2:]) if len(groups[2]) == 2 else int(groups[2])
+                # Handle 2-digit year (assume 2000s, but if < 25 treat as 20XX)
+                if year < 100:
+                    year = 2000 + year
+                    # If year seems to be in the past (>1 year ago), add 10 years
+                    # This handles receipts from "26" meaning 2026 not 2016
+                    if year < 2025:
+                        year += 10
+                dt = datetime(year, month, day)
+                return dt.strftime('%Y-%m-%d')
+            except (ValueError, IndexError):
+                pass
     return None
 
 

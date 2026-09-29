@@ -138,13 +138,21 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
       console.log('OCR Result:', data);
       
+      // Validate and fix date format
+      const parsedDate = data.date && !isNaN(new Date(data.date).getTime())
+        ? new Date(data.date).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+      
       // Set parsed data with AI-suggested category
       const aiCategory = mapCategoryHint(data.category_hint);
       if (aiCategory && !selectedCategory) {
         setSelectedCategory(aiCategory);
       }
       
-      setParsedData(data);
+      setParsedData({
+        ...data,
+        date: parsedDate
+      });
       setStep('confirm');
     } catch (err) {
       console.error('OCR Error:', err);
