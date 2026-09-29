@@ -107,16 +107,16 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-a042.up.railway.app';
       
       // Retry logic for cold start
-      let response;
+      let parseResponse;
       let lastError = null;
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          response = await fetch(`${apiUrl}/api/parser/parse-receipt`, {
+          parseResponse = await fetch(`${apiUrl}/api/parser/parse-receipt`, {
             method: 'POST',
             headers: token ? { 'Authorization': `Bearer ${token}` } : {},
             body: formData,
           });
-          if (response.ok) break;
+          if (parseResponse.ok) break;
         } catch (err) {
           lastError = err;
           if (attempt < 3) {
@@ -126,13 +126,13 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
         }
       }
       
-      if (!response || !response.ok) {
+      if (!parseResponse || !parseResponse.ok) {
         throw new Error(lastError?.message || 'OCR server tidak merespons. Coba beberapa saat lagi.');
       }
       
-      const data = await response.json();
+      const data = await parseResponse.json();
       
-      if (!response.ok || data.error || data.detail) {
+      if (!parseResponse.ok || data.error || data.detail) {
         throw new Error(data.detail || data.error || 'OCR gagal');
       }
 
