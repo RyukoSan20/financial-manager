@@ -106,27 +106,45 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
       const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-a042.up.railway.app';
       
-      const result = await fetch(`${apiUrl}/api/parser/parse-receipt`, {
-        method: 'POST',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        body: formData,
-      });
+      // Retry logic for cold start
+      let response;
+      let lastError = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          response = await fetch(`${apiUrl}/api/parser/parse-receipt`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: formData,
+          });
+          if (response.ok) break;
+        } catch (err) {
+          lastError = err;
+          if (attempt < 3) {
+            console.log(`Attempt ${attempt} failed, retrying in ${attempt * 2}s...`);
+            await new Promise(r => setTimeout(r, attempt * 2000));
+          }
+        }
+      }
       
-      const data = await result.json();
+      if (!response || !response.ok) {
+        throw new Error(lastError?.message || 'OCR server tidak merespons. Coba beberapa saat lagi.');
+      }
       
-      if (!result.ok || data.error || data.detail) {
+      const data = await response.json();
+      
+      if (!response.ok || data.error || data.detail) {
         throw new Error(data.detail || data.error || 'OCR gagal');
       }
 
       console.log('OCR Result:', data);
       
       // Set parsed data with AI-suggested category
-      const aiCategory = mapCategoryHint(result.category_hint);
+      const aiCategory = mapCategoryHint(data.category_hint);
       if (aiCategory && !selectedCategory) {
         setSelectedCategory(aiCategory);
       }
       
-      setParsedData(result);
+      setParsedData(data);
       setStep('confirm');
     } catch (err) {
       console.error('OCR Error:', err);
