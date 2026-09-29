@@ -386,26 +386,16 @@ class OCRService:
                 logger.warning(f"OCR returned too little text ({len(text)} chars) - attempting Gemini Vision fallback")
                 return self._gemini_vision_fallback(image_bytes)
             
-            # If parser returned 0 amount with items, also try Gemini
+            # Use Deterministic Parser v2 with proper cascade confidence
             try:
-                from app.services.parser_engine import parse_receipt_text
+                from app.services.parser_engine_v2 import parse_receipt_text, should_use_gemini_fallback
                 parsed = parse_receipt_text(lines)
                 
-                amount_val = parsed.get('amount', 0)
-                items_count = len(parsed.get('items', []))
-                conf = parsed.get('confidence_score', 0)
-                
-                # If low confidence and 0 amount, try Gemini
-                if conf < 30 and amount_val == 0 and items_count == 0:
-                    logger.warning(f"Low parser confidence ({conf}%), trying Gemini Vision")
+                # Check if Gemini fallback is needed
+                should_fallback, reason = should_use_gemini_fallback(parsed, len(text))
+                if should_fallback:
+                    logger.warning(f"Parser v2 failed ({reason}) - attempting Gemini Vision fallback")
                     return self._gemini_vision_fallback(image_bytes)
-            except:
-                pass
-            
-            # Try enterprise parser
-            try:
-                from app.services.parser_engine import parse_receipt_text
-                parsed = parse_receipt_text(lines)
                 
                 items = []
                 for item in parsed.get('items', []):
