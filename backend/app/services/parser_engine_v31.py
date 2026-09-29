@@ -284,14 +284,15 @@ def extract_date(text: str) -> Optional[str]:
             try:
                 day = int(groups[0])
                 month = int(groups[1])
-                year = int(groups[2][-2:]) if len(groups[2]) == 2 else int(groups[2])
-                # Handle 2-digit year (assume 2000s, but if < 25 treat as 20XX)
-                if year < 100:
-                    year = 2000 + year
-                    # If year seems to be in the past (>1 year ago), add 10 years
-                    # This handles receipts from "26" meaning 2026 not 2016
-                    if year < 2025:
-                        year += 10
+                raw_year = int(groups[2])
+                
+                # Convert 2-digit year
+                if raw_year < 100:
+                    year = 2000 + raw_year
+                else:
+                    year = raw_year
+                
+                # Validate date is reasonable (not in far future)
                 dt = datetime(year, month, day)
                 return dt.strftime('%Y-%m-%d')
             except (ValueError, IndexError):

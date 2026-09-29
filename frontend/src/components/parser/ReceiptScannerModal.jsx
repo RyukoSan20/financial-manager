@@ -136,12 +136,27 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
         throw new Error(data.detail || data.error || 'OCR gagal');
       }
 
-      console.log('OCR Result:', data);
+      // Validate date format - check if already ISO YYYY-MM-DD
+      const isValidIsoDate = (dateStr) => {
+        if (!dateStr || typeof dateStr !== 'string') return false;
+        const regex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!regex.test(dateStr)) return false;
+        const d = new Date(dateStr);
+        return !isNaN(d.getTime());
+      };
       
-      // Validate and fix date format
-      const parsedDate = data.date && !isNaN(new Date(data.date).getTime())
-        ? new Date(data.date).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0];
+      // Get today's date in local format without timezone shift
+      const getTodayLocalISO = () => {
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      };
+      
+      const parsedDate = isValidIsoDate(data.date) ? data.date : getTodayLocalISO();
+      
+      console.log('OCR Result:', data);
       
       // Set parsed data with AI-suggested category
       const aiCategory = mapCategoryHint(data.category_hint);
