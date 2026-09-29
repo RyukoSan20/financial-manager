@@ -242,8 +242,9 @@ async def parse_receipt_image_endpoint(
                 
                 db.commit()
             except Exception as e:
-                logger.error(f"Failed to save receipt scan: {e}")
+                logger.exception(f"Failed to save receipt scan: {e}")
                 db.rollback()
+                receipt_scan_id = None
         
         return {
             "status": "success",

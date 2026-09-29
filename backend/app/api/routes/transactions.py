@@ -54,7 +54,8 @@ def list_transactions(
     receipt_ids = [t.receipt_scan_id for t in transactions if t.receipt_scan_id]
     receipts_map = {}
     if receipt_ids:
-        receipts = db.query(ReceiptScan).filter(ReceiptScan.id.in_(receipt_ids)).all()
+        from sqlalchemy.orm import joinedload
+        receipts = db.query(ReceiptScan).options(joinedload(ReceiptScan.items)).filter(ReceiptScan.id.in_(receipt_ids)).all()
         for r in receipts:
             receipts_map[r.id] = r
     
