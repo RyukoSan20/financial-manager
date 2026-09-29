@@ -361,6 +361,10 @@ class OCRService:
     def process_image(self, image_bytes: bytes) -> OCRResult:
         """Process receipt image and extract structured data."""
         try:
+            # Extract text with spatial clustering
+            lines, confidence = _extract_with_rapidocr(image_bytes)
+            text = '\n'.join(lines)
+            
             # Log raw OCR output for debugging
             logger.info(f"--- RAW OCR OUTPUT ---\n{text}\n--- LINES: {len(lines)} ---\n----------------------")
             
@@ -418,14 +422,14 @@ class OCRService:
                 amount_val = int(float(amount_val))
                 
                 return OCRResult(
-                    text=text[:500],
+                    text=text[:500] if text else "",
                     confidence=confidence,
                     raw_lines=lines,
                     engine_confidence=parsed.get('confidence_score', 70.0),
                     merchant_name=parsed.get('merchant_name'),
                     amount=f"Rp {amount_val:,}".replace(',', '.'),
                     amount_value=float(amount_val),
-                    date=None,
+                    date=parsed.get('date'),
                     payment_method=parsed.get('payment_method'),
                     items=items,
                     latitude=None,
