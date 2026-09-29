@@ -62,6 +62,7 @@ def list_transactions(
     # Enrich with receipt items
     result = []
     for t in transactions:
+        logger.info(f"TX {t.id}: receipt_scan_id={t.receipt_scan_id}")
         data = {
             "id": t.id,
             "user_id": t.user_id,
@@ -89,11 +90,12 @@ def list_transactions(
         # Load receipt items from pre-fetched map
         if t.receipt_scan_id and t.receipt_scan_id in receipts_map:
             receipt = receipts_map[t.receipt_scan_id]
+            logger.info(f"TX {t.id}: Found receipt {receipt.id} with {len(receipt.items) if receipt.items else 0} items")
             if receipt and receipt.items:
                 data["items"] = [
                     {
                         "name": item.name,
-                        "quantity": item.quantity,
+                        "quantity": item.quantity or 1,
                         "price_per_unit": float(item.price_per_unit) if item.price_per_unit else 0,
                         "total_price": float(item.total_price) if item.total_price else 0,
                     }
