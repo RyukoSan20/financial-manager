@@ -207,11 +207,13 @@ async def parse_receipt_image_endpoint(
         
         # Save receipt and items to database
         receipt_scan_id = None
-        if current_user and receipt.merchant_name:
+        if current_user:
             try:
+                merchant = receipt.merchant_name or "Toko/Merchant"
+                
                 receipt_scan = ReceiptScan(
                     user_id=current_user.id,
-                    merchant_name=receipt.merchant_name,
+                    merchant_name=merchant,
                     total_amount=Decimal(str(receipt.amount_value)) if receipt.amount_value else None,
                     payment_method=receipt.payment_method,
                     receipt_date=receipt.date,
@@ -230,7 +232,8 @@ async def parse_receipt_image_endpoint(
                 receipt_scan_id = receipt_scan.id
                 
                 # Save items
-                for item in result.get("enriched_items", []):
+                items_list = result.get("enriched_items") or result.get("items") or []
+                for item in items_list:
                     receipt_item = ReceiptItem(
                         receipt_scan_id=receipt_scan_id,
                         name=item.get("name", ""),

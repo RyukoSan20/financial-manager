@@ -17,6 +17,7 @@ class TransactionBase(BaseModel):
     account_id: int
     recurring_rule_id: Optional[int] = None
     detection_type: str = Field(default="MANUAL")  # MANUAL, OCR_RECEIPT, QRIS_TEXT, SMS_BANK
+    receipt_scan_id: Optional[int] = None  # Link to receipt scan
 
 
 class TransactionCreate(TransactionBase):
