@@ -6,6 +6,9 @@ from sqlalchemy import func
 from typing import List, Optional
 from datetime import date
 from decimal import Decimal
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.core.security import get_current_user_optional, get_current_user
