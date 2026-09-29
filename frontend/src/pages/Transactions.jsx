@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Spinner } from '../components/ui';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ScanText, MessageSquare, Edit2, Check, Camera } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import { TextParserModal } from '../components/parser/TextParserModal';
 import { QRScannerModal } from '../components/parser/QRScannerModal';
@@ -43,6 +43,7 @@ export const Transactions = () => {
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [prefillQRText, setPreFillQRText] = useState('');
+  const [expandedTxId, setExpandedTxId] = useState(null);
   
   // Edit mode state
   const [editingTx, setEditingTx] = useState(null);
@@ -331,10 +332,12 @@ export const Transactions = () => {
 
                   // Normal display mode
                   const hasItems = tx.items && tx.items.length > 0;
+                  const isExpanded = expandedTxId === tx.id;
                   return (
                     <div 
                       key={tx.id}
                       className="bg-white rounded-2xl p-4 shadow-sm active:bg-gray-50 cursor-pointer group"
+                      onClick={() => hasItems && setExpandedTxId(isExpanded ? null : tx.id)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1">
@@ -372,11 +375,11 @@ export const Transactions = () => {
                             </p>
                           </div>
                           {/* Action buttons */}
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity items-center">
                             {hasItems && (
-                              <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">
-                                {tx.items.length} items
-                              </span>
+                              <button className="p-1.5 text-gray-400 hover:text-gray-600">
+                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              </button>
                             )}
                             <button
                               onClick={(e) => { e.stopPropagation(); startEdit(tx); }}
@@ -393,10 +396,10 @@ export const Transactions = () => {
                           </div>
                         </div>
                       </div>
-                      {/* Receipt Items Dropdown */}
-                      {hasItems && (
+                      {/* Receipt Items Dropdown (Accordion) */}
+                      {hasItems && isExpanded && (
                         <div className="mt-3 pt-3 border-t border-gray-100">
-                          <p className="text-xs font-semibold text-gray-500 mb-2">Rincian Barang:</p>
+                          <p className="text-xs font-semibold text-gray-500 mb-2">Rincian Barang ({tx.items.length} item):</p>
                           <div className="space-y-1 bg-gray-50 rounded-lg p-2">
                             {tx.items.map((item, idx) => (
                               <div key={idx} className="flex justify-between items-center text-sm">

@@ -50,6 +50,14 @@ def list_transactions(
     
     transactions = query.order_by(Transaction.date.desc()).offset(skip).limit(limit).all()
     
+    # Fetch all receipt items in 1 query (fix N+1)
+    receipt_ids = [t.receipt_scan_id for t in transactions if t.receipt_scan_id]
+    receipts_map = {}
+    if receipt_ids:
+        receipts = db.query(ReceiptScan).filter(ReceiptScan.id.in_(receipt_ids)).all()
+        for r in receipts:
+            receipts_map[r.id] = r
+    
     # Enrich with receipt items
     result = []
     for t in transactions:
@@ -77,9 +85,9 @@ def list_transactions(
             "updated_at": t.updated_at,
             "items": [],
         }
-        # Load receipt items if linked
-        if t.receipt_scan_id:
-            receipt = db.query(ReceiptScan).filter(ReceiptScan.id == t.receipt_scan_id).first()
+        # Load receipt items from pre-fetched map
+        if t.receipt_scan_id and t.receipt_scan_id in receipts_map:
+            receipt = receipts_map[t.receipt_scan_id]
             if receipt and receipt.items:
                 data["items"] = [
                     {
