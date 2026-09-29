@@ -475,55 +475,59 @@ class OCRService:
         )
 
     def _fallback_parse(self, text: str, confidence: float, lines: List[str]) -> OCRResult:
-        """Fallback parsing when enterprise parser fails."""
-        text_lower = text.lower()
+        """Fallback parsing using Parser v3.1 for full item extraction."""
+        from app.services.parser_engine_v31 import parse_receipt_text_v31
         
-        # Merchant
-        merchant_name = None
-        for pattern, (name, _) in self.MERCHANT_PATTERNS.items():
-            if re.search(pattern, text_lower):
-                merchant_name = name
-                break
+        # Use v3.1 parser for full extraction
+        parsed = parse_receipt_text_v31(lines)
+        
+        # Extract items from v3.1 result
+        items = []
+        for item in parsed.get('items', []):
+            items.append({
+                'name': item.get('name', ''),
+                'quantity': item.get('quantity', 1),
+                'price_per_unit': item.get('price_per_unit', 0),
+                'total_price': item.get('total_price', 0)
+            })
         
         # Amount
-        amount_value = None
-        amount_str = None
-        amounts = []
-        for line in lines:
-            matches = re.findall(r'[\d.]+', line)
-            for m in matches:
-                try:
-                    val = float(m.replace('.', ''))
-                    if 1000 <= val <= 100000000:
-                        amounts.append(val)
-                except:
-                    pass
+        amount_value = parsed.get('amount', 0)
+        amount_str = f"Rp {int(amount_value):,}".replace(',', '.') if amount_value else None
         
-        if amounts:
-            amount_value = max(amounts)
-            amount_str = f"Rp {int(amount_value):,}".replace(',', '.')
+        # Merchant
+        merchant_name = parsed.get('merchant_name')
+        if not merchant_name:
+            text_lower = text.lower()
+            for pattern, (name, _) in self.MERCHANT_PATTERNS.items():
+                if re.search(pattern, text_lower):
+                    merchant_name = name
+                    break
         
         # Payment method
-        payment_method = None
-        payment_patterns = {
-            r'gopay': 'GoPay',
-            r'dana': 'DANA',
-            r'ovo': 'OVO',
-            r'cash|tunai': 'Cash',
-            r'debit': 'Debit',
-            r'qris': 'QRIS',
-        }
-        for pattern, method in payment_patterns.items():
-            if re.search(pattern, text_lower):
-                payment_method = method
-                break
+        payment_method = parsed.get('payment_method')
+        if not payment_method:
+            text_lower = text.lower()
+            payment_patterns = {
+                r'gopay': 'GoPay',
+                r'dana': 'DANA',
+                r'ovo': 'OVO',
+                r'cash|tunai': 'Cash',
+                r'debit': 'Debit',
+                r'qris': 'QRIS',
+            }
+            for pattern, method in payment_patterns.items():
+                if re.search(pattern, text_lower):
+                    payment_method = method
+                    break
         
         # Address
-        address = None
-        for line in lines[:5]:
-            if re.search(r'jl\.?\s|jalan|jl\s', line, re.I):
-                address = line.strip()
-                break
+        address = parsed.get('address')
+        if not address:
+            for line in lines[:5]:
+                if re.search(r'jl\.?\s|jalan|jl\s', line, re.I):
+                    address = line.strip()
+                    break
         
         return OCRResult(
             text=text[:500],
@@ -532,9 +536,9 @@ class OCRService:
             merchant_name=merchant_name,
             amount=amount_str,
             amount_value=amount_value,
-            date=None,
+            date=parsed.get('date'),
             payment_method=payment_method,
-            items=[],
+            items=items,
             latitude=None,
             longitude=None,
             address=address
