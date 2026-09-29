@@ -12,12 +12,13 @@ from app.core.security import get_current_user_optional, get_current_user
 from app.models.transaction import Transaction
 from app.models.account import Account
 from app.models.user import User
-from app.schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse
+from app.schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse, TransactionWithDetails
+from app.models.receipt import ReceiptScan
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[TransactionResponse])
+@router.get("/", response_model=List[TransactionWithDetails])
 def list_transactions(
     skip: int = 0,
     limit: int = 100,
@@ -29,7 +30,7 @@ def list_transactions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all transactions for current user."""
+    """Get all transactions for current user with receipt items."""
     query = db.query(Transaction)
     
     # Multi-tenancy filter
@@ -47,7 +48,51 @@ def list_transactions(
     if end_date:
         query = query.filter(Transaction.date <= end_date)
     
-    return query.order_by(Transaction.date.desc()).offset(skip).limit(limit).all()
+    transactions = query.order_by(Transaction.date.desc()).offset(skip).limit(limit).all()
+    
+    # Enrich with receipt items
+    result = []
+    for t in transactions:
+        data = {
+            "id": t.id,
+            "user_id": t.user_id,
+            "type": t.type,
+            "amount": t.amount,
+            "currency": t.currency,
+            "date": t.date,
+            "description": t.description,
+            "notes": t.notes,
+            "account_id": t.account_id,
+            "category_id": t.category_id,
+            "transfer_id": t.transfer_id,
+            "recurring_rule_id": t.recurring_rule_id,
+            "is_recurring": t.is_recurring,
+            "is_deleted": t.is_deleted,
+            "detection_type": t.detection_type,
+            "merchant_name": t.merchant_name,
+            "raw_source_text": t.raw_source_text,
+            "confidence_score": t.confidence_score,
+            "receipt_scan_id": t.receipt_scan_id,
+            "created_at": t.created_at,
+            "updated_at": t.updated_at,
+            "items": [],
+        }
+        # Load receipt items if linked
+        if t.receipt_scan_id:
+            receipt = db.query(ReceiptScan).filter(ReceiptScan.id == t.receipt_scan_id).first()
+            if receipt and receipt.items:
+                data["items"] = [
+                    {
+                        "name": item.name,
+                        "quantity": item.quantity,
+                        "price_per_unit": float(item.price_per_unit) if item.price_per_unit else 0,
+                        "total_price": float(item.total_price) if item.total_price else 0,
+                    }
+                    for item in receipt.items
+                ]
+        result.append(data)
+    
+    return result
 
 
 @router.get("/summary/by-period")

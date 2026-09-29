@@ -1,7 +1,7 @@
 """Transaction schemas - Updated with transfer types."""
 
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -53,6 +53,7 @@ class TransactionResponse(BaseModel):
     merchant_name: Optional[str]
     raw_source_text: Optional[str]
     confidence_score: Optional[float]
+    receipt_scan_id: Optional[int] = None
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
@@ -66,6 +67,7 @@ class TransactionWithDetails(TransactionResponse):
     category_name: Optional[str] = None
     category_icon: Optional[str] = None
     category_color: Optional[str] = None
+    items: List[Dict[str, Any]] = []  # Receipt items from OCR
 
 
 class TransactionFilter(BaseModel):

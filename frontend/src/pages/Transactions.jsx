@@ -330,6 +330,7 @@ export const Transactions = () => {
                   }
 
                   // Normal display mode
+                  const hasItems = tx.items && tx.items.length > 0;
                   return (
                     <div 
                       key={tx.id}
@@ -372,6 +373,11 @@ export const Transactions = () => {
                           </div>
                           {/* Action buttons */}
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {hasItems && (
+                              <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">
+                                {tx.items.length} items
+                              </span>
+                            )}
                             <button
                               onClick={(e) => { e.stopPropagation(); startEdit(tx); }}
                               className="p-2 text-gray-400 hover:text-primary-500 hover:bg-gray-100 rounded-lg"
@@ -387,6 +393,25 @@ export const Transactions = () => {
                           </div>
                         </div>
                       </div>
+                      {/* Receipt Items Dropdown */}
+                      {hasItems && (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <p className="text-xs font-semibold text-gray-500 mb-2">Rincian Barang:</p>
+                          <div className="space-y-1 bg-gray-50 rounded-lg p-2">
+                            {tx.items.map((item, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-sm">
+                                <span className="text-gray-700 truncate flex-1">
+                                  {item.quantity > 1 && <span className="text-gray-400 mr-1">x{item.quantity}</span>}
+                                  {item.name}
+                                </span>
+                                <span className="text-gray-600 ml-2 whitespace-nowrap">
+                                  Rp {(item.total_price || item.total || 0).toLocaleString('id-ID')}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
