@@ -231,15 +231,27 @@ async def parse_receipt_image_endpoint(
                 db.flush()  # Get the ID
                 receipt_scan_id = receipt_scan.id
                 
-                # Save items
+                # Save items with safe extraction (dict or object)
                 items_list = result.get("enriched_items") or result.get("items") or []
                 for item in items_list:
+                    # Handle both dict and object types
+                    if isinstance(item, dict):
+                        name = item.get("name", "Item")
+                        qty = item.get("quantity", 1)
+                        price = item.get("price_per_unit") or item.get("price")
+                        total = item.get("total_price") or item.get("total")
+                    else:
+                        name = getattr(item, "name", "Item")
+                        qty = getattr(item, "quantity", 1)
+                        price = getattr(item, "price_per_unit", None) or getattr(item, "price", None)
+                        total = getattr(item, "total_price", None) or getattr(item, "total", None)
+                    
                     receipt_item = ReceiptItem(
                         receipt_scan_id=receipt_scan_id,
-                        name=item.get("name", ""),
-                        quantity=item.get("quantity", 1),
-                        price_per_unit=Decimal(str(item.get("price_per_unit", 0))),
-                        total_price=Decimal(str(item.get("total_price", 0))),
+                        name=name or "Item",
+                        quantity=qty or 1,
+                        price_per_unit=Decimal(str(price)) if price else None,
+                        total_price=Decimal(str(total)) if total else None,
                     )
                     db.add(receipt_item)
                 

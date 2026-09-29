@@ -222,7 +222,21 @@ def create_transaction(
     transaction_data = transaction.model_dump()
     transaction_data["user_id"] = current_user.id
     
-    db_transaction = Transaction(**transaction_data)
+    # Explicitly set receipt_scan_id (may be stripped by model_dump if None)
+    db_transaction = Transaction(
+        user_id=current_user.id,
+        amount=transaction.amount,
+        type=transaction.type,
+        currency=transaction.currency,
+        date=transaction.date,
+        description=transaction.description,
+        notes=transaction.notes,
+        account_id=transaction.account_id,
+        category_id=transaction.category_id,
+        recurring_rule_id=transaction.recurring_rule_id,
+        detection_type=transaction.detection_type,
+        receipt_scan_id=transaction.receipt_scan_id,  # Explicitly set
+    )
     
     # Update account balance
     if transaction.type == "income":
