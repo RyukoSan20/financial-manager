@@ -408,10 +408,9 @@ export const Transactions = () => {
                             {tx.items.map((item, idx) => (
                               <div key={idx} className="flex justify-between items-center text-sm">
                                 <span className="text-gray-700 truncate flex-1">
-                                  {item.quantity > 1 && <span className="text-gray-400 mr-1">x{item.quantity}</span>}
-                                  {item.name}
+                                  {item.name} ({item.quantity}x @ Rp {(item.price_per_unit || item.price_unit || 0).toLocaleString('id-ID')})
                                 </span>
-                                <span className="text-gray-600 ml-2 whitespace-nowrap">
+                                <span className="text-gray-600 ml-2 whitespace-nowrap font-medium">
                                   Rp {(item.total_price || item.total || 0).toLocaleString('id-ID')}
                                 </span>
                               </div>

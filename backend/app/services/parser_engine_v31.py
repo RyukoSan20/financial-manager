@@ -146,6 +146,7 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     Parse single-line item with format:
     S/ROTI KRIM KEJU 72G 4 4500 18,000
     CIMORY MIX BERRY 225 1 8500 8,500
+    PLASTIK SDG 1 1 1
     
     Pattern: [NAME] [UNIT] QTY UNIT_PRICE TOTAL
     """
@@ -175,19 +176,23 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     numeric_parts.reverse()  # Now: [first_num, ..., last_num]
     text_parts.reverse()     # Now: [first_text, ..., last_text]
     
-    # Need at least 2 numbers (unit_price + total, or qty + total)
-    if len(numeric_parts) < 2:
-        # Check if this is just a name-only line (buffer it)
+    # Need at least 1 number (accept price 1 for plastic bags)
+    if len(numeric_parts) < 1:
         return None
     
     # Parse numbers
     numbers = [parse_number_indonesia(n) for n in numeric_parts]
     
-    # Determine: is there a unit price?
-    # Typical Indonesian receipt: NAME UNIT QTY UNIT_PRICE TOTAL
-    # e.g., "S/ROTI KRIM KEJU 72G 4 4500 18,000"
-    # parts: ["S/ROTI", "KRIM", "KEJU", "72G", "4", "4500", "18,000"]
+    # For items with only 1 number (e.g., "PLASTIK SDG 1")
+    if len(numeric_parts) == 1:
+        return {
+            "name": " ".join(text_parts),
+            "quantity": 1,
+            "price_per_unit": numbers[0],
+            "total_price": numbers[0]
+        }
     
+    # For items with 2+ numbers
     total_price = numbers[-1]  # Rightmost = total
     
     # Skip if total is negative (discount)
@@ -199,22 +204,17 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     unit_price = total_price
     
     if len(numbers) >= 3:
-        # Likely: qty, unit_price, total
-        possible_qty = numbers[0]
-        possible_unit = numbers[1]
+        # Likely: qty, unit_price, total (from right side)
+        possible_qty = numbers[-3]  # Third from last
+        possible_unit = numbers[-2]  # Second from last
         
-        # Check if first number is reasonable qty (<= 10 or divides evenly)
-        if 0 < possible_qty <= 10:
+        # Check if third from last is reasonable qty (<= 20)
+        if 0 < possible_qty <= 20 and possible_unit >= 1:
             qty = int(possible_qty)
-            unit_price = possible_unit if possible_unit > 0 else total_price
-        elif len(numeric_parts) >= 2:
-            # Maybe: unit_price, total
-            unit_price = numbers[0]
-            qty = 1
-    
+            unit_price = possible_unit
     elif len(numbers) == 2:
-        # Could be: qty + total OR unit_price + total
-        if numbers[0] <= 10 and total_price % numbers[0] == 0:
+        # Could be: unit_price + total
+        if numbers[0] <= 10 and total_price % numbers[0] == 0 and numbers[0] > 0:
             qty = int(numbers[0])
             unit_price = total_price / qty
         else:
@@ -222,29 +222,25 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
             qty = 1
     
     # Build item name from text parts
-    # Exclude any text that looks like unit (ends with G, ML, etc.) or is just a few chars
     name_parts = []
     for part in text_parts:
-        # Skip single chars, numbers embedded, common units
         if len(part) <= 1:
             continue
-        # Skip pure digits (already handled)
         if part.replace('-', '').isdigit():
             continue
         name_parts.append(part)
     
     item_name = ' '.join(name_parts) if name_parts else ' '.join(text_parts)
     
-    # Validate
-    if total_price < 100 or not item_name:
+    # Validate - accept all items including price 1
+    if total_price < 1 or not item_name:
         return None
     
     return {
         "name": item_name,
         "quantity": qty,
         "price_per_unit": unit_price,
-        "total_price": total_price,
-        "raw_numbers": numeric_parts
+        "total_price": total_price
     }
 
 
@@ -427,7 +423,8 @@ class ReceiptParserV31:
                     
                     # Try single-line item parsing
                     item = parse_single_line_item(cleaned)
-                    if item and item['total_price'] >= 100:
+                    # Accept all items, even price 1 (e.g., plastic bag)
+                    if item and item['total_price'] >= 1:
                         items.append({
                             "name": item['name'],
                             "quantity": item['quantity'],
