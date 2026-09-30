@@ -236,19 +236,19 @@ async def parse_receipt_image_endpoint(
                 for item in items_list:
                     # Handle both dict and object types
                     if isinstance(item, dict):
-                        name = item.get("name", "Item")
+                        name = item.get("name", "Item") or item.get("raw_name", "Item")
                         qty = item.get("quantity", 1)
                         price = item.get("price_per_unit") or item.get("price")
                         total = item.get("total_price") or item.get("total")
                     else:
-                        name = getattr(item, "name", "Item")
+                        name = getattr(item, "name", None) or getattr(item, "raw_name", "Item")
                         qty = getattr(item, "quantity", 1)
                         price = getattr(item, "price_per_unit", None) or getattr(item, "price", None)
                         total = getattr(item, "total_price", None) or getattr(item, "total", None)
                     
                     receipt_item = ReceiptItem(
                         receipt_scan_id=receipt_scan_id,
-                        name=name or "Item",
+                        raw_name=name or "Item",
                         quantity=qty or 1,
                         price_per_unit=Decimal(str(price)) if price else None,
                         total_price=Decimal(str(total)) if total else None,
