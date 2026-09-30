@@ -119,47 +119,100 @@ def parse_text(
 
 def _process_receipt_cpu_bound(image_bytes: bytes) -> dict:
     """
-    CPU-bound OCR processing wrapped for thread pool execution.
-    This runs synchronously in a separate thread to avoid blocking FastAPI event loop.
+    CPU-bound OCR processing using HYBRID pipeline:
+    1. OCR Extraction (RapidOCR)
+    2. Regex Parse + Sanity Check
+    3. Conditional Gemini Fallback/Enrichment
     """
     import logging
     logger = logging.getLogger(__name__)
     
-    # 1. OCR Extraction (RapidOCR/Tesseract)
-    receipt = ocr_service.process_image(image_bytes)
+    from app.services.receipt_service import process_receipt_hybrid, receipt_to_dict
     
-    # 2. Geocoding
-    latitude = None
-    longitude = None
-    merchant_address = receipt.address or receipt.merchant_name
-    
-    if merchant_address:
-        try:
-            geo = geocode_merchant(merchant_address)
-            if geo:
-                latitude = geo.latitude
-                longitude = geo.longitude
-                merchant_address = geo.formatted_address or merchant_address
-        except Exception as e:
-            logger.warning(f"Geocoding failed: {e}")
-    
-    # 3. Catalog matching
-    enriched_items = []
-    if receipt.items:
-        try:
-            enriched_items = match_items_to_catalog(receipt.items)
-        except Exception as e:
-            logger.warning(f"Catalog matching failed: {e}")
-            enriched_items = receipt.items
+    # Use hybrid receipt processing (OCR + Regex + Gemini)
+    try:
+        receipt_result = process_receipt_hybrid(
+            image_bytes=image_bytes,
+            use_gemini_fallback=True,
+            use_gemini_enrichment=True
+        )
         
-    return {
-        "receipt": receipt,
-        "latitude": latitude,
-        "longitude": longitude,
-        "merchant_address": merchant_address,
-        "enriched_items": enriched_items,
-        "raw_lines": receipt.raw_lines if hasattr(receipt, 'raw_lines') else []
-    }
+        # Convert to dict for API response
+        receipt_dict = receipt_to_dict(receipt_result)
+        
+        logger.info(f"Hybrid parse: {len(receipt_result.items)} items, method={receipt_result.parse_method}")
+        
+        # Build OCRResult-compatible object
+        from app.services.ocr_service import OCRResult
+        
+        ocr_result = OCRResult(
+            text=receipt_dict.get('raw_text', ''),
+            confidence=receipt_result.confidence * 100,
+            raw_lines=receipt_result.raw_lines,
+            merchant_name=receipt_result.merchant_name,
+            amount=f"Rp {int(receipt_result.total_amount):,}".replace(',', '.'),
+            amount_value=receipt_result.total_amount,
+            date=receipt_result.transaction_date,
+            payment_method=receipt_result.payment_method,
+            items=[
+                {
+                    'name': item.name,
+                    'quantity': item.quantity,
+                    'price_per_unit': item.price_per_unit,
+                    'total_price': item.total_price
+                }
+                for item in receipt_result.items
+            ],
+            address=receipt_result.merchant_location
+        )
+        
+        # Get items dict for enrichment
+        enriched_items = [
+            {
+                'name': item.name,
+                'quantity': item.quantity,
+                'price_per_unit': item.price_per_unit,
+                'total_price': item.total_price,
+                'category': item.category
+            }
+            for item in receipt_result.items
+        ]
+        
+        # Geocoding (optional)
+        latitude = None
+        longitude = None
+        merchant_address = receipt_result.merchant_location
+        
+        return {
+            "receipt": ocr_result,
+            "latitude": latitude,
+            "longitude": longitude,
+            "merchant_address": merchant_address,
+            "enriched_items": enriched_items,
+            "raw_lines": receipt_result.raw_lines,
+            "receipt_result": receipt_result
+        }
+        
+    except Exception as e:
+        logger.error(f"Hybrid receipt processing failed: {e}")
+        # Fallback to simple OCR
+        receipt = ocr_service.process_image(image_bytes)
+        
+        enriched_items = []
+        if receipt.items:
+            try:
+                enriched_items = match_items_to_catalog(receipt.items)
+            except:
+                enriched_items = receipt.items
+        
+        return {
+            "receipt": receipt,
+            "latitude": None,
+            "longitude": None,
+            "merchant_address": receipt.address,
+            "enriched_items": enriched_items,
+            "raw_lines": receipt.raw_lines if hasattr(receipt, 'raw_lines') else []
+        }
 
 
 @router.post("/parse-receipt")
@@ -205,7 +258,7 @@ async def parse_receipt_image_endpoint(
         # Combined holistic confidence: 50% OCR + 50% Engine Math Validation
         holistic_confidence = round((ocr_confidence * 0.5) + (engine_confidence * 0.5), 1)
         
-        logger.warning(f"DEBUG: current_user={current_user}, receipt_scan_id will be saved={current_user is not None}")
+        logger.info(f"Processing receipt for user={current_user.id if current_user else 'anonymous'}")
         
         # Save receipt and items to database
         receipt_scan_id = None
@@ -233,12 +286,11 @@ async def parse_receipt_image_endpoint(
                 db.flush()  # Get the ID
                 receipt_scan_id = receipt_scan.id
                 
-                # Save items - result is DICT with 'enriched_items' key
-                items_list = result.get("enriched_items") or receipt.items or result.get("items") or []
-                logger.warning(f"DEBUG: result.keys={list(result.keys())}")
-                logger.warning(f"DEBUG: receipt.items={receipt.items}")
-                logger.warning(f"DEBUG: items_list={items_list}")
-                logger.warning(f"Items to save: {len(items_list)} items - {[{'name': i.get('name'), 'price': i.get('price_per_unit')} for i in items_list]}")
+                # Save items from hybrid parser
+                items_list = result.get("enriched_items") or receipt.items or []
+                
+                logger.info(f"Hybrid parse: Saving {len(items_list)} items")
+                
                 for item in items_list:
                     # Handle both dict and object types
                     if isinstance(item, dict):
@@ -264,7 +316,7 @@ async def parse_receipt_image_endpoint(
                         price_per_unit=Decimal(str(price)) if price is not None else Decimal("0"),
                         total_price=Decimal(str(total)) if total is not None else Decimal("0"),
                     )
-                    logger.warning(f"Saving item: name={name}, qty={qty}, price={price}, total={total}")
+                    logger.info(f"Saving: {name} qty={qty} price={price} total={total}")
                     db.add(receipt_item)
                 
                 db.commit()
