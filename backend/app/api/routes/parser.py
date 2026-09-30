@@ -258,6 +258,7 @@ async def parse_receipt_image_endpoint(
                         price_per_unit=Decimal(str(price)) if price is not None else Decimal("0"),
                         total_price=Decimal(str(total)) if total is not None else Decimal("0"),
                     )
+                    logger.info(f"Saving item: name={name}, qty={qty}, price={price}, total={total}")
                     db.add(receipt_item)
                 
                 db.commit()
