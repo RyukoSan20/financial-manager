@@ -233,6 +233,7 @@ async def parse_receipt_image_endpoint(
                 
                 # Save items - result is DICT with 'enriched_items' key
                 items_list = result.get("enriched_items") or result.get("items") or receipt.items or []
+                logger.info(f"Items to save: {len(items_list)} items - {[{'name': i.get('name'), 'price': i.get('price_per_unit')} for i in items_list]}")
                 for item in items_list:
                     # Handle both dict and object types
                     if isinstance(item, dict):
