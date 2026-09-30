@@ -205,6 +205,8 @@ async def parse_receipt_image_endpoint(
         # Combined holistic confidence: 50% OCR + 50% Engine Math Validation
         holistic_confidence = round((ocr_confidence * 0.5) + (engine_confidence * 0.5), 1)
         
+        logger.info(f"DEBUG: current_user={current_user}, receipt_scan_id will be saved={current_user is not None}")
+        
         # Save receipt and items to database
         receipt_scan_id = None
         if current_user:
