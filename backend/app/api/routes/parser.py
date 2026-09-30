@@ -231,8 +231,8 @@ async def parse_receipt_image_endpoint(
                 db.flush()  # Get the ID
                 receipt_scan_id = receipt_scan.id
                 
-                # Save items with safe extraction (dict or object)
-                items_list = result.get("enriched_items") or result.get("items") or []
+                # Save items - result is OCRResult object, items is attribute
+                items_list = result.items or result.get("items") or result.get("enriched_items") or []
                 for item in items_list:
                     # Handle both dict and object types
                     if isinstance(item, dict):
@@ -270,8 +270,8 @@ async def parse_receipt_image_endpoint(
             "date": receipt.date,
             "payment_method": receipt.payment_method,
             "address": result["merchant_address"],
-            "items_count": len(result["enriched_items"]) if result["enriched_items"] else 0,
-            "items": result["enriched_items"] if result["enriched_items"] else [],
+            "items_count": len(result.items) if result.items else 0,
+            "items": result.items or [],
             "confidence_score": holistic_confidence,
             "ocr_confidence": round(ocr_confidence, 1),
             "category_hint": "shopping",
