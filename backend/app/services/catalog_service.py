@@ -238,12 +238,26 @@ class LightweightCatalogMatcher:
             raw_name = item.get('name', '')
             match_info = self.match(raw_name)
             
+            # Preserve original prices - check all possible key names
+            price_per_unit = (
+                item.get('price_per_unit') or 
+                item.get('price') or 
+                item.get('unit_price') or 
+                0
+            )
+            total_price = (
+                item.get('total_price') or 
+                item.get('total') or 
+                item.get('amount') or
+                item.get('price', 0)  # fallback to price if no total
+            )
+            
             enriched_item = {
                 'name': raw_name,
                 'canonical_name': match_info['canonical_name'],
                 'quantity': item.get('quantity', 1),
-                'price_per_unit': item.get('price_per_unit', 0),
-                'total_price': item.get('total_price', 0),
+                'price_per_unit': price_per_unit,
+                'total_price': total_price,
                 'category': match_info['category'],
                 'match_confidence': match_info['confidence']
             }
