@@ -237,21 +237,26 @@ async def parse_receipt_image_endpoint(
                     # Handle both dict and object types
                     if isinstance(item, dict):
                         name = item.get("name", "Item") or item.get("raw_name", "Item")
-                        qty = item.get("quantity", 1)
-                        price = item.get("price_per_unit") or item.get("price")
-                        total = item.get("total_price") or item.get("total")
+                        qty = item.get("quantity", 1) or 1
+                        price = item.get("price_per_unit") or item.get("unit_price") or item.get("price", 0)
+                        total = item.get("total_price") or item.get("total") or item.get("amount")
+                        # Fallback: calculate total from qty * price
+                        if not total and price:
+                            total = qty * price
                     else:
                         name = getattr(item, "name", None) or getattr(item, "raw_name", "Item")
-                        qty = getattr(item, "quantity", 1)
-                        price = getattr(item, "price_per_unit", None) or getattr(item, "price", None)
-                        total = getattr(item, "total_price", None) or getattr(item, "total", None)
+                        qty = getattr(item, "quantity", 1) or 1
+                        price = getattr(item, "price_per_unit", None) or getattr(item, "unit_price", None) or getattr(item, "price", 0)
+                        total = getattr(item, "total_price", None) or getattr(item, "total", None) or getattr(item, "amount", None)
+                        if not total and price:
+                            total = qty * price
                     
                     receipt_item = ReceiptItem(
                         receipt_scan_id=receipt_scan_id,
                         raw_name=name or "Item",
-                        quantity=qty or 1,
-                        price_per_unit=Decimal(str(price)) if price else None,
-                        total_price=Decimal(str(total)) if total else None,
+                        quantity=qty,
+                        price_per_unit=Decimal(str(price)) if price is not None else Decimal("0"),
+                        total_price=Decimal(str(total)) if total is not None else Decimal("0"),
                     )
                     db.add(receipt_item)
                 
