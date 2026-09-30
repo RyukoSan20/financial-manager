@@ -155,6 +155,14 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     if not cleaned:
         return None
     
+    # BLACKLIST: Skip summary/footer lines
+    upper_clean = cleaned.upper()
+    blacklist = ['HARGA JUAL', 'TOTAL', 'TUNAI', 'KEMBALI', 'ANDA HEMAT', 
+                 'DISKON', 'BAYAR', 'TAGIHAN', 'SALDO', 'REF', 'NO.']
+    for kw in blacklist:
+        if kw in upper_clean:
+            return None
+    
     # Split by whitespace
     parts = cleaned.split()
     if len(parts) < 2:
@@ -164,17 +172,12 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     numeric_parts = []
     text_parts = []
     
-    for part in reversed(parts):
-        # Check if this part is a number (possibly with comma)
+    for part in parts:
         clean_part = part.replace(',', '')
         if clean_part.replace('-', '').isdigit():
             numeric_parts.append(part)
         else:
             text_parts.append(part)
-    
-    # Reverse to get left-to-right order
-    numeric_parts.reverse()  # Now: [first_num, ..., last_num]
-    text_parts.reverse()     # Now: [first_text, ..., last_text]
     
     # Need at least 1 number (accept price 1 for plastic bags)
     if len(numeric_parts) < 1:
@@ -185,8 +188,9 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     
     # For items with only 1 number (e.g., "PLASTIK SDG 1")
     if len(numeric_parts) == 1:
+        name = " ".join(text_parts) if text_parts else "Item"
         return {
-            "name": " ".join(text_parts),
+            "name": name,
             "quantity": 1,
             "price_per_unit": numbers[0],
             "total_price": numbers[0]
