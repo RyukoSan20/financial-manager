@@ -232,7 +232,10 @@ async def parse_receipt_image_endpoint(
                 receipt_scan_id = receipt_scan.id
                 
                 # Save items - result is DICT with 'enriched_items' key
-                items_list = result.get("enriched_items") or result.get("items") or receipt.items or []
+                items_list = result.get("enriched_items") or receipt.items or result.get("items") or []
+                logger.info(f"DEBUG: result.keys={list(result.keys())}")
+                logger.info(f"DEBUG: receipt.items={receipt.items}")
+                logger.info(f"DEBUG: items_list={items_list}")
                 logger.info(f"Items to save: {len(items_list)} items - {[{'name': i.get('name'), 'price': i.get('price_per_unit')} for i in items_list]}")
                 for item in items_list:
                     # Handle both dict and object types
