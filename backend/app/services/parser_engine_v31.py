@@ -143,12 +143,13 @@ def detect_merchant(full_text: str) -> str:
 
 def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     """
-    Parse single-line item with format:
+    Parse single-line item with RIGHT-TO-LEFT number extraction:
     S/ROTI KRIM KEJU 72G 4 4500 18,000
-    CIMORY MIX BERRY 225 1 8500 8,500
+    CIMORY MIX BERRY 225ML 1 8500 8,500
     PLASTIK SDG 1 1 1
     
-    Pattern: [NAME] [UNIT] QTY UNIT_PRICE TOTAL
+    Rule: RIGHTMOST numbers are ALWAYS [qty, unit_price, total]
+          Everything LEFT is the product name
     """
     # Normalize
     cleaned = normalize_receipt_line(line)
@@ -158,7 +159,7 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     # BLACKLIST: Skip summary/footer lines
     upper_clean = cleaned.upper()
     blacklist = ['HARGA JUAL', 'TOTAL', 'TUNAI', 'KEMBALI', 'ANDA HEMAT', 
-                 'DISKON', 'BAYAR', 'TAGIHAN', 'SALDO', 'REF', 'NO.']
+                 'DISKON', 'BAYAR', 'TAGIHAN', 'SALDO', 'REF ']
     for kw in blacklist:
         if kw in upper_clean:
             return None
@@ -168,25 +169,30 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     if len(parts) < 2:
         return None
     
-    # Find where numbers start (from the right)
+    # RIGHT-TO-LEFT: Extract numbers from RIGHT side only
+    # Numbers embedded in product names (like "72G", "225ML") are on the LEFT
     numeric_parts = []
     text_parts = []
     
-    for part in parts:
+    for part in reversed(parts):
         clean_part = part.replace(',', '')
         if clean_part.replace('-', '').isdigit():
             numeric_parts.append(part)
         else:
             text_parts.append(part)
     
-    # Need at least 1 number (accept price 1 for plastic bags)
+    # Reverse back to correct order
+    numeric_parts.reverse()  # Now: [qty?, unit_price?, total]
+    text_parts.reverse()      # Now: [name words in order]
+    
+    # Need at least 1 number (price 1 for plastic bags)
     if len(numeric_parts) < 1:
         return None
     
-    # Parse numbers
+    # Parse numbers from RIGHT
     numbers = [parse_number_indonesia(n) for n in numeric_parts]
     
-    # For items with only 1 number (e.g., "PLASTIK SDG 1")
+    # Single number item (e.g., "PLASTIK SDG 1")
     if len(numeric_parts) == 1:
         name = " ".join(text_parts) if text_parts else "Item"
         return {
@@ -196,47 +202,41 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
             "total_price": numbers[0]
         }
     
-    # For items with 2+ numbers
-    total_price = numbers[-1]  # Rightmost = total
+    # RIGHT-TO-LEFT assignment:
+    # numbers[-1] = total_price (rightmost)
+    # numbers[-2] = price_per_unit (second from right)
+    # numbers[-3] = quantity (third from right) - if reasonable
+    total_price = numbers[-1]
     
-    # Skip if total is negative (discount)
+    # Skip negative (discounts)
     if total_price < 0:
         return None
     
-    # Try to detect qty
+    # Detect qty and unit_price from right side
     qty = 1
     unit_price = total_price
     
     if len(numbers) >= 3:
-        # Likely: qty, unit_price, total (from right side)
-        possible_qty = numbers[-3]  # Third from last
-        possible_unit = numbers[-2]  # Second from last
+        # Third from right = quantity (must be small, like 1-20)
+        third_num = numbers[-3]
+        second_num = numbers[-2]
         
-        # Check if third from last is reasonable qty (<= 20)
-        if 0 < possible_qty <= 20 and possible_unit >= 1:
-            qty = int(possible_qty)
-            unit_price = possible_unit
+        # If third number looks like quantity (1-20), use it
+        if 0 < third_num <= 20 and second_num >= 100:
+            qty = int(third_num)
+            unit_price = second_num
     elif len(numbers) == 2:
-        # Could be: unit_price + total
-        if numbers[0] <= 10 and total_price % numbers[0] == 0 and numbers[0] > 0:
-            qty = int(numbers[0])
+        second_num = numbers[-2]
+        if second_num <= 10 and total_price % second_num == 0 and second_num > 0:
+            qty = int(second_num)
             unit_price = total_price / qty
-        else:
-            unit_price = numbers[0]
-            qty = 1
+        elif second_num >= 100:
+            unit_price = second_num
     
-    # Build item name from text parts
-    name_parts = []
-    for part in text_parts:
-        if len(part) <= 1:
-            continue
-        if part.replace('-', '').isdigit():
-            continue
-        name_parts.append(part)
+    # Everything left (text_parts) is the product name
+    name_parts = [p for p in text_parts if len(p) > 0]
+    item_name = " ".join(name_parts)
     
-    item_name = ' '.join(name_parts) if name_parts else ' '.join(text_parts)
-    
-    # Validate - accept all items including price 1
     if total_price < 1 or not item_name:
         return None
     
