@@ -205,7 +205,7 @@ async def parse_receipt_image_endpoint(
         # Combined holistic confidence: 50% OCR + 50% Engine Math Validation
         holistic_confidence = round((ocr_confidence * 0.5) + (engine_confidence * 0.5), 1)
         
-        logger.info(f"DEBUG: current_user={current_user}, receipt_scan_id will be saved={current_user is not None}")
+        logger.warning(f"DEBUG: current_user={current_user}, receipt_scan_id will be saved={current_user is not None}")
         
         # Save receipt and items to database
         receipt_scan_id = None
@@ -235,10 +235,10 @@ async def parse_receipt_image_endpoint(
                 
                 # Save items - result is DICT with 'enriched_items' key
                 items_list = result.get("enriched_items") or receipt.items or result.get("items") or []
-                logger.info(f"DEBUG: result.keys={list(result.keys())}")
-                logger.info(f"DEBUG: receipt.items={receipt.items}")
-                logger.info(f"DEBUG: items_list={items_list}")
-                logger.info(f"Items to save: {len(items_list)} items - {[{'name': i.get('name'), 'price': i.get('price_per_unit')} for i in items_list]}")
+                logger.warning(f"DEBUG: result.keys={list(result.keys())}")
+                logger.warning(f"DEBUG: receipt.items={receipt.items}")
+                logger.warning(f"DEBUG: items_list={items_list}")
+                logger.warning(f"Items to save: {len(items_list)} items - {[{'name': i.get('name'), 'price': i.get('price_per_unit')} for i in items_list]}")
                 for item in items_list:
                     # Handle both dict and object types
                     if isinstance(item, dict):
@@ -264,7 +264,7 @@ async def parse_receipt_image_endpoint(
                         price_per_unit=Decimal(str(price)) if price is not None else Decimal("0"),
                         total_price=Decimal(str(total)) if total is not None else Decimal("0"),
                     )
-                    logger.info(f"Saving item: name={name}, qty={qty}, price={price}, total={total}")
+                    logger.warning(f"Saving item: name={name}, qty={qty}, price={price}, total={total}")
                     db.add(receipt_item)
                 
                 db.commit()
