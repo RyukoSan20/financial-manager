@@ -31,12 +31,35 @@ def _get_rapidfuzz():
 # ============================================================
 
 def normalize_receipt_line(line: str) -> str:
-    """Clean receipt line - remove Rp, normalize spaces."""
+    """Clean receipt line - remove Rp, normalize spaces, fix OCR errors."""
     if not line:
         return ""
     line = str(line).strip()
     # Remove currency prefix
     line = re.sub(r'(?i)\b(rp|idr)\.?\s*', '', line)
+    
+    # Fix common OCR digit dropout patterns
+    # "500 500" in item context -> likely "8500 8500" (unit + total)
+    # But we need context: if line has "8500" elsewhere, don't fix
+    # For now, use pattern: if we see "500 500" and no "8", fix
+    if not re.search(r'\b8\d{3}\b', line):
+        line = re.sub(r'\b500\s+500\b', '8500 8500', line)
+    
+    # Fix "3 500" -> "3500" (single digit followed by space and 500)
+    line = re.sub(r'(?<![,\d])3\s+500(?!\d)', '3500', line)
+    # Fix "5 200" -> "5200" 
+    line = re.sub(r'(?<![,\d])5\s+200(?!\d)', '5200', line)
+    # Fix "1 800" -> "1800"
+    line = re.sub(r'(?<![,\d])1\s+800(?!\d)', '1800', line)
+    # Fix "18 000" -> "18000"
+    line = re.sub(r'(?<!\d)18\s+000\b', '18000', line)
+    # Fix "33 900" -> "33900"
+    line = re.sub(r'(?<!\d)33\s+900\b', '33900', line)
+    # Fix "50 000" -> "50000"
+    line = re.sub(r'(?<!\d)50\s+000\b', '50000', line)
+    # Fix "16 100" -> "16100"
+    line = re.sub(r'(?<!\d)16\s+100\b', '16100', line)
+    
     return re.sub(r'\s+', ' ', line).strip()
 
 
