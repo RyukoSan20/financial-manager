@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any
 logger = logging.getLogger(__name__)
 
 # Gemini API endpoint
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent"
 
 # Full parse prompt
 FULL_PARSE_PROMPT = """You are an expert receipt parsing AI. Extract ALL information from this receipt image.
