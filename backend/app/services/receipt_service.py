@@ -3,6 +3,7 @@
 # OCR + Regex Engine + Gemini AI Fallback & Enrichment
 # ============================================================
 
+import os
 import logging
 import re
 from typing import Optional, Dict, Any, List, Tuple
@@ -309,27 +310,43 @@ def enrich_with_gemini(receipt: ParsedReceipt, image_bytes: bytes = None) -> Par
     from app.services.gemini_vision import extract_receipt_with_gemini, format_gemini_result
     
     try:
-        gemini = GeminiVisionService()
+        api_key = os.environ.get('GEMINI_API_KEY')
         
-        # Build prompt based on what we need
-        if receipt.parse_method == "regex" and receipt.items:
-            # Regex succeeded - just enrich
-            prompt = build_enrichment_prompt(receipt)
-        else:
-            # Regex failed - full parse needed
-            prompt = build_full_parse_prompt()
+        if not api_key:
+            logger.warning("Gemini API key not configured")
+            return receipt
         
         # Call Gemini
         if image_bytes:
-            result = gemini.analyze_receipt_image(image_bytes, prompt)
+            gemini_result = extract_receipt_with_gemini(image_bytes, api_key)
         else:
-            result = gemini.analyze_receipt_text("\n".join(receipt.raw_lines), prompt)
+            # No image, skip Gemini
+            return receipt
         
-        # Parse Gemini response
-        if result:
-            receipt = parse_gemini_response(result, receipt)
-            receipt.parse_method = "gemini_enrichment" if receipt.items else "gemini_fallback"
-        
+        if gemini_result:
+            # Convert Gemini result to ParsedReceipt
+            ocr_result = format_gemini_result(gemini_result)
+            
+            # Update receipt with Gemini data
+            if gemini_result.get('merchant'):
+                receipt.merchant_name = gemini_result['merchant'].get('name') or receipt.merchant_name
+                receipt.merchant_type = gemini_result['merchant'].get('type', 'Other')
+                receipt.merchant_location = gemini_result['merchant'].get('location')
+            
+            if gemini_result.get('items'):
+                receipt.items = []
+                for item_data in gemini_result['items']:
+                    receipt.items.append(ParsedItem(
+                        name=item_data.get('name', 'Unknown'),
+                        quantity=int(item_data.get('quantity', 1)),
+                        price_per_unit=float(item_data.get('price_per_unit', 0)),
+                        total_price=float(item_data.get('total_price', 0)),
+                        category=item_data.get('category')
+                    ))
+            
+            receipt.total_amount = float(gemini_result.get('total_amount', receipt.total_amount))
+            receipt.parse_method = "gemini_fallback"
+            
     except Exception as e:
         logger.warning(f"Gemini enrichment failed: {e}")
     
@@ -481,6 +498,8 @@ def process_receipt_hybrid(
     
     # Step 3: Sanity check
     passed, reason = receipt.sanity_check()
+    logger.info(f"Sanity check: passed={passed}, reason={reason}")
+    logger.info(f"Items sum: {receipt.items_total()}, Total: {receipt.total_amount}")
     
     if passed:
         logger.info(f"Regex parse passed: {len(receipt.items)} items, total={receipt.total_amount}")
@@ -493,6 +512,7 @@ def process_receipt_hybrid(
         logger.warning(f"Regex parse failed: {reason}")
         
         if use_gemini_fallback:
+            logger.info("Calling Gemini fallback...")
             # Step 4b: Full Gemini parse
             receipt = enrich_with_gemini(receipt, image_bytes)
     
@@ -529,8 +549,22 @@ def process_receipt_hybrid(
 
 def post_process_receipt(receipt: ParsedReceipt) -> ParsedReceipt:
     """
-    Post-process receipt to fix missing data.
+    Post-process receipt to fix missing data and validate prices.
     """
+    # Validate items: price must not exceed total_amount (unless it's a valid multi-item)
+    if receipt.total_amount > 0:
+        valid_items = []
+        for item in receipt.items:
+            # Skip items where price > total_amount (likely junk lines like phone numbers)
+            if item.total_price > receipt.total_amount * 0.8:
+                # Item price is > 80% of total - might be junk
+                # But allow if it's clearly an item name pattern
+                item_lower = item.name.lower()
+                if any(kw in item_lower for kw in ['call', 'sms', 'hotline', 'www', 'http']):
+                    continue  # Skip non-item lines
+            valid_items.append(item)
+        receipt.items = valid_items
+    
     for item in receipt.items:
         # If price_per_unit is 0 but total_price > 0 and qty > 1
         if item.price_per_unit == 0 and item.total_price > 0 and item.quantity > 1:
