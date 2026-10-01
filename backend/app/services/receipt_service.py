@@ -670,41 +670,44 @@ def process_receipt_hybrid(
     # Step 3: Sanity check
     passed, reason = receipt.sanity_check()
     logger.info(f"Sanity check: passed={passed}, reason={reason}")
-    logger.info(f"Items sum: {receipt.items_total()}, Total: {receipt.total_amount}")
+    logger.info(f"Items: {len(receipt.items)}, sum={receipt.items_total()}, total={receipt.total_amount}")
+    
+    # Keep original items as fallback
+    original_items = list(receipt.items)
     
     if passed:
         logger.info(f"Regex parse passed: {len(receipt.items)} items, total={receipt.total_amount}")
         
-        # Step 4a: Enrich with Gemini (optional - for merchant type/categories)
+        # Optional: Enrich with Gemini for categories
         if use_gemini_enrichment and receipt.merchant_name:
             receipt = enrich_with_gemini(receipt, image_bytes)
     
     else:
         logger.warning(f"Regex parse failed: {reason}")
         
-        # Check if items sum > total (discount scenario)
+        # Check discount scenario: items sum > total
         items_sum = receipt.items_total()
         if receipt.total_amount > 0 and items_sum > receipt.total_amount:
-            # Items sum EXCEEDS total - likely a discount/promo scenario
-            # Treat as PASSED and save the discount
             discount = items_sum - receipt.total_amount
-            logger.info(f"Items sum ({items_sum}) > total ({receipt.total_amount}), likely discount={discount}")
+            logger.info(f"Discount scenario detected: items={items_sum}, total={receipt.total_amount}, discount={discount}")
             receipt.discount = discount
-            receipt.sanity_passed = True  # Override for this case
-        
-        # If Gemini is available, try to improve
-        if use_gemini_fallback:
-            logger.info("Calling Gemini to improve parsing...")
-            original_items = list(receipt.items)  # Backup regex items
+            # Items are valid - just has discount, no Gemini needed
+        elif use_gemini_fallback and image_bytes:
+            # Try Gemini to improve
+            logger.info("Calling Gemini fallback...")
             receipt = enrich_with_gemini(receipt, image_bytes)
             
-            # Only replace items if Gemini returned VALID items
-            if len(receipt.items) == 0:
-                logger.info("Gemini returned no items, keeping regex items")
-                receipt.items = original_items  # Restore backup
+            # Only replace if Gemini returned items
+            if not receipt.items:
+                logger.info("Gemini returned no items, keeping original regex items")
+                receipt.items = original_items
     
-    # Step 5: Post-process - only if we have items
+    # Step 5: Post-process if we have items
     if receipt.items:
+        receipt = post_process_receipt(receipt)
+    else:
+        # No items at all - use partial from regex
+        receipt.items = original_items
         receipt = post_process_receipt(receipt)
     
     # Fallback merchant name
