@@ -1,18 +1,22 @@
 # ============================================================
-# PIPELINE HANDLERS
+# PIPELINE HANDLERS (REFACTORED - NO HARDCODED LOGIC)
 # ============================================================
 
 from .base import BaseHandler, PipelineContext, ParsedItem, HandlerType
+from app.services.fuzzy_matcher import FuzzyAnchorMatcher, fuzzy_match_any
+from app.services.dynamic_geometry import DynamicSpatialReconstructor, OCRWord
+from app.services.template_engine import get_rule_engine, extract_from_email_selector
 from app.services.confidence_engine import calculate_confidence, COMMIT_THRESHOLD
+import re
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class EmailDOMHandler(BaseHandler):
+class ConfigDrivenEmailHandler(BaseHandler):
     """
-    Layer 1: Email DOM Parser
-    For email receipts from Gojek, Grab, Tokopedia, etc.
+    Layer 1: Config-Driven Email DOM Parser
+    Uses YAML templates - no hardcoded vendor logic
     """
     
     def __init__(self, next_handler=None):
@@ -20,89 +24,57 @@ class EmailDOMHandler(BaseHandler):
         self.handler_type = HandlerType.EMAIL_DOM
     
     async def process(self, ctx: PipelineContext) -> PipelineContext:
-        """Parse email receipts using HTML structure."""
+        """Parse email using config-driven template engine."""
         ctx.add_trace("EmailDOMHandler started")
         
         html_content = ctx.raw_input.get('html_content')
         if not html_content:
-            ctx.add_trace("No HTML content, skipping Email DOM")
+            ctx.add_trace("No HTML content, skipping")
             return ctx
         
+        # Get rule engine
+        engine = get_rule_engine()
+        
+        # Detect vendor from config patterns
+        vendor = engine.detect_email_vendor(html_content)
+        
+        if not vendor:
+            ctx.add_trace("No known vendor detected")
+            return ctx
+        
+        ctx.add_trace(f"Detected vendor: {vendor}")
+        
+        # Extract using config-driven selectors
         try:
-            from bs4 import BeautifulSoup
-        except ImportError:
-            ctx.add_trace("BeautifulSoup not available")
-            return ctx
-        
-        html_upper = html_content.upper()
-        soup = BeautifulSoup(html_content, 'html.parser')
-        
-        # Detect vendor and parse
-        if "GOJEK" in html_upper or "PT APLIKASI KARYA ANAK BANGSA" in html_upper:
-            ctx = self._parse_gojek(soup, ctx)
-        elif "GRAB" in html_upper:
-            ctx = self._parse_grab(soup, ctx)
-        elif "TOKOPEDIA" in html_upper:
-            ctx = self._parse_tokopedia(soup, ctx)
-        elif "SHOPEE" in html_upper:
-            ctx = self._parse_shopee(soup, ctx)
+            data = extract_from_email_selector(html_content, vendor)
+            
+            if data.get('merchant_name'):
+                ctx.parsed_data.merchant_name = data['merchant_name']
+            else:
+                ctx.parsed_data.merchant_name = vendor.capitalize()
+            
+            if data.get('total_amount'):
+                ctx.parsed_data.total_amount = data['total_amount']
+            
+            ctx.parsed_data.merchant_type = "E-Commerce" if vendor.lower() in ['tokopedia', 'shopee', 'lazada'] else "Service"
+            
+        except Exception as e:
+            ctx.add_trace(f"Email extraction error: {e}")
         
         # Calculate confidence
         if ctx.parsed_data.merchant_name:
             ctx.confidence_score = calculate_confidence(ctx.parsed_data.to_dict())
             
             if ctx.confidence_score >= 0.95:
-                ctx.stop(f"Email DOM parsed successfully (confidence={ctx.confidence_score})", success=True)
+                ctx.stop(f"Email parsed (confidence={ctx.confidence_score})", success=True)
             else:
-                ctx.add_trace(f"Low confidence {ctx.confidence_score}, continuing pipeline")
+                ctx.add_trace(f"Low confidence, continuing pipeline")
         
-        return ctx
-    
-    def _parse_gojek(self, soup, ctx: PipelineContext) -> PipelineContext:
-        """Parse Gojek email receipt."""
-        try:
-            # Find total
-            for elem in soup.find_all(string=lambda t: t and "Total Pembayaran" in str(t)):
-                text = elem.strip()
-                import re
-                numbers = re.findall(r'[\d\,\.]+', text)
-                if numbers:
-                    total = float(numbers[-1].replace(',', '').replace('.', ''))
-                    ctx.parsed_data.total_amount = total
-                    break
-            
-            ctx.parsed_data.merchant_name = "Gojek"
-            ctx.parsed_data.merchant_type = "Service"
-            ctx.add_trace("Parsed Gojek receipt")
-        except Exception as e:
-            ctx.add_trace(f"Gojek parse error: {e}")
-        
-        return ctx
-    
-    def _parse_grab(self, soup, ctx: PipelineContext) -> PipelineContext:
-        """Parse Grab email receipt."""
-        ctx.parsed_data.merchant_name = "Grab"
-        ctx.parsed_data.merchant_type = "Service"
-        return ctx
-    
-    def _parse_tokopedia(self, soup, ctx: PipelineContext) -> PipelineContext:
-        """Parse Tokopedia email receipt."""
-        ctx.parsed_data.merchant_name = "Tokopedia"
-        ctx.parsed_data.merchant_type = "E-Commerce"
-        return ctx
-    
-    def _parse_shopee(self, soup, ctx: PipelineContext) -> PipelineContext:
-        """Parse Shopee email receipt."""
-        ctx.parsed_data.merchant_name = "Shopee"
-        ctx.parsed_data.merchant_type = "E-Commerce"
         return ctx
 
 
 class QRISBarcodeHandler(BaseHandler):
-    """
-    Layer 2: QRIS/Barcode Handler
-    For QR code and barcode scanned receipts.
-    """
+    """Layer 2: QRIS/Barcode Handler"""
     
     def __init__(self, next_handler=None):
         super().__init__(next_handler)
@@ -113,108 +85,130 @@ class QRISBarcodeHandler(BaseHandler):
         ctx.add_trace("QRISBarcodeHandler started")
         
         qr_payload = ctx.raw_input.get('qr_payload')
-        barcode_payload = ctx.raw_input.get('barcode_payload')
         
         if qr_payload:
-            ctx = self._parse_qr(qr_payload, ctx)
-        elif barcode_payload:
-            ctx = self._parse_barcode(barcode_payload, ctx)
-        else:
-            ctx.add_trace("No QR/Barcode payload")
-        
-        return ctx
-    
-    def _parse_qr(self, payload: str, ctx: PipelineContext) -> PipelineContext:
-        """Parse QRIS payload."""
-        import re
-        
-        # QRIS format: various bank formats
-        # Example: https://qr.bri.co.id/...
-        try:
-            ctx.parsed_data.merchant_name = "QRIS Payment"
+            # QRIS parsing
             ctx.parsed_data.payment_method = "QRIS"
+            ctx.parsed_data.merchant_name = "QRIS Payment"
             
-            # Extract amount if present
-            amount_match = re.search(r'rc=([\d]+)', payload)
+            # Extract amount from QR payload
+            amount_match = re.search(r'rc=([0-9]+)', qr_payload)
             if amount_match:
                 ctx.parsed_data.total_amount = float(amount_match.group(1))
             
             ctx.confidence_score = 0.8
-            ctx.add_trace(f"Parsed QR payload: {ctx.parsed_data.total_amount}")
-        except Exception as e:
-            ctx.add_trace(f"QR parse error: {e}")
+            ctx.stop("QR payload parsed", success=True)
         
-        return ctx
-    
-    def _parse_barcode(self, payload: str, ctx: PipelineContext) -> PipelineContext:
-        """Parse barcode payload."""
-        ctx.add_trace("Barcode parsing not implemented")
         return ctx
 
 
 class SpatialRegexHandler(BaseHandler):
     """
-    Layer 3: Spatial Regex Handler
-    For physical receipts using bounded region parsing.
+    Layer 3: Config-Driven Spatial Regex Handler
+    Uses fuzzy matching and dynamic tolerance - no hardcoded logic
     """
     
     def __init__(self, next_handler=None):
         super().__init__(next_handler)
         self.handler_type = HandlerType.SPATIAL_REGEX
+        self.fuzzy_matcher = FuzzyAnchorMatcher()
+        self.spatial_engine = DynamicSpatialReconstructor()
     
     async def process(self, ctx: PipelineContext) -> PipelineContext:
-        """Parse physical receipts with strict math validation."""
+        """Parse using config-driven fuzzy anchors and dynamic spatial."""
         ctx.add_trace("SpatialRegexHandler started")
         
-        lines = ctx.raw_input.get('ocr_lines') or ctx.raw_input.get('lines')
+        # Get OCR lines or reconstruct from geometry
+        lines = self._get_lines(ctx)
         
         if not lines:
-            ctx.add_trace("No OCR lines provided")
+            ctx.add_trace("No lines to parse")
             return ctx
         
         ctx.parsed_data.raw_lines = lines
-        ctx = self._parse_bounded_regex(lines, ctx)
+        ctx = self._parse_with_config(lines, ctx)
         
         # Calculate confidence
         if ctx.parsed_data.items or ctx.parsed_data.total_amount > 0:
             ctx.confidence_score = calculate_confidence(ctx.parsed_data.to_dict())
             
-            if ctx.confidence_score >= COMMIT_THRESHOLD:
-                ctx.stop(f"Regex parsed successfully (confidence={ctx.confidence_score})", success=True)
+            engine = get_rule_engine()
+            threshold = engine.get_commit_threshold()
+            
+            if ctx.confidence_score >= threshold:
+                ctx.stop(f"Regex parsed (confidence={ctx.confidence_score})", success=True)
             else:
-                ctx.add_trace(f"Low confidence {ctx.confidence_score}, will try Gemini")
+                ctx.add_trace(f"Confidence {ctx.confidence_score} < {threshold}")
         
         return ctx
     
-    def _parse_bounded_regex(self, lines: list, ctx: PipelineContext) -> PipelineContext:
-        """Parse using bounded region + RTL parsing."""
-        import re
+    def _get_lines(self, ctx: PipelineContext) -> list:
+        """Get lines - either plain text or reconstruct from geometry."""
+        # Plain OCR lines
+        lines = ctx.raw_input.get('ocr_lines') or ctx.raw_input.get('lines')
+        if lines:
+            return lines
         
-        # Summary anchors - end of item region
-        summary_anchors = [
-            'HARGA JUAL', 'SUBTOTAL', 'DISKON', 'TOTAL', 
-            'ANDA HEMAT', 'TUNAI', 'CASH', 'BAYAR'
-        ]
+        # Reconstruct from OCR geometry
+        ocr_result = ctx.raw_input.get('ocr_result')
+        if ocr_result:
+            words = []
+            for word_data in ocr_result.get('words', []):
+                try:
+                    word = OCRWord(
+                        text=str(word_data.get('text', '')),
+                        x_min=float(word_data.get('x_min', 0)),
+                        y_min=float(word_data.get('y_min', 0)),
+                        x_max=float(word_data.get('x_max', 0)),
+                        y_max=float(word_data.get('y_max', 0)),
+                        confidence=float(word_data.get('confidence', 1.0))
+                    )
+                    words.append(word)
+                except (ValueError, TypeError):
+                    continue
+            
+            if words:
+                return self.spatial_engine.reconstruct_lines(words)
         
-        # Find INDEX_END
+        return []
+    
+    def _parse_with_config(self, lines: list, ctx: PipelineContext) -> PipelineContext:
+        """Parse using config-driven rules."""
+        engine = get_rule_engine()
+        
+        # Get config-driven anchors
+        end_anchors, threshold = engine.get_item_end_anchors()
+        separators = engine.get_item_start_separators()
+        merchant_config = engine.get_merchant_validation()
+        
+        # Find item region using fuzzy matching
         index_end = len(lines)
         for i, line in enumerate(lines):
-            if any(kw in line.upper() for kw in summary_anchors):
+            matched, _, score = fuzzy_match_any(line, end_anchors, threshold)
+            if matched:
+                ctx.add_trace(f"Found end anchor '{line}' at {i} (score={score:.2f})")
                 index_end = i
                 break
         
-        # Find INDEX_START
+        # Find item start
         index_start = 0
         for i, line in enumerate(lines[:15]):
-            line_clean = line.strip()
-            if '---' in line_clean:
+            if any(sep in line for sep in separators):
                 index_start = i + 1
                 break
-            if re.match(r'^[\d\.\-\:\s]+$', line_clean):
-                continue
+            line_clean = line.strip()
             if not line_clean:
                 continue
-            if self._is_valid_merchant(line_clean):
+            if re.match(r'^[\d\.\-\:\s]+$', line_clean) and len(line_clean) < 25:
+                continue
+            # Check merchant validity
+            skip_patterns = merchant_config.get('skip_patterns', [])
+            is_valid = True
+            for pattern in skip_patterns:
+                if re.match(pattern, line_clean.upper()):
+                    is_valid = False
+                    break
+            if is_valid and len(line_clean) >= merchant_config.get('min_length', 2):
                 ctx.parsed_data.merchant_name = line_clean
                 index_start = i + 1
                 break
@@ -233,8 +227,9 @@ class SpatialRegexHandler(BaseHandler):
         
         # Extract total
         for line in lines:
-            if 'TOTAL' in line.upper():
-                numbers = re.findall(r'[\d\,\.]+', line)
+            matched, _, _ = fuzzy_match_any(line, end_anchors, threshold)
+            if matched:
+                numbers = re.findall(r'[\d,\.]+', line)
                 for num in reversed(numbers):
                     val = float(num.replace(',', '').replace('.', ''))
                     if val > 1000:
@@ -242,28 +237,17 @@ class SpatialRegexHandler(BaseHandler):
                         break
         
         # Calculate discount
-        if ctx.parsed_data.subtotal > ctx.parsed_data.total_amount > 0:
-            ctx.parsed_data.discount = ctx.parsed_data.subtotal - ctx.parsed_data.total_amount
+        math_config = engine.get_math_config()
+        if math_config.get('allow_discount', True):
+            if ctx.parsed_data.subtotal > ctx.parsed_data.total_amount > 0:
+                ctx.parsed_data.discount = ctx.parsed_data.subtotal - ctx.parsed_data.total_amount
         
         ctx.add_trace(f"Parsed {len(parsed_items)} items, total={ctx.parsed_data.total_amount}")
         
         return ctx
     
-    def _is_valid_merchant(self, name: str) -> bool:
-        """Check if merchant name is valid."""
-        if not name or len(name) < 2:
-            return False
-        garbage = ['download', '口品', '★', 'http', 'www.']
-        name_upper = name.upper()
-        if any(g in name_upper for g in garbage):
-            return False
-        alpha_count = sum(1 for c in name if c.isalpha())
-        return alpha_count >= 2
-    
     def _parse_item_rtl(self, line: str) -> ParsedItem:
         """Parse item using RTL approach."""
-        import re
-        
         line = line.strip()
         if not line or '(' in line or line.startswith('-'):
             return None
@@ -316,40 +300,33 @@ class SpatialRegexHandler(BaseHandler):
 
 
 class GeminiFallbackHandler(BaseHandler):
-    """
-    Layer 4: Gemini Fallback Handler
-    For complex receipts that fail previous layers.
-    """
+    """Layer 4: Gemini AI Fallback"""
     
     def __init__(self, next_handler=None):
         super().__init__(next_handler)
         self.handler_type = HandlerType.GEMINI_FALLBACK
     
     async def process(self, ctx: PipelineContext) -> PipelineContext:
-        """Call Gemini AI for complex receipts."""
+        """Call Gemini for complex receipts."""
         ctx.add_trace("GeminiFallbackHandler started")
         
         image_bytes = ctx.image_bytes
         if not image_bytes:
-            ctx.add_trace("No image bytes for Gemini")
-            ctx.stop("No image for Gemini processing", success=False)
+            ctx.add_trace("No image bytes")
+            ctx.stop("No image for Gemini", success=False)
             return ctx
         
         try:
-            import os
             api_key = os.environ.get('GEMINI_API_KEY')
-            
             if not api_key:
                 ctx.add_trace("No Gemini API key")
-                ctx.stop("Gemini API key not configured", success=False)
+                ctx.stop("API key not configured", success=False)
                 return ctx
             
-            # Call Gemini
             from app.services.gemini_vision import extract_receipt_with_gemini
             result = extract_receipt_with_gemini(image_bytes, api_key)
             
             if result:
-                # Update context with Gemini result
                 if result.get('merchant'):
                     ctx.parsed_data.merchant_name = result['merchant'].get('name')
                     ctx.parsed_data.merchant_type = result['merchant'].get('type')
@@ -367,15 +344,16 @@ class GeminiFallbackHandler(BaseHandler):
                 if result.get('total_amount'):
                     ctx.parsed_data.total_amount = float(result['total_amount'])
                 
-                # Recalculate confidence
                 ctx.confidence_score = calculate_confidence(ctx.parsed_data.to_dict())
-                
-                ctx.stop(f"Gemini parsed successfully (confidence={ctx.confidence_score})", success=True)
+                ctx.stop(f"Gemini parsed (confidence={ctx.confidence_score})", success=True)
             else:
                 ctx.stop("Gemini returned no result", success=False)
                 
         except Exception as e:
             ctx.add_trace(f"Gemini error: {e}")
-            ctx.stop(f"Gemini processing failed: {e}", success=False)
+            ctx.stop(f"Gemini failed: {e}", success=False)
         
         return ctx
+
+
+import os

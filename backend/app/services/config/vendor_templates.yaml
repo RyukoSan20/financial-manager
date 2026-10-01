@@ -1,0 +1,101 @@
+# ============================================================
+# VENDOR TEMPLATE CONFIGURATION
+# ============================================================
+
+email_templates:
+  gojek:
+    patterns:
+      - "GOJEK"
+      - "PT APLIKASI KARYA ANAK BANGSA"
+    selectors:
+      total:
+        - type: "contains"
+          text: "Total Pembayaran"
+          next_sibling: true
+        - type: "regex"
+          pattern: "Rp.\\s*([\\d,\\.]+)"
+    merchant:
+      - type: "contains"
+        text: "GOJEK"
+    date_format: "%d %b %Y"
+
+  grab:
+    patterns:
+      - "GRAB"
+    selectors:
+      total:
+        - type: "regex"
+          pattern: "Total.*Rp.\\s*([\\d,\\.]+)"
+    merchant:
+      - type: "text"
+        value: "Grab"
+
+  tokopedia:
+    patterns:
+      - "TOKOPEDIA"
+    selectors:
+      total:
+        - type: "regex"
+          pattern: "Total.*Rp.\\s*([\\d,\\.]+)"
+    merchant:
+      - type: "text"
+        value: "Tokopedia"
+
+  shopee:
+    patterns:
+      - "SHOPEE"
+      - "SHOPEEFOOD"
+    selectors:
+      total:
+        - type: "contains"
+          text: "Total Pembayaran"
+    merchant:
+      - type: "text"
+        value: "Shopee"
+
+receipt_anchors:
+  item_start:
+    fuzzy_keywords:
+      - "ITEM"
+      - "PRODUCT"
+      - "NAMA BARANG"
+      - "BARANG"
+    separator_lines:
+      - "---"
+      - "==="
+      - "___"
+
+  item_end:
+    fuzzy_keywords:
+      - "TOTAL"
+      - "SUBTOTAL"
+      - "HARGA JUAL"
+      - "HARUS DIBAYAR"
+      - "JUMLAH"
+      - "BAYAR"
+      - "CASH"
+      - "TUNAI"
+      - "KEMBALI"
+      - "DISKON"
+      - "ANDA HEMAT"
+    fuzzy_threshold: 0.75
+
+  merchant:
+    skip_patterns:
+      - "^[0-9]+$"
+      - "^download"
+      - "口品"
+    min_length: 2
+    max_length: 50
+
+math_validation:
+  absolute_tolerance: 500
+  allow_discount: true
+  rounding_threshold: 0.01
+
+confidence_weights:
+  merchant: 0.20
+  date: 0.15
+  math: 0.45
+  items: 0.20
+  commit_threshold: 0.85
