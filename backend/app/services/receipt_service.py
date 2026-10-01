@@ -146,6 +146,25 @@ def parse_receipt_with_regex(lines: List[str]) -> ParsedReceipt:
     index_start = 0
     index_end = len(lines)
     
+    # Patterns that indicate garbage/OCR noise
+    garbage_patterns = [
+        'download', '口品', '★', '●', '■', '□', '◆', '◇',
+        'http', 'www.', '.com', '.net', '.org',
+        'receipt', 'invoice', 'struk', 'bill'
+    ]
+    
+    def is_valid_merchant_name(name: str) -> bool:
+        """Check if merchant name is valid (not garbage OCR)"""
+        name_upper = name.upper()
+        # Check for garbage patterns
+        if any(p in name_upper for p in garbage_patterns):
+            return False
+        # Must have at least some alphabetic characters
+        alpha_count = len(re.sub(r'[^a-zA-Z]', '', name))
+        if alpha_count < 2:
+            return False
+        return True
+    
     # Find INDEX_START: first separator line OR first non-metadata line
     for i, line in enumerate(lines[:15]):
         line_upper = line.upper().strip()
@@ -163,12 +182,27 @@ def parse_receipt_with_regex(lines: List[str]) -> ParsedReceipt:
         # Skip empty lines
         if not line_clean:
             continue
-            
-        # This is likely merchant name
-        if index_start == 0:
+        
+        # This is likely merchant name - validate first
+        if index_start == 0 and is_valid_merchant_name(line_clean):
             receipt.merchant_name = line_clean
             index_start = i + 1
             break
+    
+    # If no valid merchant found, try to find one more aggressively
+    if not receipt.merchant_name:
+        for i, line in enumerate(lines[:15]):
+            line_clean = line.strip()
+            if len(line_clean) > 2 and len(line_clean) < 50:
+                # Skip if it's only numbers/dates
+                if re.match(r'^[\d\s\-\.\:\/]+$', line_clean):
+                    continue
+                # Skip if it contains garbage
+                if not is_valid_merchant_name(line_clean):
+                    continue
+                receipt.merchant_name = line_clean
+                index_start = i + 1
+                break
     
     # Find INDEX_END: FIRST occurrence of summary keyword (EARLY STOP)
     for i, line in enumerate(lines):
@@ -648,14 +682,26 @@ def process_receipt_hybrid(
     else:
         logger.warning(f"Regex parse failed: {reason}")
         
-        # RIGID MATH CHECK FAILOVER: Clear wrong items, call Gemini
-        logger.info("Clearing wrong regex items, calling Gemini fallback...")
-        receipt.items = []  # Clear wrong items to avoid polluting DB
+        # Check if items sum > total (discount scenario)
+        items_sum = receipt.items_total()
+        if receipt.total_amount > 0 and items_sum > receipt.total_amount:
+            # Items sum EXCEEDS total - likely a discount/promo scenario
+            # Treat as PASSED and save the discount
+            discount = items_sum - receipt.total_amount
+            logger.info(f"Items sum ({items_sum}) > total ({receipt.total_amount}), likely discount={discount}")
+            receipt.discount = discount
+            receipt.sanity_passed = True  # Override for this case
         
+        # If Gemini is available, try to improve
         if use_gemini_fallback:
-            logger.info("Calling Gemini fallback...")
-            # Step 4b: Full Gemini parse from image
+            logger.info("Calling Gemini to improve parsing...")
+            original_items = list(receipt.items)  # Backup regex items
             receipt = enrich_with_gemini(receipt, image_bytes)
+            
+            # Only replace items if Gemini returned VALID items
+            if len(receipt.items) == 0:
+                logger.info("Gemini returned no items, keeping regex items")
+                receipt.items = original_items  # Restore backup
     
     # Step 5: Post-process - only if we have items
     if receipt.items:
