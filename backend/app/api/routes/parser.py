@@ -247,15 +247,20 @@ async def parse_receipt_image_endpoint(
         result = await run_in_threadpool(_process_receipt_cpu_bound, content)
         
         receipt = result["receipt"]
+        receipt_result = result.get("receipt_result")  # From hybrid service
+        
+        # Get amount from hybrid result or OCRResult
+        hybrid_total = receipt_result.total_amount if receipt_result else 0
+        receipt_amount = receipt.amount_value or hybrid_total
         
         # Determine transaction type
-        transaction_type = "DEBIT" if receipt.amount else "DEBIT"
+        transaction_type = "DEBIT" if receipt_amount else "DEBIT"
         
-        # Get OCR confidence (physical text recognition) and engine confidence (math validation)
+        # Get OCR confidence
         ocr_confidence = receipt.confidence if hasattr(receipt, 'confidence') and receipt.confidence else 70.0
         engine_confidence = getattr(receipt, 'engine_confidence', 70.0)
         
-        # Combined holistic confidence: 50% OCR + 50% Engine Math Validation
+        # Combined holistic confidence
         holistic_confidence = round((ocr_confidence * 0.5) + (engine_confidence * 0.5), 1)
         
         logger.info(f"Processing receipt for user={current_user.id if current_user else 'anonymous'}")
@@ -264,12 +269,12 @@ async def parse_receipt_image_endpoint(
         receipt_scan_id = None
         if current_user:
             try:
-                merchant = receipt.merchant_name or "Toko/Merchant"
+                merchant = receipt_result.merchant_name if receipt_result else (receipt.merchant_name or "Toko/Merchant")
                 
                 receipt_scan = ReceiptScan(
                     user_id=current_user.id,
                     merchant_name=merchant,
-                    total_amount=Decimal(str(receipt.amount_value)) if receipt.amount_value else None,
+                    total_amount=Decimal(str(receipt_amount)) if receipt_amount else None,
                     payment_method=receipt.payment_method,
                     receipt_date=receipt.date,
                     address=receipt.address,
@@ -325,22 +330,27 @@ async def parse_receipt_image_endpoint(
                 db.rollback()
                 receipt_scan_id = None
         
+        # Get merchant from hybrid result
+        merchant = receipt_result.merchant_name if receipt_result else receipt.merchant_name
+        if not merchant:
+            merchant = "Merchant"
+        
         return {
             "status": "success",
-            "detection_type": "ENTERPRISE_LOCAL_OCR",
-            "merchant_name": result.get("receipt").merchant_name if hasattr(result.get("receipt"), 'merchant_name') else receipt.merchant_name,
-            "amount": str(int(receipt.amount_value)) if receipt.amount_value else "0",
+            "detection_type": "HYBRID_PARSER",
+            "merchant_name": merchant,
+            "amount": str(int(receipt_amount)) if receipt_amount else "0",
             "transaction_type": "DEBIT",
-            "date": receipt.date,
-            "payment_method": receipt.payment_method,
+            "date": receipt_result.transaction_date if receipt_result else receipt.date,
+            "payment_method": receipt_result.payment_method if receipt_result else receipt.payment_method,
             "address": result["merchant_address"],
-            "items_count": len(result.get("enriched_items") or []) + len(result.get("items") or []),
-            "items": (result.get("enriched_items") or []) or (result.get("items") or []) or [],
+            "items_count": len(result.get("enriched_items") or []),
+            "items": result.get("enriched_items") or [],
             "confidence_score": holistic_confidence,
             "ocr_confidence": round(ocr_confidence, 1),
             "category_hint": "shopping",
             "suggested_type": "expense",
-            "description": f"Purchase at {receipt.merchant_name}" if receipt.merchant_name else "Purchase",
+            "description": f"Purchase at {merchant}" if merchant else "Purchase",
             "raw_text": receipt.text[:2000] if receipt.text else None,
             "raw_lines": result.get("raw_lines", []),
             "latitude": result["latitude"],
