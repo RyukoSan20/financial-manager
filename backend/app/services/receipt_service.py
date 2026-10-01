@@ -496,8 +496,33 @@ def process_receipt_hybrid(
             # Step 4b: Full Gemini parse
             receipt = enrich_with_gemini(receipt, image_bytes)
     
-    # Step 5: Post-process - calculate missing prices
+    # Step 5: Post-process - ensure minimum viable data (best effort)
     receipt = post_process_receipt(receipt)
+    
+    # Fallback merchant name
+    if not receipt.merchant_name:
+        # Try to find from raw lines
+        for line in (receipt.raw_lines or []):
+            if line and len(line.strip()) > 2 and len(line.strip()) < 50:
+                if not any(c in line.upper() for c in ['TOTAL', 'Rp', 'TUNAI', '---']):
+                    receipt.merchant_name = line.strip()
+                    break
+        if not receipt.merchant_name:
+            receipt.merchant_name = "Merchant"
+    
+    # Fallback total from items
+    if receipt.total_amount <= 0 and receipt.items:
+        receipt.total_amount = sum(item.total_price for item in receipt.items)
+    
+    # Ensure at least some items
+    if not receipt.items and receipt.total_amount > 0:
+        # Create a generic item
+        receipt.items.append(ParsedItem(
+            name="Items",
+            quantity=1,
+            price_per_unit=receipt.total_amount,
+            total_price=receipt.total_amount
+        ))
     
     return receipt
 
