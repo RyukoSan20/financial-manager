@@ -646,11 +646,15 @@ def process_receipt_hybrid(
     use_gemini_enrichment: bool = True
 ) -> ParsedReceipt:
     """
-    Hybrid receipt processing pipeline:
-    1. Parse with regex (fast, free)
-    2. Validate with sanity check
-    3. Conditional Gemini for enrichment or fallback
+    Hybrid receipt processing using GenericPipeline (Rule-First, AI-Last).
+    1. Parse with GenericPipeline (discount-aware, currency-normalized)
+    2. Validate with IntegrityGatekeeper
+    3. Conditional Gemini fallback on validation failure
     """
+    from app.services.generic_pipeline import GenericPipeline, IntegrityGatekeeper
+    
+    pipeline = GenericPipeline()
+    gatekeeper = IntegrityGatekeeper()
     
     # Step 1: Get lines to parse
     if lines is None:
@@ -663,56 +667,64 @@ def process_receipt_hybrid(
             raw_text = ocr_result.text
             lines = ocr_result.raw_lines or raw_text.split('\n')
     
-    # Step 2: Parse with regex
-    receipt = parse_receipt_with_regex(lines)
-    receipt.raw_text = raw_text
+    # Step 2: Parse with GenericPipeline
+    import asyncio
+    result = asyncio.run(pipeline.parse({"ocr_lines": lines}, image_bytes))
     
-    # Step 3: Sanity check
-    passed, reason = receipt.sanity_check()
-    logger.info(f"Sanity check: passed={passed}, reason={reason}")
-    logger.info(f"Items: {len(receipt.items)}, sum={receipt.items_total()}, total={receipt.total_amount}")
+    # Convert to ParsedReceipt
+    receipt = ParsedReceipt(parse_method=result.source.value)
+    receipt.merchant_name = result.merchant_name
+    receipt.merchant_type = result.merchant_type
+    receipt.total_amount = result.total_amount
+    receipt.transaction_date = result.date
+    receipt.payment_method = result.payment_method
+    receipt.subtotal = result.subtotal
+    receipt.discount = result.discount
+    receipt.confidence = result.confidence
     
-    # Keep original items as fallback
-    original_items = list(receipt.items)
+    for item in result.items:
+        receipt.items.append(ParsedItem(
+            name=item.name,
+            quantity=item.quantity,
+            price_per_unit=item.price_per_unit,
+            total_price=item.total_price
+        ))
     
-    if passed:
-        logger.info(f"Regex parse passed: {len(receipt.items)} items, total={receipt.total_amount}")
-        
-        # Optional: Enrich with Gemini for categories
-        if use_gemini_enrichment and receipt.merchant_name:
-            receipt = enrich_with_gemini(receipt, image_bytes)
+    receipt.raw_lines = lines
+    receipt.raw_text = raw_text if raw_text else '\n'.join(lines)
     
-    else:
-        logger.warning(f"Regex parse failed: {reason}")
-        
-        # Check discount scenario: items sum > total
-        items_sum = receipt.items_total()
-        if receipt.total_amount > 0 and items_sum > receipt.total_amount:
-            discount = items_sum - receipt.total_amount
-            logger.info(f"Discount scenario detected: items={items_sum}, total={receipt.total_amount}, discount={discount}")
-            receipt.discount = discount
-            # Items are valid - just has discount, no Gemini needed
-        elif use_gemini_fallback and image_bytes:
-            # Try Gemini to improve
-            logger.info("Calling Gemini fallback...")
-            receipt = enrich_with_gemini(receipt, image_bytes)
-            
-            # Only replace if Gemini returned items
-            if not receipt.items:
-                logger.info("Gemini returned no items, keeping original regex items")
-                receipt.items = original_items
+    # Step 3: Integrity validation
+    # Convert ParsedItem to ReceiptItem for validation
+    from app.services.generic_pipeline import ReceiptItem as GReceiptItem
+    receipt_items = [
+        GReceiptItem(
+            name=i.name,
+            quantity=i.quantity,
+            price_per_unit=i.price_per_unit,
+            total_price=i.total_price,
+            is_discount=False  # ParsedItem doesn't track this
+        )
+        for i in receipt.items
+    ]
+    is_valid, issues, conf = gatekeeper.validate(
+        receipt.merchant_name,
+        receipt.total_amount,
+        receipt_items
+    )
     
-    # Step 5: Post-process if we have items
+    logger.info(f"Integrity check: valid={is_valid}, confidence={conf}, issues={issues}")
+    
+    # If validation fails AND we have image_bytes, call Gemini fallback
+    if not is_valid and image_bytes and use_gemini_fallback:
+        logger.info("Calling Gemini fallback...")
+        receipt = enrich_with_gemini(receipt, image_bytes)
+    
+    # Step 4: Post-process
     if receipt.items:
-        receipt = post_process_receipt(receipt)
-    else:
-        # No items at all - use partial from regex
-        receipt.items = original_items
         receipt = post_process_receipt(receipt)
     
     # Fallback merchant name
     if not receipt.merchant_name:
-        # Try to find from raw lines
         for line in (receipt.raw_lines or []):
             if line and len(line.strip()) > 2 and len(line.strip()) < 50:
                 if not any(c in line.upper() for c in ['TOTAL', 'Rp', 'TUNAI', '---']):
@@ -724,16 +736,6 @@ def process_receipt_hybrid(
     # Fallback total from items
     if receipt.total_amount <= 0 and receipt.items:
         receipt.total_amount = sum(item.total_price for item in receipt.items)
-    
-    # Ensure at least some items
-    if not receipt.items and receipt.total_amount > 0:
-        # Create a generic item
-        receipt.items.append(ParsedItem(
-            name="Items",
-            quantity=1,
-            price_per_unit=receipt.total_amount,
-            total_price=receipt.total_amount
-        ))
     
     return receipt
 
