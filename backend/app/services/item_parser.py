@@ -1,0 +1,214 @@
+# ============================================================
+# ITEM PARSER - Generic Right-to-Left Splitter
+# NO hardcoded vendor/product names
+# ============================================================
+
+import re
+from typing import Optional, List, Tuple, Dict, Any
+from dataclasses import dataclass
+
+
+@dataclass
+class ParsedItem:
+    name: str
+    quantity: int
+    price_per_unit: float
+    total_price: float
+
+
+class ItemParser:
+    """
+    Generic Item Line Parser using RTL (Right-to-Left) approach.
+    
+    Algorithm:
+    1. Scan from RIGHT: Largest nominal value = Total Line Item
+    2. Scan before Total: Qty x Price pattern or unit price
+    3. Remaining LEFT tokens = Item Name
+    
+    NO hardcoded vendor/product names allowed.
+    """
+    
+    # Generic currency pattern (no hardcoded names)
+    CURRENCY_PATTERN = r'(?i)(?:Rp\.?\s*)?(\d{1,3}(?:[.,]\d{3})*|\d+)'
+    
+    # Qty x Price pattern
+    QTY_PRICE_PATTERN = r'(\d+)\s*(?:x|@)\s*(?:Rp\.?\s*)?(\d{1,3}(?:[.,]\d{3})*)'
+    
+    def parse_line(self, line: str) -> Optional[ParsedItem]:
+        """
+        Parse single receipt line into item.
+        Returns None if line is not an item.
+        """
+        line = line.strip()
+        if not line:
+            return None
+        
+        # Skip lines that are just anchors (checked by caller)
+        if self._is_anchor_line(line):
+            return None
+        
+        # Skip lines with only one large number (likely totals)
+        if self._is_summary_line(line):
+            return None
+        
+        tokens = line.split()
+        if len(tokens) < 2:
+            return None
+        
+        # Extract all currency values
+        numbers = self._extract_currency_values(tokens)
+        if not numbers:
+            return None
+        
+        # Rightmost number = total_price
+        total_price = float(numbers[-1])
+        
+        # Skip if suspiciously large (likely a phone number or junk)
+        if total_price > 10000000:
+            return None
+        
+        # Parse quantity and unit price
+        quantity, price_per_unit = self._parse_qty_price(numbers, total_price)
+        
+        # Item name = all tokens before first number
+        name = self._extract_item_name(tokens, numbers)
+        if not name or len(name) < 1:
+            return None
+        
+        return ParsedItem(
+            name=name,
+            quantity=quantity,
+            price_per_unit=price_per_unit,
+            total_price=total_price
+        )
+    
+    def _is_anchor_line(self, line: str) -> bool:
+        """Check if line is an anchor/summary line."""
+        line_upper = line.upper()
+        
+        anchor_keywords = [
+            'TOTAL', 'SUBTOTAL', 'HARGA JUAL', 'BAYAR', 'TUNAI', 
+            'CASH', 'DISKON', 'KEMBALI', 'ANDA HEMAT', 'GRAND'
+        ]
+        
+        for keyword in anchor_keywords:
+            if keyword in line_upper:
+                return True
+        
+        return False
+    
+    def _is_summary_line(self, line: str) -> bool:
+        """Check if line is likely a summary/total line (not an item)."""
+        # Extract numbers
+        numbers = re.findall(self.CURRENCY_PATTERN, line)
+        if len(numbers) == 1:
+            # Single number - likely not an item
+            clean_num = numbers[0].replace('.', '').replace(',', '')
+            if clean_num.isdigit():
+                val = int(clean_num)
+                if val > 10000:  # Large single number
+                    return True
+        return False
+    
+    def _extract_currency_values(self, tokens: List[str]) -> List[float]:
+        """Extract all currency values from tokens."""
+        numbers = []
+        
+        for token in tokens:
+            # Try to parse as currency
+            clean = token.replace('.', '').replace(',', '')
+            
+            # Remove Rp prefix
+            clean = re.sub(r'(?i)^Rp\.?\s*', '', clean)
+            
+            if clean.isdigit():
+                val = int(clean)
+                if val > 0:
+                    numbers.append(float(val))
+        
+        return numbers
+    
+    def _parse_qty_price(self, numbers: List[float], total_price: float) -> Tuple[int, float]:
+        """
+        Parse quantity and unit price from currency values.
+        
+        Returns:
+            (quantity, price_per_unit)
+        """
+        quantity = 1
+        price_per_unit = total_price
+        
+        if len(numbers) >= 2:
+            second_last = numbers[-2]
+            
+            if second_last <= 20:
+                # Small number = quantity
+                quantity = int(second_last)
+                price_per_unit = total_price / quantity
+            else:
+                # Medium number = unit price
+                price_per_unit = second_last
+                if total_price > 0 and price_per_unit > 0:
+                    qty = round(total_price / price_per_unit)
+                    if 1 <= qty <= 50:
+                        quantity = qty
+        
+        return quantity, price_per_unit
+    
+    def _extract_item_name(self, tokens: List[str], numbers: List[float]) -> str:
+        """Extract item name (tokens before first number)."""
+        # Find index of first number token
+        first_num_idx = 0
+        for i, token in enumerate(tokens):
+            clean = token.replace('.', '').replace(',', '')
+            clean = re.sub(r'(?i)^Rp\.?\s*', '', clean)
+            if clean.isdigit():
+                first_num_idx = i
+                break
+        
+        # Join tokens before first number
+        name_parts = tokens[:first_num_idx]
+        
+        # Clean up name
+        name = ' '.join(name_parts).strip()
+        
+        # Remove any trailing punctuation
+        name = re.sub(r'[,.\-]+$', '', name).strip()
+        
+        return name
+
+
+class GenericItemParser:
+    """
+    High-level interface for parsing receipt items.
+    Combines bounding region detection with item parsing.
+    """
+    
+    def __init__(self):
+        self.item_parser = ItemParser()
+    
+    def parse_items(
+        self, 
+        lines: List[str],
+        region_start: int = 0,
+        region_end: int = None
+    ) -> List[ParsedItem]:
+        """
+        Parse items from bounded region.
+        
+        Args:
+            lines: All receipt lines
+            region_start: Start index of item region
+            region_end: End index of item region (default: len(lines))
+        """
+        if region_end is None:
+            region_end = len(lines)
+        
+        items = []
+        
+        for line in lines[region_start:region_end]:
+            item = self.item_parser.parse_line(line)
+            if item:
+                items.append(item)
+        
+        return items
