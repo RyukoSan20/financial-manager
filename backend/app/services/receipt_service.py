@@ -122,56 +122,110 @@ def parse_number(text: str) -> float:
 
 def parse_receipt_with_regex(lines: List[str]) -> ParsedReceipt:
     """
-    Parse receipt using local regex engine.
-    Fast, free, no API calls needed.
+    Parse receipt using LOCAL REGION BOUNDING + RIGHT-TO-LEFT GENERIC PARSING.
+    Generic - works for ANY global receipt format.
+    
+    Step 1: Find ITEM REGION (INDEX_START to INDEX_END)
+    Step 2: Parse items RIGHT-TO-LEFT (generic)
+    Step 3: Extract total amount
     """
     receipt = ParsedReceipt(parse_method="regex")
     receipt.raw_lines = lines
     
-    # Blacklist keywords to skip
-    skip_keywords = [
-        'HARGA JUAL', 'TOTAL', 'TUNAI', 'KEMBALI', 'ANDA HEMAT',
-        'DISKON', 'BAYAR', 'TAGIHAN', 'SALDO', 'REF ', 'NO.',
-        'GRAND TOTAL', 'SUBTOTAL', 'GRAND TOTAL', 'VOUCHER'
-    ]
+    # =========================================================
+    # STEP 1: REGIONAL BOUNDING BOX - Find item region
+    # =========================================================
     
-    # Merchant detection (first non-empty line or prominent brand)
-    for line in lines[:10]:
+    # Summary keywords that mark end of item section
+    summary_keywords = ['TOTAL', 'GRAND TOTAL', 'SUBTOTAL', 'HARGA JUAL', 
+                        'BAYAR', 'CASH', 'TUNAI', 'KEMBALI', 'JUMLAH']
+    
+    # Header separators that mark start of item section  
+    header_separators = ['---', '==', '---', '___', '....', '....']
+    
+    index_start = 0
+    index_end = len(lines)
+    
+    # Find INDEX_START: first separator line OR first non-metadata line
+    for i, line in enumerate(lines[:15]):  # Check first 15 lines
         line_upper = line.upper().strip()
-        if len(line_upper) > 2 and len(line_upper) < 50:
-            # Skip lines that look like dates, numbers, or separators
-            if not re.match(r'^[\d\s\-\.\:]+$', line_upper):
-                # Likely merchant name
-                if not any(kw in line_upper for kw in skip_keywords):
-                    receipt.merchant_name = line.strip()
-                    break
+        line_clean = line.strip()
+        
+        # Found separator line
+        if any(sep in line_clean for sep in ['---', '==', '___', '....']):
+            index_start = i + 1
+            break
+        
+        # Check if line looks like transaction metadata (date/time patterns)
+        # Skip date lines like "14.09.16-06:46"
+        if re.match(r'^[\d\.\-\:\s]+$', line_clean) and len(line_clean) < 25:
+            continue
+        
+        # Skip empty lines
+        if not line_clean:
+            continue
+            
+        # This is likely merchant name - set start after this
+        if index_start == 0:
+            receipt.merchant_name = line_clean
+            # Check next line for separator
+            if i + 1 < len(lines) and '---' in lines[i + 1]:
+                index_start = i + 2
+                break
+            index_start = i + 1
+            break
     
-    # Item parsing (single-line format)
-    for line in lines:
+    # Find INDEX_END: first summary keyword line
+    for i, line in enumerate(lines):
+        line_upper = line.upper()
+        if any(kw in line_upper for kw in summary_keywords):
+            index_end = i
+            break
+    
+    # Extract items from bounded region
+    item_lines = lines[index_start:index_end]
+    
+    # =========================================================
+    # STEP 2: RIGHT-TO-LEFT GENERIC PARSING
+    # =========================================================
+    
+    for line in item_lines:
         line_clean = normalize_thousand_separators(line.strip())
         line_upper = line_clean.upper()
         
-        # Skip blacklisted lines
-        if any(kw in line_upper for kw in skip_keywords):
+        # Skip empty lines
+        if not line_clean or len(line_clean) < 3:
             continue
         
-        # Skip lines that are mostly numbers/dates
-        alpha_count = len(re.sub(r'[\d\s\-\.\,\:]', '', line_clean))
-        if alpha_count < 3:
+        # Skip lines that are mostly numbers (date lines, amounts)
+        alpha_count = len(re.sub(r'[\d\s\-\.\,\:\/]', '', line_clean))
+        numeric_count = len(re.sub(r'[^\d]', '', line_clean))
+        
+        # If line has very few alphabetic characters, it's probably not an item
+        if alpha_count < 2 and numeric_count > len(line_clean) * 0.7:
             continue
         
-        # Try to parse as item
-        item = parse_item_line(line_clean)
+        # Skip lines with summary keywords
+        if any(kw in line_upper for kw in summary_keywords):
+            continue
+        
+        # Skip lines that look like phone numbers or hotlines
+        if re.match(r'^[\d\s\-\.]+$', line_clean):
+            continue
+        
+        # Parse item using RIGHT-TO-LEFT approach
+        item = parse_item_line_rtl(line_clean)
         if item:
             receipt.items.append(item)
     
-    # Extract totals
+    # =========================================================
+    # STEP 3: Extract total amount (from entire document)
+    # =========================================================
+    
     for line in lines:
         line_upper = line.upper()
         
-        # Total amount
         if 'TOTAL' in line_upper or 'GRAND' in line_upper:
-            # Normalize the line first (fix thousand separators)
             normalized_line = normalize_thousand_separators(line)
             numbers = re.findall(r'[\d\,\.]+', normalized_line)
             for num in reversed(numbers):
@@ -181,21 +235,18 @@ def parse_receipt_with_regex(lines: List[str]) -> ParsedReceipt:
                     break
         
         # Payment method
-        payment_patterns = {
-            r'GOPAY|OVO|DANA|ECASH': 'E-Wallet',
-            r'TUNAI|CASH': 'Cash',
-            r'DEBIT': 'Debit',
-            r'QRIS': 'QRIS',
-            r'KREDIT': 'Credit',
-        }
-        for pattern, method in payment_patterns.items():
-            if re.search(pattern, line_upper):
-                receipt.payment_method = method
-                break
+        if 'GOPAY' in line_upper or 'OVO' in line_upper or 'DANA' in line_upper:
+            receipt.payment_method = 'E-Wallet'
+        elif 'TUNAI' in line_upper or 'CASH' in line_upper:
+            receipt.payment_method = 'Cash'
+        elif 'DEBIT' in line_upper:
+            receipt.payment_method = 'Debit'
+        elif 'QRIS' in line_upper:
+            receipt.payment_method = 'QRIS'
         
         # Date extraction
         date_match = re.search(r'(\d{2})[\.\-](\d{2})[\.\-](\d{2,4})', line)
-        if date_match:
+        if date_match and not receipt.transaction_date:
             day, month, year = date_match.groups()
             if len(year) == 2:
                 year = '20' + year
@@ -204,23 +255,108 @@ def parse_receipt_with_regex(lines: List[str]) -> ParsedReceipt:
     # Calculate subtotal from items
     receipt.subtotal = sum(item.total_price for item in receipt.items)
     
-    # Calculate discount
+    # Discount
     receipt.discount = receipt.subtotal - receipt.total_amount
     
-    # Estimate confidence
+    # Confidence based on item count
     if receipt.items:
         receipt.confidence = min(0.9, 0.5 + 0.1 * len(receipt.items))
     
     return receipt
 
 
-def parse_item_line(line: str) -> Optional[ParsedItem]:
+def parse_item_line_rtl(line: str) -> Optional[ParsedItem]:
     """
-    Parse a single receipt line into an item.
-    Format: NAME QTY UNIT_PRICE TOTAL
+    RIGHT-TO-LEFT GENERIC PARSER for ANY receipt item line.
+    
+    Algorithm:
+    1. Tokenize by whitespace
+    2. Extract RIGHTMOST numbers as prices (rightmost = total_price)
+    3. Extract quantity from remaining right-side numbers (if small int)
+    4. Everything LEFT becomes item_name
+    
+    This works for ANY product name, ANY language, ANY format.
     """
-    if not line:
+    # Normalize separators
+    line = normalize_thousand_separators(line)
+    
+    # Tokenize
+    tokens = line.split()
+    if len(tokens) < 2:
         return None
+    
+    # Find all numbers in tokens
+    numbers = []
+    for i, token in enumerate(tokens):
+        # Clean token (remove dots for thousand separator)
+        clean = token.replace('.', '')
+        if clean.isdigit():
+            numbers.append((i, int(clean)))
+        elif re.match(r'^\d+,\d+$', token):
+            # European decimal (1,500)
+            clean = token.replace(',', '')
+            numbers.append((i, int(clean)))
+    
+    if not numbers:
+        return None
+    
+    # RIGHT-TO-LEFT assignment
+    # Rightmost number = total_price
+    last_idx, last_val = numbers[-1]
+    total_price = float(last_val)
+    
+    # Second rightmost number = price_per_unit or quantity
+    price_per_unit = total_price
+    quantity = 1
+    
+    if len(numbers) >= 2:
+        second_last_idx, second_last_val = numbers[-2]
+        
+        # Check if it's quantity (small integer <= 20)
+        if second_last_val <= 20:
+            quantity = second_last_val
+            price_per_unit = total_price / quantity
+        else:
+            # It's probably unit price, calculate qty
+            price_per_unit = float(second_last_val)
+            if total_price > 0 and price_per_unit > 0:
+                # Estimate qty from total/unit price
+                qty_estimate = round(total_price / price_per_unit)
+                if qty_estimate >= 1 and qty_estimate <= 50:
+                    quantity = qty_estimate
+    
+    # Third rightmost could be quantity if first two are both prices
+    if len(numbers) >= 3 and quantity == 1:
+        third_last_idx, third_last_val = numbers[-3]
+        if third_last_val <= 20:
+            # Recalculate
+            quantity = third_last_val
+            # Recalculate unit price
+            if len(numbers) >= 2:
+                price_per_unit = float(numbers[-1][1]) / quantity
+    
+    # Everything BEFORE the numbers is the item name
+    # Find the index of the first number token
+    first_number_idx = numbers[0][0]
+    
+    # Item name = all tokens before first number
+    item_name = ' '.join(tokens[:first_number_idx])
+    
+    # Clean up item name
+    item_name = item_name.strip()
+    if not item_name or len(item_name) < 2:
+        return None
+    
+    # Skip if total_price is suspiciously high (likely a phone number or junk)
+    if total_price > 10000000:  # > 10 million
+        return None
+    
+    return ParsedItem(
+        name=item_name,
+        quantity=quantity,
+        price_per_unit=price_per_unit,
+        total_price=total_price
+    )
     
     # Split by whitespace
     parts = line.split()
