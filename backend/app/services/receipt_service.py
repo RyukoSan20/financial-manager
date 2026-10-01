@@ -60,12 +60,13 @@ class ParsedReceipt:
         if self.total_amount <= 0:
             return False, "Total amount is zero or negative"
         
-        # Check math: sum of items should match total (within 5% tolerance)
+        # Check math: sum of items should match total (within ABSOLUTE 500 tolerance)
+        # RIGID CHECK: If diff > 500, regex failed - call Gemini fallback
         items_sum = self.items_total()
         if items_sum > 0:
-            diff_pct = abs(items_sum - self.total_amount) / self.total_amount
-            if diff_pct > 0.05:  # More than 5% difference
-                return False, f"Math mismatch: items sum={items_sum}, total={self.total_amount} (diff={diff_pct:.1%})"
+            diff = abs(items_sum - self.total_amount)
+            if diff > 500:  # Absolute threshold, not percentage
+                return False, f"Math mismatch: items sum={items_sum}, total={self.total_amount} (diff={diff})"
         
         return True, "OK"
 
@@ -136,28 +137,26 @@ def parse_receipt_with_regex(lines: List[str]) -> ParsedReceipt:
     # STEP 1: REGIONAL BOUNDING BOX - Find item region
     # =========================================================
     
-    # Summary keywords that mark end of item section
-    summary_keywords = ['TOTAL', 'GRAND TOTAL', 'SUBTOTAL', 'HARGA JUAL', 
-                        'BAYAR', 'CASH', 'TUNAI', 'KEMBALI', 'JUMLAH']
-    
-    # Header separators that mark start of item section  
-    header_separators = ['---', '==', '---', '___', '....', '....']
+    # Summary keywords that mark end of item section (EARLY STOP - first occurrence)
+    summary_keywords = [
+        'HARGA JUAL', 'SUBTOTAL', 'SUB TOTAL', 'DISKON', 
+        'TOTAL', 'ANDA HEMAT', 'TUNAI', 'CASH', 'BAYAR', 'KEMBALI', 'GRAND'
+    ]
     
     index_start = 0
     index_end = len(lines)
     
     # Find INDEX_START: first separator line OR first non-metadata line
-    for i, line in enumerate(lines[:15]):  # Check first 15 lines
+    for i, line in enumerate(lines[:15]):
         line_upper = line.upper().strip()
         line_clean = line.strip()
         
         # Found separator line
-        if any(sep in line_clean for sep in ['---', '==', '___', '....']):
+        if '---' in line_clean or '===' in line_clean or '___' in line_clean:
             index_start = i + 1
             break
         
-        # Check if line looks like transaction metadata (date/time patterns)
-        # Skip date lines like "14.09.16-06:46"
+        # Skip date/time metadata lines
         if re.match(r'^[\d\.\-\:\s]+$', line_clean) and len(line_clean) < 25:
             continue
         
@@ -165,24 +164,20 @@ def parse_receipt_with_regex(lines: List[str]) -> ParsedReceipt:
         if not line_clean:
             continue
             
-        # This is likely merchant name - set start after this
+        # This is likely merchant name
         if index_start == 0:
             receipt.merchant_name = line_clean
-            # Check next line for separator
-            if i + 1 < len(lines) and '---' in lines[i + 1]:
-                index_start = i + 2
-                break
             index_start = i + 1
             break
     
-    # Find INDEX_END: first summary keyword line
+    # Find INDEX_END: FIRST occurrence of summary keyword (EARLY STOP)
     for i, line in enumerate(lines):
         line_upper = line.upper()
         if any(kw in line_upper for kw in summary_keywords):
-            index_end = i
+            index_end = i  # EXCLUDE this line and everything after
             break
     
-    # Extract items from bounded region
+    # Extract items from bounded region (INDEX_START to INDEX_END-1)
     item_lines = lines[index_start:index_end]
     
     # =========================================================
@@ -197,11 +192,9 @@ def parse_receipt_with_regex(lines: List[str]) -> ParsedReceipt:
         if not line_clean or len(line_clean) < 3:
             continue
         
-        # Skip lines that are mostly numbers (date lines, amounts)
+        # Skip lines that are mostly numbers
         alpha_count = len(re.sub(r'[\d\s\-\.\,\:\/]', '', line_clean))
         numeric_count = len(re.sub(r'[^\d]', '', line_clean))
-        
-        # If line has very few alphabetic characters, it's probably not an item
         if alpha_count < 2 and numeric_count > len(line_clean) * 0.7:
             continue
         
@@ -209,13 +202,21 @@ def parse_receipt_with_regex(lines: List[str]) -> ParsedReceipt:
         if any(kw in line_upper for kw in summary_keywords):
             continue
         
-        # Skip lines that look like phone numbers or hotlines
+        # Skip phone/hotline patterns
         if re.match(r'^[\d\s\-\.]+$', line_clean):
+            continue
+        
+        # Skip lines with parentheses (promo info) or negative/minus prices
+        # These are discount/promo lines, NOT items
+        if '(' in line or ')' in line or '- ' in line_clean or line_clean.startswith('-'):
+            continue
+        # Also skip if price looks like a discount (starts with minus in the number)
+        if re.search(r'-\s*\d', line_clean):
             continue
         
         # Parse item using RIGHT-TO-LEFT approach
         item = parse_item_line_rtl(line_clean)
-        if item:
+        if item and item.total_price > 0:
             receipt.items.append(item)
     
     # =========================================================
@@ -640,20 +641,25 @@ def process_receipt_hybrid(
     if passed:
         logger.info(f"Regex parse passed: {len(receipt.items)} items, total={receipt.total_amount}")
         
-        # Step 4a: Enrich with Gemini (optional)
+        # Step 4a: Enrich with Gemini (optional - for merchant type/categories)
         if use_gemini_enrichment and receipt.merchant_name:
             receipt = enrich_with_gemini(receipt, image_bytes)
     
     else:
         logger.warning(f"Regex parse failed: {reason}")
         
+        # RIGID MATH CHECK FAILOVER: Clear wrong items, call Gemini
+        logger.info("Clearing wrong regex items, calling Gemini fallback...")
+        receipt.items = []  # Clear wrong items to avoid polluting DB
+        
         if use_gemini_fallback:
             logger.info("Calling Gemini fallback...")
-            # Step 4b: Full Gemini parse
+            # Step 4b: Full Gemini parse from image
             receipt = enrich_with_gemini(receipt, image_bytes)
     
-    # Step 5: Post-process - ensure minimum viable data (best effort)
-    receipt = post_process_receipt(receipt)
+    # Step 5: Post-process - only if we have items
+    if receipt.items:
+        receipt = post_process_receipt(receipt)
     
     # Fallback merchant name
     if not receipt.merchant_name:
