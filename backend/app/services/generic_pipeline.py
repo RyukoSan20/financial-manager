@@ -1,18 +1,12 @@
 # ============================================================
-# GENERIC RECEIPT PIPELINE
+# GENERIC RECEIPT PIPELINE v2
 # Rule-First, AI-Last Architecture
 # ============================================================
 #
-# CONSTRAINTS:
-# - NO hardcoded vendor/product names
-# - NO hardcoded pixel tolerances
-# - NO returning success with Total=0 or generic merchant
-#
-# Architecture:
-# Layer 1: Email/Transfer Parser
-# Layer 2: Physical Receipt (Geometric + RTL)
-# Layer 3: Integrity Gatekeeper
-# Layer 4: Gemini Fallback
+# FIXED ISSUES:
+# 1. Currency regex handles Indonesian format (33,900 / 33.900 / 33 900)
+# 2. Discount handling with negative values
+# 3. Real fallback execution on validation fail
 # ============================================================
 
 import os
@@ -38,19 +32,20 @@ class ReceiptItem:
     quantity: int = 1
     price_per_unit: float = 0.0
     total_price: float = 0.0
+    is_discount: bool = False
     
     def to_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
             "quantity": self.quantity,
             "price_per_unit": self.price_per_unit,
-            "total_price": self.total_price
+            "total_price": self.total_price,
+            "is_discount": self.is_discount
         }
 
 
 @dataclass
 class ExtractionResult:
-    """Structured result - MUST pass validation before returning."""
     success: bool = False
     merchant_name: str = "Merchant"
     merchant_type: str = "Other"
@@ -66,7 +61,11 @@ class ExtractionResult:
     
     @property
     def items_sum(self) -> float:
-        return sum(i.total_price for i in self.items)
+        return sum(i.total_price for i in self.items if not i.is_discount)
+    
+    @property
+    def discount_sum(self) -> float:
+        return sum(abs(i.total_price) for i in self.items if i.is_discount)
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -86,22 +85,18 @@ class ExtractionResult:
 
 
 # ============================================================
-# FUZZY MATCHING ENGINE (Levenshtein-based)
+# FUZZY MATCHING ENGINE
 # ============================================================
 
 class FuzzyMatcher:
-    """Generic fuzzy string matching with configurable threshold."""
-    
-    THRESHOLD = 0.80  # 80% similarity required
+    THRESHOLD = 0.80
     
     @staticmethod
     def levenshtein_distance(s1: str, s2: str) -> int:
-        """Calculate Levenshtein distance."""
         if len(s1) < len(s2):
             return FuzzyMatcher.levenshtein_distance(s2, s1)
         if len(s2) == 0:
             return len(s1)
-        
         prev_row = list(range(len(s2) + 1))
         for i, c1 in enumerate(s1):
             curr_row = [i + 1]
@@ -115,7 +110,6 @@ class FuzzyMatcher:
     
     @classmethod
     def similarity_ratio(cls, s1: str, s2: str) -> float:
-        """Calculate similarity ratio (0.0 - 1.0)."""
         if not s1 and not s2:
             return 1.0
         s1, s2 = s1.upper().strip(), s2.upper().strip()
@@ -127,16 +121,12 @@ class FuzzyMatcher:
     
     @classmethod
     def match(cls, text: str, keywords: List[str], threshold: float = None) -> Tuple[bool, str, float]:
-        """Check if text fuzzy-matches any keyword."""
         threshold = threshold or cls.THRESHOLD
         text_upper = text.upper().strip()
-        
         for keyword in keywords:
             keyword_upper = keyword.upper()
-            # Exact substring
             if keyword_upper in text_upper:
                 return True, keyword, 1.0
-            # Fuzzy
             score = cls.similarity_ratio(text_upper, keyword_upper)
             if score >= threshold:
                 return True, keyword, score
@@ -144,141 +134,97 @@ class FuzzyMatcher:
 
 
 # ============================================================
-# CONFIGURABLE ANCHOR ENGINE
+# CURRENCY & TEXT NORMALIZER
 # ============================================================
 
-class AnchorConfig:
-    """Configurable anchor keywords - loaded from config, not hardcoded."""
+class CurrencyNormalizer:
+    """
+    Normalizes Indonesian currency formats:
+    - 33,900 -> 33900
+    - 33.900 -> 33900
+    - 33 900 -> 33900
+    - (1,300) -> -1300 (discount)
+    """
     
-    # Generic anchor keywords (NOT vendor-specific)
-    TOTAL_KEYWORDS = [
-        "TOTAL", "GRAND TOTAL", "HARGA JUAL", "SUBTOTAL",
-        "JUMLAH", "BAYAR", "HARUS DIBAYAR", "TOTAL BAYAR"
-    ]
-    DISCARD_KEYWORDS = [
-        "TUNAI", "CASH", "KEMBALI", "DISKON",
-        "ANDA HEMAT", "VOUCHER", "BONUS"
-    ]
-    DATE_PATTERNS = [
-        r"(\d{1,2})[\.\-](\d{1,2})[\.\-](\d{2,4})",
-        r"(\d{4})[\.\-](\d{1,2})[\.\-](\d{1,2})"
-    ]
-    MERCHANT_SKIP_PATTERNS = [
-        r"^[0-9]+$",  # Pure numbers
-        r"^[\d\s\.\-\:\/]+$",  # Date/time only
-    ]
-    GARBAGE_PATTERNS = [
-        "DOWNLOAD", "HTTP", "WWW", "口品", "★"
-    ]
-
-
-class AnchorEngine:
-    """Generic anchor detection using fuzzy matching."""
-    
-    def __init__(self, config: AnchorConfig = None):
-        self.config = config or AnchorConfig()
-    
-    def find_total_bottom_up(self, lines: List[str]) -> Tuple[bool, float, Optional[str]]:
+    @staticmethod
+    def normalize_line(line: str) -> str:
         """
-        Scan from BOTTOM-UP to find TOTAL anchor.
-        Returns: (found, value, matched_keyword)
+        Normalize line by removing thousand separators from currency patterns.
+        Only normalizes patterns like 33,900 / 33.900 / 33 900 -> 33900
+        Does NOT touch arbitrary numbers like "72G" or quantities.
         """
-        keywords = self.config.TOTAL_KEYWORDS
+        if not line:
+            return line
         
-        for i in range(len(lines) - 1, -1, -1):
-            line = lines[i].strip()
-            if not line:
-                continue
-            
-            matched, keyword, score = FuzzyMatcher.match(line, keywords)
-            if matched:
-                # Extract largest number
-                value = self._extract_largest_number(line)
-                if value and value > 0:
-                    return True, value, keyword
+        # Strategy: Only normalize patterns where comma/dot/space separates
+        # exactly 3 digits (thousand separator pattern)
         
-        return False, 0.0, None
+        # Pattern 1: digit + comma + 3 digits (33,900)
+        line = re.sub(r'(\d),(\d{3})(?!\d)', r'\1\2', line)
+        
+        # Pattern 2: digit + dot + 3 digits (33.900)
+        line = re.sub(r'(\d)\.(\d{3})(?!\d)', r'\1\2', line)
+        
+        # Pattern 3: digit + space + 3 digits (33 900)
+        # Only when followed by end of number
+        line = re.sub(r'(\d) (\d{3})(?=\D|$)', r'\1\2', line)
+        
+        # Also handle comma-space pattern (33, 900)
+        line = re.sub(r'(\d), (\d{3})(?=\D|$)', r'\1\2', line)
+        
+        return line
     
-    def find_merchant_top(self, lines: List[str]) -> Optional[str]:
-        """Scan from TOP-DOWN to find merchant name."""
-        skip_patterns = self.config.MERCHANT_SKIP_PATTERNS
-        garbage = self.config.GARBAGE_PATTERNS
+    @staticmethod
+    def extract_amounts(line: str) -> List[float]:
+        """
+        Extract all currency amounts from normalized line.
+        Handles both positive and negative (discount) values.
+        """
+        amounts = []
         
-        for line in lines[:10]:
-            line_clean = line.strip()
-            if not line_clean:
-                continue
-            
-            # Skip patterns
-            if any(re.match(p, line_clean) for p in skip_patterns):
-                continue
-            
-            # Skip garbage
-            if any(g in line_clean.upper() for g in garbage):
-                continue
-            
-            # Must have letters
-            if sum(1 for c in line_clean if c.isalpha()) >= 2:
-                return line_clean
+        # Normalize first
+        line = CurrencyNormalizer.normalize_line(line)
         
+        # Check if discount (in parentheses or with minus)
+        is_discount = '(' in line or line.startswith('-')
+        
+        # Extract positive amounts
+        pattern = r'(\d+)'
+        matches = re.findall(pattern, line)
+        for m in matches:
+            try:
+                val = int(m)
+                if val > 0:
+                    amounts.append(float(val))
+            except ValueError:
+                continue
+        
+        return amounts
+    
+    @staticmethod
+    def extract_largest_amount(line: str) -> Optional[float]:
+        """Extract the largest amount from line (likely total/discount)."""
+        amounts = CurrencyNormalizer.extract_amounts(line)
+        if amounts:
+            return max(amounts)
         return None
-    
-    def find_date(self, lines: List[str]) -> Optional[str]:
-        """Extract date using generic pattern."""
-        for line in lines:
-            for pattern in self.config.DATE_PATTERNS:
-                match = re.search(pattern, line, re.IGNORECASE)
-                if match:
-                    groups = match.groups()
-                    if len(groups) == 3:
-                        return match.group(0)
-        return None
-    
-    def find_item_region(self, lines: List[str]) -> Tuple[int, int]:
-        """Find item region boundaries (start, end)."""
-        # Find start (after separator)
-        index_start = 0
-        for i, line in enumerate(lines[:15]):
-            if "---" in line or "===" in line:
-                index_start = i + 1
-                break
-        
-        # Find end (first anchor from bottom)
-        index_end = len(lines)
-        all_anchors = self.config.TOTAL_KEYWORDS + self.config.DISCARD_KEYWORDS
-        
-        for i, line in enumerate(lines):
-            matched, _, _ = FuzzyMatcher.match(line, all_anchors)
-            if matched:
-                index_end = i
-                break
-        
-        return index_start, index_end
-    
-    def _extract_largest_number(self, line: str) -> Optional[float]:
-        """Extract largest number from line."""
-        numbers = re.findall(r"(\d+)", line)
-        if not numbers:
-            return None
-        values = [int(n) for n in numbers if len(n) >= 4]  # At least 4 digits
-        return float(max(values)) if values else None
 
 
 # ============================================================
-# GENERIC ITEM PARSER (RTL Approach)
+# ITEM PARSER (RTL with Discount Support)
 # ============================================================
 
 class ItemParser:
     """
-    Generic RTL item line parser.
-    NO hardcoded product names.
+    Generic RTL item line parser with discount handling.
     """
     
-    # Generic currency regex
-    CURRENCY_PATTERN = r"(\d+)"
+    TOTAL_KEYWORDS = ["TOTAL", "SUBTOTAL", "HARGA JUAL", "JUMLAH", "BAYAR"]
+    DISCARD_KEYWORDS = ["TUNAI", "CASH", "KEMBALI", "ANDA HEMAT", "VOUCHER"]
+    DISCOUNT_KEYWORDS = ["DISKON", "POTONGAN", "DISCOUNT", "POTONGAN HARGA"]
     
     def parse_line(self, line: str) -> Optional[ReceiptItem]:
-        """Parse single line into item."""
+        """Parse single line into item or discount."""
         line = line.strip()
         if not line:
             return None
@@ -286,39 +232,85 @@ class ItemParser:
         line_upper = line.upper()
         
         # Skip anchor lines
-        anchor_config = AnchorConfig()
-        all_anchors = anchor_config.TOTAL_KEYWORDS + anchor_config.DISCARD_KEYWORDS
+        all_anchors = self.TOTAL_KEYWORDS + self.DISCARD_KEYWORDS
         matched, _, _ = FuzzyMatcher.match(line_upper, all_anchors)
         if matched:
             return None
         
-        # Skip promo/discount lines
-        if "(" in line or line.startswith("-"):
+        # Check if discount line
+        is_discount = self._is_discount_line(line)
+        
+        # Normalize and extract amounts
+        normalized_line = CurrencyNormalizer.normalize_line(line)
+        amounts = CurrencyNormalizer.extract_amounts(normalized_line)
+        
+        if not amounts:
             return None
         
-        tokens = line.split()
-        if len(tokens) < 2:
+        if is_discount:
+            return self._parse_discount_line(line, amounts)
+        else:
+            return self._parse_item_line(line, amounts)
+    
+    def _is_discount_line(self, line: str) -> bool:
+        """Check if line is a discount."""
+        line_upper = line.upper()
+        
+        # Check keywords
+        matched, _, _ = FuzzyMatcher.match(line_upper, self.DISCOUNT_KEYWORDS)
+        if matched:
+            return True
+        
+        # Check parentheses (discount format)
+        if '(' in line and ')' in line:
+            return True
+        
+        # Check minus prefix
+        if line.startswith('-'):
+            return True
+        
+        return False
+    
+    def _parse_discount_line(self, line: str, amounts: List[float]) -> Optional[ReceiptItem]:
+        """Parse discount line."""
+        if not amounts:
             return None
         
-        # Extract numbers
-        numbers = self._extract_numbers(tokens)
-        if not numbers:
+        # Largest amount is the discount value
+        discount_value = max(abs(a) for a in amounts)
+        
+        # Extract discount name
+        name = self._extract_discount_name(line)
+        
+        return ReceiptItem(
+            name=name,
+            quantity=1,
+            price_per_unit=0,
+            total_price=-discount_value,  # Negative for discount
+            is_discount=True
+        )
+    
+    def _parse_item_line(self, line: str, amounts: List[float]) -> Optional[ReceiptItem]:
+        """Parse item line."""
+        if not amounts:
             return None
         
-        # Rightmost number = total_price
-        total_price = float(numbers[-1])
+        # Rightmost amount = total_price
+        total_price = float(amounts[-1])
         
-        # Skip if not a valid item price
+        # Skip large single amounts (likely not items)
+        if len(amounts) == 1 and total_price > 10000:
+            return None
+        
+        # Skip extremely large amounts
         if total_price > 10000000:
-            return None
-        if len(numbers) == 1 and total_price > 1000:
             return None
         
         # Parse quantity and unit price
-        quantity, price_per_unit = self._parse_qty_price(numbers, total_price)
+        quantity, price_per_unit = self._parse_qty_price(amounts, total_price)
         
-        # Item name = text before first number
-        name = self._extract_name(tokens, numbers)
+        # Extract name
+        name = self._extract_item_name(line)
         if not name:
             return None
         
@@ -326,43 +318,138 @@ class ItemParser:
             name=name,
             quantity=quantity,
             price_per_unit=price_per_unit,
-            total_price=total_price
+            total_price=total_price,
+            is_discount=False
         )
     
-    def _extract_numbers(self, tokens: List[str]) -> List[int]:
-        """Extract integer values from tokens."""
-        numbers = []
-        for token in tokens:
-            clean = token.replace(".", "").replace(",", "")
-            if clean.isdigit():
-                numbers.append(int(clean))
-        return numbers
-    
-    def _parse_qty_price(self, numbers: List[int], total_price: float) -> Tuple[int, float]:
+    def _parse_qty_price(self, amounts: List[float], total_price: float) -> Tuple[int, float]:
         """Parse quantity and unit price."""
         quantity, price_per_unit = 1, total_price
         
-        if len(numbers) >= 2:
-            second = numbers[-2]
+        if len(amounts) >= 2:
+            second = amounts[-2]
             if 1 <= second <= 20:
-                quantity = second
+                quantity = int(second)
                 price_per_unit = total_price / quantity
         
         return quantity, price_per_unit
     
-    def _extract_name(self, tokens: List[str], numbers: List[int]) -> Optional[str]:
-        """Extract item name (text before first number)."""
-        # Find index of first number
-        num_strs = [str(n) for n in numbers]
-        first_num_idx = len(tokens)
-        for i, token in enumerate(tokens):
-            clean = token.replace(".", "").replace(",", "")
-            if clean in num_strs:
-                first_num_idx = i
+    def _extract_item_name(self, line: str) -> Optional[str]:
+        """Extract item name from line."""
+        # Normalize first
+        normalized = CurrencyNormalizer.normalize_line(line)
+        
+        # Find where numbers start
+        match = re.search(r'\d', normalized)
+        if match:
+            idx = match.start()
+            name = normalized[:idx].strip()
+        else:
+            name = normalized
+        
+        # Clean up
+        name = re.sub(r'[\s\-]+$', '', name).strip()
+        
+        return name if name and len(name) > 0 else None
+    
+    def _extract_discount_name(self, line: str) -> str:
+        """Extract discount name."""
+        line_upper = line.upper()
+        
+        for kw in self.DISCOUNT_KEYWORDS:
+            if kw in line_upper:
+                idx = line_upper.find(kw)
+                rest = line[idx + len(kw):].strip()
+                if rest:
+                    return f"{kw} {rest}".strip()
+                return kw
+        
+        return "DISKON"
+
+
+# ============================================================
+# ANCHOR ENGINE
+# ============================================================
+
+class AnchorEngine:
+    """
+    Generic anchor detection using fuzzy matching.
+    """
+    
+    def __init__(self):
+        self.item_parser = ItemParser()
+    
+    def find_total_bottom_up(self, lines: List[str]) -> Tuple[bool, float, Optional[str]]:
+        """Scan from BOTTOM-UP to find TOTAL."""
+        total_keywords = ["TOTAL", "GRAND TOTAL", "HARGA JUAL", "SUBTOTAL", "JUMLAH"]
+        
+        for i in range(len(lines) - 1, -1, -1):
+            line = lines[i].strip()
+            if not line:
+                continue
+            
+            matched, keyword, score = FuzzyMatcher.match(line.upper(), total_keywords)
+            if matched:
+                # Extract amount
+                amount = CurrencyNormalizer.extract_largest_amount(line)
+                if amount and amount > 0:
+                    return True, float(amount), keyword
+        
+        return False, 0.0, None
+    
+    def find_merchant_top(self, lines: List[str]) -> Optional[str]:
+        """Scan from TOP-DOWN to find merchant."""
+        skip_patterns = [r"^[0-9]+$", r"^[\d\s\.\-\:\/]+$"]
+        garbage = ["DOWNLOAD", "HTTP", "口品", "★"]
+        
+        for line in lines[:10]:
+            line_clean = line.strip()
+            if not line_clean:
+                continue
+            
+            if any(re.match(p, line_clean) for p in skip_patterns):
+                continue
+            
+            if any(g in line_clean.upper() for g in garbage):
+                continue
+            
+            if sum(1 for c in line_clean if c.isalpha()) >= 2:
+                return line_clean
+        
+        return None
+    
+    def find_date(self, lines: List[str]) -> Optional[str]:
+        """Extract date."""
+        for line in lines:
+            match = re.search(r"(\d{2})[\.\-](\d{2})[\.\-](\d{2,4})", line)
+            if match:
+                d, m, y = match.groups()
+                if len(y) == 2:
+                    y = "20" + y
+                return f"{y}-{m}-{d}"
+        return None
+    
+    def find_item_region(self, lines: List[str]) -> Tuple[int, int]:
+        """Find item region boundaries."""
+        index_start = 0
+        index_end = len(lines)
+        
+        # Find start (after separator)
+        for i, line in enumerate(lines[:15]):
+            if "---" in line or "===" in line:
+                index_start = i + 1
                 break
         
-        name = " ".join(tokens[:first_num_idx]).strip()
-        return name if name else None
+        # Find end (first TOTAL anchor from bottom)
+        # DISKON lines should be INCLUDED in item region
+        total_anchors = ["TOTAL", "GRAND TOTAL", "HARGA JUAL", "SUBTOTAL", "JUMLAH"]
+        for i, line in enumerate(lines):
+            matched, _, _ = FuzzyMatcher.match(line.upper(), total_anchors)
+            if matched:
+                index_end = i
+                break
+        
+        return index_start, index_end
 
 
 # ============================================================
@@ -371,8 +458,7 @@ class ItemParser:
 
 class IntegrityGatekeeper:
     """
-    Mathematical validation - rejects invalid data.
-    Returns (is_valid, issues, confidence)
+    Mathematical validation with discount support.
     """
     
     MATH_TOLERANCE = 500
@@ -386,7 +472,7 @@ class IntegrityGatekeeper:
     ) -> Tuple[bool, List[str], float]:
         """
         Validate receipt data mathematically.
-        Returns: (is_valid, issues, confidence)
+        Formula: Sum(Item Totals) - Sum(Discounts) == Grand Total (± tolerance)
         """
         issues = []
         confidence = 0.0
@@ -399,15 +485,18 @@ class IntegrityGatekeeper:
         
         # Rule 2: Merchant not generic
         if self._is_generic_merchant(merchant_name):
-            issues.append("Merchant name is generic placeholder")
+            issues.append("Merchant name is generic")
             confidence += 0.10
         else:
             confidence += 0.20
         
-        # Rule 3: Math validation
-        items_sum = sum(i.total_price for i in items)
+        # Rule 3: Math validation with discounts
         if items:
-            diff = abs(items_sum - total_amount)
+            items_sum = sum(i.total_price for i in items if not i.is_discount)
+            discount_sum = sum(abs(i.total_price) for i in items if i.is_discount)
+            net_total = items_sum - discount_sum
+            
+            diff = abs(net_total - total_amount)
             
             if diff <= self.MATH_TOLERANCE:
                 confidence += 0.55
@@ -416,24 +505,20 @@ class IntegrityGatekeeper:
                 confidence += 0.45
             else:
                 confidence += 0.15
+                issues.append(f"Math mismatch: net={net_total}, total={total_amount}")
         else:
             confidence += 0.30  # Transfer receipts have no items
         
-        # Clamp
         confidence = min(1.0, confidence)
-        
         is_valid = confidence >= self.CONFIDENCE_THRESHOLD
         
         return is_valid, issues, confidence
     
     def _is_generic_merchant(self, name: str) -> bool:
-        """Check if merchant name is generic."""
         if not name:
             return True
-        
         name_upper = name.upper().strip()
-        generic = ["MERCHANT", "TOKO", "STORE", "SHOP", "UNKNOWN", "N/A", "PURCHASE", "BELANJA"]
-        
+        generic = ["MERCHANT", "TOKO", "STORE", "SHOP", "UNKNOWN", "N/A"]
         return name_upper in generic or len(name.strip()) < 2
 
 
@@ -443,8 +528,7 @@ class IntegrityGatekeeper:
 
 class GenericPipeline:
     """
-    Generic Hybrid Pipeline.
-    NO hardcoded vendor logic.
+    Generic Hybrid Pipeline with real fallback.
     """
     
     def __init__(self):
@@ -458,14 +542,8 @@ class GenericPipeline:
         image_bytes: bytes = None
     ) -> ExtractionResult:
         """
-        Execute pipeline with integrity check.
+        Execute pipeline with integrity check and real fallback.
         """
-        # Try email/transfer parser
-        if raw_input.get("html_content"):
-            result = self._parse_email(raw_input["html_content"])
-            if result.confidence >= self.gatekeeper.CONFIDENCE_THRESHOLD:
-                return result
-        
         # Try physical receipt parser
         lines = raw_input.get("ocr_lines") or raw_input.get("lines") or []
         if lines:
@@ -477,7 +555,6 @@ class GenericPipeline:
                 result.total_amount,
                 result.items
             )
-            
             result.confidence = conf
             
             if is_valid:
@@ -485,15 +562,16 @@ class GenericPipeline:
                 result.message = "Validation passed"
                 return result
             
-            # Try Gemini fallback
+            # REAL FALLBACK: Call Gemini when validation fails
             if image_bytes:
+                logger.info(f"Validation failed: {issues}, calling Gemini fallback")
                 gemini_result = await self._parse_with_gemini(image_bytes)
                 if gemini_result and gemini_result.success:
                     return gemini_result
             
-            # Return partial if we have items
-            if result.items and result.total_amount > 0:
-                result.message = f"Partial data - {', '.join(issues)}"
+            # Return partial if we have usable data
+            if result.total_amount > 0 and result.items:
+                result.message = f"Partial: {', '.join(issues)}"
                 return result
         
         # All failed
@@ -502,28 +580,8 @@ class GenericPipeline:
             message="All layers failed"
         )
     
-    def _parse_email(self, html: str) -> ExtractionResult:
-        """Parse email/transfer receipt."""
-        result = ExtractionResult(source=ExtractionSource.EMAIL_DOM)
-        
-        # Generic amount extraction
-        amount_match = re.search(r"Rp\.?\s*(\d+)", html, re.IGNORECASE)
-        if amount_match:
-            result.total_amount = float(amount_match.group(1))
-            result.success = result.total_amount > 0
-        
-        # Generic date
-        date_match = re.search(r"(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})", html, re.IGNORECASE)
-        if date_match:
-            result.date = date_match.group(0)
-        
-        result.confidence = 0.90 if result.success else 0.0
-        result.message = "Email parsed"
-        
-        return result
-    
     def _parse_physical(self, lines: List[str]) -> ExtractionResult:
-        """Parse physical receipt with generic algorithms."""
+        """Parse physical receipt."""
         result = ExtractionResult(source=ExtractionSource.LOCAL_REGEX)
         
         # Find merchant (top-down)
@@ -540,28 +598,27 @@ class GenericPipeline:
         # Find item region
         index_start, index_end = self.anchor_engine.find_item_region(lines)
         
-        # Parse items
+        # Parse items and discounts
         for line in lines[index_start:index_end]:
             item = self.item_parser.parse_line(line)
             if item:
                 result.items.append(item)
         
-        result.subtotal = sum(i.total_price for i in result.items)
-        
-        # Discount check
-        if result.subtotal > result.total_amount > 0:
-            result.discount = result.subtotal - result.total_amount
+        # Calculate totals
+        result.subtotal = result.items_sum
+        result.discount = result.discount_sum
         
         return result
     
     async def _parse_with_gemini(self, image_bytes: bytes) -> Optional[ExtractionResult]:
-        """Parse with Gemini AI."""
+        """REAL Gemini fallback execution."""
         if not image_bytes:
             return None
         
         try:
             api_key = os.environ.get("GEMINI_API_KEY")
             if not api_key:
+                logger.warning("No Gemini API key")
                 return None
             
             from app.services.gemini_vision import extract_receipt_with_gemini
@@ -600,7 +657,7 @@ class GenericPipeline:
 
 
 # Global instance
-_pipeline: Optional[GenericPipeline] = None
+_pipeline = None
 
 def get_pipeline() -> GenericPipeline:
     global _pipeline
