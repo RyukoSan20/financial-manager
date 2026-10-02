@@ -250,6 +250,10 @@ class ItemParser:
             if meta in line_upper:
                 return None
         
+        # SKIP lines with qty@price pattern (item specs, NOT items)
+        if re.search(r'\(\d+\s*[xX@]\s*[@\s]*\s*Rp', line):
+            return None
+        
         # Skip anchor lines
         all_anchors = self.TOTAL_KEYWORDS + self.DISCARD_KEYWORDS
         matched, _, _ = FuzzyMatcher.match(line_upper, all_anchors)
@@ -272,22 +276,22 @@ class ItemParser:
             return self._parse_item_line(line, amounts)
     
     def _is_discount_line(self, line: str) -> bool:
-        """Check if line is a discount."""
+        """
+        Check if line is a discount.
+        ONLY lines with explicit DISKON keywords are discounts.
+        Parentheses alone are NOT sufficient (could be item specs).
+        """
         line_upper = line.upper()
         
-        # Check keywords
+        # ONLY match explicit discount keywords
         matched, _, _ = FuzzyMatcher.match(line_upper, self.DISCOUNT_KEYWORDS)
         if matched:
             return True
         
-        # Check parentheses (discount format)
-        if '(' in line and ')' in line:
-            return True
+        # Parentheses WITHOUT discount keyword = NOT a discount (could be item specs)
+        # Lines like "(6x @ Rp 74.333,5)" are NOT discounts
         
-        # Check minus prefix
-        if line.startswith('-'):
-            return True
-        
+        # Only true discounts have explicit DISKON/VOUCHER keywords
         return False
     
     def _parse_discount_line(self, line: str, amounts: List[float]) -> Optional[ReceiptItem]:
@@ -469,27 +473,89 @@ class AnchorEngine:
                 return f"{y}-{m}-{d}"
         return None
     
-    def find_item_region(self, lines: List[str]) -> Tuple[int, int]:
-        """Find item region boundaries."""
-        index_start = 0
-        index_end = len(lines)
+    def parse_with_state_machine(self, lines: List[str]) -> Dict[str, Any]:
+        """
+        STATE MACHINE PARSING - Strict boundary enforcement.
         
-        # Find start (after separator)
-        for i, line in enumerate(lines[:15]):
-            if "---" in line or "===" in line:
-                index_start = i + 1
-                break
+        States:
+        - HEADER: Collect merchant name, skip until we find delimiter
+        - ITEMS: Parse items between delimiter and footer anchor
+        - FOOTER: Done, stop processing
         
-        # Find end (first TOTAL anchor from bottom)
-        # DISKON lines should be INCLUDED in item region
-        total_anchors = ["TOTAL", "GRAND TOTAL", "HARGA JUAL", "SUBTOTAL", "JUMLAH"]
+        Transitions:
+        - HEADER -> ITEMS: After finding date/datetime pattern OR separator line
+        - ITEMS -> FOOTER: After finding TOTAL/SUBTOTAL/HARGA JUAL
+        """
+        result = {
+            "merchant": None,
+            "items": [],
+            "total": None,
+            "state": "HEADER",
+            "index_start": None,
+            "index_end": None
+        }
+        
+        # Regex patterns for state transitions
+        DATE_PATTERN = re.compile(r'\d{2}[\.\-]\d{2}[\.\-]\d{2,4}')
+        SEPARATOR_PATTERN = re.compile(r'^[\-\=\_]{5,}$')
+        FOOTER_ANCHORS = ["TOTAL", "GRAND TOTAL", "HARGA JUAL", "SUBTOTAL", "JUMLAH"]
+        
+        # Garbage filter
+        garbage = ["PURCHASE AT", "DOWNLOAD", "HTTP", "★", "口品"]
+        
         for i, line in enumerate(lines):
-            matched, _, _ = FuzzyMatcher.match(line.upper(), total_anchors)
-            if matched:
-                index_end = i
-                break
+            line_stripped = line.strip()
+            if not line_stripped:
+                continue
+            
+            # ========== HEADER STATE ==========
+            if result["state"] == "HEADER":
+                # Extract merchant from first valid line
+                if result["merchant"] is None:
+                    line_upper = line_stripped.upper()
+                    # Skip garbage
+                    if any(g in line_upper for g in garbage):
+                        continue
+                    # Skip date/time lines
+                    if DATE_PATTERN.match(line_stripped):
+                        continue
+                    # Skip separators
+                    if SEPARATOR_PATTERN.match(line_stripped):
+                        continue
+                    # Must have alphabetic characters
+                    alpha_count = sum(1 for c in line_stripped if c.isalpha())
+                    if alpha_count >= 2 and len(line_stripped) <= 30:
+                        result["merchant"] = line_stripped
+                        continue
+                
+                # Check for delimiter to transition to ITEMS state
+                if DATE_PATTERN.search(line) or SEPARATOR_PATTERN.match(line_stripped):
+                    result["state"] = "ITEMS"
+                    result["index_start"] = i + 1
+                    continue
+            
+            # ========== ITEMS STATE ==========
+            elif result["state"] == "ITEMS":
+                line_upper = line_stripped.upper()
+                
+                # Check for footer anchor - TRANSITION to FOOTER
+                matched, _, _ = FuzzyMatcher.match(line_upper, FOOTER_ANCHORS)
+                if matched:
+                    result["state"] = "FOOTER"
+                    result["index_end"] = i
+                    break
+                
+                # This is an item candidate - add to list
+                result["items"].append({
+                    "line_index": i,
+                    "line": line_stripped
+                })
         
-        return index_start, index_end
+        # If we never found footer, items go to end
+        if result["index_end"] is None:
+            result["index_end"] = len(lines)
+        
+        return result
 
 
 # ============================================================
@@ -619,11 +685,14 @@ class GenericPipeline:
         )
     
     def _parse_physical(self, lines: List[str]) -> ExtractionResult:
-        """Parse physical receipt."""
+        """Parse physical receipt using STATE MACHINE."""
         result = ExtractionResult(source=ExtractionSource.LOCAL_REGEX)
         
-        # Find merchant (top-down)
-        result.merchant_name = self.anchor_engine.find_merchant_top(lines) or "Merchant"
+        # Use STATE MACHINE for strict boundary enforcement
+        state_result = self.anchor_engine.parse_with_state_machine(lines)
+        
+        # Merchant from state machine
+        result.merchant_name = state_result.get("merchant") or "Merchant"
         
         # Find total (bottom-up)
         found, total, _ = self.anchor_engine.find_total_bottom_up(lines)
@@ -633,11 +702,9 @@ class GenericPipeline:
         # Find date
         result.date = self.anchor_engine.find_date(lines)
         
-        # Find item region
-        index_start, index_end = self.anchor_engine.find_item_region(lines)
-        
-        # Parse items and discounts
-        for line in lines[index_start:index_end]:
+        # Parse items from state machine's bounded region
+        for item_candidate in state_result.get("items", []):
+            line = item_candidate["line"]
             item = self.item_parser.parse_line(line)
             if item:
                 result.items.append(item)
