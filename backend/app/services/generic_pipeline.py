@@ -513,8 +513,8 @@ class AnchorEngine:
         
         Merchant Extraction Strategy:
         1. Try first 5 lines (skip garbage like "Purchase at ...")
-        2. Strip common prefixes: "Purchase at ", "PT ", "CV ", "STORE "
-        3. If not found, scan entire document for merchant keywords
+        2. If no valid merchant found, scan ENTIRE document including footer
+        3. Use Merchant Lexicon for auto-correction
         """
         result = {
             "merchant": None,
@@ -522,7 +522,8 @@ class AnchorEngine:
             "total": None,
             "state": "HEADER",
             "index_start": None,
-            "index_end": None
+            "index_end": None,
+            "all_lines_searched": []  # Store all lines for fallback search
         }
         
         # Regex patterns for state transitions
@@ -548,14 +549,49 @@ class AnchorEngine:
                 text = re.sub(pattern, '', text, flags=re.IGNORECASE)
             return text.strip()
         
+        def is_garbage_merchant(text: str) -> bool:
+            """Check if merchant text is garbage/OCR noise."""
+            if not text:
+                return True
+            text_upper = text.upper()
+            
+            # STRICT BLACKLIST
+            garbage_patterns = [
+                r'^PURCHASE AT\s',
+                r'^P-\w{2,10}$',
+                r'^Q\s',
+                r'^口品',
+                r'^★',
+                r'DOWNLOAD',
+                r'PEKNGFOOO',
+                r'ONGFOO',
+                r'TASUM',
+            ]
+            
+            for pattern in garbage_patterns:
+                if re.search(pattern, text_upper, re.IGNORECASE):
+                    return True
+            
+            # Check for high entropy/random characters
+            non_alnum = sum(1 for c in text if not c.isalnum())
+            if len(text) > 0 and non_alnum / len(text) > 0.3:
+                return True
+            
+            alpha_count = sum(1 for c in text if c.isalpha())
+            if alpha_count < 2:
+                return True
+            
+            return False
+        
         for i, line in enumerate(lines):
             line_stripped = line.strip()
             if not line_stripped:
                 continue
             
+            result["all_lines_searched"].append(line_stripped)
+            
             # ========== HEADER STATE ==========
             if result["state"] == "HEADER":
-                # Extract merchant from first valid line
                 if result["merchant"] is None:
                     line_upper = line_stripped.upper()
                     
@@ -574,9 +610,8 @@ class AnchorEngine:
                     # Must have alphabetic characters
                     alpha_count = sum(1 for c in line_stripped if c.isalpha())
                     if alpha_count >= 2 and len(line_stripped) <= 30:
-                        # Clean the merchant name
                         cleaned = clean_merchant(line_stripped)
-                        if len(cleaned) >= 2:
+                        if len(cleaned) >= 2 and not is_garbage_merchant(cleaned):
                             result["merchant"] = cleaned
                             continue
                 
@@ -602,6 +637,41 @@ class AnchorEngine:
                     "line_index": i,
                     "line": line_stripped
                 })
+        
+        # ========== FULL DOCUMENT FALLBACK SCAN ==========
+        # If no valid merchant found in header, search ENTIRE document
+        if result["merchant"] is None or is_garbage_merchant(result["merchant"]):
+            logger.info("No valid merchant in header, scanning entire document...")
+            
+            # Search for known merchant patterns in all lines
+            merchant_keywords = [
+                "INDOMARET", "ALFAMART", "SUPERINDO", "CARREFOUR", "GIANT",
+                "GOPAY", "OVO", "DANA", "SHOPEEPAY", "LINKAJA",
+                "BCA", "MANDIRI", "BNI", "BRI",
+                "GOJEK", "GRAB",
+            ]
+            
+            for line_text in result["all_lines_searched"]:
+                line_upper = line_text.upper()
+                
+                for keyword in merchant_keywords:
+                    if keyword in line_upper:
+                        # Extract the merchant name
+                        idx = line_upper.find(keyword)
+                        # Get surrounding context (before and after keyword)
+                        start = max(0, idx - 5)
+                        end = min(len(line_text), idx + len(keyword) + 5)
+                        candidate = line_text[start:end].strip()
+                        
+                        # Clean and validate
+                        cleaned = clean_merchant(candidate)
+                        if len(cleaned) >= 2 and not is_garbage_merchant(cleaned):
+                            result["merchant"] = keyword  # Use the canonical name
+                            logger.info(f"Found merchant in footer: {keyword}")
+                            break
+                
+                if result["merchant"]:
+                    break
         
         # If we never found footer, items go to end
         if result["index_end"] is None:
