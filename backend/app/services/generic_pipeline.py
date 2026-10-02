@@ -217,11 +217,25 @@ class CurrencyNormalizer:
 class ItemParser:
     """
     Generic RTL item line parser with discount handling.
+    STRICT MODE: Filters out meta-information (NPWP, addresses, phone numbers).
     """
     
     TOTAL_KEYWORDS = ["TOTAL", "SUBTOTAL", "HARGA JUAL", "JUMLAH", "BAYAR"]
     DISCARD_KEYWORDS = ["TUNAI", "CASH", "KEMBALI", "ANDA HEMAT", "VOUCHER"]
     DISCOUNT_KEYWORDS = ["DISKON", "POTONGAN", "DISCOUNT", "POTONGAN HARGA"]
+    
+    # META KEYWORDS - These indicate NON-ITEM lines
+    META_KEYWORDS = [
+        "NPWP", "NOP", "NTNP", "NTPN",  # Tax numbers
+        "PBB", "PAJAK", "TAX",           # Tax related
+        "JL.", "JL ", "JALAN", "JLN",    # Addresses
+        "KM.", "KILOMETER",              # Location
+        "TELP", "TEL", "HP", "FAX",      # Contact info
+        "PT ", "PT.", "CV ", "CV.",      # Company names
+        "NP.", "NO.", "NOMOR", "NO ",    # Numbers
+        "CABANG", "OUTLET", "STORE",     # Store info
+        "PPN", "PPn",                    # VAT
+    ]
     
     def parse_line(self, line: str) -> Optional[ReceiptItem]:
         """Parse single line into item or discount."""
@@ -230,6 +244,11 @@ class ItemParser:
             return None
         
         line_upper = line.upper()
+        
+        # SKIP META INFORMATION LINES (NPWP, addresses, phone numbers)
+        for meta in self.META_KEYWORDS:
+            if meta in line_upper:
+                return None
         
         # Skip anchor lines
         all_anchors = self.TOTAL_KEYWORDS + self.DISCARD_KEYWORDS
@@ -398,23 +417,44 @@ class AnchorEngine:
         return False, 0.0, None
     
     def find_merchant_top(self, lines: List[str]) -> Optional[str]:
-        """Scan from TOP-DOWN to find merchant."""
-        skip_patterns = [r"^[0-9]+$", r"^[\d\s\.\-\:\/]+$"]
-        garbage = ["DOWNLOAD", "HTTP", "口品", "★"]
+        """
+        Scan from TOP-DOWN to find merchant.
+        STRICT: Only uses first 5 lines (top-of-receipt boundary).
+        """
+        skip_patterns = [r"^[0-9]+$", r"^[\d\s\.\-\:\/]+$", r"^[\d\.\-]+$"]
         
-        for line in lines[:10]:
+        # STRICT: Garbage patterns that indicate OCR noise
+        garbage = [
+            "DOWNLOAD", "HTTP", "口品", "★", "Q ", "QE", "Q ", 
+            "PEKNG", "PEKING", "ONGFOO", "GOOO", "PURCHASE AT",
+            "RECEIPT", "INVOICE", "STRUK", "BUKTI"
+        ]
+        
+        # STRICT: Only scan first 5 lines
+        for line in lines[:5]:
             line_clean = line.strip()
             if not line_clean:
                 continue
             
+            # Skip numeric-only patterns
             if any(re.match(p, line_clean) for p in skip_patterns):
                 continue
             
-            if any(g in line_clean.upper() for g in garbage):
+            # Skip garbage OCR
+            line_upper = line_clean.upper()
+            if any(g in line_upper for g in garbage):
                 continue
             
-            if sum(1 for c in line_clean if c.isalpha()) >= 2:
-                return line_clean
+            # Must have at least 2 alphabetic characters
+            alpha_count = sum(1 for c in line_clean if c.isalpha())
+            if alpha_count < 2:
+                continue
+            
+            # Skip if too long (likely address)
+            if len(line_clean) > 30:
+                continue
+            
+            return line_clean
         
         return None
     
@@ -471,8 +511,8 @@ class IntegrityGatekeeper:
         items: List[ReceiptItem]
     ) -> Tuple[bool, List[str], float]:
         """
-        Validate receipt data mathematically.
-        Formula: Sum(Item Totals) - Sum(Discounts) == Grand Total (± tolerance)
+        STRICT validation - Math MUST match (± tolerance).
+        If diff > 500, returns FAIL with confidence = 0.0 to trigger Gemini.
         """
         issues = []
         confidence = 0.0
@@ -486,11 +526,10 @@ class IntegrityGatekeeper:
         # Rule 2: Merchant not generic
         if self._is_generic_merchant(merchant_name):
             issues.append("Merchant name is generic")
-            confidence += 0.10
-        else:
-            confidence += 0.20
+            return False, issues, 0.0  # STRICT FAIL
+        confidence += 0.20
         
-        # Rule 3: Math validation with discounts
+        # Rule 3: STRICT Math validation
         if items:
             items_sum = sum(i.total_price for i in items if not i.is_discount)
             discount_sum = sum(abs(i.total_price) for i in items if i.is_discount)
@@ -499,13 +538,12 @@ class IntegrityGatekeeper:
             diff = abs(net_total - total_amount)
             
             if diff <= self.MATH_TOLERANCE:
-                confidence += 0.55
-            elif items_sum > total_amount:
-                # Discount scenario - acceptable
-                confidence += 0.45
+                confidence += 0.55  # PASS
             else:
-                confidence += 0.15
-                issues.append(f"Math mismatch: net={net_total}, total={total_amount}")
+                # STRICT FAIL: Math mismatch > 500
+                confidence = 0.0
+                issues.append(f"Math mismatch: net={net_total}, total={total_amount}, diff={diff}")
+                return False, issues, 0.0  # MUST FAIL to trigger Gemini
         else:
             confidence += 0.30  # Transfer receipts have no items
         
