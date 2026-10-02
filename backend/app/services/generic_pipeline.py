@@ -153,28 +153,20 @@ class CurrencyNormalizer:
     @staticmethod
     def normalize_line(line: str) -> str:
         """
-        Normalize line by removing thousand separators from currency patterns.
-        Only normalizes patterns like 33,900 / 33.900 / 33 900 -> 33900
-        Does NOT touch arbitrary numbers like "72G" or quantities.
+        Normalize line for parsing - REMOVE thousand separators.
+        Handles: 33,900 / 33.900 / 33 900 / 33, 900 -> 33900
+        Only normalizes comma/dot/space that is FOLLOWED by exactly 3 digits.
         """
         if not line:
             return line
         
-        # Strategy: Only normalize patterns where comma/dot/space separates
-        # exactly 3 digits (thousand separator pattern)
-        
-        # Pattern 1: digit + comma + 3 digits (33,900)
-        line = re.sub(r'(\d),(\d{3})(?!\d)', r'\1\2', line)
-        
-        # Pattern 2: digit + dot + 3 digits (33.900)
-        line = re.sub(r'(\d)\.(\d{3})(?!\d)', r'\1\2', line)
-        
-        # Pattern 3: digit + space + 3 digits (33 900)
-        # Only when followed by end of number
-        line = re.sub(r'(\d) (\d{3})(?=\D|$)', r'\1\2', line)
-        
-        # Also handle comma-space pattern (33, 900)
-        line = re.sub(r'(\d), (\d{3})(?=\D|$)', r'\1\2', line)
+        # Pattern: digit followed by comma/dot/space AND exactly 3 digits after
+        # "33,900" -> "33900"
+        # "33.900" -> "33900"  
+        # "33 900" -> "33900"
+        # "33, 900" -> "33900"
+        # But NOT "72G" or "4500" (not followed by 3 more digits)
+        line = re.sub(r'(\d)[,\.\s]+(\d{3})(?=\D|$)', r'\1\2', line)
         
         return line
     
@@ -242,7 +234,10 @@ class ItemParser:
     ]
     
     def parse_line(self, line: str) -> Optional[ReceiptItem]:
-        """Parse single line into item or discount using Catalog Matching."""
+        """
+        Parse single line into item or discount.
+        RULE: If line has a valid price (>= 100), it IS an item.
+        """
         line = line.strip()
         if not line:
             return None
@@ -258,20 +253,18 @@ class ItemParser:
         if re.search(r'\(\d+\s*[xX@]\s*[@\s]*\s*Rp', line):
             return None
         
-        # SKIP anchor lines
+        # SKIP anchor lines (TOTAL, SUBTOTAL, etc.)
         all_anchors = self.TOTAL_KEYWORDS + self.DISCARD_KEYWORDS
         matched, _, _ = FuzzyMatcher.match(line_upper, all_anchors)
         if matched:
             return None
         
-        # CATALOG MATCHING: Only accept lines with known product keywords
+        # CATALOG MATCHING: Only use catalog for CATEGORIZATION
         try:
             from app.services.catalog import is_valid_product_line
-            is_valid, _, category = is_valid_product_line(line)
-            if not is_valid:
-                return None  # Line doesn't match any catalog product
+            _, _, category = is_valid_product_line(line)
         except ImportError:
-            pass  # Fallback if catalog not available
+            category = "Unknown"
         
         # Check if discount line
         is_discount = self._is_discount_line(line)
@@ -286,7 +279,12 @@ class ItemParser:
         if is_discount:
             return self._parse_discount_line(line, amounts, category)
         else:
-            return self._parse_item_line(line, amounts, category)
+            # CRITICAL: ANY line with a valid price IS an item
+            item = self._parse_item_line(line, amounts, category)
+            if item and item.total_price < 100:
+                # Price too low - skip
+                return None
+            return item
     
     def _is_discount_line(self, line: str) -> bool:
         """
@@ -373,22 +371,38 @@ class ItemParser:
         return quantity, price_per_unit
     
     def _extract_item_name(self, line: str) -> Optional[str]:
-        """Extract item name from line."""
+        """
+        Extract item name from line using RIGHT-TO-LEFT parsing.
+        Strategy: Find the LAST price/number, everything to the left is the name.
+        """
         # Normalize first
         normalized = CurrencyNormalizer.normalize_line(line)
         
-        # Find where numbers start
-        match = re.search(r'\d', normalized)
+        # Find the RIGHTMOST price pattern (last number, typically 3-10 digits)
+        # Price pattern: sequence of digits at the end (after removing separators)
+        match = re.search(r'(\d{3,10})$', normalized)
+        if not match:
+            # Try finding price anywhere
+            all_prices = re.findall(r'(\d{3,10})', normalized)
+            if all_prices:
+                # Use the LAST price as the item total
+                match = re.search(r'(\d{3,10})$', normalized)
+        
         if match:
-            idx = match.start()
-            name = normalized[:idx].strip()
+            # Extract name = everything BEFORE the last price
+            price_start = match.start()
+            name = normalized[:price_start].strip()
         else:
             name = normalized
         
-        # Clean up
-        name = re.sub(r'[\s\-]+$', '', name).strip()
+        # Clean up trailing symbols
+        name = re.sub(r'[\s\-\:]+$', '', name).strip()
         
-        return name if name and len(name) > 0 else None
+        # If name is too short, return None
+        if len(name) < 1:
+            return None
+        
+        return name
     
     def _extract_discount_name(self, line: str) -> str:
         """Extract discount name."""
@@ -497,9 +511,10 @@ class AnchorEngine:
         - ITEMS: Parse items between delimiter and footer anchor
         - FOOTER: Done, stop processing
         
-        Transitions:
-        - HEADER -> ITEMS: After finding date/datetime pattern OR separator line
-        - ITEMS -> FOOTER: After finding TOTAL/SUBTOTAL/HARGA JUAL
+        Merchant Extraction Strategy:
+        1. Try first 5 lines (skip garbage like "Purchase at ...")
+        2. Strip common prefixes: "Purchase at ", "PT ", "CV ", "STORE "
+        3. If not found, scan entire document for merchant keywords
         """
         result = {
             "merchant": None,
@@ -516,7 +531,22 @@ class AnchorEngine:
         FOOTER_ANCHORS = ["TOTAL", "GRAND TOTAL", "HARGA JUAL", "SUBTOTAL", "JUMLAH"]
         
         # Garbage filter
-        garbage = ["PURCHASE AT", "DOWNLOAD", "HTTP", "★", "口品"]
+        garbage = ["PURCHASE AT", "DOWNLOAD", "HTTP", "★", "口品", "RECEIPT"]
+        
+        # Common prefix patterns to strip
+        prefix_patterns = [
+            r'^PURCHASE AT\s+',
+            r'^PT\s+',
+            r'^CV\s+',
+            r'^STORE\s+',
+            r'^OUTLET\s+',
+        ]
+        
+        def clean_merchant(text: str) -> str:
+            """Remove common prefixes from merchant name."""
+            for pattern in prefix_patterns:
+                text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+            return text.strip()
         
         for i, line in enumerate(lines):
             line_stripped = line.strip()
@@ -528,20 +558,27 @@ class AnchorEngine:
                 # Extract merchant from first valid line
                 if result["merchant"] is None:
                     line_upper = line_stripped.upper()
+                    
                     # Skip garbage
                     if any(g in line_upper for g in garbage):
                         continue
+                    
                     # Skip date/time lines
                     if DATE_PATTERN.match(line_stripped):
                         continue
+                    
                     # Skip separators
                     if SEPARATOR_PATTERN.match(line_stripped):
                         continue
+                    
                     # Must have alphabetic characters
                     alpha_count = sum(1 for c in line_stripped if c.isalpha())
                     if alpha_count >= 2 and len(line_stripped) <= 30:
-                        result["merchant"] = line_stripped
-                        continue
+                        # Clean the merchant name
+                        cleaned = clean_merchant(line_stripped)
+                        if len(cleaned) >= 2:
+                            result["merchant"] = cleaned
+                            continue
                 
                 # Check for delimiter to transition to ITEMS state
                 if DATE_PATTERN.search(line) or SEPARATOR_PATTERN.match(line_stripped):
