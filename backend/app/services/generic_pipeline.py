@@ -33,6 +33,7 @@ class ReceiptItem:
     price_per_unit: float = 0.0
     total_price: float = 0.0
     is_discount: bool = False
+    category: str = "Unknown"
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -40,7 +41,8 @@ class ReceiptItem:
             "quantity": self.quantity,
             "price_per_unit": self.price_per_unit,
             "total_price": self.total_price,
-            "is_discount": self.is_discount
+            "is_discount": self.is_discount,
+            "category": self.category
         }
 
 
@@ -58,6 +60,7 @@ class ExtractionResult:
     confidence: float = 0.0
     source: ExtractionSource = ExtractionSource.NONE
     message: str = ""
+    category: str = "Lainnya"
     
     @property
     def items_sum(self) -> float:
@@ -80,7 +83,8 @@ class ExtractionResult:
             "discount": self.discount,
             "confidence": self.confidence,
             "source": self.source.value,
-            "message": self.message
+            "message": self.message,
+            "category": self.category
         }
 
 
@@ -238,7 +242,7 @@ class ItemParser:
     ]
     
     def parse_line(self, line: str) -> Optional[ReceiptItem]:
-        """Parse single line into item or discount."""
+        """Parse single line into item or discount using Catalog Matching."""
         line = line.strip()
         if not line:
             return None
@@ -254,11 +258,20 @@ class ItemParser:
         if re.search(r'\(\d+\s*[xX@]\s*[@\s]*\s*Rp', line):
             return None
         
-        # Skip anchor lines
+        # SKIP anchor lines
         all_anchors = self.TOTAL_KEYWORDS + self.DISCARD_KEYWORDS
         matched, _, _ = FuzzyMatcher.match(line_upper, all_anchors)
         if matched:
             return None
+        
+        # CATALOG MATCHING: Only accept lines with known product keywords
+        try:
+            from app.services.catalog import is_valid_product_line
+            is_valid, _, category = is_valid_product_line(line)
+            if not is_valid:
+                return None  # Line doesn't match any catalog product
+        except ImportError:
+            pass  # Fallback if catalog not available
         
         # Check if discount line
         is_discount = self._is_discount_line(line)
@@ -271,9 +284,9 @@ class ItemParser:
             return None
         
         if is_discount:
-            return self._parse_discount_line(line, amounts)
+            return self._parse_discount_line(line, amounts, category)
         else:
-            return self._parse_item_line(line, amounts)
+            return self._parse_item_line(line, amounts, category)
     
     def _is_discount_line(self, line: str) -> bool:
         """
@@ -294,7 +307,7 @@ class ItemParser:
         # Only true discounts have explicit DISKON/VOUCHER keywords
         return False
     
-    def _parse_discount_line(self, line: str, amounts: List[float]) -> Optional[ReceiptItem]:
+    def _parse_discount_line(self, line: str, amounts: List[float], category: str = "Unknown") -> Optional[ReceiptItem]:
         """Parse discount line."""
         if not amounts:
             return None
@@ -310,11 +323,12 @@ class ItemParser:
             quantity=1,
             price_per_unit=0,
             total_price=-discount_value,  # Negative for discount
-            is_discount=True
+            is_discount=True,
+            category=category
         )
     
-    def _parse_item_line(self, line: str, amounts: List[float]) -> Optional[ReceiptItem]:
-        """Parse item line."""
+    def _parse_item_line(self, line: str, amounts: List[float], category: str = "Unknown") -> Optional[ReceiptItem]:
+        """Parse item line with category from catalog."""
         if not amounts:
             return None
         
@@ -342,7 +356,8 @@ class ItemParser:
             quantity=quantity,
             price_per_unit=price_per_unit,
             total_price=total_price,
-            is_discount=False
+            is_discount=False,
+            category=category
         )
     
     def _parse_qty_price(self, amounts: List[float], total_price: float) -> Tuple[int, float]:
@@ -712,6 +727,25 @@ class GenericPipeline:
         # Calculate totals
         result.subtotal = result.items_sum
         result.discount = result.discount_sum
+        
+        # Extract category from items
+        try:
+            from app.services.catalog import extract_category_from_items
+            items_dict = [{"category": i.category} for i in result.items]
+            result.category = extract_category_from_items(items_dict)
+        except ImportError:
+            result.category = "Lainnya"
+        
+        # Apply Merchant Lexicon matching to correct OCR errors
+        try:
+            from app.services.lexicon import match_merchant
+            matched, canonical, mtype, score = match_merchant(result.merchant_name, threshold=0.70)
+            if matched:
+                result.merchant_name = canonical
+                result.merchant_type = mtype
+                logger.info(f"Merchant corrected: '{state_result.get('merchant')}' -> '{canonical}' (score={score})")
+        except ImportError:
+            pass
         
         return result
     
