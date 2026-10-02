@@ -592,6 +592,13 @@ class AnchorEngine:
             
             # ========== HEADER STATE ==========
             if result["state"] == "HEADER":
+                # First check if this is a SEPARATOR - TRANSITION immediately
+                if SEPARATOR_PATTERN.match(line_stripped):
+                    result["state"] = "ITEMS"
+                    result["index_start"] = i + 1
+                    continue
+                
+                # Then try to extract merchant
                 if result["merchant"] is None:
                     line_upper = line_stripped.upper()
                     
@@ -603,10 +610,6 @@ class AnchorEngine:
                     if DATE_PATTERN.match(line_stripped):
                         continue
                     
-                    # Skip separators
-                    if SEPARATOR_PATTERN.match(line_stripped):
-                        continue
-                    
                     # Must have alphabetic characters
                     alpha_count = sum(1 for c in line_stripped if c.isalpha())
                     if alpha_count >= 2 and len(line_stripped) <= 30:
@@ -614,12 +617,6 @@ class AnchorEngine:
                         if len(cleaned) >= 2 and not is_garbage_merchant(cleaned):
                             result["merchant"] = cleaned
                             continue
-                
-                # Check for delimiter to transition to ITEMS state
-                if DATE_PATTERN.search(line) or SEPARATOR_PATTERN.match(line_stripped):
-                    result["state"] = "ITEMS"
-                    result["index_start"] = i + 1
-                    continue
             
             # ========== ITEMS STATE ==========
             elif result["state"] == "ITEMS":
@@ -843,6 +840,40 @@ class GenericPipeline:
         except ImportError:
             result.category = "Lainnya"
         
+        # =========================================================
+        # ITEM SIGNATURE MATCHING - Post-Processing Validation Layer
+        # If merchant is garbage or generic, infer from items
+        # =========================================================
+        try:
+            from app.services.signature_matcher import infer_merchant_from_items
+            
+            # Check if current merchant is garbage
+            current_merchant = result.merchant_name or ""
+            is_garbage = (
+                not current_merchant or
+                current_merchant.upper() in ["MERCHANT", "UNKNOWN", "TOKO"] or
+                len(current_merchant) < 3 or
+                "PURCHASE AT" in current_merchant.upper() or
+                "NPWP" in current_merchant.upper()
+            )
+            
+            if is_garbage and result.items:
+                # Try to infer merchant from item patterns
+                items_for_match = [
+                    {"name": item.name, "total_price": item.total_price}
+                    for item in result.items if not item.is_discount
+                ]
+                
+                signature_result = infer_merchant_from_items(items_for_match)
+                
+                if signature_result:
+                    result.merchant_name = signature_result["merchant_name"]
+                    result.merchant_type = signature_result.get("merchant_type", "Retail")
+                    result.category = signature_result.get("category", result.category)
+                    logger.info(f"Merchant inferred from item signature: {result.merchant_name}")
+        except ImportError:
+            pass
+        
         # Apply Merchant Lexicon matching to correct OCR errors
         try:
             from app.services.lexicon import match_merchant
@@ -854,7 +885,36 @@ class GenericPipeline:
         except ImportError:
             pass
         
+        # Apply final sanitization - reject garbage
+        result.merchant_name = self._sanitize_merchant(result.merchant_name)
+        
         return result
+    
+    def _sanitize_merchant(self, merchant: str) -> str:
+        """Sanitize merchant name - reject garbage, return clean default."""
+        if not merchant:
+            return "Minimarket"
+        
+        merchant_upper = merchant.upper()
+        
+        # STRICT REJECTION LIST
+        garbage_patterns = [
+            "PURCHASE AT", "DOWNLOAD", "NPWP", "口品", "★",
+            "PEKNGFOOO", "ONGFOO", "TASUM",
+        ]
+        
+        for pattern in garbage_patterns:
+            if pattern in merchant_upper:
+                logger.warning(f"Garbage merchant rejected: {merchant}")
+                return "Minimarket"
+        
+        if len(merchant) < 3:
+            return "Minimarket"
+        
+        if merchant_upper in ["MERCHANT", "UNKNOWN", "TOKO", "STORE"]:
+            return "Minimarket"
+        
+        return merchant
     
     async def _parse_with_gemini(self, image_bytes: bytes) -> Optional[ExtractionResult]:
         """REAL Gemini fallback execution."""
