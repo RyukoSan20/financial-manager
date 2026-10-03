@@ -1,0 +1,24 @@
+{
+  "receipt_id": "X51005200931",
+  "merchant_name": "GOGIANT ENGINEERING (M) SDN BHD",
+  "date": "09/02/2018",
+  "time": "08:32:00",
+  "location": "NO.59 JALAN PERMAS 9/5, BANDAR BARU PERMAS JAYA, 81750 JOHOR BAHRU",
+  "profile": "ENGLISH_BUSINESS",
+  "currency": "RM",
+  "expected_items": [
+    {"name": "SR CERAMIC CAP", "quantity": 5, "unit_price": 3.50, "total": 17.50, "is_discount": false},
+    {"name": "SR:S/STEEL 1/2\" STREET ELBOW", "quantity": 30, "unit_price": 3.80, "total": 114.00, "is_discount": false},
+    {"name": "SR: 2.4MM STARWELD RED HEAD TUNGSTEN ROD", "quantity": 3, "unit_price": 33.00, "total": 99.00, "is_discount": false},
+    {"name": "SR: ESICUT 4\" CUTTING DISC (1BOX)-50PCS", "quantity": 2, "unit_price": 43.00, "total": 86.00, "is_discount": false},
+    {"name": "SR: WELDRO PICKLING GEL 1KG", "quantity": 4, "unit_price": 10.00, "total": 40.00, "is_discount": false}
+  ],
+  "expected_subtotal": 411.50,
+  "expected_discount": 0.00,
+  "expected_gst": 24.69,
+  "expected_rounding": 0.01,
+  "expected_total": 436.20,
+  "cash_paid": 436.20,
+  "change": 0.00,
+  "total_qty": 45
+}

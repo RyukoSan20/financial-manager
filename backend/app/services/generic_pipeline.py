@@ -341,8 +341,16 @@ class ItemParser:
         if total_price > 10000000:
             return None
         
+        # FILTER: Remove amounts that look like product size codes (e.g., 225, 200, 72)
+        # These are part of product names, not prices
+        filtered_amounts = self._filter_product_size_amounts(amounts, line)
+        
+        # Re-calculate if we filtered some amounts
+        if len(filtered_amounts) < len(amounts) and filtered_amounts:
+            total_price = float(filtered_amounts[-1])
+        
         # Parse quantity and unit price
-        quantity, price_per_unit = self._parse_qty_price(amounts, total_price)
+        quantity, price_per_unit = self._parse_qty_price(filtered_amounts, total_price)
         
         # Extract name
         name = self._extract_item_name(line)
@@ -358,15 +366,77 @@ class ItemParser:
             category=category
         )
     
+    def _filter_product_size_amounts(self, amounts: List[float], line: str) -> List[float]:
+        """Filter out amounts that are likely product size codes (225ML, 200G, etc).
+        
+        Also removes duplicate amounts (e.g., "8500" appearing twice from "8500 8, 500").
+        """
+        if not amounts:
+            return amounts
+        
+        # Product size patterns to check (typically 2-3 digits that appear in product names)
+        size_patterns = ['225', '200', '72', '100', '150', '250', '300', '400', '500', '600', '50', '75']
+        
+        filtered = []
+        seen_values = set()  # Track seen values to remove duplicates
+        
+        for amt in amounts:
+            amt_str = str(int(amt))
+            
+            # Check for duplicates (skip if we've already seen this value)
+            if amt in seen_values:
+                continue
+            
+            if amt_str in size_patterns:
+                # Check if this number is surrounded by spaces (not a standalone price)
+                # AND appears near letters in the line
+                adj_match = re.search(rf'\d+\s*[A-Za-z]|{amt_str}\s*[A-Za-z]|[A-Za-z]\s*{amt_str}', line, re.IGNORECASE)
+                space_sep = re.search(rf'\s{amt_str}\s', line)
+                
+                if adj_match or space_sep:
+                    continue  # Skip - it's part of product name
+            
+            filtered.append(amt)
+            seen_values.add(amt)
+        
+        # If we filtered too much, return original
+        if len(filtered) < 2 and len(amounts) >= 2:
+            return amounts
+        
+        return filtered
+    
     def _parse_qty_price(self, amounts: List[float], total_price: float) -> Tuple[int, float]:
-        """Parse quantity and unit price."""
+        """Parse quantity and unit price from amounts list.
+        
+        Handles multiple formats:
+        - [total] -> qty=1, unit=total
+        - [qty, total] -> qty=qty, unit=total/qty
+        - [price, qty, total] -> qty=qty, unit=price
+        - [qty, price, total] -> qty=qty, unit=price
+        """
         quantity, price_per_unit = 1, total_price
         
-        if len(amounts) >= 2:
+        if len(amounts) >= 3:
+            # Take last 3 numbers
+            third_last = amounts[-3]
+            second_last = amounts[-2]
+            last = amounts[-1]
+            
+            # Try to identify qty (small integer <= 20)
+            if second_last <= 20 and second_last == int(second_last):
+                quantity = int(second_last)
+                price_per_unit = third_last / quantity if quantity > 0 else third_last
+            elif third_last <= 20 and third_last == int(third_last):
+                quantity = int(third_last)
+                price_per_unit = second_last / quantity if quantity > 0 else second_last
+            else:
+                quantity = 1
+                price_per_unit = total_price
+        elif len(amounts) == 2:
             second = amounts[-2]
-            if 1 <= second <= 20:
+            if second <= 20 and second == int(second):
                 quantity = int(second)
-                price_per_unit = total_price / quantity
+                price_per_unit = total_price / quantity if quantity > 0 else total_price
         
         return quantity, price_per_unit
     
@@ -374,29 +444,36 @@ class ItemParser:
         """
         Extract item name from line using RIGHT-TO-LEFT parsing.
         Strategy: Find the LAST price/number, everything to the left is the name.
+        
+        Handles duplicates (e.g., "8500 8500" from "8500 8, 500").
         """
         # Normalize first
         normalized = CurrencyNormalizer.normalize_line(line)
         
-        # Find the RIGHTMOST price pattern (last number, typically 3-10 digits)
-        # Price pattern: sequence of digits at the end (after removing separators)
-        match = re.search(r'(\d{3,10})$', normalized)
-        if not match:
-            # Try finding price anywhere
-            all_prices = re.findall(r'(\d{3,10})', normalized)
-            if all_prices:
-                # Use the LAST price as the item total
-                match = re.search(r'(\d{3,10})$', normalized)
+        # Find ALL price patterns (sequences of 3+ digits)
+        all_prices = re.findall(r'(\d{3,10})', normalized)
         
-        if match:
+        if not all_prices:
+            # No prices found
+            return normalized.strip()
+        
+        # Find the LAST price in the original string
+        last_price_match = None
+        for match in re.finditer(r'(\d{3,10})', normalized):
+            last_price_match = match
+        
+        if last_price_match:
             # Extract name = everything BEFORE the last price
-            price_start = match.start()
-            name = normalized[:price_start].strip()
+            name = normalized[:last_price_match.start()].strip()
         else:
             name = normalized
         
         # Clean up trailing symbols
         name = re.sub(r'[\s\-\:]+$', '', name).strip()
+        
+        # Remove trailing numbers in order: large duplicates first, then small qty numbers
+        name = re.sub(r'\s+\d{4,}\s*$', '', name).strip()  # Duplicate large prices (e.g., 8500 8500)
+        name = re.sub(r'\s+\d{1,2}\s*$', '', name).strip()  # Qty/trailing single digits
         
         # If name is too short, return None
         if len(name) < 1:
@@ -737,11 +814,32 @@ class AnchorEngine:
                     result["index_end"] = i
                     break
                 
-                # CRITICAL: Only add lines that look like items
-                if looks_like_item(line_stripped):
+                # CRITICAL: MULTI-LINE GROUPING
+                # For receipts where item name and price are on separate lines,
+                # we need to collect consecutive lines and merge them
+                item_group = [line_stripped]
+                
+                # Look ahead for consecutive number lines (likely prices)
+                for j in range(i + 1, min(i + 5, len(lines))):
+                    next_line = lines[j].strip()
+                    if not next_line:
+                        break
+                    # If next line is pure numbers, include it in the group
+                    if re.match(r'^[\d\s,\.]+$', next_line):
+                        item_group.append(next_line)
+                        # Update i to skip processed lines
+                        i = j
+                    else:
+                        break
+                
+                # Combine all lines in group
+                combined_line = ' '.join(item_group)
+                
+                # CRITICAL: Only add lines that look like items OR have number groups
+                if looks_like_item(line_stripped) or (len(item_group) > 1 and re.search(r'\d', combined_line)):
                     result["items"].append({
                         "line_index": i,
-                        "line": line_stripped
+                        "line": combined_line  # Use combined line
                     })
                 # Else silently skip (not a valid item line)
         

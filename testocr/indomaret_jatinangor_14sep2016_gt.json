@@ -1,0 +1,27 @@
+{
+  "receipt_id": "indomaret_jatinangor_14sep2016",
+  "merchant_name": "INDOMARET",
+  "date": "14.09.16",
+  "time": "06:46",
+  "location": "JATINANGOR KM. 20-SUMEDA",
+  "profile": "INDONESIAN_MINIMARKET",
+  "expected_items": [
+    {"name": "S/ROTI KRIM KEJU 72G", "quantity": 4, "unit_price": 4500, "total": 18000, "is_discount": false},
+    {"name": "CIMORY MIX BERRY 225", "quantity": 1, "unit_price": 8500, "total": 8500, "is_discount": false},
+    {"name": "CAFELA EXPRESO 200ML", "quantity": 1, "unit_price": 3500, "total": 3500, "is_discount": false},
+    {"name": "FF LOW FAT VAN 225", "quantity": 1, "unit_price": 5200, "total": 5200, "is_discount": false},
+    {"name": "PLASTIK SDG", "quantity": 1, "unit_price": 1, "total": 1, "is_discount": false},
+    {"name": "DISKON FRISIAN FLAG", "quantity": 1, "unit_price": 1300, "total": -1300, "is_discount": true}
+  ],
+  "expected_subtotal": 35201,
+  "expected_discounts": 1300,
+  "expected_total": 33900,
+  "cash_paid": 40000,
+  "change": 6100,
+  "math_validation": {
+    "subtotal_sum": 35201,
+    "discount_sum": 1300,
+    "net_total": 33900,
+    "is_valid": true
+  }
+}
