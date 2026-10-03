@@ -53,11 +53,15 @@ class ItemParser:
         if self._is_anchor_line(line):
             return None
         
+        # Normalize currency format BEFORE tokenization
+        # Handle OCR output like "8, 500" (with space after comma)
+        normalized_line = self._normalize_currency_format(line)
+        
         # Skip lines with only one large number (likely totals)
-        if self._is_summary_line(line):
+        if self._is_summary_line(normalized_line):
             return None
         
-        tokens = line.split()
+        tokens = normalized_line.split()
         if len(tokens) < 2:
             return None
         
@@ -87,6 +91,29 @@ class ItemParser:
             price_per_unit=price_per_unit,
             total_price=total_price
         )
+    
+    def _normalize_currency_format(self, text: str) -> str:
+        """
+        Normalize currency format from OCR output.
+        Handles formats like "8, 500" -> "8500", "Rp 8.500" -> "8500".
+        
+        Indonesian thousand separator: comma (,)
+        """
+        import re
+        
+        # ULTRA AGGRESSIVE: Find ALL patterns like "digit, digit(s)" and merge
+        # "8, 500" -> "8,500" -> "8500"
+        # "18, 000" -> "18,000" -> "18000"
+        
+        # Pattern 1: digit, comma, space, digit(s) - merge into single number
+        # Matches: "8, 500", "18, 000", "1, 300"
+        while re.search(r'\d+,\s*\d+', text):
+            text = re.sub(r'(\d+),\s*(\d+)', lambda m: m.group(1) + m.group(2), text)
+        
+        # Pattern 2: Now remove remaining thousand separators (commas between digits)
+        text = text.replace(',', '')
+        
+        return text
     
     def _is_anchor_line(self, line: str) -> bool:
         """Check if line is an anchor/summary line."""
