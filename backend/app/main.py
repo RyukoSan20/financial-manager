@@ -41,36 +41,37 @@ app.add_middleware(
 
 # Initialize database and seed data on startup
 @app.on_event("startup")
-def startup():
+async def startup():
     init_db()
     seed_categories()
     
-    # Auto-migrate database schema
-    _run_schema_migrations()
+    # Auto-migrate database schema (non-blocking)
+    import threading
+    thread = threading.Thread(target=_run_schema_migrations, daemon=True)
+    thread.start()
 
 def _run_schema_migrations():
     """Run database schema migrations for new columns."""
+    import time
+    time.sleep(2)  # Wait for DB connection to stabilize
+    
     from sqlalchemy import text
-    from app.core.database import engine
-    
-    migrations = [
-        ("is_discount", "ALTER TABLE receipt_items ADD COLUMN IF NOT EXISTS is_discount BOOLEAN DEFAULT FALSE"),
-    ]
-    
     try:
+        from app.core.database import engine
         with engine.connect() as conn:
-            for col_name, sql in migrations:
-                # Check if column exists
-                result = conn.execute(text(f"""
-                    SELECT column_name FROM information_schema.columns 
-                    WHERE table_name = 'receipt_items' AND column_name = '{col_name}'
+            # Check if column exists first
+            result = conn.execute(text("""
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name = 'receipt_items' AND column_name = 'is_discount'
+            """))
+            if not result.fetchone():
+                conn.execute(text("""
+                    ALTER TABLE receipt_items ADD COLUMN IF NOT EXISTS is_discount BOOLEAN DEFAULT FALSE
                 """))
-                if not result.fetchone():
-                    conn.execute(text(sql))
-                    conn.commit()
-                    print(f"[MIGRATION] Added column: {col_name}")
-                else:
-                    print(f"[MIGRATION] Column exists: {col_name}")
+                conn.commit()
+                print("[MIGRATION] Added is_discount column")
+            else:
+                print("[MIGRATION] is_discount column exists")
     except Exception as e:
         print(f"[MIGRATION] Warning: {e}")
 
