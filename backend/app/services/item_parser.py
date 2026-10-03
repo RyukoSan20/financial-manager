@@ -185,28 +185,79 @@ class ItemParser:
     
     def _parse_discount_line(self, line: str) -> Optional[ParsedItem]:
         """
-        Parse discount/potongan line.
+        Parse discount/potongan line with MULTIPLE formats.
         Returns item with negative total_price and is_discount=True.
+        
+        Supported formats:
+        - DISKON : (1)
+        - DISKON FRISIAN FLAG : (1, 300)
+        - POTONGAN HARGA : Rp 5.000
+        - DISC 10% : 3,500
+        - HEMAT : -2,000
+        - Anda Hemat 5.000
+        - VOUCHER : Rp 10000
         """
-        # Extract number from parentheses: "(1)" or "(1, 300)"
-        match = re.search(r'\((\d[\d\,\.]*)\)', line)
+        line_upper = line.upper()
+        amount = None
+        
+        # Format 1: Parentheses with comma - "(1, 300)" or "(1300)"
+        match = re.search(r'\(\s*(\d[\d\,\.\s]*)\s*\)', line)
         if match:
-            amount_str = match.group(1).replace(',', '').replace('.', '')
+            amount_str = match.group(1).replace(',', '').replace(' ', '').replace('.', '')
             try:
                 amount = float(amount_str)
-                return ParsedItem(
-                    name=line.strip(),
-                    quantity=1,
-                    price_per_unit=-amount,
-                    total_price=-amount
-                )
             except ValueError:
                 pass
         
-        # Fallback: extract last number
-        numbers = self._extract_currency_values(line.split())
-        if numbers:
-            amount = abs(numbers[-1])
+        # Format 2: Rp prefix - "Rp 5.000" or "Rp5,000"
+        if amount is None:
+            match = re.search(r'Rp\.?\s*([\d\,\.]+)', line, re.IGNORECASE)
+            if match:
+                amount_str = match.group(1).replace(',', '').replace(' ', '').replace('.', '')
+                try:
+                    amount = float(amount_str)
+                except ValueError:
+                    pass
+        
+        # Format 3: Minus sign - "- 5.000" or "-5.000"
+        if amount is None:
+            match = re.search(r'-\s*([\d\,\.]+)', line)
+            if match:
+                amount_str = match.group(1).replace(',', '').replace(' ', '').replace('.', '')
+                try:
+                    amount = float(amount_str)
+                except ValueError:
+                    pass
+        
+        # Format 4: "HEMAT" or "Anda Hemat" followed by number
+        if amount is None:
+            match = re.search(r'(?:ANDA\s+)?HEMAT\s*:?\s*([\d\,\.]+)', line_upper)
+            if match:
+                amount_str = match.group(1).replace(',', '').replace(' ', '').replace('.', '')
+                try:
+                    amount = float(amount_str)
+                except ValueError:
+                    pass
+        
+        # Format 5: Percentage discount - "DISC 10%"
+        if amount is None:
+            match = re.search(r'DISC(?:OUNT)?\s*(\d+)%', line_upper)
+            if match:
+                # Can't determine amount from percentage without subtotal
+                # Return generic discount
+                pass
+        
+        # Format 6: Last resort - extract last large number
+        if amount is None:
+            numbers = self._extract_currency_values(line.split())
+            if numbers:
+                # Take the largest number that looks like a discount
+                for num in reversed(numbers):
+                    if 1 <= num <= 100000:
+                        amount = num
+                        break
+        
+        if amount is not None and amount > 0:
             return ParsedItem(
                 name=line.strip(),
                 quantity=1,

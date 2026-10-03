@@ -590,24 +590,83 @@ class AnchorEngine:
             return bool(re.search(price_pattern, line.strip()))
         
         def looks_like_item(line: str) -> bool:
-            """Check if line looks like a receipt item."""
+            """
+            Check if line looks like a receipt item.
+            STRICT validation to avoid false positives from header meta lines.
+            """
+            stripped = line.strip()
+            
             # Skip pure separators
-            if SEPARATOR_PATTERN.match(line.strip()):
+            if SEPARATOR_PATTERN.match(stripped):
                 return False
             
-            # Skip meta lines (NPWP, address, phone)
-            upper = line.upper()
-            meta_patterns = [r'NPWP', r'KM\.', r'JL\.', r'TELP', r'PT\s', r'NOPT']
+            upper = stripped.upper()
+            
+            # ========== REJECT META LINES ==========
+            # Skip NPWP, addresses, phones, cashier codes
+            meta_patterns = [
+                r'NPWP',           # Tax ID
+                r'KM\.',           # Kilometer marker
+                r'JL\.',           # jalan (address)
+                r'TELP\.?',        # Telephone
+                r'PT\s',          # PT (company)
+                r'NOPT\.?',        # Nomor telepon
+                r'KODE\s*(KASIR|KASIR|POS)',  # Cashier code
+                r'STRUK\s*\d',    # Receipt number
+                r'^\d{2}:\d{2}$', # Time only
+                r'^\d{2}\.\d{2}\.\d{2}$',  # Date only
+                r'^P-\w{2,}',     # Purchase at patterns (P-2L-, P-Q-)
+                r'^Purchase at',   # Purchase at prefix
+                r'口品',           # Garbage OCR
+                r'★',              # Star/garbage
+                r'DOWNLOAD',       # Download watermark
+                r'HTTP',           # URL watermark
+                r'PEKNG',          # Garbage from OCR
+                r'ONGFOO',         # Garbage from OCR
+                r'TASUM',          # Garbage from OCR
+            ]
             for pattern in meta_patterns:
                 if re.search(pattern, upper):
                     return False
             
-            # ACCEPT discounts (they are valid items with negative price)
-            if 'DISKON' in upper or 'POTONGAN' in upper:
-                return True
+            # ========== ACCEPT DISCOUNTS (various formats) ==========
+            discount_patterns = [
+                r'DISKON',          # DISKON
+                r'POTONGAN',        # Potongan harga
+                r'DISC(?!OUN)',     # DISC (not DISCOUNT)
+                r'HEMAT',           # Anda hemat
+                r'VOUCHER',         # Voucher
+                r'BONUS',           # Bonus
+                r'GRATIS',          # Gratis/Free
+                r'FREE',            # Free item
+            ]
+            for pattern in discount_patterns:
+                if re.search(pattern, upper):
+                    return True
             
-            # Must have a price-like number
-            return has_valid_price(line)
+            # ========== REJECT PURE NUMBERS OR CODES ==========
+            # Skip lines that are just numbers/codes (not product names)
+            if re.match(r'^[\d\s\.\,\-]+$', stripped):
+                return False
+            
+            # ========== ACCEPT ITEMS WITH PRICES ==========
+            # Must have BOTH: product-like text AND a price at the end
+            if not has_valid_price(stripped):
+                return False
+            
+            # Additional check: must have SOME alphabetic characters (not just numbers)
+            alpha_count = sum(1 for c in stripped if c.isalpha())
+            if alpha_count < 2:
+                return False
+            
+            # Check product-like patterns
+            # Must have meaningful product text, not just codes
+            # Reject if it's mostly numbers with few letters
+            num_count = sum(1 for c in stripped if c.isdigit())
+            if num_count > len(stripped) * 0.7:
+                return False  # Too numeric, likely a code/number line
+            
+            return True
         
         for i, line in enumerate(lines):
             line_stripped = line.strip()
