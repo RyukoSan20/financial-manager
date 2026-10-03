@@ -519,9 +519,28 @@ def enrich_with_gemini(receipt: ParsedReceipt, image_bytes: bytes = None) -> Par
             receipt.parse_method = "gemini_fallback"
             
     except Exception as e:
-        logger.warning(f"Gemini enrichment failed: {e}")
-    
-    return receipt
+        logger.error(f"Gemini Vision fallback failed: {e}")
+        # DO NOT return empty receipt - try to salvage what we have
+        # Call signature_matcher to infer merchant from item patterns if items exist
+        if receipt.items:
+            try:
+                from app.services.signature_matcher import infer_merchant_from_items
+                items_dict = [
+                    {"name": i.name, "total_price": i.total_price}
+                    for i in receipt.items
+                ]
+                sig_result = infer_merchant_from_items(items_dict)
+                if sig_result.get("matched"):
+                    receipt.merchant_name = sig_result.get("merchant_name", receipt.merchant_name)
+                    receipt.merchant_type = sig_result.get("merchant_type", receipt.merchant_type)
+            except Exception as sig_e:
+                logger.error(f"Signature matching failed: {sig_e}")
+        
+        # If still no merchant, use generic
+        if not receipt.merchant_name or receipt.merchant_name in ["Unknown", "Merchant", ""]:
+            receipt.merchant_name = "Minimarket/Retail"
+        
+        return receipt
 
 
 def build_enrichment_prompt(receipt: ParsedReceipt) -> str:

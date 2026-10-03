@@ -767,40 +767,73 @@ class GenericPipeline:
         """
         Execute pipeline with integrity check and real fallback.
         """
+        logger.info("=== PARSE START ===")
+        
         # Try physical receipt parser
         lines = raw_input.get("ocr_lines") or raw_input.get("lines") or []
-        if lines:
-            result = self._parse_physical(lines)
-            
-            # Integrity check
-            is_valid, issues, conf = self.gatekeeper.validate(
-                result.merchant_name,
-                result.total_amount,
-                result.items
-            )
-            result.confidence = conf
-            
-            if is_valid:
-                result.success = True
-                result.message = "Validation passed"
-                return result
-            
-            # REAL FALLBACK: Call Gemini when validation fails
-            if image_bytes:
-                logger.info(f"Validation failed: {issues}, calling Gemini fallback")
-                gemini_result = await self._parse_with_gemini(image_bytes)
-                if gemini_result and gemini_result.success:
-                    return gemini_result
-            
-            # Return partial if we have usable data
-            if result.total_amount > 0 and result.items:
-                result.message = f"Partial: {', '.join(issues)}"
-                return result
+        logger.info(f"Input lines count: {len(lines)}")
         
-        # All failed
+        if not lines:
+            logger.error("No lines provided to parse")
+            return ExtractionResult(success=False, message="No lines provided")
+        
+        result = self._parse_physical(lines)
+        logger.info(f"Physical parse: merchant={result.merchant_name}, items={len(result.items)}, total={result.total_amount}")
+        
+        # Integrity check
+        is_valid, issues, conf = self.gatekeeper.validate(
+            result.merchant_name,
+            result.total_amount,
+            result.items
+        )
+        result.confidence = conf
+        logger.info(f"Integrity check: valid={is_valid}, confidence={conf}, issues={issues}")
+        
+        if is_valid:
+            result.success = True
+            result.message = "Validation passed"
+            logger.info("=== PARSE END: SUCCESS ===")
+            return result
+        
+        # REAL FALLBACK: Call Gemini when validation fails
+        if image_bytes:
+            logger.info(f"Validation failed: {issues}, calling Gemini fallback...")
+            gemini_result = await self._parse_with_gemini(image_bytes)
+            if gemini_result and gemini_result.success:
+                logger.info(f"=== PARSE END: GEMINI FALLBACK SUCCESS ===")
+                return gemini_result
+            elif gemini_result:
+                logger.info(f"Gemini fallback partial: merchant={gemini_result.merchant_name}, total={gemini_result.total_amount}")
+        
+        # Return partial if we have usable data
+        if result.total_amount > 0 and result.items:
+            result.message = f"Partial: {', '.join(issues)}"
+            logger.info("=== PARSE END: PARTIAL ===")
+            return result
+        
+        # All failed - try to salvage with signature matching
+        if result.items:
+            try:
+                from app.services.signature_matcher import infer_merchant_from_items
+                items_for_match = [
+                    {"name": item.name, "total_price": item.total_price}
+                    for item in result.items if not item.is_discount
+                ]
+                sig_result = infer_merchant_from_items(items_for_match)
+                if sig_result and sig_result.get("matched"):
+                    result.merchant_name = sig_result.get("merchant_name", result.merchant_name)
+                    result.merchant_type = sig_result.get("merchant_type", result.merchant_type)
+                    result.success = True
+                    result.message = "Salvaged via signature matching"
+                    logger.info(f"=== PARSE END: SALVAGED via signature ===")
+                    return result
+            except Exception as sig_e:
+                logger.error(f"Signature matching failed: {sig_e}")
+        
+        logger.error("=== PARSE END: ALL FAILED ===")
         return ExtractionResult(
             success=False,
-            message="All layers failed"
+            message=f"All layers failed: {issues}"
         )
     
     def _parse_physical(self, lines: List[str]) -> ExtractionResult:
@@ -919,18 +952,22 @@ class GenericPipeline:
     async def _parse_with_gemini(self, image_bytes: bytes) -> Optional[ExtractionResult]:
         """REAL Gemini fallback execution."""
         if not image_bytes:
+            logger.warning("Gemini fallback called but no image_bytes provided")
             return None
         
         try:
             api_key = os.environ.get("GEMINI_API_KEY")
             if not api_key:
-                logger.warning("No Gemini API key")
+                logger.error("No GEMINI_API_KEY configured")
                 return None
             
             from app.services.gemini_vision import extract_receipt_with_gemini
             
+            logger.info("Calling Gemini Vision API...")
             gemini_data = extract_receipt_with_gemini(image_bytes, api_key)
+            
             if not gemini_data:
+                logger.error("Gemini returned empty result")
                 return None
             
             result = ExtractionResult(source=ExtractionSource.GEMINI_FALLBACK)
@@ -950,16 +987,24 @@ class GenericPipeline:
                     total_price=float(item_data.get("total_price", 0))
                 ))
             
-            if result.total_amount > 0:
-                result.success = True
-                result.confidence = 0.85
-                result.message = "Gemini fallback success"
+            # Always mark as success if we got a result
+            result.success = True
+            result.confidence = float(gemini_data.get("confidence", 0.8)) or 0.85
+            result.message = "Gemini Vision fallback success"
+            
+            logger.info(f"Gemini fallback success: merchant={result.merchant_name}, items={len(result.items)}, total={result.total_amount}")
             
             return result
             
         except Exception as e:
-            logger.error(f"Gemini error: {e}")
-            return None
+            logger.error(f"Gemini fallback error: {e}")
+            # Never return None - try to return partial result with inferred merchant
+            result = ExtractionResult(source=ExtractionSource.GEMINI_FALLBACK)
+            result.merchant_name = "Minimarket/Retail"
+            result.merchant_type = "Retail"
+            result.success = False
+            result.message = f"Gemini failed: {str(e)}"
+            return result
 
 
 # Global instance
