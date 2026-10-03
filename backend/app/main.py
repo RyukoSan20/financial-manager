@@ -70,11 +70,24 @@ def _run_schema_migrations():
             # Migration: Add supabase_id to users table
             user_columns = [col['name'] for col in inspector.get_columns('users')]
             if 'supabase_id' not in user_columns:
-                conn.execute(text("""
-                    ALTER TABLE users ADD COLUMN supabase_id VARCHAR(255) UNIQUE
-                """))
-                conn.commit()
-                print("[MIGRATION] Added supabase_id column to users")
+                try:
+                    # Add column without UNIQUE first (simpler migration)
+                    conn.execute(text("""
+                        ALTER TABLE users ADD COLUMN supabase_id VARCHAR(255)
+                    """))
+                    conn.commit()
+                    print("[MIGRATION] Added supabase_id column to users")
+                    # Then add UNIQUE constraint separately
+                    try:
+                        conn.execute(text("""
+                            ALTER TABLE users ADD CONSTRAINT users_supabase_id_key UNIQUE (supabase_id)
+                        """))
+                        conn.commit()
+                        print("[MIGRATION] Added supabase_id UNIQUE constraint")
+                    except:
+                        pass  # Constraint might already exist
+                except Exception as e:
+                    print(f"[MIGRATION] Failed to add supabase_id: {e}")
             else:
                 print("[MIGRATION] supabase_id column exists")
     except Exception as e:
