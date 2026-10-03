@@ -44,6 +44,10 @@ app.add_middleware(
 async def startup():
     init_db()
     seed_categories()
+    # Run schema migrations in background thread
+    import threading
+    t = threading.Thread(target=_run_schema_migrations, daemon=True)
+    t.start()
 
 def _run_schema_migrations():
     """Run database schema migrations for new columns (called from background)."""
