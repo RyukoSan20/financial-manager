@@ -166,14 +166,15 @@ def _process_receipt_cpu_bound(image_bytes: bytes) -> dict:
             address=receipt_result.merchant_location
         )
         
-        # Get items dict for enrichment
+        # Get items dict for enrichment (including is_discount flag)
         enriched_items = [
             {
                 'name': item.name,
                 'quantity': item.quantity,
                 'price_per_unit': item.price_per_unit,
                 'total_price': item.total_price,
-                'category': item.category
+                'category': item.category,
+                'is_discount': getattr(item, 'is_discount', False)
             }
             for item in receipt_result.items
         ]
