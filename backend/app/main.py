@@ -67,8 +67,11 @@ def _run_schema_migrations():
             else:
                 print("[MIGRATION] is_discount column exists")
             
+            print("[MIGRATION] Starting migrations...")
+            
             # Migration: Add supabase_id to users table
             user_columns = [col['name'] for col in inspector.get_columns('users')]
+            print(f"[MIGRATION] Current user columns: {user_columns}")
             if 'supabase_id' not in user_columns:
                 try:
                     # Add column without UNIQUE first (simpler migration)
@@ -77,19 +80,10 @@ def _run_schema_migrations():
                     """))
                     conn.commit()
                     print("[MIGRATION] Added supabase_id column to users")
-                    # Then add UNIQUE constraint separately
-                    try:
-                        conn.execute(text("""
-                            ALTER TABLE users ADD CONSTRAINT users_supabase_id_key UNIQUE (supabase_id)
-                        """))
-                        conn.commit()
-                        print("[MIGRATION] Added supabase_id UNIQUE constraint")
-                    except:
-                        pass  # Constraint might already exist
                 except Exception as e:
                     print(f"[MIGRATION] Failed to add supabase_id: {e}")
             else:
-                print("[MIGRATION] supabase_id column exists")
+                print("[MIGRATION] supabase_id column already exists")
     except Exception as e:
         print(f"[MIGRATION] Warning: {e}")
 
