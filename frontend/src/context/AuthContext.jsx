@@ -139,6 +139,33 @@ export const AuthProvider = ({ children }) => {
     const sb = getSupabase();
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    
+    // Store Supabase session
+    if (data.session) {
+      setUser(data.user);
+      localStorage.setItem('sb_token', data.session.access_token);
+      localStorage.setItem('sb_user', JSON.stringify(data.user));
+      
+      // Exchange for backend JWT
+      try {
+        const res = await fetch(`${API_URL}/api/supabase-exchange`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: data.user.email,
+            supabase_id: data.user.id,
+            provider: 'email',
+          }),
+        });
+        if (res.ok) {
+          const tokenData = await res.json();
+          localStorage.setItem('token', tokenData.access_token);
+          localStorage.setItem('user', JSON.stringify(tokenData.user));
+        }
+      } catch (e) {
+        console.warn('Backend token exchange failed:', e);
+      }
+    }
     return data;
   };
 
@@ -146,6 +173,13 @@ export const AuthProvider = ({ children }) => {
     const sb = getSupabase();
     const { data, error } = await sb.auth.signUp({ email, password });
     if (error) throw error;
+    
+    // Store Supabase session if auto-signed in
+    if (data.session) {
+      setUser(data.user);
+      localStorage.setItem('sb_token', data.session.access_token);
+      localStorage.setItem('sb_user', JSON.stringify(data.user));
+    }
     return data;
   };
 
