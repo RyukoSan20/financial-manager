@@ -44,29 +44,23 @@ app.add_middleware(
 async def startup():
     init_db()
     seed_categories()
-    
-    # Auto-migrate database schema (non-blocking)
-    import threading
-    thread = threading.Thread(target=_run_schema_migrations, daemon=True)
-    thread.start()
 
 def _run_schema_migrations():
-    """Run database schema migrations for new columns."""
+    """Run database schema migrations for new columns (called from background)."""
     import time
-    time.sleep(2)  # Wait for DB connection to stabilize
+    time.sleep(3)  # Wait for app to fully start
     
-    from sqlalchemy import text
+    from sqlalchemy import text, inspect
     try:
         from app.core.database import engine
+        
         with engine.connect() as conn:
-            # Check if column exists first
-            result = conn.execute(text("""
-                SELECT column_name FROM information_schema.columns 
-                WHERE table_name = 'receipt_items' AND column_name = 'is_discount'
-            """))
-            if not result.fetchone():
+            inspector = inspect(engine)
+            columns = [col['name'] for col in inspector.get_columns('receipt_items')]
+            
+            if 'is_discount' not in columns:
                 conn.execute(text("""
-                    ALTER TABLE receipt_items ADD COLUMN IF NOT EXISTS is_discount BOOLEAN DEFAULT FALSE
+                    ALTER TABLE receipt_items ADD COLUMN is_discount BOOLEAN DEFAULT FALSE
                 """))
                 conn.commit()
                 print("[MIGRATION] Added is_discount column")
