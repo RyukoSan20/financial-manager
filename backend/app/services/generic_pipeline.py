@@ -625,16 +625,21 @@ class AnchorEngine:
             if result["state"] == "HEADER":
                 # Try to extract merchant FIRST
                 if result["merchant"] is None:
+                    line_upper = line_stripped.upper()
+                    
                     # Skip garbage
                     if any(g in line_upper for g in garbage):
                         pass  # Continue to other checks
                     elif not DATE_PATTERN.match(line_stripped) and not SEPARATOR_PATTERN.match(line_stripped):
-                        # Not garbage, not date, not separator - try as merchant
-                        alpha_count = sum(1 for c in line_stripped if c.isalpha())
-                        if alpha_count >= 2 and len(line_stripped) <= 40:
-                            cleaned = clean_merchant(line_stripped)
-                            if len(cleaned) >= 2 and not is_garbage_merchant(cleaned):
-                                result["merchant"] = cleaned
+                        # NOT date or separator - try as merchant
+                        # BUT skip if it looks like an item (has price pattern)
+                        if not looks_like_item(line_stripped):
+                            # Safe to try as merchant
+                            alpha_count = sum(1 for c in line_stripped if c.isalpha())
+                            if alpha_count >= 2 and len(line_stripped) <= 40:
+                                cleaned = clean_merchant(line_stripped)
+                                if len(cleaned) >= 2 and not is_garbage_merchant(cleaned):
+                                    result["merchant"] = cleaned
                 
                 # Check for DATE/TIME anchor - THIS is what triggers ITEMS
                 if DATE_PATTERN.match(line_stripped) or (TIME_PATTERN.search(line_stripped) and DATE_PATTERN.search(line_stripped)):
