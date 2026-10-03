@@ -25,10 +25,15 @@ export const clearToken = () => {
 // Check if authenticated
 export const isAuthenticated = () => !!getToken();
 
-// Redirect to login
-const redirectToLogin = () => {
-  clearToken();
-  window.location.href = '/login';
+// Don't auto-redirect - let components handle 401 gracefully
+const handleAuthError = (response) => {
+  if (response.status === 401) {
+    console.warn('401 Unauthorized');
+    // Clear expired/invalid tokens
+    clearToken();
+    // Don't auto-redirect - throw error instead
+    throw new Error('Session expired. Please login again.');
+  }
 };
 
 // Base fetch with interceptor - handles auth and error formatting
@@ -48,9 +53,7 @@ const fetchWithInterceptor = async (url, options = {}) => {
   
   // Handle 401 Unauthorized
   if (response.status === 401) {
-    console.warn('401 Unauthorized - clearing token and redirecting');
-    redirectToLogin();
-    throw new Error('Session expired. Please login again.');
+    handleAuthError(response);
   }
   
   // Handle 204 No Content (DELETE success) - return Response object with status

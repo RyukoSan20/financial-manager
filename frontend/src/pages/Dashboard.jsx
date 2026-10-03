@@ -17,7 +17,7 @@ import { useAuth } from '../context/AuthContext';
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 export const Dashboard = () => {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [cashFlow, setCashFlow] = useState(null);
@@ -25,18 +25,11 @@ export const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Auth guard - redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate('/login');
-    }
-  }, [authLoading, isAuthenticated, navigate]);
-
-  // Fetch data only after auth is confirmed
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    fetchData();
-  }, [isAuthenticated]);
+  // Don't render if not authenticated (RequireAuth should handle this, but safety check)
+  if (!isAuthenticated) {
+    navigate('/login');
+    return null;
+  }
 
   // Auto refresh when authenticated
   useEffect(() => {
