@@ -101,6 +101,7 @@ def list_transactions(
                         "quantity": item.quantity or 1,
                         "price_per_unit": float(item.price_per_unit) if item.price_per_unit else 0,
                         "total_price": float(item.total_price) if item.total_price else 0,
+                        "is_discount": getattr(item, 'is_discount', False),
                     }
                     for item in receipt.items
                 ]

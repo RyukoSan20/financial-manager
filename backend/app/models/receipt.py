@@ -78,6 +78,7 @@ class ReceiptItem(Base):
     quantity = Column(Integer, default=1)
     price_per_unit = Column(Numeric(20, 2), nullable=True)
     total_price = Column(Numeric(20, 2), nullable=True)
+    is_discount = Column(Boolean, default=False)  # Flag for discount items
     
     # Catalog matching
     category = Column(String(100), nullable=True)  # Auto-classified category

@@ -304,6 +304,7 @@ async def parse_receipt_image_endpoint(
                         qty = item.get("quantity", 1) or 1
                         price = item.get("price_per_unit") or item.get("unit_price") or item.get("price", 0)
                         total = item.get("total_price") or item.get("total") or item.get("amount")
+                        is_disc = item.get("is_discount", False)
                         # Fallback: calculate total from qty * price
                         if not total and price:
                             total = qty * price
@@ -312,6 +313,7 @@ async def parse_receipt_image_endpoint(
                         qty = getattr(item, "quantity", 1) or 1
                         price = getattr(item, "price_per_unit", None) or getattr(item, "unit_price", None) or getattr(item, "price", 0)
                         total = getattr(item, "total_price", None) or getattr(item, "total", None) or getattr(item, "amount", None)
+                        is_disc = getattr(item, "is_discount", False)
                         if not total and price:
                             total = qty * price
                     
@@ -321,8 +323,9 @@ async def parse_receipt_image_endpoint(
                         quantity=qty,
                         price_per_unit=Decimal(str(price)) if price is not None else Decimal("0"),
                         total_price=Decimal(str(total)) if total is not None else Decimal("0"),
+                        is_discount=bool(is_disc),
                     )
-                    logger.info(f"Saving: {name} qty={qty} price={price} total={total}")
+                    logger.info(f"Saving: {name} qty={qty} price={price} total={total} is_discount={is_disc}")
                     db.add(receipt_item)
                 
                 db.commit()
