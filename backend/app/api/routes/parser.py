@@ -196,14 +196,23 @@ def _process_receipt_cpu_bound(image_bytes: bytes) -> dict:
         
     except Exception as e:
         logger.error(f"Hybrid receipt processing failed: {e}")
-        # Return empty result - don't use broken fallback parser
+        # Fallback to simple OCR
+        receipt = ocr_service.process_image(image_bytes)
+        
+        enriched_items = []
+        if receipt.items:
+            try:
+                enriched_items = match_items_to_catalog(receipt.items)
+            except:
+                enriched_items = receipt.items
+        
         return {
-            "receipt": None,
+            "receipt": receipt,
             "latitude": None,
             "longitude": None,
-            "merchant_address": None,
-            "enriched_items": [],
-            "raw_lines": []
+            "merchant_address": receipt.address,
+            "enriched_items": enriched_items,
+            "raw_lines": receipt.raw_lines if hasattr(receipt, 'raw_lines') else []
         }
 
 
