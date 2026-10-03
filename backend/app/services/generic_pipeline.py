@@ -507,14 +507,14 @@ class AnchorEngine:
         STATE MACHINE PARSING - Strict boundary enforcement.
         
         States:
-        - HEADER: Collect merchant name, skip until we find delimiter
-        - ITEMS: Parse items between delimiter and footer anchor
+        - HEADER: Collect merchant name, wait for DATE/TIME before items
+        - ITEMS: Parse items with VALIDATION (must have price)
         - FOOTER: Done, stop processing
         
-        Merchant Extraction Strategy:
-        1. Try first 5 lines (skip garbage like "Purchase at ...")
-        2. If no valid merchant found, scan ENTIRE document including footer
-        3. Use Merchant Lexicon for auto-correction
+        CRITICAL FIX: 
+        - Do NOT transition to ITEMS on first separator (could be header divider)
+        - Wait for DATE/TIME anchor before transitioning
+        - Only accept lines with valid price as items
         """
         result = {
             "merchant": None,
@@ -523,18 +523,20 @@ class AnchorEngine:
             "state": "HEADER",
             "index_start": None,
             "index_end": None,
-            "all_lines_searched": []  # Store all lines for fallback search
+            "all_lines_searched": [],
+            "date_found": False
         }
         
-        # Regex patterns for state transitions
+        # Regex patterns
         DATE_PATTERN = re.compile(r'\d{2}[\.\-]\d{2}[\.\-]\d{2,4}')
+        TIME_PATTERN = re.compile(r'\d{2}:\d{2}')
         SEPARATOR_PATTERN = re.compile(r'^[\-\=\_]{5,}$')
         FOOTER_ANCHORS = ["TOTAL", "GRAND TOTAL", "HARGA JUAL", "SUBTOTAL", "JUMLAH"]
         
         # Garbage filter
         garbage = ["PURCHASE AT", "DOWNLOAD", "HTTP", "★", "口品", "RECEIPT"]
         
-        # Common prefix patterns to strip
+        # Prefix patterns to strip
         prefix_patterns = [
             r'^PURCHASE AT\s+',
             r'^PT\s+',
@@ -544,18 +546,15 @@ class AnchorEngine:
         ]
         
         def clean_merchant(text: str) -> str:
-            """Remove common prefixes from merchant name."""
             for pattern in prefix_patterns:
                 text = re.sub(pattern, '', text, flags=re.IGNORECASE)
             return text.strip()
         
         def is_garbage_merchant(text: str) -> bool:
-            """Check if merchant text is garbage/OCR noise."""
             if not text:
                 return True
             text_upper = text.upper()
             
-            # STRICT BLACKLIST
             garbage_patterns = [
                 r'^PURCHASE AT\s',
                 r'^P-\w{2,10}$',
@@ -566,13 +565,13 @@ class AnchorEngine:
                 r'PEKNGFOOO',
                 r'ONGFOO',
                 r'TASUM',
+                r'NPWP',
             ]
             
             for pattern in garbage_patterns:
                 if re.search(pattern, text_upper, re.IGNORECASE):
                     return True
             
-            # Check for high entropy/random characters
             non_alnum = sum(1 for c in text if not c.isalnum())
             if len(text) > 0 and non_alnum / len(text) > 0.3:
                 return True
@@ -583,57 +582,91 @@ class AnchorEngine:
             
             return False
         
+        def has_valid_price(line: str) -> bool:
+            """Check if line has valid price pattern at the end."""
+            # Must have digits with thousand separator or large number
+            # Pattern: number at end (likely price)
+            price_pattern = r'(\d[\d\.\,]*\d|\d{4,})$'
+            return bool(re.search(price_pattern, line.strip()))
+        
+        def looks_like_item(line: str) -> bool:
+            """Check if line looks like a receipt item."""
+            # Skip pure separators
+            if SEPARATOR_PATTERN.match(line.strip()):
+                return False
+            
+            # Skip meta lines (NPWP, address, phone)
+            upper = line.upper()
+            meta_patterns = [r'NPWP', r'KM\.', r'JL\.', r'TELP', r'PT\s', r'NOPT']
+            for pattern in meta_patterns:
+                if re.search(pattern, upper):
+                    return False
+            
+            # ACCEPT discounts (they are valid items with negative price)
+            if 'DISKON' in upper or 'POTONGAN' in upper:
+                return True
+            
+            # Must have a price-like number
+            return has_valid_price(line)
+        
         for i, line in enumerate(lines):
             line_stripped = line.strip()
             if not line_stripped:
                 continue
             
             result["all_lines_searched"].append(line_stripped)
+            line_upper = line_stripped.upper()
+            
+            # ========== FOOTER STATE ==========
+            if result["state"] == "FOOTER":
+                continue
             
             # ========== HEADER STATE ==========
             if result["state"] == "HEADER":
-                # First check if this is a SEPARATOR - TRANSITION immediately
-                if SEPARATOR_PATTERN.match(line_stripped):
+                # Try to extract merchant FIRST
+                if result["merchant"] is None:
+                    # Skip garbage
+                    if any(g in line_upper for g in garbage):
+                        pass  # Continue to other checks
+                    elif not DATE_PATTERN.match(line_stripped) and not SEPARATOR_PATTERN.match(line_stripped):
+                        # Not garbage, not date, not separator - try as merchant
+                        alpha_count = sum(1 for c in line_stripped if c.isalpha())
+                        if alpha_count >= 2 and len(line_stripped) <= 40:
+                            cleaned = clean_merchant(line_stripped)
+                            if len(cleaned) >= 2 and not is_garbage_merchant(cleaned):
+                                result["merchant"] = cleaned
+                
+                # Check for DATE/TIME anchor - THIS is what triggers ITEMS
+                if DATE_PATTERN.match(line_stripped) or (TIME_PATTERN.search(line_stripped) and DATE_PATTERN.search(line_stripped)):
+                    result["date_found"] = True
+                    continue
+                
+                # Check for separator AFTER date found
+                if SEPARATOR_PATTERN.match(line_stripped) and result["date_found"]:
                     result["state"] = "ITEMS"
                     result["index_start"] = i + 1
                     continue
                 
-                # Then try to extract merchant
-                if result["merchant"] is None:
-                    line_upper = line_stripped.upper()
-                    
-                    # Skip garbage
-                    if any(g in line_upper for g in garbage):
-                        continue
-                    
-                    # Skip date/time lines
-                    if DATE_PATTERN.match(line_stripped):
-                        continue
-                    
-                    # Must have alphabetic characters
-                    alpha_count = sum(1 for c in line_stripped if c.isalpha())
-                    if alpha_count >= 2 and len(line_stripped) <= 30:
-                        cleaned = clean_merchant(line_stripped)
-                        if len(cleaned) >= 2 and not is_garbage_merchant(cleaned):
-                            result["merchant"] = cleaned
-                            continue
+                # If no date/time yet, consume separators silently
+                if SEPARATOR_PATTERN.match(line_stripped):
+                    continue
             
             # ========== ITEMS STATE ==========
             elif result["state"] == "ITEMS":
-                line_upper = line_stripped.upper()
-                
-                # Check for footer anchor - TRANSITION to FOOTER
+                # Check for footer anchor
                 matched, _, _ = FuzzyMatcher.match(line_upper, FOOTER_ANCHORS)
                 if matched:
                     result["state"] = "FOOTER"
                     result["index_end"] = i
                     break
                 
-                # This is an item candidate - add to list
-                result["items"].append({
-                    "line_index": i,
-                    "line": line_stripped
-                })
+                # CRITICAL: Only add lines that look like items
+                if looks_like_item(line_stripped):
+                    result["items"].append({
+                        "line_index": i,
+                        "line": line_stripped
+                    })
+                # Else silently skip (not a valid item line)
         
         # ========== FULL DOCUMENT FALLBACK SCAN ==========
         # If no valid merchant found in header, search ENTIRE document
