@@ -403,18 +403,50 @@ export const Transactions = () => {
                       {/* Receipt Items Dropdown (Accordion) */}
                       {hasItems && isExpanded && (
                         <div className="mt-3 pt-3 border-t border-gray-100">
-                          <p className="text-xs font-semibold text-gray-500 mb-2">Rincian Barang ({tx.items.length} item):</p>
+                          <p className="text-xs font-semibold text-gray-500 mb-2">
+                            Rincian Barang ({tx.items.filter(i => !i.is_discount).length} item):
+                            {tx.items.some(i => i.is_discount) && (
+                              <span className="ml-2 text-green-600">
+                                (Termasuk {tx.items.filter(i => i.is_discount).length} diskon)
+                              </span>
+                            )}
+                          </p>
                           <div className="space-y-1 bg-gray-50 rounded-lg p-2">
-                            {tx.items.map((item, idx) => (
-                              <div key={idx} className="flex justify-between items-center text-sm">
-                                <span className="text-gray-700 truncate flex-1">
-                                  {item.name} ({item.quantity}x @ Rp {(item.price_per_unit || item.price_unit || 0).toLocaleString('id-ID')})
-                                </span>
-                                <span className="text-gray-600 ml-2 whitespace-nowrap font-medium">
-                                  Rp {(item.total_price || item.total || 0).toLocaleString('id-ID')}
+                            {tx.items.map((item, idx) => {
+                              const isDiscount = item.is_discount;
+                              const price = Math.abs(item.total_price || 0);
+                              return (
+                                <div 
+                                  key={idx} 
+                                  className={`flex justify-between items-center text-sm ${isDiscount ? 'text-red-500 bg-red-50 -mx-2 px-2 rounded' : ''}`}
+                                >
+                                  <span className={`truncate flex-1 ${isDiscount ? 'font-medium' : 'text-gray-700'}`}>
+                                    {isDiscount && <span className="mr-1">[DISKON]</span>}
+                                    {item.name} 
+                                    {!isDiscount && (
+                                      <span className="text-gray-400">
+                                        ({item.quantity}x @ Rp {(item.price_per_unit || 0).toLocaleString('id-ID')})
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className={`ml-2 whitespace-nowrap font-medium ${isDiscount ? '' : 'text-gray-600'}`}>
+                                    {isDiscount ? '-' : ''}Rp {price.toLocaleString('id-ID')}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                            {/* Net Total */}
+                            {tx.items.some(i => i.is_discount) && (
+                              <div className="flex justify-between items-center text-sm font-semibold border-t border-gray-200 pt-2 mt-2">
+                                <span className="text-gray-700">Net Total:</span>
+                                <span className="text-gray-900">
+                                  Rp {(tx.items.reduce((sum, i) => {
+                                    const price = i.total_price || 0;
+                                    return i.is_discount ? sum - Math.abs(price) : sum + price;
+                                  }, 0)).toLocaleString('id-ID')}
                                 </span>
                               </div>
-                            ))}
+                            )}
                           </div>
                         </div>
                       )}
