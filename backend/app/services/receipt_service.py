@@ -692,17 +692,16 @@ def process_receipt_hybrid(
     
     # Convert to ParsedReceipt
     receipt = ParsedReceipt(parse_method=result.source.value)
-    receipt.merchant_name = result.merchant_name or "Merchant"
-    receipt.merchant_type = result.merchant_type or "Retail"
-    receipt.total_amount = result.total_amount or 0.0
-    receipt.date = result.date
+    receipt.merchant_name = result.merchant_name
+    receipt.merchant_type = result.merchant_type
+    receipt.total_amount = result.total_amount
+    receipt.transaction_date = result.date
     receipt.payment_method = result.payment_method
-    receipt.subtotal = result.subtotal or 0.0
-    receipt.discount = result.discount or 0.0
-    receipt.confidence = result.confidence or 0.0
+    receipt.subtotal = result.subtotal
+    receipt.discount = result.discount
+    receipt.confidence = result.confidence
     
-    # Safely iterate items (handle None)
-    for item in (result.items or []):
+    for item in result.items:
         receipt.items.append(ParsedItem(
             name=item.name,
             quantity=item.quantity,
