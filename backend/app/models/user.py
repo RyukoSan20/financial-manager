@@ -24,6 +24,7 @@ class User(Base):
     # OAuth fields
     google_id = Column(String(255), unique=True, nullable=True)
     google_picture = Column(Text, nullable=True)
+    supabase_id = Column(String(255), unique=True, nullable=True)  # Supabase Auth UID
     
     # Email verification
     email_verified = Column(Boolean, default=False)

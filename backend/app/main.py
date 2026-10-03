@@ -66,6 +66,17 @@ def _run_schema_migrations():
                 print("[MIGRATION] Added is_discount column")
             else:
                 print("[MIGRATION] is_discount column exists")
+            
+            # Migration: Add supabase_id to users table
+            user_columns = [col['name'] for col in inspector.get_columns('users')]
+            if 'supabase_id' not in user_columns:
+                conn.execute(text("""
+                    ALTER TABLE users ADD COLUMN supabase_id VARCHAR(255) UNIQUE
+                """))
+                conn.commit()
+                print("[MIGRATION] Added supabase_id column to users")
+            else:
+                print("[MIGRATION] supabase_id column exists")
     except Exception as e:
         print(f"[MIGRATION] Warning: {e}")
 

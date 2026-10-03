@@ -74,7 +74,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> "User":
-    """Get current authenticated user. Raises 401 if not authenticated."""
+    """Get current authenticated user. Supports both backend JWT and Supabase tokens."""
     from app.models.user import User
     
     if not credentials:
@@ -87,35 +87,30 @@ async def get_current_user(
     token = credentials.credentials
     payload = decode_token(token)
     
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # Try backend JWT first (sub is numeric user_id)
+    if payload:
+        user_id = payload.get("sub")
+        if user_id:
+            try:
+                user = db.query(User).filter(User.id == int(user_id)).first()
+                if user and user.is_active:
+                    return user
+            except (ValueError, TypeError):
+                pass
     
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # Supabase tokens have 'sub' as UUID, try supabase_id lookup
+    try:
+        from app.models.user import User
+        supabase_id = payload.get("sub") if payload else None
+        if supabase_id:
+            user = db.query(User).filter(User.supabase_id == supabase_id).first()
+            if user and user.is_active:
+                return user
+    except Exception:
+        pass
     
-    user = db.query(User).filter(User.id == int(user_id)).first()
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User account is inactive",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    return user
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
