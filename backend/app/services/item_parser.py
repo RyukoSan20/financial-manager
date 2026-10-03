@@ -43,6 +43,12 @@ class ItemParser:
         if not line:
             return None
         
+        upper = line.upper()
+        
+        # Handle discount lines specially (they have negative price)
+        if 'DISKON' in upper or 'POTONGAN' in upper:
+            return self._parse_discount_line(line)
+        
         # Skip lines that are just anchors (checked by caller)
         if self._is_anchor_line(line):
             return None
@@ -173,9 +179,42 @@ class ItemParser:
         name = ' '.join(name_parts).strip()
         
         # Remove any trailing punctuation
-        name = re.sub(r'[,.\-]+$', '', name).strip()
+        name = re.sub(r'[,\.\-]+$', '', name).strip()
         
         return name
+    
+    def _parse_discount_line(self, line: str) -> Optional[ParsedItem]:
+        """
+        Parse discount/potongan line.
+        Returns item with negative total_price and is_discount=True.
+        """
+        # Extract number from parentheses: "(1)" or "(1, 300)"
+        match = re.search(r'\((\d[\d\,\.]*)\)', line)
+        if match:
+            amount_str = match.group(1).replace(',', '').replace('.', '')
+            try:
+                amount = float(amount_str)
+                return ParsedItem(
+                    name=line.strip(),
+                    quantity=1,
+                    price_per_unit=-amount,
+                    total_price=-amount
+                )
+            except ValueError:
+                pass
+        
+        # Fallback: extract last number
+        numbers = self._extract_currency_values(line.split())
+        if numbers:
+            amount = abs(numbers[-1])
+            return ParsedItem(
+                name=line.strip(),
+                quantity=1,
+                price_per_unit=-amount,
+                total_price=-amount
+            )
+        
+        return None
 
 
 class GenericItemParser:

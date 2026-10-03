@@ -641,11 +641,24 @@ class AnchorEngine:
                     result["date_found"] = True
                     continue
                 
-                # Check for separator AFTER date found
-                if SEPARATOR_PATTERN.match(line_stripped) and result["date_found"]:
-                    result["state"] = "ITEMS"
-                    result["index_start"] = i + 1
-                    continue
+                # TRANSITION to ITEMS if:
+                # 1. Date found AND separator found, OR
+                # 2. Date found AND next line looks like an item (no explicit separator)
+                if result["date_found"]:
+                    if SEPARATOR_PATTERN.match(line_stripped):
+                        result["state"] = "ITEMS"
+                        result["index_start"] = i + 1
+                        continue
+                    # Also transition if this line looks like an item (no separator between date and items)
+                    if looks_like_item(line_stripped):
+                        result["state"] = "ITEMS"
+                        result["index_start"] = i
+                        # Add this line as first item
+                        result["items"].append({
+                            "line_index": i,
+                            "line": line_stripped
+                        })
+                        continue
                 
                 # If no date/time yet, consume separators silently
                 if SEPARATOR_PATTERN.match(line_stripped):
@@ -890,9 +903,20 @@ class GenericPipeline:
         # Parse items from state machine's bounded region
         for item_candidate in state_result.get("items", []):
             line = item_candidate["line"]
-            item = self.item_parser.parse_line(line)
-            if item:
-                result.items.append(item)
+            parsed = self.item_parser.parse_line(line)
+            if parsed:
+                # Convert ParsedItem to ReceiptItem with is_discount flag
+                upper = line.upper()
+                is_disc = 'DISKON' in upper or 'POTONGAN' in upper
+                receipt_item = ReceiptItem(
+                    name=parsed.name,
+                    quantity=parsed.quantity,
+                    price_per_unit=parsed.price_per_unit,
+                    total_price=parsed.total_price,
+                    is_discount=is_disc,
+                    category=parsed.category if hasattr(parsed, 'category') else "Unknown"
+                )
+                result.items.append(receipt_item)
         
         # Calculate totals
         result.subtotal = result.items_sum
