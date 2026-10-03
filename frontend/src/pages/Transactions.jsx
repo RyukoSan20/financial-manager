@@ -401,18 +401,18 @@ export const Transactions = () => {
                         </div>
                       </div>
                       {/* Receipt Items Dropdown (Accordion) */}
-                      {hasItems && isExpanded && (
+                      {hasItems && isExpanded && tx.items && tx.items.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-gray-100">
                           <p className="text-xs font-semibold text-gray-500 mb-2">
-                            Rincian Barang ({tx.items.filter(i => !i.is_discount).length} item):
-                            {tx.items.some(i => i.is_discount) && (
+                            Rincian Barang ({(tx.items || []).filter(i => !i.is_discount).length} item):
+                            {(tx.items || []).some(i => i.is_discount) && (
                               <span className="ml-2 text-green-600">
-                                (Termasuk {tx.items.filter(i => i.is_discount).length} diskon)
+                                (Termasuk {(tx.items || []).filter(i => i.is_discount).length} diskon)
                               </span>
                             )}
                           </p>
                           <div className="space-y-1 bg-gray-50 rounded-lg p-2">
-                            {tx.items.map((item, idx) => {
+                            {(tx.items || []).map((item, idx) => {
                               const isDiscount = item.is_discount;
                               const price = Math.abs(item.total_price || 0);
                               return (
@@ -425,7 +425,7 @@ export const Transactions = () => {
                                     {item.name} 
                                     {!isDiscount && (
                                       <span className="text-gray-400">
-                                        ({item.quantity}x @ Rp {(item.price_per_unit || 0).toLocaleString('id-ID')})
+                                        ({item.quantity || 1}x @ Rp {(item.price_per_unit || 0).toLocaleString('id-ID')})
                                       </span>
                                     )}
                                   </span>
@@ -436,11 +436,11 @@ export const Transactions = () => {
                               );
                             })}
                             {/* Net Total */}
-                            {tx.items.some(i => i.is_discount) && (
+                            {(tx.items || []).some(i => i.is_discount) && (
                               <div className="flex justify-between items-center text-sm font-semibold border-t border-gray-200 pt-2 mt-2">
                                 <span className="text-gray-700">Net Total:</span>
                                 <span className="text-gray-900">
-                                  Rp {(tx.items.reduce((sum, i) => {
+                                  Rp {((tx.items || []).reduce((sum, i) => {
                                     const price = i.total_price || 0;
                                     return i.is_discount ? sum - Math.abs(price) : sum + price;
                                   }, 0)).toLocaleString('id-ID')}

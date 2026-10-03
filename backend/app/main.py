@@ -44,6 +44,35 @@ app.add_middleware(
 def startup():
     init_db()
     seed_categories()
+    
+    # Auto-migrate database schema
+    _run_schema_migrations()
+
+def _run_schema_migrations():
+    """Run database schema migrations for new columns."""
+    from sqlalchemy import text
+    from app.core.database import engine
+    
+    migrations = [
+        ("is_discount", "ALTER TABLE receipt_items ADD COLUMN IF NOT EXISTS is_discount BOOLEAN DEFAULT FALSE"),
+    ]
+    
+    try:
+        with engine.connect() as conn:
+            for col_name, sql in migrations:
+                # Check if column exists
+                result = conn.execute(text(f"""
+                    SELECT column_name FROM information_schema.columns 
+                    WHERE table_name = 'receipt_items' AND column_name = '{col_name}'
+                """))
+                if not result.fetchone():
+                    conn.execute(text(sql))
+                    conn.commit()
+                    print(f"[MIGRATION] Added column: {col_name}")
+                else:
+                    print(f"[MIGRATION] Column exists: {col_name}")
+    except Exception as e:
+        print(f"[MIGRATION] Warning: {e}")
 
 # Include routers
 app.include_router(auth.router, prefix="/api", tags=["Authentication"])
