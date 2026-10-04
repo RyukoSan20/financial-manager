@@ -22,7 +22,8 @@ import {
   HelpCircle,
   PlusCircle,
   Map,
-  Sparkles
+  Sparkles,
+  PieChart
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -810,6 +811,7 @@ export const BottomSheet = ({ isOpen, onClose, title, children }) => {
 // More Page
 export const MorePage = () => {
   const menuItems = [
+    { icon: PieChart, label: 'Category Expenses', href: '/category-expenses', color: 'bg-teal-100 text-teal-600', desc: 'View spending by category' },
     { icon: Target, label: 'Goals', href: '/goals', color: 'bg-purple-100 text-purple-600', desc: 'Track your savings goals' },
     { icon: CreditCard, label: 'Debts', href: '/debts', color: 'bg-orange-100 text-orange-600', desc: 'Manage loans & credits' },
     { icon: Repeat, label: 'Recurring', href: '/recurring', color: 'bg-blue-100 text-blue-600', desc: 'Automated transactions' },

@@ -1,6 +1,7 @@
 // Pages barrel export
 export { default as Dashboard } from './Dashboard';
 export { default as Transactions } from './Transactions';
+export { default as CategoryExpenses } from './CategoryExpenses';
 export { default as Accounts } from './Accounts';
 export { default as Budgets } from './Budgets';
 export { default as Goals } from './Goals';

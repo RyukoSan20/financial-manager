@@ -4,6 +4,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { NotificationToast } from './components/notifications/NotificationBell';
 import { Layout } from './components/layout/Layout';
 import { AddTransactionPage, MorePage } from './components/layout/Navigation';
+import { I18nProvider } from './i18n';
 import { 
   Dashboard, 
   Transactions, 
@@ -18,7 +19,8 @@ import {
   Register,
   Settings,
   MerchantMap,
-  AIAdvisor
+  AIAdvisor,
+  CategoryExpenses
 } from './pages';
 import { AuthCallback } from './pages/AuthCallback';
 
@@ -65,68 +67,71 @@ const RedirectIfAuth = ({ children }) => {
 
 function App() {
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <NotificationToast />
-        <BrowserRouter>
-        <Routes>
-          {/* Auth routes - redirect if already logged in */}
-          <Route 
-            path="/login" 
-            element={
-              <RedirectIfAuth>
-                <Login />
-              </RedirectIfAuth>
-            } 
-          />
-          <Route 
-            path="/register" 
-            element={
-              <RedirectIfAuth>
-                <Register />
-              </RedirectIfAuth>
-            } 
-          />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          
-          {/* Protected app routes */}
-          <Route path="/" element={
-            <RequireAuth>
-              <Layout />
-            </RequireAuth>
-          }>
-            <Route index element={<Dashboard />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="transactions" element={<Transactions />} />
-            <Route path="accounts" element={<Accounts />} />
-            <Route path="budgets" element={<Budgets />} />
-            <Route path="goals" element={<Goals />} />
-            <Route path="debts" element={<Debts />} />
-            <Route path="recurring" element={<Recurring />} />
-            <Route path="calculators" element={<Calculators />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="map" element={<MerchantMap />} />
-            <Route path="advisor" element={<AIAdvisor />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="more" element={<MorePage />} />
-          </Route>
-          
-          {/* Full screen pages - also protected */}
-          <Route 
-            path="/add" 
-            element={
+    <I18nProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <NotificationToast />
+          <BrowserRouter>
+          <Routes>
+            {/* Auth routes - redirect if already logged in */}
+            <Route 
+              path="/login" 
+              element={
+                <RedirectIfAuth>
+                  <Login />
+                </RedirectIfAuth>
+              } 
+            />
+            <Route 
+              path="/register" 
+              element={
+                <RedirectIfAuth>
+                  <Register />
+                </RedirectIfAuth>
+              } 
+            />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            
+            {/* Protected app routes */}
+            <Route path="/" element={
               <RequireAuth>
-                <AddTransactionPage />
+                <Layout />
               </RequireAuth>
-            } 
-          />
-          
-          {/* Catch all - redirect to login */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </BrowserRouter>
-      </NotificationProvider>
-    </AuthProvider>
+            }>
+              <Route index element={<Dashboard />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="transactions" element={<Transactions />} />
+              <Route path="category-expenses" element={<CategoryExpenses />} />
+              <Route path="accounts" element={<Accounts />} />
+              <Route path="budgets" element={<Budgets />} />
+              <Route path="goals" element={<Goals />} />
+              <Route path="debts" element={<Debts />} />
+              <Route path="recurring" element={<Recurring />} />
+              <Route path="calculators" element={<Calculators />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="map" element={<MerchantMap />} />
+              <Route path="advisor" element={<AIAdvisor />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="more" element={<MorePage />} />
+            </Route>
+            
+            {/* Full screen pages - also protected */}
+            <Route 
+              path="/add" 
+              element={
+                <RequireAuth>
+                  <AddTransactionPage />
+                </RequireAuth>
+              } 
+            />
+            
+            {/* Catch all - redirect to login */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </BrowserRouter>
+        </NotificationProvider>
+      </AuthProvider>
+    </I18nProvider>
   );
 }
 

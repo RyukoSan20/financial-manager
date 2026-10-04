@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/ui';
 import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../i18n';
 import api from '../services/api';
 
 export const Settings = () => {
@@ -226,6 +227,7 @@ const SecurityTab = () => {
 };
 
 const PreferencesTab = ({ user }) => {
+  const { language, changeLanguage, languages } = useTranslation();
   const [currency, setCurrency] = useState(user?.default_currency || 'IDR');
   const [saved, setSaved] = useState(false);
 
@@ -237,6 +239,12 @@ const PreferencesTab = ({ user }) => {
     setTimeout(() => setSaved(false), 3000);
   };
 
+  const languageOptions = {
+    'id': { label: '🇮🇩 Indonesia', name: 'Bahasa Indonesia' },
+    'en': { label: '🇺🇸 English', name: 'English' },
+    'ja': { label: '🇯🇵 日本語', name: 'Japanese' },
+  };
+
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-6">Preferences</h2>
@@ -245,7 +253,34 @@ const PreferencesTab = ({ user }) => {
           Preferences saved!
         </div>
       )}
-      <div className="space-y-4">
+      <div className="space-y-6">
+        {/* Language Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Globe className="w-4 h-4 inline mr-2" />
+            Language / Bahasa / 言語
+          </label>
+          <div className="grid grid-cols-3 gap-3">
+            {Object.entries(languageOptions).map(([code, { label, name }]) => (
+              <button
+                key={code}
+                onClick={() => changeLanguage(code)}
+                className={`p-3 rounded-lg border-2 transition-all text-center ${
+                  language === code
+                    ? 'border-primary-500 bg-primary-50 text-primary-700'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                }`}
+              >
+                <span className="text-2xl block mb-1">{label.split(' ')[0]}</span>
+                <span className="text-sm font-medium">{name}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-sm text-gray-500">
+            Selected: <strong>{languageOptions[language]?.name || 'English'}</strong>
+          </p>
+        </div>
+
         <Select
           label="Default Currency"
           value={currency}
@@ -256,6 +291,7 @@ const PreferencesTab = ({ user }) => {
             { value: 'EUR', label: 'Euro (EUR)' },
             { value: 'SGD', label: 'Singapore Dollar (SGD)' },
             { value: 'MYR', label: 'Malaysian Ringgit (MYR)' },
+            { value: 'JPY', label: 'Japanese Yen (JPY)' },
           ]}
         />
         <Button onClick={handleSave}>Save Preferences</Button>
