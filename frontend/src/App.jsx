@@ -20,7 +20,8 @@ import {
   Settings,
   MerchantMap,
   AIAdvisor,
-  CategoryExpenses
+  CategoryExpenses,
+  FeedPage
 } from './pages';
 import { AuthCallback } from './pages/AuthCallback';
 
@@ -111,6 +112,7 @@ function App() {
               <Route path="analytics" element={<Analytics />} />
               <Route path="map" element={<MerchantMap />} />
               <Route path="advisor" element={<AIAdvisor />} />
+              <Route path="feed" element={<FeedPage />} />
               <Route path="settings" element={<Settings />} />
               <Route path="more" element={<MorePage />} />
             </Route>

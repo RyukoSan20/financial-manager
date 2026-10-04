@@ -23,7 +23,8 @@ import {
   PlusCircle,
   Map,
   Sparkles,
-  PieChart
+  PieChart,
+  BellRing
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -33,6 +34,7 @@ import { showNotification } from '../notifications/NotificationHelper';
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Transactions', href: '/transactions', icon: Receipt },
+  { name: 'Feed', href: '/feed', icon: BellRing },
   { name: 'Accounts', href: '/accounts', icon: Wallet },
   { name: 'Budgets', href: '/budgets', icon: PiggyBank },
   { name: 'Recurring', href: '/recurring', icon: Repeat },

@@ -13,6 +13,7 @@ export default {
     recurring: "Berulang",
     goals: "Goals",
     debts: "Hutang",
+    feed: "Feed",
     settings: "Pengaturan",
     more: "Lainnya",
   },
@@ -208,6 +209,33 @@ export default {
     currency: "Rp",
   },
   
+  // Feed & Review
+  feed: {
+    title: "Feed & Review",
+    subtitle: "Tinjau dan setujui transaksi masuk",
+    pending: "Menunggu",
+    approved: "Disetujui",
+    rejected: "Ditolak",
+    all: "Semua",
+    empty: "Tidak ada transaksi",
+    pendingCount: "Menunggu Review",
+    approvedToday: "Disetujui Hari Ini",
+    rejectedToday: "Ditolak Hari Ini",
+    totalPending: "Total Tertunda",
+    items: "Item",
+    approve: "Setujui",
+    reject: "Tolak",
+    transaction: "Transaksi",
+    sourceCamera: "Kamera",
+    sourceEmail: "Email",
+    sourceWhatsapp: "WhatsApp",
+    sourceManual: "Manual",
+    sourceOCR: "Scan OCR",
+    errorFetch: "Gagal mengambil data",
+    errorApprove: "Gagal menyetujui",
+    errorReject: "Gagal menolak",
+  },
+
   // Settings
   settings: {
     title: "Pengaturan",

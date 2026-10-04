@@ -208,6 +208,33 @@ export default {
     currency: "¥",
   },
   
+  // Feed & Review
+  feed: {
+    title: "フィード & レビュー",
+    subtitle: "着信トランザクションを確認して承認",
+    pending: "保留中",
+    approved: "承認済み",
+    rejected: "拒否済み",
+    all: "すべて",
+    empty: "トランザクションなし",
+    pendingCount: "レビュー待ち",
+    approvedToday: "本日承認",
+    rejectedToday: "本日拒否",
+    totalPending: "保留合計",
+    items: "アイテム",
+    approve: "承認",
+    reject: "拒否",
+    transaction: "取引",
+    sourceCamera: "カメラ",
+    sourceEmail: "メール",
+    sourceWhatsapp: "WhatsApp",
+    sourceManual: "手動",
+    sourceOCR: "OCRスキャン",
+    errorFetch: "データ取得失敗",
+    errorApprove: "承認失敗",
+    errorReject: "拒否失敗",
+  },
+
   // Settings
   settings: {
     title: "設定",

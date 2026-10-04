@@ -208,6 +208,33 @@ export default {
     currency: "$",
   },
   
+  // Feed & Review
+  feed: {
+    title: "Feed & Review",
+    subtitle: "Review and approve incoming transactions",
+    pending: "Pending",
+    approved: "Approved",
+    rejected: "Rejected",
+    all: "All",
+    empty: "No transactions",
+    pendingCount: "Pending Review",
+    approvedToday: "Approved Today",
+    rejectedToday: "Rejected Today",
+    totalPending: "Total Pending",
+    items: "Items",
+    approve: "Approve",
+    reject: "Reject",
+    transaction: "Transaction",
+    sourceCamera: "Camera",
+    sourceEmail: "Email",
+    sourceWhatsapp: "WhatsApp",
+    sourceManual: "Manual",
+    sourceOCR: "OCR Scan",
+    errorFetch: "Failed to fetch data",
+    errorApprove: "Failed to approve",
+    errorReject: "Failed to reject",
+  },
+
   // Settings
   settings: {
     title: "Settings",

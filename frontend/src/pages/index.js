@@ -14,3 +14,4 @@ export { default as Register } from './Register';
 export { default as Settings } from './Settings';
 export { default as MerchantMap } from './MerchantMap';
 export { default as AIAdvisor } from './AIAdvisor';
+export { default as FeedPage } from './Feed/FeedPage';
