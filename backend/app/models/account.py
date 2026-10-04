@@ -33,7 +33,8 @@ class Account(Base):
     # Relationships
     user = relationship("User", back_populates="accounts")
     transactions = relationship("Transaction", back_populates="account")
-    budgets = relationship("Budget", back_populates="account")
+    budgets = relationship("Budget", back_populates="account", foreign_keys="Budget.account_id")
+    allocation_budgets = relationship("Budget", back_populates="allocation_account", foreign_keys="Budget.allocation_account_id")
     recurring_rules = relationship("RecurringRule", back_populates="account", foreign_keys="RecurringRule.account_id")
     goals = relationship("Goal", back_populates="account")
     debts = relationship("Debt", back_populates="account")

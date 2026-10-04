@@ -35,4 +35,5 @@ class Budget(Base):
     # Relationships
     user = relationship("User", back_populates="budgets")
     category = relationship("Category", back_populates="budgets")
-    account = relationship("Account", back_populates="budgets")
+    account = relationship("Account", back_populates="budgets", foreign_keys=[account_id])
+    allocation_account = relationship("Account", back_populates="allocation_budgets", foreign_keys=[allocation_account_id])
