@@ -24,6 +24,11 @@ class Budget(Base):
     
     is_active = Column(Boolean, default=True)
     rollover = Column(Boolean, default=False)  # Carry forward unused budget
+    
+    # Auto-allocation: deduct from account balance on budget period reset
+    auto_allocate = Column(Boolean, default=False)  # Auto-deduct from account on monthly reset
+    allocation_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)  # Which account to deduct from
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

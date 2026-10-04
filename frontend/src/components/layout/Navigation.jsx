@@ -239,10 +239,30 @@ export const MobileHeader = ({ title, showBack = false, onBack }) => {
 };
 
 // Bottom Navigation (Mobile)
-export const BottomNav = () => {
+export const BottomNav = ({ pendingScanResult }) => {
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
+  const [showScanBadge, setShowScanBadge] = useState(false);
+
+  // Listen for scan completed events
+  useEffect(() => {
+    const handleScanComplete = (event) => {
+      console.log('Scan completed event received:', event.detail);
+      setShowScanBadge(true);
+    };
+    
+    window.addEventListener('scanCompleted', handleScanComplete);
+    return () => window.removeEventListener('scanCompleted', handleScanComplete);
+  }, []);
+
+  // Auto-hide badge after 10 seconds
+  useEffect(() => {
+    if (showScanBadge) {
+      const timer = setTimeout(() => setShowScanBadge(false), 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [showScanBadge]);
 
   const navItems = [
     { name: 'Home', href: '/', icon: LayoutDashboard },
@@ -266,9 +286,21 @@ export const BottomNav = () => {
                   to="/add"
                   className="flex flex-col items-center justify-center -mt-4"
                 >
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/30 active:scale-95 transition-transform">
-                    <Plus className="w-7 h-7 text-white" />
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/30 active:scale-95 transition-transform">
+                      <Plus className="w-7 h-7 text-white" />
+                    </div>
+                    {showScanBadge && (
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center animate-bounce shadow-lg">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
                   </div>
+                  <span className="text-[10px] mt-1 font-medium text-primary-600">
+                    {showScanBadge ? '✓' : item.name}
+                  </span>
                 </Link>
               );
             }

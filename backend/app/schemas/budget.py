@@ -16,6 +16,9 @@ class BudgetBase(BaseModel):
     category_id: Optional[int] = None
     account_id: Optional[int] = None
     rollover: bool = False
+    # Auto-allocation: deduct from account balance on budget period reset
+    auto_allocate: bool = False
+    allocation_account_id: Optional[int] = None
 
 
 class BudgetCreate(BudgetBase):
@@ -30,6 +33,8 @@ class BudgetUpdate(BaseModel):
     end_date: Optional[date] = None
     is_active: Optional[bool] = None
     rollover: Optional[bool] = None
+    auto_allocate: Optional[bool] = None
+    allocation_account_id: Optional[int] = None
 
 
 class BudgetResponse(BudgetBase):

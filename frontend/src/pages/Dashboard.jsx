@@ -1,409 +1,384 @@
-// Dashboard v2.1
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Card, Spinner } from '../components/ui';
+import { useState, useEffect, useCallback } from 'react';
+import { Card, Button, Spinner, EmptyState } from '../components/ui';
 import { 
-  TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, 
-  Target, CreditCard, ChevronRight, RefreshCw, PiggyBank, Receipt
+  TrendingUp, TrendingDown, Wallet, PieChart, 
+  Plus, Receipt, FileText, PiggyBank,
+  ChevronRight, ChevronLeft, RefreshCw
 } from 'lucide-react';
-import { formatCurrency, formatPercent, formatDate } from '../utils/format';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
-} from 'recharts';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { formatCurrency, formatDate } from '../utils/format';
+import { useTranslation } from '../i18n';
 
-const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+// Time period options
+const TIME_PERIODS = [
+  { value: 'today', label: 'time.today', days: 1 },
+  { value: 'week', label: 'time.this_week', days: 7 },
+  { value: 'month', label: 'time.this_month', days: 30 },
+  { value: 'year', label: 'time.this_year', days: 365 },
+];
 
-export const Dashboard = () => {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const [data, setData] = useState(null);
-  const [cashFlow, setCashFlow] = useState(null);
-  const [transactions, setTransactions] = useState([]);
+export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
+  const { t, language } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Don't render if not authenticated (RequireAuth should handle this, but safety check)
-  if (!isAuthenticated) {
-    navigate('/login');
-    return null;
-  }
-
-  // Auto refresh when authenticated
-  useEffect(() => {
-    if (!isAuthenticated) return;
+  const [timePeriod, setTimePeriod] = useState('month');
+  const [summary, setSummary] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  const [categoryBreakdown, setCategoryBreakdown] = useState([]);
+  const [recentJobs, setRecentJobs] = useState([]); // Scan jobs
+  
+  // Get date range based on time period
+  const getDateRange = () => {
+    const end = new Date();
+    const start = new Date();
+    const period = TIME_PERIODS.find(p => p.value === timePeriod);
     
-    const interval = setInterval(fetchData, 30000);
-    const handleTransactionUpdate = () => fetchData();
-    window.addEventListener('transactionUpdated', handleTransactionUpdate);
+    if (timePeriod === 'today') {
+      start.setHours(0, 0, 0, 0);
+    } else if (timePeriod === 'week') {
+      start.setDate(end.getDate() - 7);
+    } else if (timePeriod === 'month') {
+      start.setMonth(end.getMonth(), 1);
+    } else if (timePeriod === 'year') {
+      start.setMonth(0, 1);
+    }
     
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('transactionUpdated', handleTransactionUpdate);
+    return {
+      startDate: start.toISOString().split('T')[0],
+      endDate: end.toISOString().split('T')[0],
     };
-  }, [isAuthenticated]);
+  };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
-      const [summaryRes, cashFlowRes, txRes] = await Promise.all([
-        api.dashboard.summary(),
-        api.dashboard.cashFlow(),
-        api.transactions.list({ limit: 100 }),
+      const { startDate, endDate } = getDateRange();
+      
+      // Fetch all data in parallel
+      const [summaryRes, transRes, categoryRes, jobsRes] = await Promise.allSettled([
+        api.dashboard.summary(startDate, endDate),
+        api.transactions.list({ start_date: startDate, end_date: endDate, limit: 10 }),
+        api.analytics.expenseBreakdown({ start_date: startDate, end_date: endDate, type: 'expense' }),
+        api.scanJobs?.list ? api.scanJobs.list({ status: 'completed' }) : Promise.resolve({ jobs: [] }),
       ]);
-      setData(summaryRes);
-      setCashFlow(cashFlowRes);
-      setTransactions(txRes);
-    } catch (err) {
-      console.error('Dashboard fetch error:', err);
-      setError(err.message || 'Failed to load dashboard');
+
+      // Extract results
+      if (summaryRes.status === 'fulfilled') {
+        setSummary(summaryRes.value);
+      }
+      
+      if (transRes.status === 'fulfilled') {
+        const data = transRes.value;
+        setTransactions(Array.isArray(data) ? data : (data.transactions || []));
+      }
+      
+      if (categoryRes.status === 'fulfilled') {
+        const data = categoryRes.value;
+        if (data.categories) {
+          setCategoryBreakdown(data.categories);
+        } else if (Array.isArray(data)) {
+          setCategoryBreakdown(data);
+        }
+      }
+      
+      if (jobsRes.status === 'fulfilled') {
+        const data = jobsRes.value;
+        setRecentJobs(data.jobs?.slice(0, 5) || []);
+      }
+    } catch (error) {
+      console.error('Dashboard fetch error:', error);
     } finally {
       setLoading(false);
     }
+  }, [timePeriod]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Calculate values
+  const income = summary?.total_income || 0;
+  const expense = summary?.total_expense || 0;
+  const balance = income - expense;
+  const transactionCount = transactions.length || summary?.transaction_count || 0;
+
+  // Get transaction type color
+  const getTypeColor = (type) => {
+    if (type === 'income') return 'text-success-600';
+    if (type === 'expense') return 'text-danger-600';
+    return 'text-gray-600';
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Spinner size="lg" />
-          <p className="mt-4 text-gray-500">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-4">
-        <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-          <Wallet className="w-10 h-10 text-gray-400" />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">No Data Yet</h2>
-        <p className="text-gray-500 text-center mb-6">Add your first account to get started</p>
-        <Link 
-          to="/accounts"
-          className="px-6 py-3 bg-primary-500 text-white rounded-xl font-medium shadow-lg active:bg-primary-600 touch-manipulation"
-        >
-          Add Account
-        </Link>
-      </div>
-    );
-  }
-
-  const {
-    total_balance = 0,
-    total_income = 0,
-    total_expense = 0,
-    net_cash_flow = 0,
-    saving_rate = 0,
-    total_budget = 0,
-    remaining_budget = 0,
-    budget_utilization = 0,
-    expense_by_category = {},
-    account_count = 0
-  } = data;
-  
-  // For display compatibility
-  const total_income_month = total_income;
-  const total_expense_month = total_expense;
-
-  // Get last 7 days for chart
-  const getLast7Days = () => {
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      days.push({
-        date: d.toISOString().split('T')[0],
-        day: d.getDate().toString().padStart(2, '0'),
-        month: d.toLocaleString('id-ID', { month: 'short' })
-      });
-    }
-    return days;
+  // Get transaction sign
+  const getSign = (type) => {
+    return type === 'income' ? '+' : '-';
   };
-
-  const last7Days = getLast7Days();
-  
-  // Build chart data from transactions
-  const chartData = last7Days.map(day => {
-    const dayTxs = transactions?.filter(t => t.date?.startsWith(day.date)) || [];
-    const income = dayTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
-    const expense = dayTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
-    return {
-      date: day.day,
-      income: income,
-      expense: expense,
-      net: income - expense,
-      balance: data?.total_balance || 0
-    };
-  });
-
-  const pieData = Object.entries(expense_by_category)
-    .map(([name, amount]) => ({ name, value: parseFloat(amount) }))
-    .filter(d => d.value > 0);
 
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500">{formatDate(new Date().toISOString(), 'long')}</p>
-        </div>
-        <button 
-          onClick={fetchData}
-          className="p-2.5 text-gray-500 active:bg-gray-100 rounded-xl touch-manipulation"
-        >
-          <RefreshCw className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Balance Card - Mobile Optimized */}
-      <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-3xl p-6 text-white shadow-xl">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-primary-100 text-sm font-medium">Total Balance</p>
-          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-            <Wallet className="w-5 h-5 text-white" />
-          </div>
-        </div>
-        <p className="text-4xl font-bold mb-1">{formatCurrency(total_balance)}</p>
-        <p className="text-primary-100 text-sm">{account_count} accounts</p>
-      </div>
-
-      {/* Quick Stats - Horizontal Scroll on Mobile */}
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 no-scrollbar snap-x">
-        {/* Income */}
-        <div className="flex-shrink-0 w-36 bg-white rounded-2xl p-4 shadow-sm snap-start">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-success-100 flex items-center justify-center">
-              <ArrowUpRight className="w-4 h-4 text-success-600" />
-            </div>
-          </div>
-          <p className="text-xs text-gray-500">Income</p>
-          <p className="text-lg font-bold text-success-600">{formatCurrency(total_income_month)}</p>
-        </div>
-
-        {/* Expense */}
-        <div className="flex-shrink-0 w-36 bg-white rounded-2xl p-4 shadow-sm snap-start">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-danger-100 flex items-center justify-center">
-              <ArrowDownRight className="w-4 h-4 text-danger-600" />
-            </div>
-          </div>
-          <p className="text-xs text-gray-500">Expense</p>
-          <p className="text-lg font-bold text-danger-600">{formatCurrency(total_expense_month)}</p>
-        </div>
-
-        {/* Net Cash Flow */}
-        <div className="flex-shrink-0 w-36 bg-white rounded-2xl p-4 shadow-sm snap-start">
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${net_cash_flow >= 0 ? 'bg-success-100' : 'bg-danger-100'}`}>
-              {net_cash_flow >= 0 ? (
-                <TrendingUp className="w-4 h-4 text-success-600" />
-              ) : (
-                <TrendingDown className="w-4 h-4 text-danger-600" />
-              )}
-            </div>
-          </div>
-          <p className="text-xs text-gray-500">Net Flow</p>
-          <p className={`text-lg font-bold ${net_cash_flow >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-            {formatCurrency(net_cash_flow)}
+          <h1 className="text-2xl font-bold text-gray-900">
+            {t('dashboard.title')}
+          </h1>
+          <p className="text-gray-500 mt-1">
+            {new Date().toLocaleDateString(language === 'id' ? 'id-ID' : language === 'ja' ? 'ja-JP' : 'en-US', { 
+              month: 'long', 
+              year: 'numeric' 
+            })}
           </p>
         </div>
-
-        {/* Saving Rate */}
-        <div className="flex-shrink-0 w-36 bg-white rounded-2xl p-4 shadow-sm snap-start">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center">
-              <PiggyBank className="w-4 h-4 text-primary-600" />
-            </div>
-          </div>
-          <p className="text-xs text-gray-500">Saving Rate</p>
-          <p className="text-lg font-bold text-primary-600">{formatPercent(parseFloat(saving_rate) * 100)}</p>
-        </div>
+        <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        </Button>
       </div>
 
-      {/* Cash Flow Chart - Enhanced */}
-      {chartData.length > 0 && (
-        <Card className="overflow-hidden">
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900">📈 Cash Flow Analysis</h3>
-            <p className="text-sm text-gray-500">Income vs Expense - Last 6 months</p>
-          </div>
-          <div className="p-4">
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `${(v/1000000).toFixed(0)}M`} />
-                <Tooltip 
-                  formatter={(value, name) => [
-                    formatCurrency(value),
-                    name === 'income' ? '💰 Income' : name === 'expense' ? '💸 Expense' : '📊 Net'
-                  ]}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                />
-                <Area type="monotone" dataKey="income" stroke="#22c55e" fill="#22c55e" fillOpacity={0.3} strokeWidth={2} />
-                <Area type="monotone" dataKey="expense" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-            {/* Legend */}
-            <div className="flex justify-center gap-6 mt-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span>Income (Pemasukan)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span>Expense (Pengeluaran)</span>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
+      {/* Time Period Selector */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {TIME_PERIODS.map((period) => (
+          <button
+            key={period.value}
+            onClick={() => setTimePeriod(period.value)}
+            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
+              timePeriod === period.value
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {t(period.label)}
+          </button>
+        ))}
+      </div>
 
-      {/* Balance Trend Chart */}
-      {chartData.length > 0 && (
-        <Card className="overflow-hidden">
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900">💵 Balance Trend</h3>
-            <p className="text-sm text-gray-500">Total balance over time</p>
-          </div>
-          <div className="p-4">
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `${(v/1000000).toFixed(0)}M`} />
-                <Tooltip 
-                  formatter={(value) => formatCurrency(value)}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                />
-                <Area type="monotone" dataKey="balance" stroke="#667eea" fill="#667eea" fillOpacity={0.3} strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-            <div className="flex justify-center mt-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#667eea' }}></div>
-                <span>Total Balance</span>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Budget Progress */}
-      <Card className="overflow-hidden">
-        <Link to="/budgets" className="block p-4 border-b border-gray-100 flex items-center justify-between active:bg-gray-50">
-          <div>
-            <h3 className="font-semibold text-gray-900">Budget Progress</h3>
-            <p className="text-sm text-gray-500">
-              {formatCurrency(total_budget - remaining_budget)} of {formatCurrency(total_budget)}
-            </p>
-          </div>
-          <ChevronRight className="w-5 h-5 text-gray-400" />
-        </Link>
-        <div className="p-4">
-          <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-            <div 
-              className={`h-full rounded-full transition-all duration-500 ${
-                budget_utilization > 100 ? 'bg-danger-500' : 
-                budget_utilization > 80 ? 'bg-warning-500' : 'bg-success-500'
-              }`}
-              style={{ width: `${Math.min(budget_utilization, 100)}%` }}
-            />
-          </div>
-          <div className="flex justify-between mt-2 text-sm">
-            <span className="text-gray-500">{formatPercent(budget_utilization)} used</span>
-            <span className={remaining_budget < 0 ? 'text-danger-600 font-medium' : 'text-gray-500'}>
-              {formatCurrency(Math.abs(remaining_budget))} {remaining_budget < 0 ? 'over' : 'left'}
-            </span>
-          </div>
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <Spinner size="lg" />
         </div>
-      </Card>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Income Card */}
+            <Card className="!p-5">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-lg bg-success-100 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-success-600" />
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mt-3">{t('dashboard.income')}</p>
+              <p className="text-xl font-bold text-success-600 mt-1">
+                {formatCurrency(income)}
+              </p>
+            </Card>
 
-      {/* Expense Breakdown */}
-      {pieData.length > 0 && (
-        <Card className="overflow-hidden">
-          <Link to="/analytics" className="block p-4 border-b border-gray-100 flex items-center justify-between active:bg-gray-50">
-            <div>
-              <h3 className="font-semibold text-gray-900">Expenses by Category</h3>
-              <p className="text-sm text-gray-500">This month</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
-          </Link>
-          <div className="p-4">
-            <div className="flex items-center gap-4">
-              <ResponsiveContainer width="50%" height={140}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={30}
-                    outerRadius={50}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {pieData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(value)} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex-1 space-y-2">
-                {pieData.slice(0, 4).map((item, index) => (
-                  <div key={item.name} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
-                      <span className="text-gray-600 truncate">{item.name}</span>
+            {/* Expense Card */}
+            <Card className="!p-5">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-lg bg-danger-100 flex items-center justify-center">
+                  <TrendingDown className="w-5 h-5 text-danger-600" />
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mt-3">{t('dashboard.expense')}</p>
+              <p className="text-xl font-bold text-danger-600 mt-1">
+                {formatCurrency(expense)}
+              </p>
+            </Card>
+
+            {/* Net Flow Card */}
+            <Card className="!p-5">
+              <div className="flex items-center justify-between">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  balance >= 0 ? 'bg-success-100' : 'bg-danger-100'
+                }`}>
+                  <Wallet className={`w-5 h-5 ${balance >= 0 ? 'text-success-600' : 'text-danger-600'}`} />
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mt-3">{t('dashboard.net_flow')}</p>
+              <p className={`text-xl font-bold mt-1 ${balance >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
+                {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
+              </p>
+            </Card>
+
+            {/* Transaction Count */}
+            <Card className="!p-5">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-primary-600" />
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mt-3">{t('dashboard.transactions_this_month').replace('bulan ini', '')}</p>
+              <p className="text-xl font-bold text-gray-900 mt-1">
+                {transactionCount}
+              </p>
+            </Card>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              onClick={onAddTransaction}
+              className="flex flex-col items-center gap-2 p-4 bg-success-50 rounded-xl hover:bg-success-100 transition-colors"
+            >
+              <div className="w-12 h-12 rounded-full bg-success-500 flex items-center justify-center">
+                <Plus className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-sm font-medium text-success-700">{t('dashboard.add_transaction')}</span>
+            </button>
+
+            <button
+              onClick={onScanReceipt}
+              className="flex flex-col items-center gap-2 p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors"
+            >
+              <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center">
+                <Receipt className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-sm font-medium text-purple-700">{t('dashboard.scan_receipt')}</span>
+            </button>
+
+            <button
+              onClick={() => window.location.href = '/reports'}
+              className="flex flex-col items-center gap-2 p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
+            >
+              <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
+                <PieChart className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-sm font-medium text-blue-700">{t('dashboard.view_reports')}</span>
+            </button>
+          </div>
+
+          {/* Two Column Layout */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Expense by Category */}
+            <Card>
+              <div className="px-5 py-4 border-b flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900">{t('dashboard.expense_by_category')}</h3>
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </div>
+              <div className="p-5">
+                {categoryBreakdown.length > 0 ? (
+                  <div className="space-y-3">
+                    {categoryBreakdown.slice(0, 8).map((cat, index) => {
+                      const percentage = cat.percentage || (expense > 0 ? (cat.amount / expense) * 100 : 0);
+                      const colors = [
+                        'bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500',
+                        'bg-teal-500', 'bg-blue-500', 'bg-indigo-500', 'bg-purple-500'
+                      ];
+                      return (
+                        <div key={index}>
+                          <div className="flex items-center justify-between text-sm mb-1">
+                            <span className="text-gray-700">{cat.name || cat.category_name || 'Other'}</span>
+                            <span className="font-medium text-gray-900">
+                              {formatCurrency(cat.amount)} ({percentage.toFixed(1)}%)
+                            </span>
+                          </div>
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${colors[index % colors.length]} rounded-full`}
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <PieChart className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>{t('transaction.no_transactions')}</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Recent Transactions */}
+            <Card>
+              <div className="px-5 py-4 border-b flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900">{t('dashboard.recent_transactions')}</h3>
+                <button 
+                  onClick={() => window.location.href = '/transactions'}
+                  className="text-sm text-primary-600 hover:text-primary-700"
+                >
+                  {t('dashboard.view_all')}
+                </button>
+              </div>
+              <div className="divide-y">
+                {transactions.length > 0 ? (
+                  transactions.slice(0, 5).map((trans, index) => (
+                    <div key={trans.id || index} className="px-5 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          trans.type === 'income' ? 'bg-success-100 text-success-600' : 'bg-danger-100 text-danger-600'
+                        }`}>
+                          {trans.type === 'income' ? (
+                            <TrendingUp className="w-5 h-5" />
+                          ) : (
+                            <TrendingDown className="w-5 h-5" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {trans.description || trans.merchant_name || 'Transaction'}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {trans.category_name || trans.category?.name || 'Uncategorized'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`font-semibold ${getTypeColor(trans.type)}`}>
+                          {getSign(trans.type)}{formatCurrency(trans.amount)}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {trans.date ? formatDate(trans.date) : ''}
+                        </p>
+                      </div>
                     </div>
-                    <span className="font-medium text-gray-900">{formatPercent((item.value / pieData.reduce((a, b) => a + b.value, 0)) * 100, 0)}</span>
+                  ))
+                ) : (
+                  <div className="px-5 py-8 text-center">
+                    <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p className="text-gray-500">{t('transaction.no_transactions')}</p>
+                    <Button size="sm" className="mt-3" onClick={onAddTransaction}>
+                      <Plus className="w-4 h-4 mr-1" />
+                      {t('dashboard.add_transaction')}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Pending Scan Jobs */}
+          {recentJobs.length > 0 && (
+            <Card className="border-primary-200 bg-primary-50">
+              <div className="px-5 py-4 border-b border-primary-200">
+                <h3 className="font-semibold text-primary-900 flex items-center gap-2">
+                  <Receipt className="w-5 h-5" />
+                  Scan Results Ready
+                </h3>
+              </div>
+              <div className="divide-y">
+                {recentJobs.map((job, index) => (
+                  <div key={job.job_id || index} className="px-5 py-3 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-primary-900">{job.filename || 'Receipt'}</p>
+                      <p className="text-sm text-primary-600">
+                        {t('scanner.success')} - {job.confidence}% confidence
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" className="border-primary-300">
+                      View
+                    </Button>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        </Card>
+            </Card>
+          )}
+        </>
       )}
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link 
-          to="/transactions"
-          className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3 active:bg-gray-50 touch-manipulation"
-        >
-          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-            <Receipt className="w-6 h-6 text-blue-600" />
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900">Transactions</p>
-            <p className="text-sm text-gray-500">View history</p>
-          </div>
-        </Link>
-        
-        <Link 
-          to="/goals"
-          className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3 active:bg-gray-50 touch-manipulation"
-        >
-          <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-            <Target className="w-6 h-6 text-purple-600" />
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900">Goals</p>
-            <p className="text-sm text-gray-500">Track progress</p>
-          </div>
-        </Link>
-      </div>
     </div>
   );
 };
 
 export default Dashboard;
-// trigger
-// fix

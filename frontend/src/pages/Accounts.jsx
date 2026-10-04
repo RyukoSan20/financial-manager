@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner } from '../components/ui';
 import { Plus, Wallet, Banknote, CreditCard, Smartphone, RefreshCw, Trash2, Edit2, PiggyBank } from 'lucide-react';
 import api from '../services/api';
+import { showNotification } from '../components/notifications/NotificationHelper';
 
 const accountTypeOptions = [
   { value: 'bank', label: 'Bank Account', icon: Banknote },
@@ -62,13 +63,41 @@ export const Accounts = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this account? All transactions will remain.')) return;
+    const account = accounts.find(a => a.id === id);
+    const message = account 
+      ? `Archiving "${account.name}"? Transactions will remain. The account will be marked as inactive.`
+      : 'Archive this account? All transactions will remain.';
+    
+    if (!confirm(message)) return;
+    
     try {
-      await api.accounts.delete(id);
+      const result = await api.accounts.delete(id);
+      
+      if (result.soft_deleted) {
+        showNotification({
+          type: 'success',
+          title: '✅ Account Archived',
+          message: 'Account marked as inactive. Transaction history preserved.',
+          category: 'account'
+        });
+      } else {
+        showNotification({
+          type: 'success',
+          title: '✅ Account Deleted',
+          message: 'Account permanently deleted.',
+          category: 'account'
+        });
+      }
+      
       fetchData();
     } catch (err) {
       console.error('Failed to delete account:', err);
-      alert('Failed to delete account: ' + (err.message || 'Unknown error'));
+      showNotification({
+        type: 'error',
+        title: '❌ Delete Failed',
+        message: err.message || 'Failed to delete account',
+        category: 'account'
+      });
     }
   };
 

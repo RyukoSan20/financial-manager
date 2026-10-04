@@ -103,13 +103,17 @@ def update_account(
     return db_account
 
 
-@router.delete("/{account_id}", status_code=204)
-def delete_account(
+@router.delete("/{account_id}", status_code=200)
+async def delete_account(
     account_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete account with ownership check. Requires authentication."""
+    """
+    Delete account with ownership check.
+    Uses soft delete (is_active=False) to preserve transaction history.
+    Requires authentication.
+    """
     db_account = db.query(Account).filter(Account.id == account_id).first()
     if not db_account:
         raise HTTPException(status_code=404, detail="Account not found")
@@ -118,6 +122,27 @@ def delete_account(
     if db_account.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    db.delete(db_account)
-    db.commit()
-    return None
+    # Check if account has transactions
+    from app.models.transaction import Transaction
+    tx_count = db.query(Transaction).filter(Transaction.account_id == account_id).count()
+    
+    if tx_count > 0:
+        # Soft delete - mark as inactive instead of hard delete
+        db_account.is_active = False
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"Account marked as inactive (has {tx_count} transactions). Hard delete requires reassigning transactions first.",
+            "deleted": False,
+            "soft_deleted": True
+        }
+    else:
+        # Safe to hard delete - no transactions
+        db.delete(db_account)
+        db.commit()
+        return {
+            "status": "success",
+            "message": "Account deleted permanently",
+            "deleted": True,
+            "soft_deleted": False
+        }

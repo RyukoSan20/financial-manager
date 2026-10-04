@@ -7,6 +7,7 @@ import api from '../services/api';
 export const Budgets = () => {
   const [budgets, setBudgets] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
@@ -18,15 +19,19 @@ export const Budgets = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [budgetRes, catRes] = await Promise.all([
+      const [budgetRes, catRes, accRes] = await Promise.all([
         api.budgets.list(),
         api.categories.list(),
+        api.accounts.list(),
       ]);
       setBudgets(Array.isArray(budgetRes) ? budgetRes : []);
       setCategories(catRes || []);
+      setAccounts(Array.isArray(accRes) ? accRes : []);
     } catch (err) {
       console.error('Failed to fetch budgets:', err);
       setBudgets([]);
+      setCategories([]);
+      setAccounts([]);
     } finally {
       setLoading(false);
     }
@@ -207,18 +212,21 @@ export const Budgets = () => {
         onSubmit={handleSubmit}
         budget={editingBudget}
         categories={categories}
+        accounts={accounts}
       />
     </div>
   );
 };
 
-const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories }) => {
+const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts = [] }) => {
   const [form, setForm] = useState({
     name: '',
     category_id: '',
     amount: '',
     period: 'monthly',
     start_date: new Date().toISOString().split('T')[0].slice(0, 7) + '-01',
+    auto_allocate: false,
+    allocation_account_id: '',
   });
 
   useEffect(() => {
@@ -229,6 +237,8 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories }) => {
         amount: budget.amount?.toString() || '',
         period: budget.period || 'monthly',
         start_date: budget.start_date || new Date().toISOString().split('T')[0],
+        auto_allocate: budget.auto_allocate || false,
+        allocation_account_id: budget.allocation_account_id || '',
       });
     } else {
       setForm({
@@ -237,6 +247,8 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories }) => {
         amount: '',
         period: 'monthly',
         start_date: new Date().toISOString().split('T')[0],
+        auto_allocate: false,
+        allocation_account_id: '',
       });
     }
   }, [budget]);
@@ -251,6 +263,7 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories }) => {
       name: budgetName,
       category_id: form.category_id ? parseInt(form.category_id) : null,
       amount: parseFloat(form.amount),
+      allocation_account_id: form.allocation_account_id ? parseInt(form.allocation_account_id) : null,
     });
   };
 
@@ -293,6 +306,39 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories }) => {
           value={form.start_date}
           onChange={(e) => setForm(f => ({ ...f, start_date: e.target.value }))}
         />
+
+        {/* Auto-Allocate Toggle */}
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="auto_allocate"
+              checked={form.auto_allocate}
+              onChange={(e) => setForm(f => ({ ...f, auto_allocate: e.target.checked }))}
+              className="mt-1 w-5 h-5 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div className="flex-1">
+              <label htmlFor="auto_allocate" className="font-medium text-blue-900 cursor-pointer">
+                Auto-Allocate Monthly
+              </label>
+              <p className="text-sm text-blue-700 mt-1">
+                Automatically deduct budget amount from account at the start of each period
+              </p>
+            </div>
+          </div>
+          
+          {form.auto_allocate && (
+            <div className="mt-3 pl-8">
+              <Select
+                label="Deduct From Account"
+                options={accounts.map(a => ({ value: a.id, label: `${a.name} (${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(a.balance)})` }))}
+                value={form.allocation_account_id}
+                onChange={(e) => setForm(f => ({ ...f, allocation_account_id: e.target.value }))}
+                placeholder="Select account"
+              />
+            </div>
+          )}
+        </div>
 
         <div className="flex gap-3 pt-4">
           <Button type="button" variant="outline" onClick={onClose} className="flex-1">

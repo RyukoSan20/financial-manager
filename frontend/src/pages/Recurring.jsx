@@ -3,6 +3,7 @@ import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner } from '
 import api from '../services/api';
 import { Plus, Repeat, RefreshCw, Trash2, Edit2, Calendar, Clock, Play, Pause } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
+import { showNotification } from '../components/notifications/NotificationHelper';
 
 const frequencyOptions = [
   { value: 'daily', label: 'Daily' },
@@ -50,24 +51,56 @@ export const Recurring = () => {
   const triggerProcess = async () => {
     if (!confirm('Process all due recurring rules now? Transactions will be auto-generated.')) return;
     try {
+      setLoading(true);
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
       const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-26f7.up.railway.app';
       
       const response = await fetch(`${apiUrl}/api/cron/process-recurring`, { 
         method: 'POST',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        headers: token ? { 'Authorization': `Bearer ${token}` } : { 'Content-Type': 'application/json' },
       });
       const result = await response.json();
       
       if (result.created > 0 || result.generated > 0) {
-        alert(`Created ${result.created || result.generated} transactions!`);
+        showNotification({
+          type: 'success',
+          title: '✅ Recurring Processed',
+          message: `Created ${result.created || result.generated} transactions`,
+          category: 'recurring'
+        });
         fetchData();
+      } else if (result.processed === 0) {
+        showNotification({
+          type: 'info',
+          title: 'ℹ️ No Due Transactions',
+          message: 'All recurring rules are up to date. No transactions to generate.',
+          category: 'recurring'
+        });
+      } else if (result.details && result.details.length > 0) {
+        showNotification({
+          type: 'info',
+          title: 'ℹ️ Recurring Checked',
+          message: result.details.join('\n'),
+          category: 'recurring'
+        });
       } else {
-        alert(result.message || 'No transactions to generate. All rules are up to date.');
+        showNotification({
+          type: 'info',
+          title: 'ℹ️ No Action Needed',
+          message: 'No transactions to generate at this time.',
+          category: 'recurring'
+        });
       }
     } catch (error) {
       console.error('Process error:', error);
-      alert('Failed to process recurring rules. Check if backend is running.');
+      showNotification({
+        type: 'error',
+        title: '❌ Process Failed',
+        message: 'Failed to process recurring rules. Check if backend is running.',
+        category: 'recurring'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
