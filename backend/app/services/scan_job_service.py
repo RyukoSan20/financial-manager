@@ -16,7 +16,6 @@ from sqlalchemy.orm import Session
 from app.models.scan_job import ScanJob, ScanChunk, JobStatus
 from app.models.receipt import ReceiptScan, ReceiptItem
 from app.core.database import get_db
-from app.core.config import settings
 
 
 class ImageChunker:
