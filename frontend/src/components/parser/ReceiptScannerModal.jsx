@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
-import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles } from 'lucide-react';
+import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles, X } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 
@@ -15,13 +15,31 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   const [selectedAccount, setSelectedAccount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [confirming, setConfirming] = useState(false);
+  
+  // Editable fields for user modification
+  const [merchantName, setMerchantName] = useState('');
+  const [amount, setAmount] = useState('');
+  const [location, setLocation] = useState('');
+  const [transactionDate, setTransactionDate] = useState('');
+  
+  // Background processing state
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [jobId, setJobId] = useState(null);
+  const [processingComplete, setProcessingComplete] = useState(false);
+  
   const fileInputRef = useRef(null);
+  const pollIntervalRef = useRef(null);
 
   // Load data when modal opens
   useEffect(() => {
     if (isOpen) {
       loadData();
     }
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
   }, [isOpen]);
 
   const loadData = async () => {
@@ -64,6 +82,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       setStep('preview');
       setParsedData(null);
       setError('');
+      setProcessingComplete(false);
     };
     reader.readAsDataURL(file);
   };
@@ -86,10 +105,11 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     e.preventDefault();
   };
 
-  const handleParseImage = async () => {
+  // Start background processing with new scan-jobs API
+  const startBackgroundProcessing = async () => {
     if (!preview) return;
 
-    setLoading(true);
+    setIsProcessing(true);
     setError('');
 
     try {
@@ -98,17 +118,119 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       const blob = await response.blob();
       const file = new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
 
-      // Call parser endpoint with FormData
+      // Call new scan-jobs upload endpoint
+      const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
+      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-26f7.up.railway.app';
+      
       const formData = new FormData();
       formData.append('file', file);
 
-      // Get token
-      const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-a042.up.railway.app';
+      const uploadResponse = await fetch(`${apiUrl}/api/scan-jobs/upload`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Upload gagal');
+      }
+
+      const jobData = await uploadResponse.json();
+      setJobId(jobData.job_id);
       
-      // Retry logic for cold start
+      // Start polling for job status
+      pollJobStatus(jobData.job_id);
+      
+      // Show preview but allow closing - user will be notified when done
+      setStep('preview');
+      
+    } catch (err) {
+      console.error('Upload Error:', err);
+      setError('Gagal upload: ' + (err.message || 'Unknown error'));
+      setIsProcessing(false);
+    }
+  };
+
+  // Poll job status
+  const pollJobStatus = useCallback(async (id) => {
+    const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
+    const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-26f7.up.railway.app';
+    
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/scan-jobs/${id}`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        });
+        
+        if (!response.ok) {
+          clearInterval(pollIntervalRef.current);
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.status === 'completed') {
+          clearInterval(pollIntervalRef.current);
+          handleJobComplete(data);
+        } else if (data.status === 'failed') {
+          clearInterval(pollIntervalRef.current);
+          setIsProcessing(false);
+          setError(data.error_message || 'Processing failed');
+        }
+      } catch (err) {
+        console.error('Poll error:', err);
+      }
+    }, 3000); // Poll every 3 seconds
+  }, []);
+
+  // Handle job completion
+  const handleJobComplete = (jobData) => {
+    setIsProcessing(false);
+    setProcessingComplete(true);
+    
+    if (jobData.results?.gemini_parsed) {
+      const parsed = jobData.results.gemini_parsed;
+      
+      // Set editable fields
+      setMerchantName(parsed.merchant_name || '');
+      setLocation(parsed.address || '');
+      setAmount(parsed.total_amount?.toString() || parsed.total_amount?.toString() || '');
+      setTransactionDate(parsed.receipt_date || new Date().toISOString().split('T')[0]);
+      
+      setParsedData({
+        ...parsed,
+        job_id: jobData.job_id,
+      });
+      setStep('confirm');
+      
+      // Trigger success callback for navbar notification
+      if (onSuccess) {
+        onSuccess({ type: 'scan_complete', job_id: jobData.job_id });
+      }
+    }
+  };
+
+  // Original OCR parse (fallback)
+  const handleParseImage = async () => {
+    if (!preview) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(preview);
+      const blob = await response.blob();
+      const file = new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
+      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-26f7.up.railway.app';
+      
       let parseResponse;
       let lastError = null;
+      
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           parseResponse = await fetch(`${apiUrl}/api/parser/parse-receipt`, {
@@ -120,23 +242,22 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
         } catch (err) {
           lastError = err;
           if (attempt < 3) {
-            console.log(`Attempt ${attempt} failed, retrying in ${attempt * 2}s...`);
             await new Promise(r => setTimeout(r, attempt * 2000));
           }
         }
       }
-      
+
       if (!parseResponse || !parseResponse.ok) {
         throw new Error(lastError?.message || 'OCR server tidak merespons. Coba beberapa saat lagi.');
       }
-      
+
       const data = await parseResponse.json();
-      
+
       if (!parseResponse.ok || data.error || data.detail) {
         throw new Error(data.detail || data.error || 'OCR gagal');
       }
 
-      // Validate date format - check if already ISO YYYY-MM-DD
+      // Validate date
       const isValidIsoDate = (dateStr) => {
         if (!dateStr || typeof dateStr !== 'string') return false;
         const regex = /^\d{4}-\d{2}-\d{2}$/;
@@ -145,7 +266,6 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
         return !isNaN(d.getTime());
       };
       
-      // Get today's date in local format without timezone shift
       const getTodayLocalISO = () => {
         const today = new Date();
         const y = today.getFullYear();
@@ -155,15 +275,19 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       };
       
       const parsedDate = isValidIsoDate(data.date) ? data.date : getTodayLocalISO();
-      
-      console.log('OCR Result:', data);
-      
-      // Set parsed data with AI-suggested category
+
+      // Set editable fields
+      setMerchantName(data.merchant_name || '');
+      setLocation(data.address || '');
+      setAmount(data.amount?.toString() || '');
+      setTransactionDate(parsedDate);
+
+      // AI category
       const aiCategory = mapCategoryHint(data.category_hint);
       if (aiCategory && !selectedCategory) {
         setSelectedCategory(aiCategory);
       }
-      
+
       setParsedData({
         ...data,
         date: parsedDate
@@ -171,10 +295,9 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       setStep('confirm');
     } catch (err) {
       console.error('OCR Error:', err);
-      // More detailed error message
       let errorMsg = 'Failed to process image';
       if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-        errorMsg = 'Connection error: Cannot reach OCR server. Please check your internet connection.';
+        errorMsg = 'Connection error: Cannot reach OCR server.';
       } else {
         errorMsg = 'Failed to process image: ' + (err.message || 'Unknown error');
       }
@@ -209,23 +332,26 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     setError('');
 
     try {
-      const amount = parseFloat(parsedData.amount) || 0;
+      // Use editable amount
+      const finalAmount = parseFloat(amount) || parseFloat(parsedData.amount) || 0;
       
       await api.transactions.create({
-        amount: amount,
+        amount: finalAmount,
         type: parsedData.suggested_type === 'income' ? 'income' : 'expense',
-        description: parsedData.description || 'Pembelian',
-        date: parsedData.date ? parsedData.date.split('T')[0] : new Date().toISOString().split('T')[0],
+        description: merchantName || parsedData.description || 'Pembelian',
+        date: transactionDate || new Date().toISOString().split('T')[0],
         account_id: parseInt(selectedAccount),
         category_id: selectedCategory ? parseInt(selectedCategory) : null,
-        merchant_name: parsedData.merchant_name,
-        confidence_score: parsedData.confidence_score,
+        merchant_name: merchantName || parsedData.merchant_name,
+        confidence_score: parsedData.confidence_score || parsedData.gemini_parsed?.confidence || 0,
         detection_type: 'OCR_RECEIPT',
-        receipt_scan_id: parsedData.receipt_scan_id || null,
+        receipt_scan_id: parsedData.receipt_scan_id || parsedData.job_id || null,
         latitude: parsedData.latitude,
         longitude: parsedData.longitude,
-        merchant_address: parsedData.address,
-        notes: `Method: ${parsedData.payment_method || 'Not detected'}\n${parsedData.address ? 'Address: ' + parsedData.address : ''}${parsedData.items_count > 0 ? '\nItems: ' + parsedData.items_count + ' item(s)' : ''}`,
+        merchant_address: location || parsedData.address,
+        notes: `Method: ${parsedData.payment_method || 'Not detected'}
+${location ? 'Location: ' + location : ''}
+${parsedData.items_count > 0 ? 'Items: ' + parsedData.items_count + ' item(s)' : ''}`,
       });
 
       onSuccess?.();
@@ -239,11 +365,21 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const handleClose = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
     setPreview(null);
     setParsedData(null);
     setError('');
     setStep('upload');
     setSelectedCategory('');
+    setMerchantName('');
+    setAmount('');
+    setLocation('');
+    setTransactionDate('');
+    setIsProcessing(false);
+    setProcessingComplete(false);
+    setJobId(null);
     onClose();
   };
 
@@ -266,6 +402,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       onClose={handleClose}
       title="Receipt Scanner"
       size="lg"
+      closeable={!loading && !isProcessing} // Allow close unless processing
     >
       {/* Step 1: Upload */}
       {step === 'upload' && (
@@ -276,7 +413,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               <div>
                 <p className="font-medium text-purple-900">Receipt Scanner</p>
                 <p className="text-sm text-purple-700 mt-1">
-                  Take a photo or upload a receipt. AI will automatically extract data and suggest a category.
+                  Take a photo or upload a receipt. AI will automatically extract data.
                 </p>
               </div>
             </div>
@@ -329,11 +466,12 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               alt="Receipt preview"
               className="w-full max-h-64 object-contain rounded-xl border"
             />
-            {loading && (
+            {isProcessing && (
               <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
                 <div className="text-center text-white">
                   <Loader2 className="w-10 h-10 animate-spin mx-auto mb-2" />
-                  <p className="font-medium">Memproses OCR...</p>
+                  <p className="font-medium">Memproses di background...</p>
+                  <p className="text-sm opacity-80 mt-1">Form bisa ditutup, notifikasi muncul saat selesai</p>
                 </div>
               </div>
             )}
@@ -354,6 +492,15 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
           </div>
 
+          {/* Processing indicator */}
+          {isProcessing && jobId && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-700">
+                Job ID: {jobId.substring(0, 8)}... | Processing in background...
+              </p>
+            </div>
+          )}
+
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
               {error}
@@ -361,14 +508,32 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
           )}
 
           <div className="flex justify-between">
-            <Button variant="secondary" onClick={() => setStep('upload')}>
+            <Button variant="secondary" onClick={() => setStep('upload')} disabled={isProcessing}>
               Kembali
             </Button>
-            <Button onClick={handleParseImage} disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Camera className="w-4 h-4 mr-2" />}
-              {loading ? 'Processing...' : 'Process Receipt'}
+            <Button onClick={startBackgroundProcessing} disabled={isProcessing}>
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Camera className="w-4 h-4 mr-2" />
+                  Start Background Scan
+                </>
+              )}
             </Button>
           </div>
+          
+          {/* Option to close while processing */}
+          {isProcessing && (
+            <div className="text-center">
+              <Button variant="ghost" size="sm" onClick={handleClose}>
+                Tutup form (notifikasi muncul saat selesai)
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -381,40 +546,73 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                 <Check className="w-4 h-4 text-white" />
               </div>
-              <p className="font-medium text-green-900">Extraction Success!</p>
+              <p className="font-medium text-green-900">Extraction Complete!</p>
             </div>
+            <p className="text-sm text-green-700 mt-1">
+              Data berhasil diekstrak. Edit jika perlu, lalu simpan.
+            </p>
           </div>
 
-          {/* Parsed data preview */}
+          {/* Editable fields */}
           <div className="border rounded-xl divide-y">
-            <div className="p-4 flex items-center justify-between">
-              <span className="text-gray-500">Merchant</span>
-              <span className="font-medium">{parsedData.merchant_name || 'Not detected'}</span>
+            {/* Merchant Name - EDITABLE */}
+            <div className="p-4">
+              <label className="text-sm text-gray-500 mb-1 block">Merchant Name</label>
+              <Input
+                value={merchantName}
+                onChange={(e) => setMerchantName(e.target.value)}
+                placeholder="Nama merchant/toko"
+                className="font-medium"
+              />
             </div>
-            <div className="p-4 flex items-center justify-between">
-              <span className="text-gray-500">Total</span>
-              <span className="font-bold text-xl text-red-600">
-                -{formatCurrency(parseFloat(parsedData.amount) || 0)}
-              </span>
+            
+            {/* Amount - EDITABLE */}
+            <div className="p-4">
+              <label className="text-sm text-gray-500 mb-1 block">Total Amount (Rp)</label>
+              <Input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0"
+                className="font-bold text-xl"
+              />
             </div>
-            <div className="p-4 flex items-center justify-between">
-              <span className="text-gray-500">Date</span>
-              <span className="text-sm">
-                {parsedData.date ? new Date(parsedData.date).toLocaleDateString('id-ID', { 
-                  day: 'numeric', month: 'long', year: 'numeric' 
-                }) : 'Today'}
-              </span>
+            
+            {/* Date - EDITABLE */}
+            <div className="p-4">
+              <label className="text-sm text-gray-500 mb-1 block">Date</label>
+              <Input
+                type="date"
+                value={transactionDate}
+                onChange={(e) => setTransactionDate(e.target.value)}
+              />
             </div>
+            
+            {/* Location - EDITABLE */}
+            <div className="p-4">
+              <label className="text-sm text-gray-500 mb-1 block">Location</label>
+              <Input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Alamat merchant (opsional)"
+              />
+            </div>
+            
+            {/* Payment Method - read only */}
             <div className="p-4 flex items-center justify-between">
               <span className="text-gray-500">Method</span>
               <span className="text-sm">{parsedData.payment_method || 'Not detected'}</span>
             </div>
+            
+            {/* Accuracy - read only */}
             <div className="p-4 flex items-center justify-between">
               <span className="text-gray-500">Accuracy</span>
               <span className="text-sm font-medium">
-                {Math.round(parsedData.confidence_score || 0)}%
+                {Math.round(parsedData.confidence_score || parsedData.gemini_parsed?.confidence || 0)}%
               </span>
             </div>
+            
+            {/* Category hint - read only */}
             {parsedData.category_hint && (
               <div className="p-4 flex items-center justify-between bg-purple-50">
                 <span className="text-gray-500">AI Suggestion</span>
@@ -433,16 +631,6 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
                 </span>
               </div>
             )}
-            
-            {/* Location from merchant */}
-            {parsedData.address && (
-              <div className="p-4 flex items-center justify-between bg-green-50">
-                <span className="text-gray-500">Lokasi Merchant</span>
-                <span className="text-sm font-medium text-green-700">
-                  📍 {parsedData.address}
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Account selector */}
@@ -456,7 +644,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
           {/* Category selector with AI suggestion */}
           <div>
             <Select
-              label="Kategori (AI suggestion tersedia)"
+              label="Kategori"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               options={[

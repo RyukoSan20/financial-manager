@@ -50,16 +50,24 @@ export const Recurring = () => {
   const triggerProcess = async () => {
     if (!confirm('Process all due recurring rules now? Transactions will be auto-generated.')) return;
     try {
-      const response = await fetch('/api/cron/process-recurring', { method: 'POST' });
+      const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
+      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-26f7.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/cron/process-recurring`, { 
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
       const result = await response.json();
-      if (result.created > 0) {
-        alert(`Created ${result.created} transactions!`);
+      
+      if (result.created > 0 || result.generated > 0) {
+        alert(`Created ${result.created || result.generated} transactions!`);
         fetchData();
       } else {
-        alert('No transactions to generate.');
+        alert(result.message || 'No transactions to generate. All rules are up to date.');
       }
     } catch (error) {
-      alert('Failed to process recurring rules.');
+      console.error('Process error:', error);
+      alert('Failed to process recurring rules. Check if backend is running.');
     }
   };
 
