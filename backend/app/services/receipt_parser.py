@@ -6,7 +6,6 @@ from typing import Optional, Dict, Any, List
 from decimal import Decimal, InvalidOperation
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.models.transaction import Transaction
 from app.models.transaction_item import TransactionItem
 
@@ -55,11 +54,14 @@ class ReceiptParser:
             Parsed receipt data as dictionary
         """
         try:
+            import os
             import google.generativeai as genai
             
             # Configure Gemini
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel(settings.GEMINI_MODEL or "gemini-1.5-flash")
+            api_key = os.getenv("GEMINI_API_KEY", "")
+            model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel(model_name)
             
             # Clean base64 (remove data URI prefix if present)
             clean_base64 = image_base64
