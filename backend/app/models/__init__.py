@@ -3,6 +3,7 @@
 from app.models.account import Account
 from app.models.category import Category
 from app.models.transaction import Transaction
+from app.models.transaction_item import TransactionItem
 from app.models.budget import Budget
 from app.models.transfer import Transfer
 from app.models.recurring import RecurringRule
@@ -16,6 +17,7 @@ __all__ = [
     "Account",
     "Category",
     "Transaction",
+    "TransactionItem",
     "Budget",
     "Transfer",
     "RecurringRule",

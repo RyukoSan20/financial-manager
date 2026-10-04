@@ -48,6 +48,12 @@ class Transaction(Base):
     longitude = Column(Numeric(10, 7), nullable=True)
     merchant_address = Column(String(255), nullable=True)
     detection_type = Column(String(20), default="MANUAL")  # MANUAL, OCR_RECEIPT, QRIS_TEXT, SMS_BANK
+    
+    # Enterprise Feed/Review Workflow
+    status = Column(String(20), default="approved")  # pending, approved, rejected
+    source = Column(String(30), default="manual")  # camera_scan, email_forward, whatsapp, manual, ocr, api
+    raw_data = Column(Text, nullable=True)  # Raw JSON from Gemini/parser
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -58,3 +64,4 @@ class Transaction(Base):
     transfer = relationship("Transfer", back_populates="transactions")
     recurring_rule = relationship("RecurringRule", back_populates="generated_transactions")
     receipt_scan = relationship("ReceiptScan", foreign_keys=[receipt_scan_id])
+    items = relationship("TransactionItem", back_populates="transaction", cascade="all, delete-orphan")
