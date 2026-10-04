@@ -9,7 +9,8 @@ from app.models.recurring import RecurringRule
 from app.models.goal import Goal, GoalContribution
 from app.models.debt import Debt, DebtPayment
 from app.models.net_worth import NetWorthSnapshot
-from app.models.receipt import ReceiptScan, ReceiptItem
+from app.models.receipt import ReceiptScan, ReceiptItem, ProductCatalog
+from app.models.scan_job import ScanJob, ScanChunk, JobStatus
 
 __all__ = [
     "Account",
@@ -25,4 +26,8 @@ __all__ = [
     "NetWorthSnapshot",
     "ReceiptScan",
     "ReceiptItem",
+    "ProductCatalog",
+    "ScanJob",
+    "ScanChunk",
+    "JobStatus",
 ]

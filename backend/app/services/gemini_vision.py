@@ -155,6 +155,73 @@ def extract_receipt_with_gemini(
         }
 
 
+class GeminiVisionService:
+    """Async Gemini Vision/Text service."""
+
+    def __init__(self):
+        import os
+        self.api_key = os.getenv("GEMINI_API_KEY", "")
+        self.model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+
+    async def analyze_text(self, prompt: str, text: str) -> Optional[Dict[str, Any]]:
+        """
+        Use Gemini to analyze text and return structured data.
+        """
+        import json
+        import urllib.request
+        import urllib.error
+
+        if not self.api_key:
+            logger.warning("GEMINI_API_KEY not configured")
+            return None
+
+        try:
+            payload = {
+                "contents": [{
+                    "parts": [{"text": f"{prompt}\n\nText to analyze:\n{text}"}]
+                }],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "maxOutputTokens": 4096,
+                    "responseMimeType": "application/json"
+                }
+            }
+
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+            data = json.dumps(payload).encode('utf-8')
+
+            req = urllib.request.Request(
+                url,
+                data=data,
+                headers={'Content-Type': 'application/json'},
+                method='POST'
+            )
+
+            with urllib.request.urlopen(req, timeout=120) as response:
+                result = json.loads(response.read().decode('utf-8'))
+
+            text_response = result['candidates'][0]['content']['parts'][0]['text']
+
+            # Clean and parse JSON
+            text_response = text_response.strip()
+            if text_response.startswith('```'):
+                parts = text_response.split('```')
+                if len(parts) >= 3:
+                    text_response = parts[1]
+                    if text_response.startswith('json'):
+                        text_response = text_response[4:]
+            text_response = text_response.strip()
+
+            return json.loads(text_response)
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Gemini returned invalid JSON: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Gemini text analysis failed: {e}")
+            return None
+
+
 def format_gemini_result(gemini_data: Dict[str, Any]) -> 'OCRResult':
     """
     Convert Gemini result to OCRResult format.

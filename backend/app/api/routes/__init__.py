@@ -16,4 +16,5 @@ from . import (
     data,
     parser,
     ai_advisor,
+    scan_jobs,
 )

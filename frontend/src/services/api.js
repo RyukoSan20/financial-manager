@@ -272,6 +272,39 @@ export const api = {
     deleteAll: () => api.request('/data/delete-all', { method: 'DELETE' }),
   },
 
+  // Background Scan Jobs
+  scanJobs: {
+    upload: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const token = getToken();
+      const response = await fetch(`${API_BASE_URL}/scan-jobs/upload`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Upload failed' }));
+        throw new Error(error.detail || 'Upload failed');
+      }
+      
+      return response.json();
+    },
+    
+    status: (jobId) => api.request(`/scan-jobs/${jobId}`),
+    
+    chunks: (jobId) => api.request(`/scan-jobs/${jobId}/chunks`),
+    
+    list: (params = {}) => {
+      const searchParams = new URLSearchParams(params).toString();
+      return api.request(`/scan-jobs/${searchParams ? `?${searchParams}` : ''}`);
+    },
+    
+    cancel: (jobId) => api.request(`/scan-jobs/${jobId}`, { method: 'DELETE' }),
+  },
+
   // Health check
   health: () => api.request('/health'),
   info: () => api.request('/info'),

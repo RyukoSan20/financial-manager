@@ -9,7 +9,7 @@ from app.api.routes import (
     accounts, categories, transactions, budgets,
     dashboard, calculators,
     transfers, recurring, goals, debts, analytics,
-    auth, data, parser, ai_advisor
+    auth, data, parser, ai_advisor, scan_jobs
 )
 
 # Import models to register with SQLAlchemy
@@ -53,32 +53,93 @@ def _run_schema_migrations():
     """Run database schema migrations for new columns (called from background)."""
     import time
     time.sleep(3)  # Wait for app to fully start
-    
+
     from sqlalchemy import text, inspect
     try:
         from app.core.database import engine
-        
+
         with engine.connect() as conn:
             inspector = inspect(engine)
+
+            # Migration: scan_jobs table
+            existing_tables = inspector.get_table_names()
+            if 'scan_jobs' not in existing_tables:
+                conn.execute(text("""
+                    CREATE TABLE scan_jobs (
+                        id SERIAL PRIMARY KEY,
+                        job_id VARCHAR(36) UNIQUE NOT NULL,
+                        user_id INTEGER NOT NULL REFERENCES users(id),
+                        status VARCHAR(20) DEFAULT 'pending',
+                        image_filename VARCHAR(255) NOT NULL,
+                        image_path VARCHAR(512) NOT NULL,
+                        image_size INTEGER,
+                        image_width INTEGER,
+                        image_height INTEGER,
+                        chunks_total INTEGER DEFAULT 0,
+                        chunks_completed INTEGER DEFAULT 0,
+                        chunk_results JSONB,
+                        tesseract_text TEXT,
+                        easyocr_text TEXT,
+                        rapidocr_text TEXT,
+                        tesseract_confidence NUMERIC(5,2),
+                        easyocr_confidence NUMERIC(5,2),
+                        rapidocr_confidence NUMERIC(5,2),
+                        combined_text TEXT,
+                        combined_confidence NUMERIC(5,2),
+                        gemini_parsed JSONB,
+                        receipt_scan_id INTEGER REFERENCES receipt_scans(id),
+                        error_message TEXT,
+                        retry_count INTEGER DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        started_at TIMESTAMP,
+                        completed_at TIMESTAMP
+                    )
+                """))
+                conn.commit()
+                print("[MIGRATION] Created scan_jobs table")
+
+            # Migration: scan_chunks table
+            if 'scan_chunks' not in existing_tables:
+                conn.execute(text("""
+                    CREATE TABLE scan_chunks (
+                        id SERIAL PRIMARY KEY,
+                        scan_job_id INTEGER NOT NULL REFERENCES scan_jobs(id),
+                        chunk_index INTEGER NOT NULL,
+                        region_type VARCHAR(50) NOT NULL,
+                        bbox_x INTEGER,
+                        bbox_y INTEGER,
+                        bbox_width INTEGER,
+                        bbox_height INTEGER,
+                        tesseract_text TEXT,
+                        easyocr_text TEXT,
+                        rapidocr_text TEXT,
+                        tesseract_confidence NUMERIC(5,2),
+                        easyocr_confidence NUMERIC(5,2),
+                        rapidocr_confidence NUMERIC(5,2),
+                        best_text TEXT,
+                        best_engine VARCHAR(20),
+                        gemini_interpretation JSONB,
+                        is_processed BOOLEAN DEFAULT FALSE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """))
+                conn.commit()
+                print("[MIGRATION] Created scan_chunks table")
+
+            # Existing receipt_items migration
             columns = [col['name'] for col in inspector.get_columns('receipt_items')]
-            
+
             if 'is_discount' not in columns:
                 conn.execute(text("""
                     ALTER TABLE receipt_items ADD COLUMN is_discount BOOLEAN DEFAULT FALSE
                 """))
                 conn.commit()
                 print("[MIGRATION] Added is_discount column")
-            else:
-                print("[MIGRATION] is_discount column exists")
-            
-            print("[MIGRATION] Starting migrations...")
-            
+
             # Migration: Add supabase_id to users table
             user_columns = [col['name'] for col in inspector.get_columns('users')]
-            print(f"[MIGRATION] Current user columns: {user_columns}")
             if 'supabase_id' not in user_columns:
                 try:
-                    # Add column without UNIQUE first (simpler migration)
                     conn.execute(text("""
                         ALTER TABLE users ADD COLUMN supabase_id VARCHAR(255)
                     """))
@@ -86,8 +147,7 @@ def _run_schema_migrations():
                     print("[MIGRATION] Added supabase_id column to users")
                 except Exception as e:
                     print(f"[MIGRATION] Failed to add supabase_id: {e}")
-            else:
-                print("[MIGRATION] supabase_id column already exists")
+
     except Exception as e:
         print(f"[MIGRATION] Warning: {e}")
 
@@ -106,6 +166,7 @@ app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"]
 app.include_router(calculators.router, prefix="/api/calculators", tags=["Calculators"])
 app.include_router(data.router, prefix="/api/data", tags=["Data"])
 app.include_router(parser.router, prefix="/api/parser", tags=["Parser"])
+app.include_router(scan_jobs.router, prefix="/api/scan-jobs", tags=["Scan Jobs"])
 app.include_router(ai_advisor.router, prefix="/api/ai", tags=["AI Advisor"])
 
 
