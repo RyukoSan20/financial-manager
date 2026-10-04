@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.auth import get_current_user
+from app.core.security import get_current_user
 from app.core.storage import StorageService
 from app.models.user import User
 from app.models.scan_job import ScanJob, JobStatus
