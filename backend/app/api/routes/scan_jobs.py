@@ -20,7 +20,7 @@ from app.models.user import User
 from app.models.scan_job import ScanJob, JobStatus
 from app.services.scan_job_service import run_scan_job_background
 
-router = APIRouter(prefix="/scan-jobs", tags=["scan-jobs"])
+router = APIRouter(prefix="", tags=["Scan Jobs"])
 
 
 @router.post("/upload")

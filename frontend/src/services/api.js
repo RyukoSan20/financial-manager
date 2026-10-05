@@ -305,6 +305,33 @@ export const api = {
     cancel: (jobId) => api.request(`/scan-jobs/${jobId}`, { method: 'DELETE' }),
   },
 
+  // Feed & Review API
+  feed: {
+    scanReceipt: async (imageBase64, accountId = null) => {
+      return api.request('/feed/scan-receipt', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          image: imageBase64,
+          account_id: accountId,
+          auto_approve: false,
+          source: 'camera_scan'
+        }),
+      });
+    },
+    pending: (limit = 50) => api.request(`/feed/pending?limit=${limit}`),
+    all: (status = null, limit = 50) => {
+      const params = new URLSearchParams({ limit });
+      if (status) params.append('status', status);
+      return api.request(`/feed/all?${params.toString()}`);
+    },
+    stats: () => api.request('/feed/stats'),
+    approve: (transactionId) => api.request(`/feed/approve/${transactionId}`, { method: 'POST' }),
+    reject: (transactionId, note = null) => api.request(`/feed/reject/${transactionId}`, { 
+      method: 'POST',
+      body: note ? JSON.stringify({ note }) : undefined,
+    }),
+  },
+
   // Health check
   health: () => api.request('/health'),
   info: () => api.request('/info'),
