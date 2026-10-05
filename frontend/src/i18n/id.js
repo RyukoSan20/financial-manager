@@ -3,6 +3,37 @@ export default {
   // App
   app_name: "Financial Manager",
   
+  // Currency & Numbers
+  currency: {
+    symbol: "Rp",
+    code: "IDR",
+    thousandSeparator: ".",
+    decimalSeparator: ",",
+    decimals: 0,
+    format: "{symbol} {value}", // e.g., "Rp 1.000.000"
+  },
+  
+  // Common
+  common: {
+    save: "Simpan",
+    cancel: "Batal",
+    delete: "Hapus",
+    edit: "Edit",
+    add: "Tambah",
+    search: "Cari",
+    filter: "Filter",
+    loading: "Memuat...",
+    noData: "Tidak ada data",
+    confirm: "Konfirmasi",
+    yes: "Ya",
+    no: "Tidak",
+    all: "Semua",
+    none: "Tidak Ada",
+    success: "Berhasil",
+    error: "Gagal",
+    warning: "Peringatan",
+  },
+  
   // Navigation
   nav: {
     dashboard: "Beranda",

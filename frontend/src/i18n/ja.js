@@ -3,6 +3,37 @@ export default {
   // App
   app_name: "ファイナンスマネージャー",
   
+  // Currency & Numbers
+  currency: {
+    symbol: "¥",
+    code: "JPY",
+    thousandSeparator: ",",
+    decimalSeparator: ".",
+    decimals: 0,
+    format: "{symbol}{value}", // e.g., "¥1,000"
+  },
+  
+  // Common
+  common: {
+    save: "保存",
+    cancel: "キャンセル",
+    delete: "削除",
+    edit: "編集",
+    add: "追加",
+    search: "検索",
+    filter: "フィルター",
+    loading: "読み込み中...",
+    noData: "データなし",
+    confirm: "確認",
+    yes: "はい",
+    no: "いいえ",
+    all: "すべて",
+    none: "なし",
+    success: "成功",
+    error: "エラー",
+    warning: "警告",
+  },
+  
   // Navigation
   nav: {
     dashboard: "ダッシュボード",

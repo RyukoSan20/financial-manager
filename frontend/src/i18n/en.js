@@ -3,6 +3,37 @@ export default {
   // App
   app_name: "Financial Manager",
   
+  // Currency & Numbers
+  currency: {
+    symbol: "$",
+    code: "USD",
+    thousandSeparator: ",",
+    decimalSeparator: ".",
+    decimals: 2,
+    format: "{symbol}{value}", // e.g., "$1,000.00"
+  },
+  
+  // Common
+  common: {
+    save: "Save",
+    cancel: "Cancel",
+    delete: "Delete",
+    edit: "Edit",
+    add: "Add",
+    search: "Search",
+    filter: "Filter",
+    loading: "Loading...",
+    noData: "No data",
+    confirm: "Confirm",
+    yes: "Yes",
+    no: "No",
+    all: "All",
+    none: "None",
+    success: "Success",
+    error: "Error",
+    warning: "Warning",
+  },
+  
   // Navigation
   nav: {
     dashboard: "Dashboard",
