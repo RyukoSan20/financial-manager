@@ -1,7 +1,7 @@
 // Feed Page - Transaction review with approve/reject
 
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Spinner, Badge } from '../ui';
+import { Card, Button, Spinner, Badge } from '../../components/ui';
 import { 
   CheckCircle, XCircle, Clock, 
   Receipt, AlertCircle, RefreshCw, Camera
