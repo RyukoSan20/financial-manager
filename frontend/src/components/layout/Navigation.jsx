@@ -19,6 +19,7 @@ import {
   User,
   Bell,
   Moon,
+  Sun,
   HelpCircle,
   PlusCircle,
   Map,
@@ -28,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { ThemeProvider, useTheme } from '../../contexts/ThemeContext';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { showNotification } from '../notifications/NotificationHelper';
 
@@ -121,17 +123,18 @@ export const Sidebar = () => {
 export const MobileHeader = ({ title, showBack = false, onBack }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const { isDarkMode, toggleTheme } = useTheme();
 
   return (
     <>
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-b border-gray-100 z-40 safe-area-top">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 z-40 safe-area-top">
         <div className="flex items-center justify-between h-full px-4">
           {/* Left */}
           <div className="flex items-center gap-3">
             {showBack ? (
               <button 
                 onClick={onBack}
-                className="p-2 -ml-2 text-gray-600 active:bg-gray-100 rounded-lg touch-manipulation"
+                className="p-2 -ml-2 text-gray-600 dark:text-gray-300 active:bg-gray-100 dark:active:bg-gray-800 rounded-lg touch-manipulation"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -144,15 +147,23 @@ export const MobileHeader = ({ title, showBack = false, onBack }) => {
                 </div>
               </Link>
             )}
-            <h1 className="font-semibold text-lg text-gray-900">{title}</h1>
+            <h1 className="font-semibold text-lg text-gray-900 dark:text-white">{title}</h1>
           </div>
           
           {/* Right */}
           <div className="flex items-center gap-1">
+            {/* Theme Toggle */}
+            <button 
+              onClick={toggleTheme}
+              className="p-2.5 text-gray-600 dark:text-gray-300 active:bg-gray-100 dark:active:bg-gray-800 rounded-lg"
+              title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
+            >
+              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
             <NotificationBell />
             <button 
               onClick={() => setMenuOpen(!menuOpen)}
-              className="p-2.5 text-gray-600 active:bg-gray-100 rounded-lg touch-manipulation"
+              className="p-2.5 text-gray-600 dark:text-gray-300 active:bg-gray-100 dark:active:bg-gray-800 rounded-lg touch-manipulation"
             >
               <Menu className="w-5 h-5" />
             </button>
