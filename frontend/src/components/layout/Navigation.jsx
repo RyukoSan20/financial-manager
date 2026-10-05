@@ -158,6 +158,8 @@ export const MobileHeader = ({ title, showBack = false, onBack }) => {
             {/* Theme Toggle */}
             <button 
               onClick={toggleTheme}
+              data-testid="theme-toggle"
+              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               className="p-2.5 text-gray-600 dark:text-gray-300 active:bg-gray-100 dark:active:bg-gray-800 rounded-lg"
               title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
             >
