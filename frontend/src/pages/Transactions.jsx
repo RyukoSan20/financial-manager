@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Spinner } from '../components/ui';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera } from 'lucide-react';
+import { Card, Spinner, Badge } from '../components/ui';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import { TextParserModal } from '../components/parser/TextParserModal';
 import { QRScannerModal } from '../components/parser/QRScannerModal';
@@ -37,13 +37,14 @@ export const Transactions = () => {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
-  const [filters, setFilters] = useState({ type: '', search: '' });
+  const [filters, setFilters] = useState({ type: '', search: '', status: '' });
   const [selectedTx, setSelectedTx] = useState(null);
   const [showTextParser, setShowTextParser] = useState(false);
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [prefillQRText, setPreFillQRText] = useState('');
   const [expandedTxId, setExpandedTxId] = useState(null);
+  const [pendingCount, setPendingCount] = useState(0);
   
   // Edit mode state
   const [editingTx, setEditingTx] = useState(null);
@@ -56,14 +57,18 @@ export const Transactions = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [txRes, accRes, catRes] = await Promise.all([
+      const [txRes, accRes, catRes, feedStatsRes] = await Promise.allSettled([
         api.transactions.list({ limit: 100 }),
         api.accounts.list(),
         api.categories.list(),
+        api.get('/feed/stats').catch(() => null),
       ]);
-      setTransactions(Array.isArray(txRes) ? txRes : []);
-      setAccounts(Array.isArray(accRes) ? accRes : []);
-      setCategories(Array.isArray(catRes) ? catRes : []);
+      setTransactions(Array.isArray(txRes.value) ? txRes.value : []);
+      setAccounts(Array.isArray(accRes.value) ? accRes.value : []);
+      setCategories(Array.isArray(catRes.value) ? catRes.value : []);
+      if (feedStatsRes.status === 'fulfilled' && feedStatsRes.value) {
+        setPendingCount(feedStatsRes.value.data?.pending_count || feedStatsRes.value.pending_count || 0);
+      }
     } catch (err) {
       console.error('Failed to fetch transactions:', err);
       setTransactions([]);
@@ -151,7 +156,18 @@ export const Transactions = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
+            {pendingCount > 0 && (
+              <button 
+                onClick={() => window.location.href = '/feed'}
+                className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium hover:bg-yellow-200 transition-colors"
+              >
+                <BellRing className="w-4 h-4" />
+                <span>{pendingCount} Pending Review</span>
+              </button>
+            )}
+          </div>
           <p className="text-sm text-gray-500">{filteredTransactions.length} transactions</p>
         </div>
         <button

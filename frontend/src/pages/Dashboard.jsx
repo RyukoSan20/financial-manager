@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Spinner, EmptyState } from '../components/ui';
+import { Card, Button, Spinner, Badge } from '../components/ui';
 import { 
   TrendingUp, TrendingDown, Wallet, PieChart, 
   Plus, Receipt, FileText, PiggyBank,
-  ChevronRight, ChevronLeft, RefreshCw
+  ChevronRight, RefreshCw, Camera, CheckCircle, XCircle, Clock
 } from 'lucide-react';
 import api from '../services/api';
 import { formatCurrency, formatDate } from '../utils/format';
@@ -24,13 +24,14 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const [summary, setSummary] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState([]);
-  const [recentJobs, setRecentJobs] = useState([]); // Scan jobs
+  const [pendingFeed, setPendingFeed] = useState([]);
+  const [feedStats, setFeedStats] = useState(null);
+  const [processingIds, setProcessingIds] = useState(new Set());
   
   // Get date range based on time period
   const getDateRange = () => {
     const end = new Date();
     const start = new Date();
-    const period = TIME_PERIODS.find(p => p.value === timePeriod);
     
     if (timePeriod === 'today') {
       start.setHours(0, 0, 0, 0);
@@ -53,36 +54,30 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     try {
       const { startDate, endDate } = getDateRange();
       
-      // Fetch all data in parallel
-      const [summaryRes, transRes, categoryRes, jobsRes] = await Promise.allSettled([
+      // Fetch all data in parallel including Feed stats
+      const [summaryRes, transRes, categoryRes, feedStatsRes, pendingRes] = await Promise.allSettled([
         api.dashboard.summary(startDate, endDate),
         api.transactions.list({ start_date: startDate, end_date: endDate, limit: 10 }),
         api.analytics.expenseBreakdown({ start_date: startDate, end_date: endDate, type: 'expense' }),
-        api.scanJobs?.list ? api.scanJobs.list({ status: 'completed' }) : Promise.resolve({ jobs: [] }),
+        api.get('/feed/stats').catch(() => null),
+        api.get('/feed/pending?limit=5').catch(() => ({ data: [] })),
       ]);
 
-      // Extract results
-      if (summaryRes.status === 'fulfilled') {
-        setSummary(summaryRes.value);
-      }
-      
+      if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value);
       if (transRes.status === 'fulfilled') {
         const data = transRes.value;
         setTransactions(Array.isArray(data) ? data : (data.transactions || []));
       }
-      
       if (categoryRes.status === 'fulfilled') {
         const data = categoryRes.value;
-        if (data.categories) {
-          setCategoryBreakdown(data.categories);
-        } else if (Array.isArray(data)) {
-          setCategoryBreakdown(data);
-        }
+        setCategoryBreakdown(data.categories || data || []);
       }
-      
-      if (jobsRes.status === 'fulfilled') {
-        const data = jobsRes.value;
-        setRecentJobs(data.jobs?.slice(0, 5) || []);
+      if (feedStatsRes.status === 'fulfilled' && feedStatsRes.value) {
+        setFeedStats(feedStatsRes.value.data || feedStatsRes.value);
+      }
+      if (pendingRes.status === 'fulfilled') {
+        const data = pendingRes.value;
+        setPendingFeed(pendingRes.value.data?.data || pendingRes.value.data || []);
       }
     } catch (error) {
       console.error('Dashboard fetch error:', error);
@@ -99,23 +94,40 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const income = summary?.total_income || 0;
   const expense = summary?.total_expense || 0;
   const balance = income - expense;
-  const transactionCount = transactions.length || summary?.transaction_count || 0;
 
-  // Get transaction type color
+  // Handle feed approve/reject
+  const handleFeedAction = async (id, action) => {
+    setProcessingIds(prev => new Set([...prev, id]));
+    try {
+      await api.post(`/feed/${action}/${id}`);
+      setPendingFeed(prev => prev.filter(item => item.id !== id));
+      if (feedStats) {
+        setFeedStats(prev => ({
+          ...prev,
+          pending_count: prev.pending_count - 1,
+          ...(action === 'approve' ? { approved_today: prev.approved_today + 1 } : { rejected_today: prev.rejected_today + 1 })
+        }));
+      }
+    } catch (error) {
+      console.error(`Failed to ${action} transaction:`, error);
+    } finally {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
   const getTypeColor = (type) => {
     if (type === 'income') return 'text-success-600';
     if (type === 'expense') return 'text-danger-600';
     return 'text-gray-600';
   };
 
-  // Get transaction sign
-  const getSign = (type) => {
-    return type === 'income' ? '+' : '-';
-  };
-
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Header */}
+      {/* Header with Scan Button */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -128,10 +140,42 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             })}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+          {onScanReceipt && (
+            <Button variant="default" size="sm" onClick={onScanReceipt} className="gap-2">
+              <Camera className="w-4 h-4" />
+              {t('dashboard.scan_receipt')}
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Feed & Review Banner */}
+      {feedStats && feedStats.pending_count > 0 && (
+        <Card className="!p-4 border-l-4 border-l-yellow-500 bg-yellow-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">
+                  {t('feed.pendingCount')}: {feedStats.pending_count}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {formatCurrency(feedStats.total_pending_amount)} {t('feed.totalPending')}
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => window.location.href = '/feed'}>
+              {t('feed.pending')} <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Time Period Selector */}
       <div className="flex gap-2 overflow-x-auto pb-2">
@@ -150,7 +194,6 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         ))}
       </div>
 
-      {/* Loading State */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <Spinner size="lg" />
@@ -159,7 +202,6 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Income Card */}
             <Card className="!p-5">
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-lg bg-success-100 flex items-center justify-center">
@@ -172,7 +214,6 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               </p>
             </Card>
 
-            {/* Expense Card */}
             <Card className="!p-5">
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-lg bg-danger-100 flex items-center justify-center">
@@ -185,14 +226,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               </p>
             </Card>
 
-            {/* Net Flow Card */}
             <Card className="!p-5">
-              <div className="flex items-center justify-between">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  balance >= 0 ? 'bg-success-100' : 'bg-danger-100'
-                }`}>
-                  <Wallet className={`w-5 h-5 ${balance >= 0 ? 'text-success-600' : 'text-danger-600'}`} />
-                </div>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                balance >= 0 ? 'bg-success-100' : 'bg-danger-100'
+              }`}>
+                <Wallet className={`w-5 h-5 ${balance >= 0 ? 'text-success-600' : 'text-danger-600'}`} />
               </div>
               <p className="text-sm text-gray-500 mt-3">{t('dashboard.net_flow')}</p>
               <p className={`text-xl font-bold mt-1 ${balance >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
@@ -200,176 +238,147 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               </p>
             </Card>
 
-            {/* Transaction Count */}
             <Card className="!p-5">
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-primary-600" />
-                </div>
+              <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                <Receipt className="w-5 h-5 text-primary-600" />
               </div>
-              <p className="text-sm text-gray-500 mt-3">{t('dashboard.transactions_this_month').replace('bulan ini', '')}</p>
+              <p className="text-sm text-gray-500 mt-3">{t('dashboard.transactions_this_month')}</p>
               <p className="text-xl font-bold text-gray-900 mt-1">
-                {transactionCount}
+                {summary?.transaction_count || 0}
               </p>
             </Card>
           </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              onClick={onAddTransaction}
-              className="flex flex-col items-center gap-2 p-4 bg-success-50 rounded-xl hover:bg-success-100 transition-colors"
-            >
-              <div className="w-12 h-12 rounded-full bg-success-500 flex items-center justify-center">
-                <Plus className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-sm font-medium text-success-700">{t('dashboard.add_transaction')}</span>
-            </button>
-
-            <button
-              onClick={onScanReceipt}
-              className="flex flex-col items-center gap-2 p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors"
-            >
-              <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center">
-                <Receipt className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-sm font-medium text-purple-700">{t('dashboard.scan_receipt')}</span>
-            </button>
-
-            <button
-              onClick={() => window.location.href = '/reports'}
-              className="flex flex-col items-center gap-2 p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
-            >
-              <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
-                <PieChart className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-sm font-medium text-blue-700">{t('dashboard.view_reports')}</span>
-            </button>
-          </div>
-
-          {/* Two Column Layout */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Expense by Category */}
-            <Card>
-              <div className="px-5 py-4 border-b flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">{t('dashboard.expense_by_category')}</h3>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </div>
-              <div className="p-5">
-                {categoryBreakdown.length > 0 ? (
-                  <div className="space-y-3">
-                    {categoryBreakdown.slice(0, 8).map((cat, index) => {
-                      const percentage = cat.percentage || (expense > 0 ? (cat.amount / expense) * 100 : 0);
-                      const colors = [
-                        'bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500',
-                        'bg-teal-500', 'bg-blue-500', 'bg-indigo-500', 'bg-purple-500'
-                      ];
-                      return (
-                        <div key={index}>
-                          <div className="flex items-center justify-between text-sm mb-1">
-                            <span className="text-gray-700">{cat.name || cat.category_name || 'Other'}</span>
-                            <span className="font-medium text-gray-900">
-                              {formatCurrency(cat.amount)} ({percentage.toFixed(1)}%)
-                            </span>
-                          </div>
-                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${colors[index % colors.length]} rounded-full`}
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <PieChart className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>{t('transaction.no_transactions')}</p>
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            {/* Recent Transactions */}
-            <Card>
-              <div className="px-5 py-4 border-b flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">{t('dashboard.recent_transactions')}</h3>
-                <button 
-                  onClick={() => window.location.href = '/transactions'}
-                  className="text-sm text-primary-600 hover:text-primary-700"
-                >
-                  {t('dashboard.view_all')}
-                </button>
-              </div>
-              <div className="divide-y">
-                {transactions.length > 0 ? (
-                  transactions.slice(0, 5).map((trans, index) => (
-                    <div key={trans.id || index} className="px-5 py-3 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          trans.type === 'income' ? 'bg-success-100 text-success-600' : 'bg-danger-100 text-danger-600'
-                        }`}>
-                          {trans.type === 'income' ? (
-                            <TrendingUp className="w-5 h-5" />
-                          ) : (
-                            <TrendingDown className="w-5 h-5" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {trans.description || trans.merchant_name || 'Transaction'}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {trans.category_name || trans.category?.name || 'Uncategorized'}
-                          </p>
-                        </div>
+          {/* Pending Feed Cards */}
+          {pendingFeed.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-yellow-500" />
+                {t('feed.pending')}
+              </h2>
+              {pendingFeed.map((item) => (
+                <Card key={item.id} className="!p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-gray-400" />
+                        <span className="font-medium">{item.merchant_name || item.description || 'Transaction'}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {item.source || 'OCR'}
+                        </Badge>
                       </div>
-                      <div className="text-right">
-                        <p className={`font-semibold ${getTypeColor(trans.type)}`}>
-                          {getSign(trans.type)}{formatCurrency(trans.amount)}
+                      <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                        <span>{formatDate(item.date, language)}</span>
+                        <span>•</span>
+                        <span className={item.type === 'expense' ? 'text-danger-600' : 'text-success-600'}>
+                          {item.type === 'expense' ? '-' : '+'}{formatCurrency(item.amount)}
+                        </span>
+                        {item.confidence_score && (
+                          <>
+                            <span>•</span>
+                            <span>{Math.round(item.confidence_score * 100)}% confidence</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                        onClick={() => handleFeedAction(item.id, 'approve')}
+                        disabled={processingIds.has(item.id)}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        {t('feed.approve')}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => handleFeedAction(item.id, 'reject')}
+                        disabled={processingIds.has(item.id)}
+                      >
+                        <XCircle className="w-4 h-4 mr-1" />
+                        {t('feed.reject')}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Recent Transactions */}
+          <Card className="!p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">{t('dashboard.recent_transactions')}</h2>
+              <Button variant="ghost" size="sm" onClick={() => window.location.href = '/transactions'}>
+                {t('dashboard.view_all')} <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+            
+            {transactions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Receipt className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p>{t('transaction.no_transactions')}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {transactions.slice(0, 5).map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        transaction.type === 'income' ? 'bg-success-100' : 'bg-danger-100'
+                      }`}>
+                        {transaction.type === 'income' ? (
+                          <TrendingUp className="w-5 h-5 text-success-600" />
+                        ) : (
+                          <TrendingDown className="w-5 h-5 text-danger-600" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {transaction.description || transaction.merchant_name || 'Transaction'}
                         </p>
-                        <p className="text-xs text-gray-400">
-                          {trans.date ? formatDate(trans.date) : ''}
+                        <p className="text-sm text-gray-500">
+                          {formatDate(transaction.date, language)} • {transaction.category_name || 'Uncategorized'}
                         </p>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="px-5 py-8 text-center">
-                    <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p className="text-gray-500">{t('transaction.no_transactions')}</p>
-                    <Button size="sm" className="mt-3" onClick={onAddTransaction}>
-                      <Plus className="w-4 h-4 mr-1" />
-                      {t('dashboard.add_transaction')}
-                    </Button>
+                    <p className={`font-semibold ${getTypeColor(transaction.type)}`}>
+                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                    </p>
                   </div>
-                )}
+                ))}
               </div>
-            </Card>
-          </div>
+            )}
+          </Card>
 
-          {/* Pending Scan Jobs */}
-          {recentJobs.length > 0 && (
-            <Card className="border-primary-200 bg-primary-50">
-              <div className="px-5 py-4 border-b border-primary-200">
-                <h3 className="font-semibold text-primary-900 flex items-center gap-2">
-                  <Receipt className="w-5 h-5" />
-                  Scan Results Ready
-                </h3>
+          {/* Category Breakdown */}
+          {categoryBreakdown.length > 0 && (
+            <Card className="!p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">{t('dashboard.expense_by_category')}</h2>
+                <Button variant="ghost" size="sm" onClick={() => window.location.href = '/category-expenses'}>
+                  {t('dashboard.view_all')} <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
               </div>
-              <div className="divide-y">
-                {recentJobs.map((job, index) => (
-                  <div key={job.job_id || index} className="px-5 py-3 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-primary-900">{job.filename || 'Receipt'}</p>
-                      <p className="text-sm text-primary-600">
-                        {t('scanner.success')} - {job.confidence}% confidence
-                      </p>
+              <div className="space-y-3">
+                {categoryBreakdown.slice(0, 5).map((cat, idx) => (
+                  <div key={idx} className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">{cat.category_name || cat.name}</span>
+                        <span className="text-sm text-gray-500">{formatCurrency(cat.total)}</span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary-500 rounded-full"
+                          style={{ width: `${Math.min((cat.total / expense) * 100, 100)}%` }}
+                        />
+                      </div>
                     </div>
-                    <Button size="sm" variant="outline" className="border-primary-300">
-                      View
-                    </Button>
                   </div>
                 ))}
               </div>
@@ -380,5 +389,3 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     </div>
   );
 };
-
-export default Dashboard;
