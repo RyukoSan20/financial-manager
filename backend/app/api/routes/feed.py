@@ -24,7 +24,7 @@ from app.schemas.feed import (
 )
 from app.services.receipt_parser import parse_receipt_sync
 
-router = APIRouter(prefix="/api/feed", tags=["Feed & Review"])
+router = APIRouter(prefix="", tags=["Feed & Review"])
 
 
 @router.post("/scan-receipt", response_model=ScanReceiptResponse)
