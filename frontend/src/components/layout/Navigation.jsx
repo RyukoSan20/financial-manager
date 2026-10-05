@@ -29,31 +29,32 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from '../../i18n';
 import { ThemeProvider, useTheme } from '../../contexts/ThemeContext';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { showNotification } from '../notifications/NotificationHelper';
 
-const navItems = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Transactions', href: '/transactions', icon: Receipt },
-  { name: 'Feed', href: '/feed', icon: BellRing },
-  { name: 'Accounts', href: '/accounts', icon: Wallet },
-  { name: 'Budgets', href: '/budgets', icon: PiggyBank },
-  { name: 'Recurring', href: '/recurring', icon: Repeat },
-  { name: 'Goals', href: '/goals', icon: Target },
-  { name: 'Debts', href: '/debts', icon: CreditCard },
-  { name: 'Calculators', href: '/calculators', icon: Calculator },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { name: 'Spending Map', href: '/map', icon: Map },
-  { name: 'AI Advisor', href: '/advisor', icon: Sparkles },
+const navItems = (t) => [
+  { name: t.nav.dashboard, href: '/', icon: LayoutDashboard },
+  { name: t.nav.transactions, href: '/transactions', icon: Receipt },
+  { name: t.nav.feed, href: '/feed', icon: BellRing },
+  { name: t.nav.accounts, href: '/accounts', icon: Wallet },
+  { name: t.nav.budgets, href: '/budgets', icon: PiggyBank },
+  { name: t.nav.recurring, href: '/recurring', icon: Repeat },
+  { name: t.nav.goals, href: '/goals', icon: Target },
+  { name: t.nav.debts, href: '/debts', icon: CreditCard },
+  { name: t.nav.calculators, href: '/calculators', icon: Calculator },
+  { name: t.nav.analytics, href: '/analytics', icon: BarChart3 },
+  { name: t.nav.map, href: '/map', icon: Map },
+  { name: t.nav.advisor, href: '/advisor', icon: Sparkles },
 ];
 
-const bottomNavItems = [
-  { name: 'Home', href: '/', icon: LayoutDashboard },
-  { name: 'Transactions', href: '/transactions', icon: Receipt },
-  { name: 'Add', href: '/add', icon: Plus, isFAB: true },
-  { name: 'Budgets', href: '/budgets', icon: PiggyBank },
-  { name: 'More', href: '/more', icon: Menu },
+const bottomNavItems = (t) => [
+  { name: t.nav.dashboard, href: '/', icon: LayoutDashboard },
+  { name: t.nav.transactions, href: '/transactions', icon: Receipt },
+  { name: t.nav.add, href: '/add', icon: Plus, isFAB: true },
+  { name: t.nav.budgets, href: '/budgets', icon: PiggyBank },
+  { name: t.nav.more, href: '/more', icon: Menu },
 ];
 
 import api from '../../services/api';
@@ -61,23 +62,25 @@ import api from '../../services/api';
 // Desktop Sidebar
 export const Sidebar = () => {
   const location = useLocation();
+  const { t } = useTranslation();
+  const items = navItems(t);
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-30">
+    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-30 dark:bg-gray-800 dark:border-gray-700">
       {/* Logo */}
-      <div className="h-16 flex items-center px-5 border-b border-gray-100">
+      <div className="h-16 flex items-center px-5 border-b border-gray-100 dark:border-gray-700">
         <Link to="/" className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-md">
             <TrendingUp className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-xl text-gray-900">FinManager</span>
+          <span className="font-bold text-xl text-gray-900 dark:text-white">{t.app_name}</span>
         </Link>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Menu</p>
-        {navItems.map((item) => {
+        <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider dark:text-gray-500">{t.nav.dashboard}</p>
+        {items.map((item) => {
           const isActive = location.pathname === item.href || 
             (item.href !== '/' && location.pathname.startsWith(item.href));
           
@@ -87,8 +90,8 @@ export const Sidebar = () => {
               to={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                 isActive
-                  ? 'bg-primary-50 text-primary-600 font-medium shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-primary-50 text-primary-600 font-medium shadow-sm dark:bg-primary-900/30 dark:text-primary-400'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
               }`}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -102,17 +105,17 @@ export const Sidebar = () => {
       </nav>
 
       {/* Bottom Section */}
-      <div className="p-3 border-t border-gray-100 space-y-1">
+      <div className="p-3 border-t border-gray-100 space-y-1 dark:border-gray-700">
         <Link
           to="/settings"
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
             location.pathname === '/settings'
-              ? 'bg-primary-50 text-primary-600'
-              : 'text-gray-600 hover:bg-gray-50'
+              ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400'
+              : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
           }`}
         >
           <Settings className="w-5 h-5" />
-          <span className="text-sm">Settings</span>
+          <span className="text-sm">{t.nav.settings}</span>
         </Link>
       </div>
     </aside>
@@ -258,6 +261,7 @@ export const BottomNav = ({ pendingScanResult }) => {
   const [moreOpen, setMoreOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
   const [showScanBadge, setShowScanBadge] = useState(false);
+  const { t } = useTranslation();
 
   // Listen for scan completed events
   useEffect(() => {
@@ -278,19 +282,13 @@ export const BottomNav = ({ pendingScanResult }) => {
     }
   }, [showScanBadge]);
 
-  const navItems = [
-    { name: 'Home', href: '/', icon: LayoutDashboard },
-    { name: 'Transactions', href: '/transactions', icon: Receipt },
-    { name: 'Add', href: '/add', icon: Plus, isFAB: true },
-    { name: 'Budgets', href: '/budgets', icon: PiggyBank },
-    { name: 'More', href: '/more', icon: Menu, isMore: true },
-  ];
+  const items = bottomNavItems(t);
 
   return (
     <>
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 safe-area-bottom">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 safe-area-bottom dark:bg-gray-900 dark:border-gray-800">
         <div className="flex items-center justify-around h-full px-2">
-          {navItems.map((item) => {
+          {items.map((item) => {
             const isActive = location.pathname === item.href;
             
             if (item.isFAB) {
@@ -325,7 +323,7 @@ export const BottomNav = ({ pendingScanResult }) => {
                   key={item.name}
                   onClick={() => setMoreOpen(!moreOpen)}
                   className={`flex flex-col items-center justify-center w-16 h-full touch-manipulation ${
-                    moreOpen ? 'text-primary-600' : 'text-gray-500'
+                    moreOpen ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                   }`}
                 >
                   <item.icon className="w-6 h-6" />
@@ -339,7 +337,7 @@ export const BottomNav = ({ pendingScanResult }) => {
                 key={item.name}
                 to={item.href}
                 className={`flex flex-col items-center justify-center w-16 h-full touch-manipulation transition-colors ${
-                  isActive ? 'text-primary-600' : 'text-gray-500'
+                  isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                 }`}
               >
                 <item.icon className="w-6 h-6" />

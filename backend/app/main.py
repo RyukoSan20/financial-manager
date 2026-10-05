@@ -178,9 +178,11 @@ from app.services.recurring_generator import process_due_recurring_rules
 def cron_process_recurring(request: Request):
     """
     Process all due recurring rules and auto-generate transactions.
-    Call this endpoint daily via Railway Cron.
+    GET = automatic cron (only process due rules)
+    POST = manual trigger (force process all active rules including future)
     """
-    results = process_due_recurring_rules()
+    is_manual = request.method == "POST"
+    results = process_due_recurring_rules(force_today=is_manual)
     return {"status": "completed", **results}
 
 

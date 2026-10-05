@@ -43,16 +43,19 @@ def calculate_next_occurrence(rule: RecurringRule, from_date: date = None) -> da
         return from_date + timedelta(days=30)
 
 
-def process_due_recurring_rules():
+def process_due_recurring_rules(force_today: bool = False):
     """
     Process all due recurring rules and auto-generate transactions.
     This should be called by a cron job (e.g., every hour or daily).
+    Args:
+        force_today: If True, process rules even if next_occurrence > today (for manual "Process Now")
     Returns: dict with processed count and results
     """
     db = SessionLocal()
     results = {
         "processed": 0,
         "created": 0,
+        "skipped": 0,
         "errors": 0,
         "details": []
     }
@@ -60,16 +63,20 @@ def process_due_recurring_rules():
     try:
         today = date.today()
         
-        # Get all active recurring rules that are due (next_occurrence <= today)
+        # Get all active recurring rules
         due_rules = db.query(RecurringRule).filter(
-            RecurringRule.is_active == True,
-            RecurringRule.next_occurrence <= today
+            RecurringRule.is_active == True
         ).all()
         
         results["processed"] = len(due_rules)
         
         for rule in due_rules:
             try:
+                # Skip if next_occurrence hasn't arrived yet (unless force_today for manual trigger)
+                if rule.next_occurrence > today and not force_today:
+                    results["skipped"] += 1
+                    results["details"].append(f"Rule {rule.id}: Not due yet (next: {rule.next_occurrence})")
+                    continue
                 # Check if account exists and belongs to user
                 if not rule.account_id:
                     results["details"].append(f"Rule {rule.id}: No account assigned, skipping")

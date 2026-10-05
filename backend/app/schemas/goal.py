@@ -25,6 +25,7 @@ class GoalUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = None
     target_amount: Optional[float] = None
+    current_amount: Optional[float] = None  # Allow updating current amount
     target_date: Optional[date] = None
     goal_type: Optional[str] = None
     account_id: Optional[int] = None

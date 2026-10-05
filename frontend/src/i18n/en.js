@@ -38,14 +38,20 @@ export default {
   nav: {
     dashboard: "Dashboard",
     transactions: "Transactions",
+    feed: "Feed & Review",
     accounts: "Accounts",
-    budget: "Budget",
-    reports: "Reports",
+    budgets: "Budgets",
     recurring: "Recurring",
     goals: "Goals",
     debts: "Debts",
+    calculators: "Calculators",
+    analytics: "Analytics",
+    map: "Spending Map",
+    advisor: "AI Advisor",
     settings: "Settings",
     more: "More",
+    scan_receipt: "Scan Receipt",
+    add: "Add",
   },
   
   // Dashboard
