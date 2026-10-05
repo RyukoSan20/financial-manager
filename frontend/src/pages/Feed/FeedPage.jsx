@@ -1,4 +1,4 @@
-"""Feed Review UI - shadcn/ui based transaction review cards."""
+// Feed Review UI - shadcn/ui based transaction review cards.
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
