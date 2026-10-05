@@ -2,7 +2,14 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
 
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:8000';
+// Use Railway backend URL in production, localhost for dev
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+  }
+  return 'https://financial-manager-production-26f7.up.railway.app';
+};
+const API_URL = getApiUrl();
 
 const AuthContext = createContext(null);
 

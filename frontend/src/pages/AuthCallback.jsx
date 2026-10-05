@@ -3,7 +3,15 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase } from '../lib/supabase';
 
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:8000';
+// Use Railway backend URL in production, localhost for dev
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+  }
+  // Railway backend URL
+  return 'https://financial-manager-production-26f7.up.railway.app';
+};
+const API_URL = getApiUrl();
 
 export const AuthCallback = () => {
   const [error, setError] = useState('');
