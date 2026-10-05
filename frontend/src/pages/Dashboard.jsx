@@ -5,8 +5,8 @@ import {
   TrendingUp, TrendingDown, Wallet, PieChart, 
   Plus, Receipt, FileText, PiggyBank,
   ChevronRight, RefreshCw, Camera, CheckCircle, XCircle, Clock,
-  Sun, Moon, Sparkles, Target, TrendingFlat,
-  AlertTriangle, Check, ArrowRight, CreditCard
+  Sun, Moon, Sparkles, Target, ArrowRight,
+  AlertTriangle, Check, CreditCard
 } from 'lucide-react';
 import api from '../services/api';
 import { formatCurrency, formatDate } from '../utils/format';
