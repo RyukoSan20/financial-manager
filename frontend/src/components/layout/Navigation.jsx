@@ -127,6 +127,8 @@ export const MobileHeader = ({ title, showBack = false, onBack }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const { isDarkMode, toggleTheme } = useTheme();
+  const { t } = useTranslation();
+  const items = navItems(t);
 
   return (
     <>
@@ -211,7 +213,7 @@ export const MobileHeader = ({ title, showBack = false, onBack }) => {
               
               {/* Menu Items */}
               <nav className="flex-1 py-2 px-3 space-y-1 overflow-y-auto">
-                {navItems.map((item) => {
+                {items.map((item) => {
                   const isActive = location.pathname === item.href;
                   return (
                     <Link
