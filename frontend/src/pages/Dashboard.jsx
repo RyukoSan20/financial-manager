@@ -704,6 +704,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             {t('dashboard.last_update', 'Update')}: {new Date(marketData.updated).toLocaleTimeString()}
           </div>
         )}
+      </Card>
 
       {/* Achievements */}
       {achievements.length > 0 && (
