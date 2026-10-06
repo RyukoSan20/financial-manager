@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import React from 'react';
 import { Card, Button, Badge, Spinner, EmptyState } from '../components/ui';
 import { 
   TrendingUp, TrendingDown, Wallet, PiggyBank, RefreshCw, Camera, 
@@ -68,8 +69,8 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // Gamification state
   const [achievements, setAchievements] = useState([]);
 
-  // Initialize date range
-  useEffect(() => {
+  // Initialize date range - stable reference
+  const initializeDateRange = React.useCallback((filter) => {
     const now = new Date();
     const end = new Date(now);
     end.setHours(23, 59, 59, 999);
@@ -77,23 +78,32 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     let start = new Date(now);
     start.setHours(0, 0, 0, 0);
     
-    if (timeFilter === 'daily') {
-      // Today only
-    } else if (timeFilter === 'weekly') {
+    if (filter === 'daily') {
+      // Today only - start = end
+    } else if (filter === 'weekly') {
       start.setDate(end.getDate() - 7);
-    } else if (timeFilter === 'monthly') {
+    } else if (filter === 'monthly') {
       start.setMonth(end.getMonth(), 1);
-    } else if (timeFilter === 'yearly') {
-      start.setMonth(0, 1);
+    } else if (filter === 'yearly') {
+      start.setFullYear(end.getFullYear(), 0, 1);
     }
     
-    setStartDate(start.toISOString().split('T')[0]);
-    setEndDate(end.toISOString().split('T')[0]);
-  }, [timeFilter]);
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    };
+  }, []);
 
-  // Fetch data
+  // Update date range when filter changes
   useEffect(() => {
-    if (startDate && endDate) {
+    const dates = initializeDateRange(timeFilter);
+    setStartDate(dates.start);
+    setEndDate(dates.end);
+  }, [timeFilter, initializeDateRange]);
+
+  // Fetch data when dates are ready
+  useEffect(() => {
+    if (startDate && endDate && !loading) {
       fetchData();
     }
   }, [startDate, endDate]);
@@ -250,7 +260,12 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       ]);
 
       if (summaryData.status === 'fulfilled') setSummary(summaryData.value);
-      if (cashFlowData.status === 'fulfilled') setCashFlow(cashFlowData.value || []);
+      if (cashFlowData.status === 'fulfilled') {
+        const cashFlowValue = cashFlowData.value;
+        // Handle both { monthly: [...] } and [...] formats
+        const cashFlowArray = cashFlowValue?.monthly || cashFlowValue || [];
+        setCashFlow(cashFlowArray);
+      }
       if (transactionsData.status === 'fulfilled') setTransactions(transactionsData.value?.transactions || transactionsData.value || []);
       if (budgetsData.status === 'fulfilled') setBudgets(Array.isArray(budgetsData.value) ? budgetsData.value : []);
       if (accountsData.status === 'fulfilled') setAccounts(Array.isArray(accountsData.value) ? accountsData.value : []);

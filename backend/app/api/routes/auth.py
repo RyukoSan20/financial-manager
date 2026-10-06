@@ -540,3 +540,41 @@ def supabase_token_exchange(
             "is_active": user.is_active,
         }
     )
+
+
+# === User Settings ===
+
+class UserSettingsResponse(BaseModel):
+    language: str = "id"
+    currency: str = "IDR"
+    theme: str = "light"
+    timezone: str = "Asia/Jakarta"
+
+
+@router.get("/settings", response_model=UserSettingsResponse)
+def get_user_settings(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get user settings (language, currency, theme)."""
+    # Try to get from preferences or use defaults
+    settings = {
+        "language": getattr(current_user, 'language', 'id'),
+        "currency": getattr(current_user, 'currency', 'IDR'),
+        "theme": getattr(current_user, 'theme', 'light'),
+        "timezone": getattr(current_user, 'timezone', 'Asia/Jakarta'),
+    }
+    
+    # Check if preferences table exists
+    try:
+        from app.models.preference import Preference
+        prefs = db.query(Preference).filter(Preference.user_id == current_user.id).first()
+        if prefs:
+            settings["language"] = prefs.language or settings["language"]
+            settings["currency"] = prefs.currency or settings["currency"]
+            settings["theme"] = prefs.theme or settings["theme"]
+            settings["timezone"] = prefs.timezone or settings["timezone"]
+    except Exception:
+        pass
+    
+    return UserSettingsResponse(**settings)
