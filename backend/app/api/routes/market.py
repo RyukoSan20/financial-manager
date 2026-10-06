@@ -1,6 +1,6 @@
 """
 Real-time market data routes for multi-asset support.
-Integrates CoinGecko for crypto, Frankfurter for forex, and provides commodity/stock data.
+Integrates CoinGecko for crypto, Frankfurter for forex, API-Ninjas for commodities, and Finnhub for stocks.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -9,8 +9,12 @@ from typing import Optional, Dict, List
 import httpx
 from datetime import datetime, timedelta
 import asyncio
+import os
 
 router = APIRouter()
+
+# API-Ninjas Configuration
+API_NINJAS_KEY = os.getenv("API_NINJAS_KEY", "v8IqqlPhChYtBosWQNRD6CNAdmulvLC7zpdJYZH1")
 
 # Cache for market data
 class MarketCache:
@@ -18,12 +22,15 @@ class MarketCache:
         self.crypto: Dict = {}
         self.forex: Dict = {}
         self.commodities: Dict = {}
+        self.commodity_curves: Dict = {}
         self.crypto_last: Optional[datetime] = None
         self.forex_last: Optional[datetime] = None
         self.commodities_last: Optional[datetime] = None
-        self.crypto_cache_duration = timedelta(minutes=5)  # 5 min for crypto
-        self.forex_cache_duration = timedelta(hours=1)     # 1 hour for forex
-        self.commodities_cache_duration = timedelta(minutes=15)  # 15 min for commodities
+        self.curves_last: Optional[datetime] = None
+        self.crypto_cache_duration = timedelta(minutes=5)
+        self.forex_cache_duration = timedelta(hours=1)
+        self.commodities_cache_duration = timedelta(minutes=15)
+        self.curves_cache_duration = timedelta(hours=1)
     
     def is_valid(self, last_update: Optional[datetime], duration: timedelta) -> bool:
         if not last_update:
@@ -279,3 +286,121 @@ async def get_market_summary():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============ COMMODITY FORWARD CURVES (API-Ninjas) ============
+
+@router.get("/commodity/forward-curve")
+async def get_commodity_forward_curve(name: str = "crude_oil"):
+    """
+    Get commodity forward curve data from API-Ninjas.
+    
+    Supported commodities:
+    - crude_oil (WTI/Brent)
+    - natural_gas
+    - heating_oil
+    - gasoline
+    - gold
+    - silver
+    - copper
+    - wheat
+    - corn
+    - soybeans
+    - coffee
+    - sugar
+    - cotton
+    - palm_oil (for CPO)
+    """
+    cache_key = f"curve_{name}"
+    
+    # Check cache
+    if market_cache.commodity_curves.get(cache_key):
+        if market_cache.is_valid(market_cache.curves_last, market_cache.curves_cache_duration):
+            return market_cache.commodity_curves.get(cache_key)
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(
+                "https://api.api-ninjas.com/v1/commodityforwardcurve",
+                params={"name": name},
+                headers={"X-Api-Key": API_NINJAS_KEY}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Store in cache
+                market_cache.commodity_curves[cache_key] = data
+                market_cache.curves_last = datetime.utcnow()
+                
+                return data
+            elif response.status_code == 404:
+                raise HTTPException(status_code=404, detail=f"Commodity '{name}' not found")
+            elif response.status_code == 429:
+                raise HTTPException(status_code=429, detail="API rate limit exceeded")
+            else:
+                raise HTTPException(status_code=response.status_code, detail="API-Ninjas API error")
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Return cached data if available
+        cached = market_cache.commodity_curves.get(cache_key)
+        if cached:
+            return cached
+        raise HTTPException(status_code=500, detail=f"Failed to fetch forward curve: {str(e)}")
+
+
+@router.get("/commodity/list")
+async def list_commodities():
+    """Get list of available commodities from API-Ninjas."""
+    return {
+        "commodities": [
+            {"id": "crude_oil", "name": "Crude Oil (WTI/Brent)", "unit": "per barrel"},
+            {"id": "natural_gas", "name": "Natural Gas", "unit": "per MMBtu"},
+            {"id": "heating_oil", "name": "Heating Oil", "unit": "per gallon"},
+            {"id": "gasoline", "name": "Gasoline (RBOB)", "unit": "per gallon"},
+            {"id": "gold", "name": "Gold", "unit": "per troy ounce"},
+            {"id": "silver", "name": "Silver", "unit": "per troy ounce"},
+            {"id": "copper", "name": "Copper", "unit": "per pound"},
+            {"id": "wheat", "name": "Wheat", "unit": "per bushel"},
+            {"id": "corn", "name": "Corn", "unit": "per bushel"},
+            {"id": "soybeans", "name": "Soybeans", "unit": "per bushel"},
+            {"id": "coffee", "name": "Coffee (Arabica)", "unit": "per pound"},
+            {"id": "sugar", "name": "Sugar (No. 11)", "unit": "per pound"},
+            {"id": "cotton", "name": "Cotton", "unit": "per pound"},
+            {"id": "palm_oil", "name": "Palm Oil (CPO)", "unit": "per ton"},
+            {"id": "lumber", "name": "Lumber", "unit": "per 1000 board feet"},
+        ],
+        "source": "API-Ninjas",
+        "updated": datetime.utcnow().isoformat()
+    }
+
+
+@router.get("/commodity/compare")
+async def compare_commodities():
+    """Get forward curve comparison for major commodities."""
+    commodities = ["crude_oil", "natural_gas", "gold", "palm_oil"]
+    results = []
+    
+    for commodity in commodities:
+        try:
+            data = await get_commodity_forward_curve(commodity)
+            if data and "curve" in data and len(data["curve"]) > 0:
+                results.append({
+                    "name": data.get("name", commodity),
+                    "symbol": data.get("symbol_root", commodity[:3].upper()),
+                    "structure": data.get("structure", "unknown"),
+                    "current_price": data["curve"][0].get("last_price") if data.get("curve") else None,
+                    "next_month_price": data["curve"][1].get("last_price") if len(data.get("curve", [])) > 1 else None,
+                    "contango_1m": data.get("contango_slope_1m_pct", 0),
+                    "contango_12m": data.get("contango_slope_12m_pct", 0),
+                    "last_updated": data["curve"][0].get("last_updated") if data.get("curve") else None,
+                })
+        except Exception:
+            pass
+    
+    return {
+        "commodities": results,
+        "updated": datetime.utcnow().isoformat()
+    }
