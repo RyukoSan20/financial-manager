@@ -40,7 +40,7 @@ const CHART_COLORS = {
 };
 
 export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
-  const { t, language } = useTranslation();
+  const { t, language, currency, currencyConfig } = useTranslation();
   
   // Chart refs
   const cashFlowChartRef = useRef(null);
@@ -48,6 +48,8 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   
   // State
   const [loading, setLoading] = useState(true);
+  const [userSettings, setUserSettings] = useState(null);
+  const [marketData, setMarketData] = useState(null);
   const [summary, setSummary] = useState(null);
   const [cashFlow, setCashFlow] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -214,6 +216,19 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Fetch user settings and market data in parallel
+      const [settingsResult, marketResult] = await Promise.allSettled([
+        api.get('/user/settings').catch(() => null),
+        api.get('/market/summary').catch(() => null),
+      ]);
+      
+      if (settingsResult.status === 'fulfilled' && settingsResult.value) {
+        setUserSettings(settingsResult.value);
+      }
+      if (marketResult.status === 'fulfilled' && marketResult.value) {
+        setMarketData(marketResult.value);
+      }
+      
       const [
         summaryData,
         cashFlowData,
@@ -223,8 +238,6 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         goalsData,
         feedStatsData,
         exchangeData,
-        cryptoData,
-        commodityData,
       ] = await Promise.allSettled([
         api.dashboard.summary(startDate, endDate),
         api.dashboard.cashFlow(12),
@@ -234,8 +247,6 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         api.goals?.list ? api.goals.list() : Promise.resolve([]),
         api.get('/feed/stats').catch(() => null),
         api.exchange.rates('USD').catch(() => null),
-        api.get('/exchange/crypto').catch(() => null),
-        api.get('/exchange/commodities').catch(() => null),
       ]);
 
       if (summaryData.status === 'fulfilled') setSummary(summaryData.value);
@@ -246,8 +257,6 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       if (goalsData.status === 'fulfilled') setGoals(Array.isArray(goalsData.value) ? goalsData.value : []);
       if (feedStatsData.status === 'fulfilled' && feedStatsData.value) setFeedStats(feedStatsData.value);
       if (exchangeData.status === 'fulfilled' && exchangeData.value) setExchangeRates(exchangeData.value);
-      if (cryptoData.status === 'fulfilled' && cryptoData.value) setCryptoPrices(cryptoData.value);
-      if (commodityData.status === 'fulfilled' && commodityData.value) setCommodityPrices(commodityData.value);
 
       // Calculate achievements
       calculateAchievements(summaryData.value, budgetsData.value, goalsData.value);
@@ -623,41 +632,78 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {activeMarket === 'forex' && exchangeRates && (
             <>
-              <MarketCard name="USD/IDR" value={exchangeRates.rates?.IDR?.toFixed(2) || '15,600'} change="+0.1%" positive />
-              <MarketCard name="USD/JPY" value={exchangeRates.rates?.JPY?.toFixed(2) || '149.5'} change="-0.2%" positive={false} />
-              <MarketCard name="EUR/USD" value={(1 / (exchangeRates.rates?.EUR || 1)).toFixed(4)} change="+0.05%" positive />
-              <MarketCard name="GBP/USD" value={(1 / (exchangeRates.rates?.GBP || 1)).toFixed(4)} change="-0.1%" positive={false} />
+              <MarketCard name="USD/IDR" value={formatNumber(exchangeRates.rates?.IDR || 15600)} change="Live" positive icon={<Globe className="w-4 h-4 text-green-500" />} />
+              <MarketCard name="USD/JPY" value={formatNumber(exchangeRates.rates?.JPY || 149.5)} change="Live" positive={false} icon={<Globe className="w-4 h-4 text-blue-500" />} />
+              <MarketCard name="EUR/USD" value={(1 / (exchangeRates.rates?.EUR || 1)).toFixed(4)} change="Live" positive icon={<Globe className="w-4 h-4 text-yellow-500" />} />
+              <MarketCard name="GBP/USD" value={(1 / (exchangeRates.rates?.GBP || 1)).toFixed(4)} change="Live" positive={false} icon={<Globe className="w-4 h-4 text-purple-500" />} />
             </>
           )}
           
-          {activeMarket === 'crypto' && (
+          {activeMarket === 'crypto' && marketData?.crypto?.prices && (
             <>
-              <MarketCard name="BTC/USD" value="62,450.00" change="+2.3%" positive icon={<Bitcoin className="w-4 h-4 text-orange-500" />} />
-              <MarketCard name="ETH/USD" value="3,420.00" change="-1.2%" positive={false} icon={<Bitcoin className="w-4 h-4 text-blue-500" />} />
-              <MarketCard name="BNB/USD" value="580.00" change="+0.8%" positive icon={<Bitcoin className="w-4 h-4 text-yellow-500" />} />
-              <MarketCard name="SOL/USD" value="145.00" change="+5.4%" positive icon={<Bitcoin className="w-4 h-4 text-purple-500" />} />
+              {marketData.crypto.prices.slice(0, 4).map((coin, idx) => (
+                <MarketCard 
+                  key={coin.id || idx}
+                  name={coin.symbol}
+                  value={coin.price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  change={`${coin.change_24h?.toFixed(1) || 0}%`}
+                  positive={coin.change_24h >= 0}
+                  icon={<Bitcoin className="w-4 h-4 text-orange-500" />}
+                />
+              ))}
+              {(!marketData.crypto?.prices || marketData.crypto.prices.length === 0) && (
+                <div className="col-span-4 text-center py-4 text-gray-400">
+                  {t('dashboard.no_crypto_data', 'Memuat data crypto...')}
+                </div>
+              )}
             </>
           )}
           
-          {activeMarket === 'commodities' && (
+          {activeMarket === 'commodities' && marketData?.commodities?.prices && (
             <>
-              <MarketCard name="Gold" value="2,380.00" change="+0.5%" positive icon={<Gem className="w-4 h-4 text-yellow-500" />} unit="/oz" />
-              <MarketCard name="Silver" value="28.50" change="-0.3%" positive={false} icon={<Gem className="w-4 h-4 text-gray-400" />} unit="/oz" />
-              <MarketCard name="Oil (WTI)" value="78.50" change="+1.2%" positive icon={<Activity className="w-4 h-4 text-gray-600" />} unit="/bbl" />
-              <MarketCard name="CPO" value="3,950.00" change="+0.7%" positive icon={<BarChart3 className="w-4 h-4 text-green-500" />} unit="/ton" />
+              {marketData.commodities.prices.slice(0, 4).map((item, idx) => (
+                <MarketCard 
+                  key={item.symbol || idx}
+                  name={item.name}
+                  value={formatNumber(item.price)}
+                  change={`${item.change_24h?.toFixed(1) || 0}%`}
+                  positive={item.change_24h >= 0}
+                  unit={item.unit}
+                  icon={<Gem className="w-4 h-4 text-yellow-500" />}
+                />
+              ))}
             </>
           )}
           
-          {activeMarket === 'stocks' && (
+          {activeMarket === 'stocks' && marketData?.stocks?.stocks && (
             <>
-              <MarketCard name=" IHSG" value="7,250.00" change="+0.8%" positive icon={<BarChart3 className="w-4 h-4 text-red-500" />} />
-              <MarketCard name="BBCA" value="9,800.00" change="+1.5%" positive icon={<BarChart3 className="w-4 h-4 text-blue-500" />} />
-              <MarketCard name="TLKM" value="3,150.00" change="-0.3%" positive={false} icon={<BarChart3 className="w-4 h-4 text-green-500" />} />
-              <MarketCard name="ASII" value="5,600.00" change="+0.2%" positive icon={<BarChart3 className="w-4 h-4 text-orange-500" />} />
+              <MarketCard name="IHSG" value={formatNumber(marketData.stocks.index?.value || 7250)} change={`${marketData.stocks.index?.change_percent?.toFixed(2) || 0}%`} positive={(marketData.stocks.index?.change || 0) >= 0} icon={<BarChart3 className="w-4 h-4 text-red-500" />} />
+              {marketData.stocks.stocks.slice(0, 3).map((stock, idx) => (
+                <MarketCard 
+                  key={stock.symbol || idx}
+                  name={stock.symbol}
+                  value={formatNumber(stock.price)}
+                  change={`${stock.change?.toFixed(1) || 0}%`}
+                  positive={stock.change >= 0}
+                  icon={<BarChart3 className="w-4 h-4 text-blue-500" />}
+                />
+              ))}
             </>
+          )}
+          
+          {activeMarket === 'stocks' && !marketData?.stocks?.stocks && (
+            <div className="col-span-4 text-center py-4 text-gray-400">
+              {t('dashboard.loading_stocks', 'Memuat data saham...')}
+            </div>
           )}
         </div>
-      </Card>
+        
+        {/* Last Updated */}
+        {marketData?.updated && (
+          <div className="mt-3 pt-3 border-t dark:border-gray-700 text-xs text-gray-400 text-center">
+            {t('dashboard.last_update', 'Update')}: {new Date(marketData.updated).toLocaleTimeString()}
+          </div>
+        )}
 
       {/* Achievements */}
       {achievements.length > 0 && (

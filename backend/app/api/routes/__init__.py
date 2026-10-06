@@ -19,4 +19,5 @@ from . import (
     scan_jobs,
     feed,
     exchange,
+    market,
 )
