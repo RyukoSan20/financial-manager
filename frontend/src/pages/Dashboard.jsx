@@ -103,7 +103,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
 
   // Fetch data when dates are ready
   useEffect(() => {
-    if (startDate && endDate && !loading) {
+    if (startDate && endDate) {
       fetchData();
     }
   }, [startDate, endDate]);
