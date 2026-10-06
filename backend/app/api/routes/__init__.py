@@ -21,4 +21,5 @@ from . import (
     exchange,
     market,
     finnhub,
+    ninjas,
 )
