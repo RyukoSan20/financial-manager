@@ -10,7 +10,7 @@ from app.api.routes import (
     dashboard, calculators,
     transfers, recurring, goals, debts, analytics,
     auth, data, parser, ai_advisor, scan_jobs, feed,
-    exchange, market
+    exchange, market, finnhub
 )
 
 # Import models to register with SQLAlchemy
@@ -172,6 +172,7 @@ app.include_router(ai_advisor.router, prefix="/api/ai", tags=["AI Advisor"])
 app.include_router(feed.router, prefix="/api/feed", tags=["Feed & Review"])
 app.include_router(exchange.router, prefix="/api/exchange", tags=["Exchange Rates"])
 app.include_router(market.router, prefix="/api/market", tags=["Market Data"])
+app.include_router(finnhub.router, prefix="/api/finnhub", tags=["Finnhub Stock API"])
 
 
 # Recurring auto-generator cron endpoint (for Railway cron)

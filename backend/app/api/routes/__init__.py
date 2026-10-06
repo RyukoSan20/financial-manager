@@ -20,4 +20,5 @@ from . import (
     feed,
     exchange,
     market,
+    finnhub,
 )
