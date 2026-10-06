@@ -1,565 +1,565 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, Button, Spinner, Badge } from '../components/ui';
+import { useState, useEffect, useRef } from 'react';
+import { Card, Button, Badge, Spinner, EmptyState } from '../components/ui';
 import { 
-  TrendingUp, TrendingDown, Wallet, PieChart, 
-  Plus, Receipt, FileText, PiggyBank,
-  ChevronRight, RefreshCw, Camera, CheckCircle, XCircle, Clock,
-  Sun, Moon, Sparkles, Target, ArrowRight,
-  AlertTriangle, Check, CreditCard
+  TrendingUp, TrendingDown, Wallet, PiggyBank, RefreshCw, Camera, 
+  CheckCircle, AlertTriangle, XCircle, Clock, Target, Sparkles,
+  ArrowUpRight, ArrowDownRight, Zap, Award, Shield, Trophy
 } from 'lucide-react';
+import { formatCurrency, formatNumber, formatPercent } from '../utils/format';
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, 
+         XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import api from '../services/api';
-import { formatCurrency, formatDate } from '../utils/format';
 import { useTranslation } from '../i18n';
 
-// Time period options
-const TIME_PERIODS = [
-  { value: 'today', label: 'time.today', days: 1 },
-  { value: 'week', label: 'time.this_week', days: 7 },
-  { value: 'month', label: 'time.this_month', days: 30 },
-  { value: 'year', label: 'time.this_year', days: 365 },
+// Achievement badges configuration
+const ACHIEVEMENTS = [
+  { id: 'budget_master', name: 'Budget Guardian', icon: Shield, color: '#22c55e', description: 'Pengeluaran di bawah budget' },
+  { id: 'savings_streak', name: 'Master Hemat', icon: Trophy, color: '#f59e0b', description: 'Tabungan naik 3 bulan berturut-turut' },
+  { id: 'first_goal', name: 'Goal Getter', icon: Target, color: '#3b82f6', description: 'Capai target pertama' },
+  { id: 'surplus', name: 'Surplus Star', icon: Zap, color: '#8b5cf6', description: 'Tabungan naik 50%' },
 ];
+
+const CHART_COLORS = {
+  income: '#22c55e',
+  expense: '#ef4444',
+  savings: '#3b82f6',
+  budget: '#f59e0b',
+  safe: '#10b981',
+};
 
 export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const { t, language } = useTranslation();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [timePeriod, setTimePeriod] = useState('month');
   const [summary, setSummary] = useState(null);
+  const [cashFlow, setCashFlow] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const [categoryBreakdown, setCategoryBreakdown] = useState([]);
+  const [budgets, setBudgets] = useState([]);
   const [accounts, setAccounts] = useState([]);
-  const [pendingFeed, setPendingFeed] = useState([]);
+  const [goals, setGoals] = useState([]);
   const [feedStats, setFeedStats] = useState(null);
+  const [exchangeRates, setExchangeRates] = useState(null);
+  const [timeFilter, setTimeFilter] = useState('monthly');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [processingIds, setProcessingIds] = useState(new Set());
-  const [healthScore, setHealthScore] = useState(null);
-  const [aiInsights, setAiInsights] = useState([]);
-  
-  // Onboarding progress
-  const [onboarding, setOnboarding] = useState({
-    hasAccount: false,
-    hasTransaction: false,
-    hasBudget: false,
-  });
 
-  // Get date range based on time period
-  const getDateRange = () => {
-    const end = new Date();
-    const start = new Date();
+  // Gamification state
+  const [achievements, setAchievements] = useState([]);
+
+  useEffect(() => {
+    // Initialize date range based on filter
+    const now = new Date();
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
     
-    if (timePeriod === 'today') {
-      start.setHours(0, 0, 0, 0);
-    } else if (timePeriod === 'week') {
+    let start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    
+    if (timeFilter === 'daily') {
+      // Today only
+    } else if (timeFilter === 'weekly') {
       start.setDate(end.getDate() - 7);
-    } else if (timePeriod === 'month') {
+    } else if (timeFilter === 'monthly') {
       start.setMonth(end.getMonth(), 1);
-    } else if (timePeriod === 'year') {
+    } else if (timeFilter === 'yearly') {
       start.setMonth(0, 1);
     }
     
-    return {
-      startDate: start.toISOString().split('T')[0],
-      endDate: end.toISOString().split('T')[0],
-    };
-  };
+    setStartDate(start.toISOString().split('T')[0]);
+    setEndDate(end.toISOString().split('T')[0]);
+  }, [timeFilter]);
 
-  const fetchData = useCallback(async () => {
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchData();
+    }
+  }, [startDate, endDate]);
+
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const { startDate, endDate } = getDateRange();
-      
-      const results = await Promise.allSettled([
+      const [
+        summaryData,
+        cashFlowData,
+        transactionsData,
+        budgetsData,
+        accountsData,
+        goalsData,
+        feedStatsData,
+        exchangeData
+      ] = await Promise.allSettled([
         api.dashboard.summary(startDate, endDate),
+        api.dashboard.cashFlow(6),
         api.transactions.list({ start_date: startDate, end_date: endDate, limit: 10 }),
-        api.analytics.expenseBreakdown({ start_date: startDate, end_date: endDate, type: 'expense' }),
-        api.accounts.list(),
-        api.get('/feed/stats').catch(() => null),
-        api.get('/feed/pending?limit=3').catch(() => null),
         api.budgets?.list ? api.budgets.list() : Promise.resolve([]),
+        api.accounts?.list ? api.accounts.list() : Promise.resolve([]),
+        api.goals?.list ? api.goals.list() : Promise.resolve([]),
+        api.get('/feed/stats').catch(() => null),
+        api.exchange.rates('USD').catch(() => null),
       ]);
 
-      if (results[0].status === 'fulfilled') setSummary(results[0].value);
-      if (results[1].status === 'fulfilled') {
-        const data = results[1].value;
-        setTransactions(Array.isArray(data) ? data : (data.transactions || []));
-      }
-      if (results[2].status === 'fulfilled') {
-        const data = results[2].value;
-        setCategoryBreakdown(data.categories || data || []);
-      }
-      if (results[3].status === 'fulfilled') {
-        const data = results[3].value;
-        setAccounts(Array.isArray(data) ? data : []);
-        setOnboarding(prev => ({ ...prev, hasAccount: Array.isArray(data) && data.length > 0 }));
-      }
-      if (results[4].status === 'fulfilled' && results[4].value) {
-        setFeedStats(results[4].value.data || results[4].value);
-      }
-      if (results[5].status === 'fulfilled') {
-        setPendingFeed(results[5].value.data?.data || results[5].value.data || []);
-      }
-      if (results[6].status === 'fulfilled') {
-        setOnboarding(prev => ({ ...prev, hasBudget: Array.isArray(results[6].value) && results[6].value.length > 0 }));
-      }
+      if (summaryData.status === 'fulfilled') setSummary(summaryData.value);
+      if (cashFlowData.status === 'fulfilled') setCashFlow(cashFlowData.value || []);
+      if (transactionsData.status === 'fulfilled') setTransactions(transactionsData.value?.transactions || transactionsData.value || []);
+      if (budgetsData.status === 'fulfilled') setBudgets(Array.isArray(budgetsData.value) ? budgetsData.value : []);
+      if (accountsData.status === 'fulfilled') setAccounts(Array.isArray(accountsData.value) ? accountsData.value : []);
+      if (goalsData.status === 'fulfilled') setGoals(Array.isArray(goalsData.value) ? goalsData.value : []);
+      if (feedStatsData.status === 'fulfilled' && feedStatsData.value) setFeedStats(feedStatsData.value);
+      if (exchangeData.status === 'fulfilled' && exchangeData.value) setExchangeRates(exchangeData.value);
 
-      // Calculate health score
-      calculateHealthScore(results);
-    } catch (error) {
-      console.error('Dashboard fetch error:', error);
+      // Calculate achievements
+      calculateAchievements(summaryData.value, budgetsData.value, goalsData.value);
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
     } finally {
       setLoading(false);
     }
-  }, [timePeriod]);
+  };
 
-  const calculateHealthScore = (results) => {
-    let score = 50; // Base score
-    const insights = [];
+  const calculateAchievements = (summaryData, budgetsData, goalsData) => {
+    const earned = [];
     
-    // Check if has accounts
-    if (results[3]?.status === 'fulfilled' && Array.isArray(results[3].value) && results[3].value.length > 0) {
-      score += 10;
-    } else {
-      insights.push({ type: 'warning', text: 'Tambahkan akun bank atau dompet untuk memulai' });
+    // Budget Guardian - spending under budget
+    if (budgetsData && Array.isArray(budgetsData)) {
+      const underBudget = budgetsData.filter(b => (b.spent || 0) <= b.amount);
+      if (underBudget.length === budgetsData.length && budgetsData.length > 0) {
+        earned.push('budget_master');
+      }
     }
     
-    // Check transaction patterns
-    if (results[1]?.status === 'fulfilled') {
-      const tx = results[1].value;
-      const txArray = Array.isArray(tx) ? tx : tx.transactions || [];
-      if (txArray.length > 0) {
-        score += 15;
-        setOnboarding(prev => ({ ...prev, hasTransaction: true }));
+    // Goal Getter - first goal achieved
+    if (goalsData && Array.isArray(goalsData)) {
+      const achievedGoal = goalsData.find(g => g.is_completed);
+      if (achievedGoal) {
+        earned.push('first_goal');
       }
-      
-      // Analyze spending patterns
-      const expense = results[0]?.value?.total_expense || 0;
-      const income = results[0]?.value?.total_income || 0;
-      
-      if (income > 0) {
+    }
+    
+    // Surplus Star - savings > expenses
+    if (summaryData) {
+      const income = summaryData.total_income || 0;
+      const expense = summaryData.total_expense || 0;
+      if (income > expense && expense > 0) {
         const savingsRate = ((income - expense) / income) * 100;
-        if (savingsRate >= 20) {
-          score += 15;
-          insights.push({ type: 'success', text: 'Tabulungan Anda sudah baik! Tingkat savings rate 20%+' });
-        } else if (savingsRate >= 10) {
-          score += 10;
-          insights.push({ type: 'info', text: 'Savings rate Anda 10-20%. Coba naikkan ke 20%+' });
-        } else if (savingsRate < 0) {
-          score -= 10;
-          insights.push({ type: 'danger', text: 'Pengeluaran melebihi pemasukan! Hati-hati.' });
+        if (savingsRate >= 50) {
+          earned.push('surplus');
         }
       }
     }
     
-    // Check budget
-    if (results[6]?.status === 'fulfilled' && Array.isArray(results[6].value) && results[6].value.length > 0) {
-      score += 10;
-    }
+    setAchievements(earned);
+  };
+
+  // Calculate Safe-to-Spend
+  const calculateSafeToSpend = () => {
+    if (!summary || !budgets) return { amount: 0, percent: 0, status: 'safe' };
     
-    setHealthScore(Math.min(Math.max(score, 0), 100));
-    setAiInsights(insights.slice(0, 3));
+    const totalBudget = budgets.reduce((sum, b) => sum + (b.amount || 0), 0);
+    const totalSpent = budgets.reduce((sum, b) => sum + (b.spent || 0), 0);
+    const remaining = totalBudget - totalSpent;
+    const percent = totalBudget > 0 ? (remaining / totalBudget) * 100 : 100;
+    
+    let status = 'safe';
+    if (percent <= 0) status = 'danger';
+    else if (percent <= 20) status = 'warning';
+    else if (percent <= 50) status = 'caution';
+    
+    return { amount: Math.max(0, remaining), percent: Math.max(0, percent), status };
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Calculate spending ratio
+  const calculateSpendingRatio = () => {
+    if (!summary) return { ratio: 0, percent: 0, status: 'safe' };
+    
+    const income = summary.total_income || 0;
+    const expense = summary.total_expense || 0;
+    
+    if (income === 0) return { ratio: 0, percent: 0, status: 'neutral' };
+    
+    const percent = (expense / income) * 100;
+    let status = 'safe';
+    if (percent >= 100) status = 'danger';
+    else if (percent >= 80) status = 'warning';
+    else if (percent >= 50) status = 'caution';
+    
+    return { ratio: expense, percent, status };
+  };
 
-  // Calculate values
-  const income = summary?.total_income || 0;
-  const expense = summary?.total_expense || 0;
-  const balance = income - expense;
-  const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
+  const safeToSpend = calculateSafeToSpend();
+  const spendingRatio = calculateSpendingRatio();
 
-  // Handle feed approve/reject
-  const handleFeedAction = async (id, action) => {
-    setProcessingIds(prev => new Set([...prev, id]));
-    try {
-      await api.post(`/feed/${action}/${id}`);
-      setPendingFeed(prev => prev.filter(item => item.id !== id));
-      if (feedStats) {
-        setFeedStats(prev => ({
-          ...prev,
-          pending_count: prev.pending_count - 1,
-        }));
-      }
-    } catch (error) {
-      console.error(`Failed to ${action} transaction:`, error);
-    } finally {
-      setProcessingIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+  // Chart data preparation
+  const cashFlowChartData = cashFlow.map(item => ({
+    month: item.month || item.date,
+    income: item.income || item.total_income || 0,
+    expense: item.expense || item.total_expense || 0,
+    savings: (item.income || item.total_income || 0) - (item.expense || item.total_expense || 0),
+  }));
+
+  const statusColors = {
+    safe: 'text-green-600 bg-green-50',
+    caution: 'text-yellow-600 bg-yellow-50',
+    warning: 'text-orange-600 bg-orange-50',
+    danger: 'text-red-600 bg-red-50',
+    neutral: 'text-gray-600 bg-gray-50',
+  };
+
+  const getStatusColor = (status) => statusColors[status] || statusColors.neutral;
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'safe': return <CheckCircle className="w-5 h-5" />;
+      case 'caution': return <Clock className="w-5 h-5" />;
+      case 'warning': return <AlertTriangle className="w-5 h-5" />;
+      case 'danger': return <XCircle className="w-5 h-5" />;
+      default: return <TrendingUp className="w-5 h-5" />;
     }
   };
 
-  // Get health score color
-  const getHealthColor = (score) => {
-    if (score >= 80) return { bg: 'bg-green-100', text: 'text-green-600', label: 'Sangat Baik' };
-    if (score >= 60) return { bg: 'bg-blue-100', text: 'text-blue-600', label: 'Baik' };
-    if (score >= 40) return { bg: 'bg-yellow-100', text: 'text-yellow-600', label: 'Cukup' };
-    return { bg: 'bg-red-100', text: 'text-red-600', label: 'Perlu Perbaikan' };
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'safe': return t('dashboard.status_safe', '💚 Aman');
+      case 'caution': return t('dashboard.status_caution', '🟡 Hati-hati');
+      case 'warning': return t('dashboard.status_warning', '🟠 Peringatan');
+      case 'danger': return t('dashboard.status_danger', '🔴 Bahaya!');
+      default: return t('dashboard.status_neutral', '⚪ Netral');
+    }
   };
 
-  const healthColor = getHealthColor(healthScore || 0);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Header with Scan Button */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {t('dashboard.title')}
+            {t('dashboard.title', 'Dashboard')}
           </h1>
           <p className="text-gray-500 mt-1">
-            {new Date().toLocaleDateString(language === 'id' ? 'id-ID' : language === 'ja' ? 'ja-JP' : 'en-US', { 
-              month: 'long', 
-              year: 'numeric' 
-            })}
+            {new Date().toLocaleDateString(language === 'id' ? 'id-ID' : language === 'ja' ? 'ja-JP' : 'en-US', { month: 'long', year: 'numeric' })}
           </p>
         </div>
         <div className="flex gap-2">
+          {/* Time Filter */}
+          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            {['daily', 'weekly', 'monthly', 'yearly'].map(filter => (
+              <button
+                key={filter}
+                onClick={() => setTimeFilter(filter)}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  timeFilter === filter 
+                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow' 
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {t(`time.${filter}`, filter.charAt(0).toUpperCase() + filter.slice(1))}
+              </button>
+            ))}
+          </div>
           <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
           {onScanReceipt && (
             <Button variant="default" size="sm" onClick={onScanReceipt} className="gap-2">
               <Camera className="w-4 h-4" />
-              {t('dashboard.scan_receipt')}
+              {t('dashboard.scan_receipt', 'Scan')}
             </Button>
           )}
         </div>
       </div>
 
-      {/* Onboarding Checklist */}
-      {(!onboarding.hasAccount || !onboarding.hasTransaction) && (
-        <Card className="!p-5 border-l-4 border-l-primary-500">
-          <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary-500" />
-            Mari Mulai!
-          </h3>
-          <div className="space-y-2">
-            <div className={`flex items-center gap-3 ${onboarding.hasAccount ? 'opacity-50' : ''}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                onboarding.hasAccount ? 'bg-green-500 text-white' : 'bg-gray-200'
-              }`}>
-                {onboarding.hasAccount ? <Check className="w-4 h-4" /> : <span className="text-xs font-bold">1</span>}
-              </div>
-              <span className={onboarding.hasAccount ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}>
-                Hubungkan Akun Bank / Dompet
-              </span>
-              {!onboarding.hasAccount && (
-                <Button size="sm" variant="ghost" onClick={() => navigate('/accounts')}>
-                  Setup <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              )}
-            </div>
-            <div className={`flex items-center gap-3 ${onboarding.hasTransaction ? 'opacity-50' : ''}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                onboarding.hasTransaction ? 'bg-green-500 text-white' : 'bg-gray-200'
-              }`}>
-                {onboarding.hasTransaction ? <Check className="w-4 h-4" /> : <span className="text-xs font-bold">2</span>}
-              </div>
-              <span className={onboarding.hasTransaction ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}>
-                Catat transaksi pertama
-              </span>
-              {!onboarding.hasTransaction && (
-                <Button size="sm" variant="ghost" onClick={() => navigate('/add')}>
-                  Catat <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              )}
-            </div>
-            <div className={`flex items-center gap-3 ${onboarding.hasBudget ? 'opacity-50' : ''}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                onboarding.hasBudget ? 'bg-green-500 text-white' : 'bg-gray-200'
-              }`}>
-                {onboarding.hasBudget ? <Check className="w-4 h-4" /> : <span className="text-xs font-bold">3</span>}
-              </div>
-              <span className={onboarding.hasBudget ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}>
-                Buat Budget bulanan
-              </span>
-              {!onboarding.hasBudget && (
-                <Button size="sm" variant="ghost" onClick={() => navigate('/budgets')}>
-                  Buat <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              )}
+      {/* Financial Health Status */}
+      <Card className={`p-4 ${getStatusColor(spendingRatio.status)}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {getStatusIcon(spendingRatio.status)}
+            <div>
+              <p className="font-semibold">{getStatusText(spendingRatio.status)}</p>
+              <p className="text-sm opacity-80">
+                {spendingRatio.status === 'danger' 
+                  ? t('dashboard.budget_exceeded', 'Anggaran Bulan Ini Jebol!')
+                  : spendingRatio.status === 'warning'
+                  ? t('dashboard.budget_warning', 'Pengeluaran mendekati batas!')
+                  : t('dashboard.budget_ok', 'Pengeluaran masih dalam batas aman')}
+              </p>
             </div>
           </div>
-        </Card>
-      )}
+          <div className="text-right">
+            <p className="text-2xl font-bold">{formatPercent(spendingRatio.percent, 0)}</p>
+            <p className="text-sm opacity-80">{t('dashboard.spent_of_income', 'dari pemasukan')}</p>
+          </div>
+        </div>
+      </Card>
 
-      {/* AI Health Score Widget */}
-      {healthScore !== null && (
-        <Card className={`!p-5 ${healthColor.bg}`}>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Income */}
+        <Card className="p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="text-center">
-                <div className={`text-4xl font-bold ${healthColor.text}`}>{healthScore}</div>
-                <div className="text-xs text-gray-500">/100</div>
-              </div>
-              <div>
-                <p className={`font-semibold ${healthColor.text}`}>{healthColor.label}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Skor Kesehatan Keuangan
-                </p>
-                {aiInsights.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {aiInsights.map((insight, idx) => (
-                      <div key={idx} className="flex items-center gap-1 text-sm">
-                        {insight.type === 'success' && <CheckCircle className="w-3 h-3 text-green-500" />}
-                        {insight.type === 'warning' && <AlertTriangle className="w-3 h-3 text-yellow-500" />}
-                        {insight.type === 'danger' && <XCircle className="w-3 h-3 text-red-500" />}
-                        {insight.type === 'info' && <Clock className="w-3 h-3 text-blue-500" />}
-                        <span>{insight.text}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.income', 'Pemasukan')}</p>
+              <p className="text-xl font-bold text-green-600">{formatCurrency(summary?.total_income || 0)}</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/analytics')}>
-              Detail <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
+            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <ArrowUpRight className="w-5 h-5 text-green-600" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Expense */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.expense', 'Pengeluaran')}</p>
+              <p className="text-xl font-bold text-red-600">{formatCurrency(summary?.total_expense || 0)}</p>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <ArrowDownRight className="w-5 h-5 text-red-600" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Net Cash Flow */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.net_flow', 'Arus Kas')}</p>
+              <p className={`text-xl font-bold ${(summary?.net_cash_flow || 0) >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                {formatCurrency(summary?.net_cash_flow || 0)}
+              </p>
+            </div>
+            <div className={`w-10 h-10 rounded-full ${(summary?.net_cash_flow || 0) >= 0 ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-orange-100 dark:bg-orange-900/30'} flex items-center justify-center`}>
+              {(summary?.net_cash_flow || 0) >= 0 ? <TrendingUp className="w-5 h-5 text-blue-600" /> : <TrendingDown className="w-5 h-5 text-orange-600" />}
+            </div>
+          </div>
+        </Card>
+
+        {/* Safe-to-Spend */}
+        <Card className={`p-4 ${safeToSpend.status === 'danger' ? 'border-2 border-red-500' : ''}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.safe_to_spend', 'Sisa Aman')}</p>
+              <p className={`text-xl font-bold ${safeToSpend.status === 'danger' ? 'text-red-600' : safeToSpend.status === 'warning' ? 'text-orange-600' : 'text-green-600'}`}>
+                {formatCurrency(safeToSpend.amount)}
+              </p>
+            </div>
+            <div className={`w-10 h-10 rounded-full ${safeToSpend.status === 'danger' ? 'bg-red-100 dark:bg-red-900/30' : safeToSpend.status === 'warning' ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-green-100 dark:bg-green-900/30'} flex items-center justify-center`}>
+              <Shield className={`w-5 h-5 ${safeToSpend.status === 'danger' ? 'text-red-600' : 'text-green-600'}`} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+              <div 
+                className={`h-2 rounded-full transition-all ${safeToSpend.status === 'danger' ? 'bg-red-500' : safeToSpend.status === 'warning' ? 'bg-orange-500' : 'bg-green-500'}`}
+                style={{ width: `${Math.min(100, safeToSpend.percent)}%` }}
+              />
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Cash Flow Chart */}
+        <Card className="p-4">
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+            {t('dashboard.cash_flow_chart', 'Arus Kas Tren')}
+          </h3>
+          {cashFlowChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={cashFlowChartData}>
+                <defs>
+                  <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={CHART_COLORS.income} stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor={CHART_COLORS.income} stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={CHART_COLORS.expense} stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor={CHART_COLORS.expense} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="month" tick={{fontSize: 12}} stroke="#9ca3af" />
+                <YAxis tick={{fontSize: 12}} stroke="#9ca3af" tickFormatter={(v) => formatNumber(v)} />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Legend />
+                <Area type="monotone" dataKey="income" stroke={CHART_COLORS.income} fill="url(#colorIncome)" name={t('dashboard.income', 'Pemasukan')} />
+                <Area type="monotone" dataKey="expense" stroke={CHART_COLORS.expense} fill="url(#colorExpense)" name={t('dashboard.expense', 'Pengeluaran')} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-400">
+              {t('dashboard.no_chart_data', 'Tidak ada data untuk ditampilkan')}
+            </div>
+          )}
+        </Card>
+
+        {/* Savings Rate Chart */}
+        <Card className="p-4">
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+            {t('dashboard.savings_rate', 'Rasio Tabungan')}
+          </h3>
+          <div className="flex items-center justify-center h-[250px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: t('dashboard.savings', 'Tabungan'), value: Math.max(0, summary?.net_cash_flow || 0) },
+                    { name: t('dashboard.expense', 'Pengeluaran'), value: summary?.total_expense || 0 },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={90}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  <Cell fill={CHART_COLORS.savings} />
+                  <Cell fill={CHART_COLORS.expense} />
+                </Pie>
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute text-center">
+              <p className="text-3xl font-bold text-blue-600">{formatPercent(summary?.savings_rate || 0, 0)}</p>
+              <p className="text-sm text-gray-500">{t('dashboard.savings_rate_label', 'Tabungan')}</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Achievements */}
+      {achievements.length > 0 && (
+        <Card className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
+          <div className="flex items-center gap-2 mb-4">
+            <Award className="w-5 h-5 text-purple-600" />
+            <h3 className="font-semibold text-gray-900 dark:text-white">
+              {t('dashboard.achievements', 'Pencapaian')}
+            </h3>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {achievements.map(achievementId => {
+              const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
+              if (!achievement) return null;
+              const Icon = achievement.icon;
+              return (
+                <div 
+                  key={achievementId}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-gray-800 shadow-sm"
+                  title={achievement.description}
+                >
+                  <Icon className="w-5 h-5" style={{ color: achievement.color }} />
+                  <span className="font-medium text-sm">{achievement.name}</span>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
 
-      {/* Feed & Review Banner */}
-      {feedStats && feedStats.pending_count > 0 && (
-        <Card className="!p-4 border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+      {/* Recent Transactions */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900 dark:text-white">
+            {t('dashboard.recent_transactions', 'Transaksi Terbaru')}
+          </h3>
+          <Button variant="ghost" size="sm" onClick={() => window.location.href = '/transactions'}>
+            {t('dashboard.view_all', 'Lihat Semua')} →
+          </Button>
+        </div>
+        {transactions.length > 0 ? (
+          <div className="space-y-3">
+            {transactions.slice(0, 5).map((tx) => (
+              <div key={tx.id} className="flex items-center justify-between py-2 border-b dark:border-gray-700 last:border-0">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    tx.type === 'income' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'
+                  }`}>
+                    {tx.type === 'income' ? (
+                      <ArrowUpRight className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <ArrowDownRight className="w-5 h-5 text-red-600" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">{tx.description || 'Transaksi'}</p>
+                    <p className="text-sm text-gray-500">{tx.category_name || tx.category || 'Lainnya'}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className={`font-semibold ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {new Date(tx.date).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState 
+            icon={Wallet}
+            title={t('dashboard.no_transactions', 'Belum ada transaksi')}
+            description={t('dashboard.add_first', 'Tambahkan transaksi pertama Anda')}
+          />
+        )}
+      </Card>
+
+      {/* Exchange Rates Widget */}
+      {exchangeRates && (
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900 dark:text-white">
+              💱 {t('dashboard.exchange_rates', 'Kurs Mata Uang')}
+            </h3>
+            <span className="text-xs text-gray-400">
+              {t('dashboard.rates_from', 'Update dari')}: Frankfurter API
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(exchangeRates.rates || {}).slice(0, 8).map(([currency, rate]) => (
+              <div key={currency} className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <p className="text-sm text-gray-500">{currency}</p>
+                <p className="font-bold text-gray-900 dark:text-white">
+                  {typeof rate === 'number' ? rate.toFixed(4) : rate}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Pending Feed Review */}
+      {feedStats && feedStats.pending > 0 && (
+        <Card className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-              </div>
+              <Bell className="w-5 h-5 text-yellow-600" />
               <div>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {t('feed.pendingCount')}: {feedStats.pending_count}
+                <p className="font-semibold text-yellow-800 dark:text-yellow-200">
+                  {feedStats.pending} {t('dashboard.pending_review', 'transaksi menunggu review')}
                 </p>
-                <p className="text-sm text-gray-500">
-                  {formatCurrency(feedStats.total_pending_amount)} {t('feed.totalPending')}
+                <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                  {t('dashboard.review_prompt', 'Segera tinjau transaksi dari scan struk')}
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/feed')}>
-              {t('feed.pending')} <ChevronRight className="w-4 h-4 ml-1" />
+            <Button variant="outline" size="sm" onClick={() => window.location.href = '/feed'}>
+              {t('dashboard.review_now', 'Tinjau Sekarang')}
             </Button>
           </div>
         </Card>
-      )}
-
-      {/* Time Period Selector */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {TIME_PERIODS.map((period) => (
-          <button
-            key={period.value}
-            onClick={() => setTimePeriod(period.value)}
-            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
-              timePeriod === period.value
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-          >
-            {t(period.label)}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <Spinner size="lg" />
-        </div>
-      ) : (
-        <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="!p-5">
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-lg bg-success-100 dark:bg-success-900/30 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-success-600 dark:text-success-400" />
-                </div>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">{t('dashboard.income')}</p>
-              <p className="text-xl font-bold text-success-600 dark:text-success-400 mt-1">
-                {formatCurrency(income)}
-              </p>
-            </Card>
-
-            <Card className="!p-5">
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-lg bg-danger-100 dark:bg-danger-900/30 flex items-center justify-center">
-                  <TrendingDown className="w-5 h-5 text-danger-600 dark:text-danger-400" />
-                </div>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">{t('dashboard.expense')}</p>
-              <p className="text-xl font-bold text-danger-600 dark:text-danger-400 mt-1">
-                {formatCurrency(expense)}
-              </p>
-            </Card>
-
-            <Card className="!p-5">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                balance >= 0 ? 'bg-success-100 dark:bg-success-900/30' : 'bg-danger-100 dark:bg-danger-900/30'
-              }`}>
-                <Wallet className={`w-5 h-5 ${balance >= 0 ? 'text-success-600 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`} />
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">{t('dashboard.net_flow')}</p>
-              <p className={`text-xl font-bold mt-1 ${balance >= 0 ? 'text-success-600 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>
-                {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
-              </p>
-            </Card>
-
-            <Card className="!p-5">
-              <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                <PiggyBank className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">Savings Rate</p>
-              <p className={`text-xl font-bold mt-1 ${savingsRate >= 20 ? 'text-success-600 dark:text-success-400' : savingsRate >= 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-danger-600 dark:text-danger-400'}`}>
-                {savingsRate.toFixed(1)}%
-              </p>
-            </Card>
-          </div>
-
-          {/* Pending Feed Cards */}
-          {pendingFeed.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <Clock className="w-5 h-5 text-yellow-500" />
-                {t('feed.pending')}
-              </h2>
-              {pendingFeed.map((item) => (
-                <Card key={item.id} className="!p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <Receipt className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium text-gray-900 dark:text-white">{item.merchant_name || item.description || 'Transaction'}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {item.source || 'OCR'}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        <span>{formatDate(item.date, language)}</span>
-                        <span>•</span>
-                        <span className={item.type === 'expense' ? 'text-danger-600 dark:text-danger-400' : 'text-success-600 dark:text-success-400'}>
-                          {item.type === 'expense' ? '-' : '+'}{formatCurrency(item.amount)}
-                        </span>
-                        {item.confidence_score && (
-                          <>
-                            <span>•</span>
-                            <span>{Math.round(item.confidence_score * 100)}% confidence</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
-                        onClick={() => handleFeedAction(item.id, 'approve')}
-                        disabled={processingIds.has(item.id)}
-                      >
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        {t('feed.approve')}
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        onClick={() => handleFeedAction(item.id, 'reject')}
-                        disabled={processingIds.has(item.id)}
-                      >
-                        <XCircle className="w-4 h-4 mr-1" />
-                        {t('feed.reject')}
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* Recent Transactions */}
-          <Card className="!p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('dashboard.recent_transactions')}</h2>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/transactions')}>
-                {t('dashboard.view_all')} <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-            
-            {transactions.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <Receipt className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-                <p>{t('transaction.no_transactions')}</p>
-                <Button className="mt-3" onClick={() => navigate('/add')}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  {t('transaction.add_first')}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {transactions.slice(0, 5).map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        transaction.type === 'income' ? 'bg-success-100 dark:bg-success-900/30' : 'bg-danger-100 dark:bg-danger-900/30'
-                      }`}>
-                        {transaction.type === 'income' ? (
-                          <TrendingUp className="w-5 h-5 text-success-600 dark:text-success-400" />
-                        ) : (
-                          <TrendingDown className="w-5 h-5 text-danger-600 dark:text-danger-400" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {transaction.description || transaction.merchant_name || 'Transaction'}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {formatDate(transaction.date, language)} • {transaction.category_name || 'Uncategorized'}
-                        </p>
-                      </div>
-                    </div>
-                    <p className={`font-semibold ${transaction.type === 'income' ? 'text-success-600 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>
-                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* Category Breakdown */}
-          {categoryBreakdown.length > 0 && (
-            <Card className="!p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('dashboard.expense_by_category')}</h2>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/category-expenses')}>
-                  {t('dashboard.view_all')} <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {categoryBreakdown.slice(0, 5).map((cat, idx) => (
-                  <div key={idx} className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{cat.category_name || cat.name}</span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">{formatCurrency(cat.total)}</span>
-                      </div>
-                      <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary-500 dark:bg-primary-400 rounded-full transition-all"
-                          style={{ width: `${Math.min((cat.total / expense) * 100, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-        </>
       )}
     </div>
   );
 };
+
+export default Dashboard;

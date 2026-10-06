@@ -17,4 +17,6 @@ from . import (
     parser,
     ai_advisor,
     scan_jobs,
+    feed,
+    exchange,
 )

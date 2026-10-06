@@ -338,6 +338,16 @@ export const api = {
   
   // Generic GET for custom endpoints
   get: (path) => api.request(path),
+  
+  // Exchange rates
+  exchange: {
+    rates: (base = 'USD') => api.request(`/exchange/rates?base=${base}`),
+    convert: (amount, from, to) => api.request('/exchange/convert', {
+      method: 'POST',
+      body: JSON.stringify({ amount, from_currency: from, to_currency: to }),
+    }),
+    symbols: () => api.request('/exchange/symbols'),
+  },
 };
 
 export default api;
