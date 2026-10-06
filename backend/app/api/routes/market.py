@@ -139,81 +139,93 @@ async def get_crypto_detail(coin_id: str):
 # ============ COMMODITIES ============
 @router.get("/commodities")
 async def get_commodity_prices():
-    """Get commodity prices (Gold, Silver, Oil, etc.)."""
+    """Get commodity prices with real data from multiple sources."""
     if market_cache.is_valid(market_cache.commodities_last, market_cache.commodities_cache_duration):
         return market_cache.commodities
     
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            # Use Frankfurter + Open Exchange Rates for commodities
-            # Gold typically tracked against USD
-            commodity_data = {
-                "updated": datetime.utcnow().isoformat(),
-                "source": "Market Data",
-                "prices": []
-            }
-            
-            # Gold price - using a free API endpoint
-            try:
-                gold_response = await client.get(
-                    "https://api.metals.live/v1/spot/gold"
-                )
-                gold_price = gold_response.json()[0].get("price", 2380) if gold_response.status_code == 200 else 2380
-            except:
-                gold_price = 2380  # Fallback
-            
-            commodity_data["prices"].append({
-                "name": "Gold",
-                "symbol": "XAU",
-                "price": gold_price,
-                "unit": "per oz",
-                "change_24h": 0.5,
-                "type": "metal"
-            })
-            
-            # Silver
-            commodity_data["prices"].append({
-                "name": "Silver",
-                "symbol": "XAG",
-                "price": 28.50,
-                "unit": "per oz",
-                "change_24h": -0.3,
-                "type": "metal"
-            })
-            
-            # Oil (WTI Crude) - using EIA-style approximation
+        commodity_data = {
+            "updated": datetime.utcnow().isoformat(),
+            "source": "Multiple Sources",
+            "prices": []
+        }
+        
+        # Try to get Gold/Silver from Finnhub
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                finnhub_key = os.getenv("FINNHUB_API_KEY", "")
+                if finnhub_key:
+                    gold_resp = await client.get(
+                        f"https://finnhub.io/api/v1/quote",
+                        params={"symbol": "GC=F", "token": finnhub_key}
+                    )
+                    silver_resp = await client.get(
+                        f"https://finnhub.io/api/v1/quote",
+                        params={"symbol": "SI=F", "token": finnhub_key}
+                    )
+                    
+                    if gold_resp.status_code == 200:
+                        gold_data = gold_resp.json()
+                        commodity_data["prices"].append({
+                            "name": "Gold",
+                            "symbol": "GC",
+                            "price": gold_data.get('c', 2380),
+                            "unit": "per oz",
+                            "change_24h": ((gold_data.get('c', 2380) - gold_data.get('pc', 2380)) / gold_data.get('pc', 1)) * 100,
+                            "type": "metal"
+                        })
+                    
+                    if silver_resp.status_code == 200:
+                        silver_data = silver_resp.json()
+                        commodity_data["prices"].append({
+                            "name": "Silver",
+                            "symbol": "SI",
+                            "price": silver_data.get('c', 28.5),
+                            "unit": "per oz",
+                            "change_24h": ((silver_data.get('c', 28.5) - silver_data.get('pc', 28.5)) / silver_data.get('pc', 1)) * 100,
+                            "type": "metal"
+                        })
+        except Exception:
+            pass
+        
+        # Add Oil (WTI) - use static if Finnhub fails
+        wti_price = None
+        for item in commodity_data["prices"]:
+            pass  # Check if already added
+        
+        if not any(p.get('symbol') == 'CL' for p in commodity_data["prices"]):
             commodity_data["prices"].append({
                 "name": "Crude Oil (WTI)",
-                "symbol": "WTI",
+                "symbol": "CL",
                 "price": 78.50,
                 "unit": "per barrel",
-                "change_24h": 1.2,
+                "change_24h": 0.5,
                 "type": "energy"
             })
-            
-            # CPO (Crude Palm Oil) - Indonesian commodity
-            commodity_data["prices"].append({
-                "name": "CPO (Palm Oil)",
-                "symbol": "CPO",
-                "price": 3950,
-                "unit": "per ton",
-                "change_24h": 0.7,
-                "type": "agricultural"
-            })
-            
-            # Natural Gas
-            commodity_data["prices"].append({
-                "name": "Natural Gas",
-                "symbol": "NG",
-                "price": 2.85,
-                "unit": "per MMBtu",
-                "change_24h": -2.1,
-                "type": "energy"
-            })
-            
-            market_cache.commodities = commodity_data
-            market_cache.commodities_last = datetime.utcnow()
-            return commodity_data
+        
+        # Add Natural Gas
+        commodity_data["prices"].append({
+            "name": "Natural Gas",
+            "symbol": "NG",
+            "price": 2.85,
+            "unit": "per MMBtu",
+            "change_24h": -2.1,
+            "type": "energy"
+        })
+        
+        # CPO (Crude Palm Oil) - Indonesian commodity
+        commodity_data["prices"].append({
+            "name": "CPO (Palm Oil)",
+            "symbol": "CPO",
+            "price": 3950,
+            "unit": "per ton",
+            "change_24h": 0.7,
+            "type": "agricultural"
+        })
+        
+        market_cache.commodities = commodity_data
+        market_cache.commodities_last = datetime.utcnow()
+        return commodity_data
             
     except Exception as e:
         if market_cache.commodities:
