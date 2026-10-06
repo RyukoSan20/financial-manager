@@ -11,7 +11,7 @@ import {
 import { formatCurrency, formatNumber, formatPercent } from '../utils/format';
 import api from '../services/api';
 import { useTranslation } from '../i18n';
-import { createChart, ColorType, CrosshairMode, LineStyle } from 'lightweight-charts';
+import { createChart, ColorType, CrosshairMode, LineStyle, LineSeries, AreaSeries } from 'lightweight-charts';
 
 // Achievement badges configuration
 const ACHIEVEMENTS = [
@@ -154,24 +154,24 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       },
     });
 
-    // Income line
-    const incomeSeries = chart.addLineSeries({
+    // Income line (new API)
+    const incomeSeries = chart.addSeries(LineSeries, {
       color: CHART_COLORS.income,
       lineWidth: 2,
       title: 'Pemasukan',
       priceFormat: { type: 'custom', formatter: (price) => formatNumber(price) },
     });
     
-    // Expense line
-    const expenseSeries = chart.addLineSeries({
+    // Expense line (new API)
+    const expenseSeries = chart.addSeries(LineSeries, {
       color: CHART_COLORS.expense,
       lineWidth: 2,
       title: 'Pengeluaran',
       priceFormat: { type: 'custom', formatter: (price) => formatNumber(price) },
     });
 
-    // Savings area (area below)
-    const savingsAreaSeries = chart.addAreaSeries({
+    // Savings area (new API)
+    const savingsAreaSeries = chart.addSeries(AreaSeries, {
       color: CHART_COLORS.savings + '40',
       lineColor: CHART_COLORS.savings,
       lineWidth: 2,
@@ -228,7 +228,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     try {
       // Fetch user settings and market data in parallel
       const [settingsResult, marketResult] = await Promise.allSettled([
-        api.get('/user/settings').catch(() => null),
+        api.get('/settings').catch(() => null),
         api.get('/market/summary').catch(() => null),
       ]);
       
