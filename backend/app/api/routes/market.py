@@ -1,6 +1,6 @@
 """
 Real-time market data routes for multi-asset support.
-Integrates CoinGecko for crypto, Frankfurter for forex, API-Ninjas for commodities, and Finnhub for stocks.
+Integrates CoinGecko, Finnhub, API-Ninjas for comprehensive market data.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -8,13 +8,13 @@ from pydantic import BaseModel
 from typing import Optional, Dict, List
 import httpx
 from datetime import datetime, timedelta
-import asyncio
 import os
 
 router = APIRouter()
 
-# API-Ninjas Configuration
+# API-Ninjas Configuration  
 API_NINJAS_KEY = os.getenv("API_NINJAS_KEY", "v8IqqlPhChYtBosWQNRD6CNAdmulvLC7zpdJYZH1")
+FINNHUB_KEY = os.getenv("FINNHUB_API_KEY", "")
 
 # Cache for market data
 class MarketCache:
@@ -22,26 +22,22 @@ class MarketCache:
         self.crypto: Dict = {}
         self.forex: Dict = {}
         self.commodities: Dict = {}
-        self.commodity_curves: Dict = {}
         self.crypto_last: Optional[datetime] = None
         self.forex_last: Optional[datetime] = None
         self.commodities_last: Optional[datetime] = None
-        self.curves_last: Optional[datetime] = None
         self.crypto_cache_duration = timedelta(minutes=5)
         self.forex_cache_duration = timedelta(hours=1)
         self.commodities_cache_duration = timedelta(minutes=15)
-        self.curves_cache_duration = timedelta(hours=1)
     
     def is_valid(self, last_update: Optional[datetime], duration: timedelta) -> bool:
         if not last_update:
             return False
         return datetime.utcnow() - last_update < duration
 
-
 market_cache = MarketCache()
 
 
-# ============ CRYPTO ============
+# ============ CRYPTO (CoinGecko + API-Ninjas) ============
 @router.get("/crypto")
 async def get_crypto_prices():
     """Get real-time crypto prices from CoinGecko."""
@@ -50,7 +46,6 @@ async def get_crypto_prices():
     
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            # Get top cryptocurrencies
             response = await client.get(
                 "https://api.coingecko.com/api/v3/coins/markets",
                 params={
@@ -66,7 +61,6 @@ async def get_crypto_prices():
             if response.status_code == 200:
                 data = response.json()
                 
-                # Format for our app
                 crypto_data = {
                     "updated": datetime.utcnow().isoformat(),
                     "source": "CoinGecko",
@@ -89,179 +83,206 @@ async def get_crypto_prices():
                 market_cache.crypto_last = datetime.utcnow()
                 return crypto_data
             else:
-                # Return stale cache if API fails
                 if market_cache.crypto:
                     return market_cache.crypto
-                raise HTTPException(status_code=503, detail="Crypto API unavailable")
+                raise HTTPException(status_code=503, detail="CoinGecko API unavailable")
                 
     except Exception as e:
         if market_cache.crypto:
             return market_cache.crypto
-        raise HTTPException(status_code=503, detail=f"Crypto API error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Crypto API error: {str(e)}")
 
 
-@router.get("/crypto/{coin_id}")
-async def get_crypto_detail(coin_id: str):
-    """Get detailed info for a specific cryptocurrency."""
+# ============ CRYPTO via API-Ninjas ============
+@router.get("/crypto-ninjas/{symbol}")
+async def get_crypto_ninjas(symbol: str):
+    """Get single crypto price from API-Ninjas."""
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
-                f"https://api.coingecko.com/api/v3/coins/{coin_id}",
-                params={
-                    "localization": "false",
-                    "tickers": "false",
-                    "community_data": "false",
-                    "developer_data": "false"
-                }
+                f"https://api.api-ninjas.com/v1/cryptoprice",
+                params={"symbol": symbol.upper()},
+                headers={"X-Api-Key": API_NINJAS_KEY}
             )
             
             if response.status_code == 200:
                 data = response.json()
                 return {
-                    "id": data.get("id"),
-                    "symbol": data.get("symbol", "").upper(),
-                    "name": data.get("name"),
-                    "current_price": data.get("market_data", {}).get("current_price", {}).get("usd"),
-                    "market_cap": data.get("market_data", {}).get("market_cap", {}).get("usd"),
-                    "price_change_24h": data.get("market_data", {}).get("price_change_24h"),
-                    "price_change_percentage_24h": data.get("market_data", {}).get("price_change_percentage_24h"),
-                    "high_24h": data.get("market_data", {}).get("high_24h", {}).get("usd"),
-                    "low_24h": data.get("market_data", {}).get("low_24h", {}).get("usd"),
-                    "image": data.get("image", {}).get("large"),
-                    "description": data.get("description", {}).get("en", ""),
+                    "symbol": data.get("symbol", symbol.upper()),
+                    "price": float(data.get("price", 0)),
+                    "timestamp": data.get("timestamp"),
+                    "source": "API-Ninjas"
                 }
             else:
-                raise HTTPException(status_code=404, detail="Coin not found")
+                raise HTTPException(status_code=404, detail="Crypto not found")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ============ COMMODITIES ============
+# ============ COMMODITIES (API-Ninjas + Finnhub) ============
 @router.get("/commodities")
 async def get_commodity_prices():
-    """Get commodity prices with real data from multiple sources."""
+    """Get commodity prices from API-Ninjas and Finnhub."""
     if market_cache.is_valid(market_cache.commodities_last, market_cache.commodities_cache_duration):
         return market_cache.commodities
     
-    try:
-        commodity_data = {
-            "updated": datetime.utcnow().isoformat(),
-            "source": "Multiple Sources",
-            "prices": []
-        }
-        
-        # Try to get Gold/Silver from Finnhub
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                finnhub_key = os.getenv("FINNHUB_API_KEY", "")
-                if finnhub_key:
-                    gold_resp = await client.get(
-                        f"https://finnhub.io/api/v1/quote",
-                        params={"symbol": "GC=F", "token": finnhub_key}
-                    )
-                    silver_resp = await client.get(
-                        f"https://finnhub.io/api/v1/quote",
-                        params={"symbol": "SI=F", "token": finnhub_key}
-                    )
-                    
-                    if gold_resp.status_code == 200:
-                        gold_data = gold_resp.json()
-                        commodity_data["prices"].append({
-                            "name": "Gold",
-                            "symbol": "GC",
-                            "price": gold_data.get('c', 2380),
-                            "unit": "per oz",
-                            "change_24h": ((gold_data.get('c', 2380) - gold_data.get('pc', 2380)) / gold_data.get('pc', 1)) * 100,
-                            "type": "metal"
-                        })
-                    
-                    if silver_resp.status_code == 200:
-                        silver_data = silver_resp.json()
-                        commodity_data["prices"].append({
-                            "name": "Silver",
-                            "symbol": "SI",
-                            "price": silver_data.get('c', 28.5),
-                            "unit": "per oz",
-                            "change_24h": ((silver_data.get('c', 28.5) - silver_data.get('pc', 28.5)) / silver_data.get('pc', 1)) * 100,
-                            "type": "metal"
-                        })
-        except Exception:
-            pass
-        
-        # Add Oil (WTI) - use static if Finnhub fails
-        wti_price = None
-        for item in commodity_data["prices"]:
-            pass  # Check if already added
-        
-        if not any(p.get('symbol') == 'CL' for p in commodity_data["prices"]):
-            commodity_data["prices"].append({
-                "name": "Crude Oil (WTI)",
-                "symbol": "CL",
-                "price": 78.50,
-                "unit": "per barrel",
-                "change_24h": 0.5,
-                "type": "energy"
-            })
-        
-        # Add Natural Gas
-        commodity_data["prices"].append({
-            "name": "Natural Gas",
-            "symbol": "NG",
-            "price": 2.85,
-            "unit": "per MMBtu",
-            "change_24h": -2.1,
-            "type": "energy"
-        })
-        
-        # CPO (Crude Palm Oil) - Indonesian commodity
-        commodity_data["prices"].append({
-            "name": "CPO (Palm Oil)",
-            "symbol": "CPO",
-            "price": 3950,
-            "unit": "per ton",
-            "change_24h": 0.7,
-            "type": "agricultural"
-        })
-        
-        market_cache.commodities = commodity_data
-        market_cache.commodities_last = datetime.utcnow()
-        return commodity_data
-            
-    except Exception as e:
-        if market_cache.commodities:
-            return market_cache.commodities
-        raise HTTPException(status_code=500, detail=f"Commodities API error: {str(e)}")
-
-
-# ============ STOCKS (IDX) ============
-@router.get("/stocks/idx")
-async def get_idx_stocks():
-    """Get Indonesian stock market (IDX) data."""
+    commodity_data = {
+        "updated": datetime.utcnow().isoformat(),
+        "source": "API-Ninjas",
+        "prices": []
+    }
+    
+    # Commodities to fetch from API-Ninjas
+    ninjas_commodities = [
+        ("gold", "Gold", "metal"),
+        ("silver", "Silver", "metal"),
+        ("copper", "Copper", "metal"),
+        ("natural_gas", "Natural Gas", "energy"),
+    ]
+    
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            # Get major Indonesian stocks
-            # Using a mock for IDX data - in production, use idx.co.id API
-            idx_data = {
-                "updated": datetime.utcnow().isoformat(),
-                "source": "IDX",
-                "index": {
+            for commodity_id, display_name, ctype in ninjas_commodities:
+                try:
+                    response = await client.get(
+                        f"https://api.api-ninjas.com/v1/commodityprice",
+                        params={"name": commodity_id},
+                        headers={"X-Api-Key": API_NINJAS_KEY}
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        commodity_data["prices"].append({
+                            "name": data.get("name", display_name),
+                            "symbol": commodity_id[:3].upper(),
+                            "price": data.get("price"),
+                            "unit": data.get("unit", ""),
+                            "change_24h": data.get("change_24h_percent", 0),
+                            "type": ctype,
+                            "high_52w": data.get("high_52w"),
+                            "low_52w": data.get("low_52w"),
+                        })
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    
+    # Add CPO (Indonesian commodity) - static for now
+    commodity_data["prices"].append({
+        "name": "CPO (Palm Oil)",
+        "symbol": "CPO",
+        "price": 3950,
+        "unit": "per ton",
+        "change_24h": 0.7,
+        "type": "agricultural",
+        "exchange": "ICDX"
+    })
+    
+    # Add WTI Oil from Finnhub if available
+    if FINNHUB_KEY:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                oil_resp = await client.get(
+                    "https://finnhub.io/api/v1/quote",
+                    params={"symbol": "CL=F", "token": FINNHUB_KEY}
+                )
+                if oil_resp.status_code == 200:
+                    oil_data = oil_resp.json()
+                    current = oil_data.get('c', 78.5)
+                    prev = oil_data.get('pc', 78)
+                    change_pct = ((current - prev) / prev * 100) if prev else 0
+                    commodity_data["prices"].append({
+                        "name": "Crude Oil (WTI)",
+                        "symbol": "CL",
+                        "price": current,
+                        "unit": "per barrel",
+                        "change_24h": round(change_pct, 2),
+                        "type": "energy",
+                        "exchange": "NYMEX"
+                    })
+        except Exception:
+            pass
+    
+    # Fallback WTI if Finnhub fails
+    if not any(p.get('symbol') == 'CL' for p in commodity_data["prices"]):
+        commodity_data["prices"].append({
+            "name": "Crude Oil (WTI)",
+            "symbol": "CL",
+            "price": 78.50,
+            "unit": "per barrel",
+            "change_24h": 0.5,
+            "type": "energy"
+        })
+    
+    market_cache.commodities = commodity_data
+    market_cache.commodities_last = datetime.utcnow()
+    return commodity_data
+
+
+# ============ STOCKS (Finnhub) ============
+@router.get("/stocks/idx")
+async def get_idx_stocks():
+    """Get Indonesian stock market data from Finnhub."""
+    if not FINNHUB_KEY:
+        return {
+            "updated": datetime.utcnow().isoformat(),
+            "source": "Mock Data",
+            "index": {"name": "IHSG", "value": 7250.50, "change": 0.81},
+            "stocks": []
+        }
+    
+    try:
+        idx_data = {
+            "updated": datetime.utcnow().isoformat(),
+            "source": "Finnhub",
+            "index": {},
+            "stocks": []
+        }
+        
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Get IHSG via Finnhub world indices
+            ihsg_resp = await client.get(
+                "https://finnhub.io/api/v1/quote",
+                params={"symbol": "^JKSE", "token": FINNHUB_KEY}
+            )
+            
+            if ihsg_resp.status_code == 200:
+                ihsg = ihsg_resp.json()
+                current = ihsg.get('c', 7250)
+                prev = ihsg.get('pc', 7200)
+                change_pct = ((current - prev) / prev * 100) if prev else 0
+                idx_data["index"] = {
                     "name": "IHSG",
-                    "value": 7250.50,
-                    "change": 58.25,
-                    "change_percent": 0.81,
-                },
-                "stocks": [
-                    {"symbol": "BBCA", "name": "Bank Central Asia", "price": 9800, "change": 1.5},
-                    {"symbol": "BBRI", "name": "Bank Rakyat Indonesia", "price": 4800, "change": -0.3},
-                    {"symbol": "TLKM", "name": "Telekomunikasi Indonesia", "price": 3150, "change": 0.8},
-                    {"symbol": "ASII", "name": "Astra International", "price": 5600, "change": 0.2},
-                    {"symbol": "BMRI", "name": "Bank Mandiri", "price": 5200, "change": 1.1},
-                    {"symbol": "UNVR", "name": "Unilever Indonesia", "price": 3800, "change": -0.5},
-                    {"symbol": "GOTO", "name": "GoTo Gojek Tokopedia", "price": 58, "change": 2.1},
-                    {"symbol": "BBNI", "name": "Bank Negara Indonesia", "price": 4900, "change": 0.9},
-                ]
-            }
-            return idx_data
+                    "value": current,
+                    "change": round(change_pct, 2),
+                    "prev_close": prev
+                }
+            
+            # Major Indonesian stocks
+            idx_symbols = ["BBCA.JK", "BBRI.JK", "TLKM.JK", "ASII.JK"]
+            for symbol in idx_symbols:
+                try:
+                    resp = await client.get(
+                        "https://finnhub.io/api/v1/quote",
+                        params={"symbol": symbol, "token": FINNHUB_KEY}
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        current = data.get('c', 0)
+                        prev = data.get('pc', 0)
+                        change_pct = ((current - prev) / prev * 100) if prev else 0
+                        idx_data["stocks"].append({
+                            "symbol": symbol.replace(".JK", ""),
+                            "price": current,
+                            "change": round(change_pct, 2),
+                            "prev_close": prev
+                        })
+                except Exception:
+                    pass
+                    
+        return idx_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -273,146 +294,25 @@ async def get_market_summary():
     try:
         crypto = await get_crypto_prices()
         commodities = await get_commodity_prices()
+        stocks = await get_idx_stocks()
         
-        # Get forex rates from exchange route
+        # Get forex from Frankfurter
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                forex_response = await client.get(
+                forex_resp = await client.get(
                     "https://api.frankfurter.app/latest",
                     params={"from": "USD"}
                 )
-                forex = forex_response.json().get("rates", {}) if forex_response.status_code == 200 else {}
+                forex = forex_resp.json().get("rates", {}) if forex_resp.status_code == 200 else {}
         except:
-            forex = {"EUR": 0.92, "GBP": 0.79, "JPY": 149.5, "IDR": 15600}
+            forex = {"EUR": 0.92, "GBP": 0.79, "JPY": 149.5}
         
         return {
             "updated": datetime.utcnow().isoformat(),
-            "forex": {
-                "source": "Frankfurter API",
-                "base": "USD",
-                "rates": forex
-            },
+            "forex": {"source": "Frankfurter", "base": "USD", "rates": forex},
             "crypto": crypto,
             "commodities": commodities,
-            "stocks": await get_idx_stocks()
+            "stocks": stocks
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============ COMMODITY FORWARD CURVES (API-Ninjas) ============
-
-@router.get("/commodity/forward-curve")
-async def get_commodity_forward_curve(name: str = "crude_oil"):
-    """
-    Get commodity forward curve data from API-Ninjas.
-    
-    Supported commodities:
-    - crude_oil (WTI/Brent)
-    - natural_gas
-    - heating_oil
-    - gasoline
-    - gold
-    - silver
-    - copper
-    - wheat
-    - corn
-    - soybeans
-    - coffee
-    - sugar
-    - cotton
-    - palm_oil (for CPO)
-    """
-    cache_key = f"curve_{name}"
-    
-    # Check cache
-    if market_cache.commodity_curves.get(cache_key):
-        if market_cache.is_valid(market_cache.curves_last, market_cache.curves_cache_duration):
-            return market_cache.commodity_curves.get(cache_key)
-    
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(
-                "https://api.api-ninjas.com/v1/commodityforwardcurve",
-                params={"name": name},
-                headers={"X-Api-Key": API_NINJAS_KEY}
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                # Store in cache
-                market_cache.commodity_curves[cache_key] = data
-                market_cache.curves_last = datetime.utcnow()
-                
-                return data
-            elif response.status_code == 404:
-                raise HTTPException(status_code=404, detail=f"Commodity '{name}' not found")
-            elif response.status_code == 429:
-                raise HTTPException(status_code=429, detail="API rate limit exceeded")
-            else:
-                raise HTTPException(status_code=response.status_code, detail="API-Ninjas API error")
-                
-    except HTTPException:
-        raise
-    except Exception as e:
-        # Return cached data if available
-        cached = market_cache.commodity_curves.get(cache_key)
-        if cached:
-            return cached
-        raise HTTPException(status_code=500, detail=f"Failed to fetch forward curve: {str(e)}")
-
-
-@router.get("/commodity/list")
-async def list_commodities():
-    """Get list of available commodities from API-Ninjas."""
-    return {
-        "commodities": [
-            {"id": "crude_oil", "name": "Crude Oil (WTI/Brent)", "unit": "per barrel"},
-            {"id": "natural_gas", "name": "Natural Gas", "unit": "per MMBtu"},
-            {"id": "heating_oil", "name": "Heating Oil", "unit": "per gallon"},
-            {"id": "gasoline", "name": "Gasoline (RBOB)", "unit": "per gallon"},
-            {"id": "gold", "name": "Gold", "unit": "per troy ounce"},
-            {"id": "silver", "name": "Silver", "unit": "per troy ounce"},
-            {"id": "copper", "name": "Copper", "unit": "per pound"},
-            {"id": "wheat", "name": "Wheat", "unit": "per bushel"},
-            {"id": "corn", "name": "Corn", "unit": "per bushel"},
-            {"id": "soybeans", "name": "Soybeans", "unit": "per bushel"},
-            {"id": "coffee", "name": "Coffee (Arabica)", "unit": "per pound"},
-            {"id": "sugar", "name": "Sugar (No. 11)", "unit": "per pound"},
-            {"id": "cotton", "name": "Cotton", "unit": "per pound"},
-            {"id": "palm_oil", "name": "Palm Oil (CPO)", "unit": "per ton"},
-            {"id": "lumber", "name": "Lumber", "unit": "per 1000 board feet"},
-        ],
-        "source": "API-Ninjas",
-        "updated": datetime.utcnow().isoformat()
-    }
-
-
-@router.get("/commodity/compare")
-async def compare_commodities():
-    """Get forward curve comparison for major commodities."""
-    commodities = ["crude_oil", "natural_gas", "gold", "palm_oil"]
-    results = []
-    
-    for commodity in commodities:
-        try:
-            data = await get_commodity_forward_curve(commodity)
-            if data and "curve" in data and len(data["curve"]) > 0:
-                results.append({
-                    "name": data.get("name", commodity),
-                    "symbol": data.get("symbol_root", commodity[:3].upper()),
-                    "structure": data.get("structure", "unknown"),
-                    "current_price": data["curve"][0].get("last_price") if data.get("curve") else None,
-                    "next_month_price": data["curve"][1].get("last_price") if len(data.get("curve", [])) > 1 else None,
-                    "contango_1m": data.get("contango_slope_1m_pct", 0),
-                    "contango_12m": data.get("contango_slope_12m_pct", 0),
-                    "last_updated": data["curve"][0].get("last_updated") if data.get("curve") else None,
-                })
-        except Exception:
-            pass
-    
-    return {
-        "commodities": results,
-        "updated": datetime.utcnow().isoformat()
-    }
