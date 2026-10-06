@@ -2,6 +2,7 @@
 Exchange Rate API routes.
 Uses Frankfurter API (free, no API key required).
 Rates are cached for 1 hour to avoid rate limits.
+Includes fallback rates for currencies not supported by Frankfurter (IDR, VND, etc.)
 """
 
 from fastapi import APIRouter, HTTPException
@@ -12,6 +13,15 @@ from datetime import datetime, timedelta
 import asyncio
 
 router = APIRouter()
+
+# Fallback rates for currencies not in Frankfurter (approximate)
+FALLBACK_RATES_FROM_USD = {
+    "IDR": 15600.0,  # 1 USD = 15600 IDR
+    "VND": 24500.0,  # Frankfurter has this but include for completeness
+    "KRW": 1320.0,   # Frankfurter has this
+    "PHP": 56.5,     # Frankfurter has this
+    "THB": 35.2,     # Frankfurter has this
+}
 
 # Cache for exchange rates
 class RateCache:
@@ -136,35 +146,41 @@ async def convert_currency(request: ConvertRequest):
             "rate": 1.0
         }
     
-    # Get rates with base as from_currency
-    rates = await rate_cache.fetch_rates(from_upper)
+    # Get rates with USD as base (most reliable)
+    rates_usd = await rate_cache.fetch_rates("USD")
     
-    # Calculate conversion
-    rate = rates.get(to_upper)
-    if rate is None:
-        # Try with USD as intermediate
-        rates_from_usd = await rate_cache.fetch_rates("USD")
-        rates_to_usd = await rate_cache.fetch_rates("USD")
-        
-        from_to_usd = rates.get(from_upper, 1 / rates_from_usd.get(from_upper, 1))
-        to_from_usd = rates_to_usd.get(to_upper, rates_to_usd.get("USD", 1) * rates.get(to_upper, 1))
-        
-        rate = from_to_usd / to_from_usd if to_from_usd else None
+    # Build complete rates with fallback for unsupported currencies
+    complete_rates = {**rates_usd}
+    for currency, usd_rate in FALLBACK_RATES_FROM_USD.items():
+        if currency not in complete_rates:
+            complete_rates[currency] = usd_rate
     
-    if rate is None:
+    # Calculate conversion using USD as intermediate
+    # amount in from_currency -> USD -> to_currency
+    
+    # Get from_currency rate (how many USD for 1 from_currency)
+    from_rate = complete_rates.get(from_upper, 1.0)
+    
+    # Get to_currency rate (how many USD for 1 to_currency)
+    to_rate = complete_rates.get(to_upper, 1.0)
+    
+    if from_rate == 0:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot convert {from_upper} to {to_upper}. Currency not supported."
+            detail=f"Cannot convert from {from_upper}. Rate unavailable."
         )
     
+    # Conversion: amount / from_rate * to_rate
+    # Example: IDR 1,000,000 -> USD: 1,000,000 / 15600 * 1 = ~$64.10
+    rate = to_rate / from_rate
     result = request.amount * rate
     
     return {
         "from": from_upper,
         "to": to_upper,
         "amount": request.amount,
-        "result": round(result, 2),
-        "rate": round(rate, 6),
+        "result": round(result, 4),
+        "rate": round(rate, 8),
         "timestamp": datetime.utcnow().isoformat()
     }
 
