@@ -228,21 +228,35 @@ const SecurityTab = () => {
 
 const PreferencesTab = ({ user }) => {
   const { language, changeLanguage, languages } = useTranslation();
-  const [currency, setCurrency] = useState(user?.default_currency || 'IDR');
+  const [currency, setCurrency] = useState(() => {
+    // Get currency from user preference or derive from language
+    const saved = localStorage.getItem('currency');
+    if (saved) return saved;
+    // Default currency based on language
+    const langToCurrency = { id: 'IDR', en: 'USD', ja: 'JPY' };
+    return langToCurrency[language] || 'IDR';
+  });
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
-    // Save to localStorage for now (backend update pending)
-    const updatedUser = { ...user, default_currency: currency };
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+    // Save to localStorage
+    localStorage.setItem('currency', currency);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
 
   const languageOptions = {
-    'id': { label: '🇮🇩 Indonesia', name: 'Bahasa Indonesia' },
-    'en': { label: '🇺🇸 English', name: 'English' },
-    'ja': { label: '🇯🇵 日本語', name: 'Japanese' },
+    'id': { label: '🇮🇩 Indonesia', name: 'Bahasa Indonesia', currency: 'IDR' },
+    'en': { label: '🇺🇸 English', name: 'English', currency: 'USD' },
+    'ja': { label: '🇯🇵 日本語', name: 'Japanese', currency: 'JPY' },
+  };
+
+  // When language changes, update currency to match
+  const handleLanguageChange = (code) => {
+    changeLanguage(code);
+    const langToCurrency = { id: 'IDR', en: 'USD', ja: 'JPY' };
+    setCurrency(langToCurrency[code] || 'IDR');
+    localStorage.setItem('currency', langToCurrency[code] || 'IDR');
   };
 
   return (
@@ -264,7 +278,7 @@ const PreferencesTab = ({ user }) => {
             {Object.entries(languageOptions).map(([code, { label, name }]) => (
               <button
                 key={code}
-                onClick={() => changeLanguage(code)}
+                onClick={() => handleLanguageChange(code)}
                 className={`p-3 rounded-lg border-2 transition-all text-center ${
                   language === code
                     ? 'border-primary-500 bg-primary-50 text-primary-700'
@@ -286,12 +300,9 @@ const PreferencesTab = ({ user }) => {
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
           options={[
-            { value: 'IDR', label: 'Indonesian Rupiah (IDR)' },
-            { value: 'USD', label: 'US Dollar (USD)' },
-            { value: 'EUR', label: 'Euro (EUR)' },
-            { value: 'SGD', label: 'Singapore Dollar (SGD)' },
-            { value: 'MYR', label: 'Malaysian Ringgit (MYR)' },
-            { value: 'JPY', label: 'Japanese Yen (JPY)' },
+            { value: 'IDR', label: 'Indonesian Rupiah (Rp)' },
+            { value: 'USD', label: 'US Dollar ($)' },
+            { value: 'JPY', label: 'Japanese Yen (¥)' },
           ]}
         />
         <Button onClick={handleSave}>Save Preferences</Button>

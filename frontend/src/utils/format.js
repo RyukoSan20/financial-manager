@@ -1,13 +1,50 @@
 // Format utilities with i18n support
-import { CURRENCY_CONFIG, getCurrentLanguage } from './i18n';
+import { CURRENCY_CONFIG } from '../i18n';
+
+// Get current language from localStorage or default
+const getCurrentLanguage = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('language') || 'id';
+  }
+  return 'id';
+};
+
+// Get currency from localStorage or derive from language
+const getCurrency = () => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('currency');
+    if (saved) return saved;
+    // Default based on language
+    const langToCurrency = { id: 'IDR', en: 'USD', ja: 'JPY' };
+    return langToCurrency[getCurrentLanguage()] || 'IDR';
+  }
+  return 'IDR';
+};
+
+// Get config for a currency
+const getCurrencyConfig = (currency = null) => {
+  const curr = currency || getCurrency();
+  const lang = getCurrentLanguage();
+  
+  // Map currency to language config
+  const currencyToLang = {
+    'IDR': 'id',
+    'USD': 'en',
+    'JPY': 'ja',
+  };
+  
+  const configLang = currencyToLang[curr] || lang;
+  return CURRENCY_CONFIG[configLang] || CURRENCY_CONFIG.id;
+};
 
 // Format currency with language-aware formatting
-export const formatCurrency = (amount, currency = 'IDR', language = null) => {
+export const formatCurrency = (amount, currency = null) => {
   if (amount === null || amount === undefined) return '-';
   
-  const lang = language || getCurrentLanguage();
-  const config = CURRENCY_CONFIG[lang] || CURRENCY_CONFIG.id;
+  const config = getCurrencyConfig(currency);
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  
+  if (isNaN(num) || !isFinite(num)) return `${config.symbol} 0`;
   
   // Format number with locale-specific separators
   const parts = num.toFixed(config.decimals).split('.');
@@ -18,12 +55,15 @@ export const formatCurrency = (amount, currency = 'IDR', language = null) => {
 };
 
 // Format number with language-aware separators
-export const formatNumber = (num, language = null) => {
+export const formatNumber = (num) => {
   if (num === null || num === undefined) return '-';
   
-  const lang = language || getCurrentLanguage();
-  const config = CURRENCY_CONFIG[lang] || CURRENCY_CONFIG.id;
-  const parts = num.toFixed(config.decimals).split('.');
+  const config = getCurrencyConfig();
+  const n = typeof num === 'string' ? parseFloat(num) : num;
+  
+  if (isNaN(n) || !isFinite(n)) return '0';
+  
+  const parts = n.toFixed(config.decimals).split('.');
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, config.thousandsSeparator);
   
   return parts.join(config.decimalSeparator);

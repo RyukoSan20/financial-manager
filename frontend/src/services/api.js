@@ -335,6 +335,9 @@ export const api = {
   // Health check
   health: () => api.request('/health'),
   info: () => api.request('/info'),
+  
+  // Generic GET for custom endpoints
+  get: (path) => api.request(path),
 };
 
 export default api;
