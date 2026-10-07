@@ -645,20 +645,20 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
 
         {/* Market Content */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {activeMarket === 'forex' && exchangeRates && (
+          {activeMarket === 'forex' && exchangeRates ? (
             <>
               <MarketCard name="USD/IDR" value={formatNumber(exchangeRates.rates?.IDR || 15600)} change="Live" positive icon={<Globe className="w-4 h-4 text-green-500" />} />
               <MarketCard name="USD/JPY" value={formatNumber(exchangeRates.rates?.JPY || 149.5)} change="Live" positive={false} icon={<Globe className="w-4 h-4 text-blue-500" />} />
               <MarketCard name="EUR/USD" value={(1 / (exchangeRates.rates?.EUR || 1)).toFixed(4)} change="Live" positive icon={<Globe className="w-4 h-4 text-yellow-500" />} />
               <MarketCard name="GBP/USD" value={(1 / (exchangeRates.rates?.GBP || 1)).toFixed(4)} change="Live" positive={false} icon={<Globe className="w-4 h-4 text-purple-500" />} />
             </>
-          )}
+          ) : null}
           
-          {activeMarket === 'crypto' && marketData?.crypto?.prices && (
+          {activeMarket === 'crypto' && marketData?.crypto?.prices ? (
             <>
               {marketData.crypto.prices.slice(0, 4).map((coin, idx) => (
                 <MarketCard 
-                  key={coin.id || idx}
+                  key={coin.id || `crypto-${idx}`}
                   name={coin.symbol}
                   value={coin.price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   change={`${coin.change_24h?.toFixed(1) || 0}%`}
@@ -666,19 +666,14 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   icon={<Bitcoin className="w-4 h-4 text-orange-500" />}
                 />
               ))}
-              {(!marketData.crypto?.prices || marketData.crypto.prices.length === 0) && (
-                <div className="col-span-4 text-center py-4 text-gray-400">
-                  {t('dashboard.no_crypto_data', 'Memuat data crypto...')}
-                </div>
-              )}
             </>
-          )}
+          ) : null}
           
-          {activeMarket === 'commodities' && marketData?.commodities?.prices && (
+          {activeMarket === 'commodities' && marketData?.commodities?.prices ? (
             <>
               {marketData.commodities.prices.slice(0, 4).map((item, idx) => (
                 <MarketCard 
-                  key={item.symbol || idx}
+                  key={item.symbol || `commodity-${idx}`}
                   name={item.name}
                   value={formatNumber(item.price)}
                   change={`${item.change_24h?.toFixed(1) || 0}%`}
@@ -688,14 +683,14 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                 />
               ))}
             </>
-          )}
+          ) : null}
           
-          {activeMarket === 'stocks' && marketData?.stocks?.stocks && (
+          {activeMarket === 'stocks' && marketData?.stocks?.stocks ? (
             <>
               <MarketCard name="IHSG" value={formatNumber(marketData.stocks.index?.value || 7250)} change={`${marketData.stocks.index?.change_percent?.toFixed(2) || 0}%`} positive={(marketData.stocks.index?.change || 0) >= 0} icon={<BarChart3 className="w-4 h-4 text-red-500" />} />
               {marketData.stocks.stocks.slice(0, 3).map((stock, idx) => (
                 <MarketCard 
-                  key={stock.symbol || idx}
+                  key={stock.symbol || `stock-${idx}`}
                   name={stock.symbol}
                   value={formatNumber(stock.price)}
                   change={`${stock.change?.toFixed(1) || 0}%`}
@@ -704,11 +699,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                 />
               ))}
             </>
-          )}
+          ) : null}
           
-          {activeMarket === 'stocks' && !marketData?.stocks?.stocks && (
+          {!marketData && (
             <div className="col-span-4 text-center py-4 text-gray-400">
-              {t('dashboard.loading_stocks', 'Memuat data saham...')}
+              {t('dashboard.loading_market', 'Memuat data pasar...')}
             </div>
           )}
         </div>
@@ -764,7 +759,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           </div>
           {transactions.length > 0 ? (
             <div className="space-y-3 max-h-[300px] overflow-y-auto">
-              {transactions.slice(0, 5).map((tx) => (
+              {transactions.slice(0, 5).map((tx) => {
+                if (!tx || !tx.id) return null;
+                return (
                 <div key={tx.id} className="flex items-center justify-between py-2 border-b dark:border-gray-700 last:border-0">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -783,14 +780,15 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   </div>
                   <div className="text-right">
                     <p className={`font-semibold ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount || 0)}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {new Date(tx.date).toLocaleDateString()}
+                      {tx.date ? new Date(tx.date).toLocaleDateString() : ''}
                     </p>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <EmptyState 
