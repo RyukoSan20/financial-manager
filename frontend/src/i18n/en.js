@@ -38,7 +38,8 @@ export default {
   nav: {
     dashboard: "Dashboard",
     transactions: "Transactions",
-    feed: "Feed & Review",
+    feed: "Feed",
+    market: "Market",
     accounts: "Accounts",
     budgets: "Budgets",
     recurring: "Recurring",
@@ -46,7 +47,6 @@ export default {
     debts: "Debts",
     calculators: "Calculators",
     analytics: "Analytics",
-    map: "Spending Map",
     advisor: "AI Advisor",
     settings: "Settings",
     more: "More",

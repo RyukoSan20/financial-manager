@@ -38,6 +38,7 @@ const navItems = (t) => [
   { name: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
   { name: t('nav.transactions'), href: '/transactions', icon: Receipt },
   { name: t('nav.feed'), href: '/feed', icon: BellRing },
+  { name: t('nav.market'), href: '/market', icon: BarChart3 },
   { name: t('nav.accounts'), href: '/accounts', icon: Wallet },
   { name: t('nav.budgets'), href: '/budgets', icon: PiggyBank },
   { name: t('nav.recurring'), href: '/recurring', icon: Repeat },
@@ -45,7 +46,6 @@ const navItems = (t) => [
   { name: t('nav.debts'), href: '/debts', icon: CreditCard },
   { name: t('nav.calculators'), href: '/calculators', icon: Calculator },
   { name: t('nav.analytics'), href: '/analytics', icon: BarChart3 },
-  { name: t('nav.map'), href: '/map', icon: Map },
   { name: t('nav.advisor'), href: '/advisor', icon: Sparkles },
 ];
 

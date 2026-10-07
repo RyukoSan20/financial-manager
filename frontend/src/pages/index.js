@@ -1,5 +1,6 @@
 // Pages barrel export
 export { Dashboard } from './Dashboard';
+export { MarketPage } from './MarketPage';
 export { default as Transactions } from './Transactions';
 export { default as CategoryExpenses } from './CategoryExpenses';
 export { default as Accounts } from './Accounts';

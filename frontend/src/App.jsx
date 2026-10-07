@@ -7,7 +7,8 @@ import { Layout } from './components/layout/Layout';
 import { AddTransactionPage, MorePage } from './components/layout/Navigation';
 import { I18nProvider } from './i18n';
 import { 
-  Dashboard, 
+  Dashboard,
+  MarketPage,
   Transactions, 
   Accounts, 
   Budgets, 
@@ -115,6 +116,7 @@ function App() {
               <Route path="map" element={<MerchantMap />} />
               <Route path="advisor" element={<AIAdvisor />} />
               <Route path="feed" element={<FeedPage />} />
+              <Route path="market" element={<MarketPage />} />
               <Route path="settings" element={<Settings />} />
               <Route path="more" element={<MorePage />} />
             </Route>

@@ -22,4 +22,5 @@ from . import (
     market,
     finnhub,
     ninjas,
+    market_intel,
 )
