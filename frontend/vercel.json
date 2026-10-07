@@ -6,11 +6,15 @@
   "devCommand": "npm run dev",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "https://financial-manager-production-26f7.up.railway.app/api/$1"
+      "source": "/api/:path*",
+      "destination": "https://financial-manager-production-26f7.up.railway.app/api/:path*"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/intel/:path*",
+      "destination": "https://financial-manager-production-26f7.up.railway.app/intel/:path*"
+    },
+    {
+      "source": "/((?!api/|intel/).*)",
       "destination": "/index.html"
     }
   ],
