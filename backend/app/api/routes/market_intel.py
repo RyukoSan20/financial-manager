@@ -316,16 +316,10 @@ def get_fallback_forex():
 # ============ INDICES ============
 @router.get("/indices")
 async def get_indices():
-    """Get major market indices from Finnhub."""
+    """Get major market indices from Yahoo Finance API."""
     indices = []
     
-    if not FINNHUB_KEY:
-        return {
-            "updated": datetime.utcnow().isoformat(),
-            "indices": get_fallback_indices(),
-            "error": "FINNHUB_API_KEY not configured"
-        }
-    
+    # Yahoo Finance symbols for major indices
     index_symbols = [
         ("^GSPC", "S&P 500", "US"),
         ("^IXIC", "NASDAQ", "US"),
@@ -333,20 +327,34 @@ async def get_indices():
         ("^JKSE", "IHSG", "ID"),
         ("^N225", "NIKKEI 225", "JP"),
         ("^HSI", "HANG SENG", "HK"),
+        ("^FTSE", "FTSE 100", "UK"),
+        ("^AXJO", "ASX 200", "AU"),
     ]
     
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=20.0) as client:
         for symbol, name, region in index_symbols:
             try:
+                # Use Yahoo Finance API (free, no key required)
                 resp = await client.get(
-                    "https://finnhub.io/api/v1/quote",
-                    params={"symbol": symbol, "token": FINNHUB_KEY}
+                    f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
+                    params={
+                        "interval": "1d",
+                        "range": "1d"
+                    },
+                    headers={"User-Agent": "Mozilla/5.0"}
                 )
+                
                 if resp.status_code == 200:
                     data = resp.json()
-                    current = data.get('c', 0)
-                    prev = data.get('pc', 0)
-                    change = current - prev
+                    result = data.get('chart', {}).get('result', [{}])[0]
+                    meta = result.get('meta', {})
+                    
+                    current = meta.get('regularMarketPrice', 0)
+                    prev = meta.get('previousClose', meta.get('chartPreviousClose', 0))
+                    high = meta.get('regularMarketDayHigh', 0)
+                    low = meta.get('regularMarketDayLow', 0)
+                    
+                    change = current - prev if current and prev else 0
                     change_pct = (change / prev * 100) if prev else 0
                     
                     indices.append({
@@ -356,11 +364,12 @@ async def get_indices():
                         "price": current,
                         "change": change,
                         "change_percent": change_pct,
-                        "high": data.get('h', 0),
-                        "low": data.get('l', 0),
-                        "source": "Finnhub"
+                        "high": high,
+                        "low": low,
+                        "source": "Yahoo Finance"
                     })
-            except Exception:
+            except Exception as e:
+                # Skip failed indices silently
                 pass
     
     if not indices:

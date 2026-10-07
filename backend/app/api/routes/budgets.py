@@ -17,13 +17,13 @@ from app.services.calculation_service import calculation_service
 router = APIRouter()
 
 
-@router.get("/", response_model=List[BudgetResponse])
+@router.get("/", response_model=List[dict])
 def list_budgets(
     active_only: bool = True,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all budgets for current user."""
+    """Get all budgets for current user WITH spent calculation."""
     query = db.query(Budget)
     if active_only:
         query = query.filter(Budget.is_active == True)
@@ -31,7 +31,48 @@ def list_budgets(
     if current_user:
         query = query.filter(Budget.user_id == current_user.id)
     
-    return query.all()
+    budgets = query.all()
+    result = []
+    
+    for budget in budgets:
+        # Calculate actual spent in budget period
+        spent_query = db.query(Transaction).filter(
+            Transaction.type == "expense",
+            Transaction.date >= budget.start_date,
+        )
+        
+        if budget.user_id:
+            spent_query = spent_query.filter(Transaction.user_id == budget.user_id)
+        if budget.end_date:
+            spent_query = spent_query.filter(Transaction.date <= budget.end_date)
+        if budget.category_id:
+            spent_query = spent_query.filter(Transaction.category_id == budget.category_id)
+        if budget.account_id:
+            spent_query = spent_query.filter(Transaction.account_id == budget.account_id)
+        
+        actual_spent = sum(t.amount for t in spent_query.all())
+        
+        # Calculate remaining and utilization
+        remaining = float(budget.amount) - float(actual_spent)
+        utilization = (float(actual_spent) / float(budget.amount) * 100) if budget.amount > 0 else 0
+        
+        budget_dict = {
+            "id": budget.id,
+            "name": budget.name,
+            "amount": budget.amount,
+            "spent": actual_spent,
+            "remaining": remaining,
+            "utilization": utilization,
+            "start_date": budget.start_date,
+            "end_date": budget.end_date,
+            "category_id": budget.category_id,
+            "account_id": budget.account_id,
+            "is_active": budget.is_active,
+            "period_type": budget.period_type,
+        }
+        result.append(budget_dict)
+    
+    return result
 
 
 @router.get("/{budget_id}", response_model=BudgetResponse)
