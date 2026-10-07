@@ -10,7 +10,7 @@ import httpx
 from datetime import datetime
 import os
 
-router = APIRouter(prefix="/api/market-intel", tags=["market-intel"])
+router = APIRouter(prefix="/intel", tags=["market-intel"])
 
 FINNHUB_KEY = os.getenv("FINNHUB_API_KEY", "")
 API_NINJAS_KEY = os.getenv("API_NINJAS_KEY", "v8IqqlPhChYtBosWQNRD6CNAdmulvLC7zpdJYZH1")
