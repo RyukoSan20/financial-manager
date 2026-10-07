@@ -253,9 +253,10 @@ async def get_crypto(symbols: Optional[str] = "BTC,ETH,SOL,XRP,ADA,DOGE,BNB"):
 # ============ FOREX ============
 @router.get("/forex")
 async def get_forex():
-    """Get real-time forex rates from Frankfurter API."""
+    """Get real-time forex rates from Frankfurter API with Open Exchange Rates fallback."""
     forex_data = []
     
+    # Try Frankfurter first
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
@@ -277,6 +278,8 @@ async def get_forex():
                     ("USD/CAD", rates.get("CAD", 1.36), 1.36),
                     ("USD/CHF", rates.get("CHF", 0.88), 0.88),
                     ("USD/SGD", rates.get("SGD", 1.35), 1.35),
+                    ("USD/MYR", rates.get("MYR", 4.72), 4.72),
+                    ("USD/THB", rates.get("THB", 34.5), 34.5),
                 ]
                 
                 for pair, current, prev in pairs:
@@ -292,8 +295,53 @@ async def get_forex():
                         "change_percent": change_pct,
                         "source": "Frankfurter"
                     })
-    except Exception as e:
-        # Fallback rates
+                return {
+                    "updated": datetime.utcnow().isoformat(),
+                    "forex": forex_data,
+                    "total": len(forex_data)
+                }
+    except:
+        pass
+    
+    # Fallback to Open Exchange Rates free tier
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://open.er-api.com/v6/latest/USD"
+            )
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                rates = data.get("rates", {})
+                
+                pairs = [
+                    ("USD/IDR", rates.get("IDR", 15600), 15600),
+                    ("USD/JPY", rates.get("JPY", 149.5), 149.5),
+                    ("EUR/USD", 1/rates.get("EUR", 0.92) if rates.get("EUR") else 1.087, 1.087),
+                    ("GBP/USD", 1/rates.get("GBP", 0.79) if rates.get("GBP") else 1.266, 1.266),
+                    ("AUD/USD", 1/rates.get("AUD", 0.65) if rates.get("AUD") else 1.538, 1.538),
+                    ("USD/CAD", rates.get("CAD", 1.36), 1.36),
+                    ("USD/CHF", rates.get("CHF", 0.88), 0.88),
+                ]
+                
+                for pair, current, prev in pairs:
+                    change = current - prev
+                    change_pct = (change / prev * 100) if prev else 0
+                    
+                    forex_data.append({
+                        "pair": pair,
+                        "base": "USD",
+                        "price": current,
+                        "prev_price": prev,
+                        "change": change,
+                        "change_percent": change_pct,
+                        "source": "Open Exchange Rates"
+                    })
+    except:
+        pass
+    
+    # Final fallback
+    if not forex_data:
         forex_data = get_fallback_forex()
     
     return {
