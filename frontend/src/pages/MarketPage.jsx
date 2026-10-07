@@ -38,7 +38,7 @@ export const MarketPage = () => {
     setError(null);
     
     try {
-      const result = await api.get('/market-intel/summary');
+      const response = await api.get('/intel/summary');
       setData(result);
       setLastUpdate(new Date());
       
