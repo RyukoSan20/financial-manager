@@ -24,4 +24,5 @@ from . import (
     ninjas,
     market_intel,
     zap_ink,
+    realtime_market,
 )
