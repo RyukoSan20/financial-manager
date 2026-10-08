@@ -136,16 +136,17 @@ async def get_stock_summary(code: str):
                 today_volume = 0
                 
                 for i, ts in enumerate(timestamps):
-                    if i < len(quote.get('high', [])):
+                    if i < len(quote.get('high', [])) and quote['high'][i] is not None:
                         high = quote['high'][i] or 0
-                        low = quote['low'][i] or float('inf')
+                        low = quote['low'][i] if quote['low'][i] is not None else 0
                         if high > today_high:
                             today_high = high
                         if low < today_low:
                             today_low = low
-                        if today_open == 0 and quote['open'][i]:
+                        if today_open == 0 and quote['open'][i] is not None:
                             today_open = quote['open'][i]
-                        today_volume += quote['volume'][i] if i < len(quote.get('volume', [])) else 0
+                        vol = quote['volume'][i] if i < len(quote.get('volume', [])) and quote['volume'][i] is not None else 0
+                        today_volume += vol
                 
                 if today_low == float('inf'):
                     today_low = 0
