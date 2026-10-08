@@ -112,6 +112,25 @@ FOREX_PAIRS = {
     "MYR/IDR": "MYRIDR=X",
 }
 
+# Commodities (Gold, Oil, Silver, etc.)
+COMMODITIES = {
+    "GOLD": {"name": "Gold (XAU/USD)", "yahoo": "GC=F", "unit": "oz"},
+    "SILVER": {"name": "Silver (XAG/USD)", "yahoo": "SI=F", "unit": "oz"},
+    "CRUDE OIL": {"name": "Crude Oil (WTI)", "yahoo": "CL=F", "unit": "bbl"},
+    "BRENT OIL": {"name": "Brent Crude", "yahoo": "BZ=F", "unit": "bbl"},
+    "NATURAL GAS": {"name": "Natural Gas", "yahoo": "NG=F", "unit": "MMBtu"},
+    "COPPER": {"name": "Copper", "yahoo": "HG=F", "unit": "lb"},
+    "PLATINUM": {"name": "Platinum", "yahoo": "PL=F", "unit": "oz"},
+    "PALLADIUM": {"name": "Palladium", "yahoo": "PA=F", "unit": "oz"},
+    "CORN": {"name": "Corn", "yahoo": "ZC=F", "unit": "bu"},
+    "WHEAT": {"name": "Wheat", "yahoo": "ZW=F", "unit": "bu"},
+    "SOYBEANS": {"name": "Soybeans", "yahoo": "ZS=F", "unit": "bu"},
+    "COFFEE": {"name": "Coffee", "yahoo": "KC=F", "unit": "lb"},
+    "SUGAR": {"name": "Sugar", "yahoo": "SB-F", "unit": "lb"},
+    "COCOA": {"name": "Cocoa", "yahoo": "CC-F", "unit": "MT"},
+    "LUMBER": {"name": "Lumber", "yahoo": "LBS=F", "unit": "MBF"},
+}
+
 
 class StockQuote(BaseModel):
     symbol: str
@@ -380,6 +399,55 @@ async def get_forex_quotes():
     }
 
 
+# ============ REALTIME COMMODITIES ============
+@router.get("/commodities/quotes")
+async def get_commodities_quotes():
+    """Get real-time commodity prices from Yahoo Finance Futures."""
+    results = []
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for symbol, info in COMMODITIES.items():
+            try:
+                resp = await client.get(
+                    f"https://query1.finance.yahoo.com/v8/finance/chart/{info['yahoo']}",
+                    params={"interval": "1d", "range": "2d"},
+                    headers={"User-Agent": "Mozilla/5.0"}
+                )
+                
+                if resp.status_code == 200:
+                    data = resp.json()
+                    result = data.get('chart', {}).get('result', [{}])[0]
+                    meta = result.get('meta', {})
+                    
+                    current_price = meta.get('regularMarketPrice', 0) or 0
+                    prev_close = meta.get('chartPreviousClose', 0) or 0
+                    
+                    change = current_price - prev_close if current_price and prev_close else 0
+                    change_pct = (change / prev_close * 100) if prev_close else 0
+                    
+                    if current_price > 0:
+                        results.append({
+                            "symbol": symbol,
+                            "name": info["name"],
+                            "price": float(current_price),
+                            "unit": info["unit"],
+                            "prev_close": float(prev_close),
+                            "change": float(change),
+                            "change_percent": float(change_pct),
+                            "timestamp": datetime.now().isoformat(),
+                            "source": "Yahoo Finance"
+                        })
+            except Exception as e:
+                print(f"Error fetching {symbol}: {e}")
+    
+    return {
+        "quotes": results,
+        "total": len(results),
+        "updated": datetime.now().isoformat(),
+        "source": "Yahoo Finance (Real-Time)"
+    }
+
+
 # ============ SINGLE STOCK DETAIL ============
 @router.get("/stock/{symbol}")
 async def get_stock_detail(symbol: str):
@@ -467,9 +535,11 @@ async def get_market_summary():
         crypto_task = get_crypto_quotes()
         forex_task = get_forex_quotes()
         
+        commodities_task = get_commodities_quotes()
+        
         # Create tasks
-        idx_results, us_results, crypto_results, forex_results = await asyncio.gather(
-            idx_task, us_task, crypto_task, forex_task,
+        idx_results, us_results, crypto_results, forex_results, commodities_results = await asyncio.gather(
+            idx_task, us_task, crypto_task, forex_task, commodities_task,
             return_exceptions=True
         )
         
@@ -479,5 +549,6 @@ async def get_market_summary():
             "us_stocks": us_results if isinstance(us_results, dict) else {"quotes": [], "error": str(us_results)},
             "crypto": crypto_results if isinstance(crypto_results, dict) else {"quotes": [], "error": str(crypto_results)},
             "forex": forex_results if isinstance(forex_results, dict) else {"quotes": [], "error": str(forex_results)},
+            "commodities": commodities_results if isinstance(commodities_results, dict) else {"quotes": [], "error": str(commodities_results)},
             "source": "Yahoo Finance (Real-Time)"
         }
