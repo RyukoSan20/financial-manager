@@ -175,6 +175,7 @@ app.include_router(market.router, prefix="/api/market")
 app.include_router(finnhub.router, prefix="/api/finnhub")
 app.include_router(ninjas.router, prefix="")
 app.include_router(market_intel.router, prefix="")
+app.include_router(zap_ink.router, prefix="")
 
 
 # Recurring auto-generator cron endpoint (for Railway cron)

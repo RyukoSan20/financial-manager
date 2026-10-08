@@ -23,4 +23,5 @@ from . import (
     finnhub,
     ninjas,
     market_intel,
+    zap_ink,
 )
