@@ -99,124 +99,164 @@ async def get_idx_stocks():
 # ============ STOCK SUMMARY (Real-time Quote) ============
 @router.get("/summary/{code}")
 async def get_stock_summary(code: str):
-    """Get real-time stock summary from IDX."""
+    """Get real-time stock summary - Yahoo Finance for IDX stocks."""
     code = code.upper()
     
     if code not in IDX_STOCKS:
         raise HTTPException(status_code=404, detail=f"Stock {code} not found")
     
     stock_info = IDX_STOCKS[code]
+    yahoo_symbol = f"{code}.JK"
     
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
-            # Get stock summary from IDX dataset
+            # Get today's data from Yahoo Finance
             resp = await client.get(
-                f"{ZAPI_BASE_URL}/finance:idx:stock-summary",
-                params={
-                    "code": code,
-                    "start": 0,
-                    "length": 1
-                },
-                headers={"x-api-key": ZAPI_KEY}
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_symbol}",
+                params={"interval": "1h", "range": "1d"},
+                headers={"User-Agent": "Mozilla/5.0"}
             )
             
             if resp.status_code == 200:
                 data = resp.json()
-                records = data.get('data', {}).get('data', [])
+                result = data.get('chart', {}).get('result', [{}])[0]
+                meta = result.get('meta', {})
                 
-                if records:
-                    record = records[0]
-                    prev_close = record.get('Previous', 0)
-                    close = record.get('Close', 0)
-                    change = close - prev_close
-                    change_pct = (change / prev_close * 100) if prev_close else 0
-                    
-                    return {
-                        "code": code,
-                        "name": stock_info["name"],
-                        "stockId": stock_info["stockId"],
-                        "sector": stock_info["sector"],
-                        "price": close,
-                        "previous_close": prev_close,
-                        "open": record.get('OpenPrice', 0),
-                        "high": record.get('High', 0),
-                        "low": record.get('Low', 0),
-                        "close": close,
-                        "change": change,
-                        "change_percent": change_pct,
-                        "volume": record.get('Volume', 0),
-                        "value": record.get('Value', 0),
-                        "offer": record.get('Offer', 0),
-                        "bid": record.get('Bid', 0),
-                        "foreign_buy": record.get('ForeignBuy', 0),
-                        "foreign_sell": record.get('ForeignSell', 0),
-                        "date": record.get('Date', ''),
-                        "source": "IDX via Zap.ink"
-                    }
+                current_price = meta.get('regularMarketPrice', 0)
+                prev_close = meta.get('previousClose', meta.get('chartPreviousClose', 0))
+                market_state = meta.get('marketState', 'CLOSED')
+                
+                # Get quote details
+                quote = result.get('indicators', {}).get('quote', [{}])[0]
+                timestamps = result.get('timestamp', [])
+                
+                today_high = 0
+                today_low = float('inf')
+                today_open = 0
+                today_volume = 0
+                
+                for i, ts in enumerate(timestamps):
+                    if i < len(quote.get('high', [])):
+                        high = quote['high'][i] or 0
+                        low = quote['low'][i] or float('inf')
+                        if high > today_high:
+                            today_high = high
+                        if low < today_low:
+                            today_low = low
+                        if today_open == 0 and quote['open'][i]:
+                            today_open = quote['open'][i]
+                        today_volume += quote['volume'][i] if i < len(quote.get('volume', [])) else 0
+                
+                if today_low == float('inf'):
+                    today_low = 0
+                
+                change = current_price - prev_close if current_price and prev_close else 0
+                change_pct = (change / prev_close * 100) if prev_close else 0
+                
+                return {
+                    "code": code,
+                    "name": stock_info["name"],
+                    "stockId": stock_info["stockId"],
+                    "sector": stock_info["sector"],
+                    "price": current_price,
+                    "previous_close": prev_close,
+                    "open": today_open,
+                    "high": today_high,
+                    "low": today_low,
+                    "close": current_price,
+                    "change": change,
+                    "change_percent": change_pct,
+                    "volume": today_volume,
+                    "market_state": market_state,
+                    "exchange": "IDX",
+                    "currency": "IDR",
+                    "source": "Yahoo Finance"
+                }
     except Exception as e:
-        pass
+        return {
+            "code": code,
+            "name": stock_info["name"],
+            "stockId": stock_info["stockId"],
+            "sector": stock_info["sector"],
+            "price": 0,
+            "error": str(e),
+            "source": "Error"
+        }
     
-    # Fallback with error indication
     return {
         "code": code,
         "name": stock_info["name"],
         "stockId": stock_info["stockId"],
         "sector": stock_info["sector"],
         "price": 0,
-        "error": "Unable to fetch data",
-        "source": "Fallback"
+        "error": "Unable to fetch",
+        "source": "Unknown"
     }
 
 
 # ============ ALL STOCKS QUOTES ============
 @router.get("/quotes")
 async def get_all_quotes():
-    """Get quotes for all major Indonesian stocks."""
+    """Get quotes for all major Indonesian stocks from Yahoo Finance."""
     quotes = []
-    errors = []
     
     async with httpx.AsyncClient(timeout=30.0) as client:
+        # Fetch all stocks in parallel using Yahoo Finance
         for code, info in IDX_STOCKS.items():
             try:
+                yahoo_symbol = f"{code}.JK"
                 resp = await client.get(
-                    f"{ZAPI_BASE_URL}/finance:idx:stock-summary",
-                    params={"code": code, "start": 0, "length": 1},
-                    headers={"x-api-key": ZAPI_KEY}
+                    f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_symbol}",
+                    params={"interval": "1d", "range": "2d"},
+                    headers={"User-Agent": "Mozilla/5.0"}
                 )
                 
                 if resp.status_code == 200:
                     data = resp.json()
-                    records = data.get('data', {}).get('data', [])
+                    result = data.get('chart', {}).get('result', [{}])[0]
+                    meta = result.get('meta', {})
                     
-                    if records:
-                        record = records[0]
-                        prev_close = record.get('Previous', 0)
-                        close = record.get('Close', 0)
-                        change = close - prev_close
-                        change_pct = (change / prev_close * 100) if prev_close else 0
-                        
-                        quotes.append(StockQuote(
-                            code=code,
-                            name=info["name"],
-                            price=close,
-                            change=change,
-                            change_percent=change_pct,
-                            open=record.get('OpenPrice', 0),
-                            high=record.get('High', 0),
-                            low=record.get('Low', 0),
-                            close=close,
-                            volume=record.get('Volume', 0),
-                            value=record.get('Value', 0),
-                            sector=info["sector"],
-                            updated=record.get('Date', datetime.now().isoformat())
-                        ))
+                    current_price = meta.get('regularMarketPrice', 0)
+                    prev_close = meta.get('previousClose', 0)
+                    
+                    quote = result.get('indicators', {}).get('quote', [{}])[0]
+                    timestamps = result.get('timestamp', [])
+                    
+                    # Get today's data
+                    high_list = quote.get('high', [])
+                    low_list = quote.get('low', [])
+                    today_high = max([h for h in high_list if h]) if high_list else 0
+                    today_low = min([l for l in low_list if l]) if low_list else 0
+                    
+                    change = current_price - prev_close if current_price and prev_close else 0
+                    change_pct = (change / prev_close * 100) if prev_close else 0
+                    
+                    if current_price > 0:  # Only include valid stocks
+                        quotes.append({
+                            "code": code,
+                            "name": info["name"],
+                            "price": current_price,
+                            "change": change,
+                            "change_percent": change_pct,
+                            "open": meta.get('regularMarketOpen', 0),
+                            "high": today_high,
+                            "low": today_low,
+                            "close": current_price,
+                            "volume": meta.get('regularMarketVolume', 0),
+                            "value": meta.get('regularMarketDayHigh', 0) * meta.get('regularMarketVolume', 0),
+                            "sector": info["sector"],
+                            "updated": datetime.now().isoformat()
+                        })
             except Exception as e:
-                errors.append({"code": code, "error": str(e)})
+                pass
+    
+    # Sort by sector then by market cap proxy (price * volume)
+    quotes.sort(key=lambda x: (x['sector'], -(x.get('volume', 0) * x.get('price', 0))))
     
     return {
         "quotes": quotes,
         "total": len(quotes),
-        "errors": errors if errors else None
+        "updated": datetime.now().isoformat()
     }
 
 
