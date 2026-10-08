@@ -10,7 +10,7 @@ from app.api.routes import (
     dashboard, calculators,
     transfers, recurring, goals, debts, analytics,
     auth, data, parser, ai_advisor, scan_jobs, feed,
-    exchange, market, finnhub, ninjas, market_intel
+    exchange, market, finnhub, ninjas, market_intel, zap_ink
 )
 
 # Import models to register with SQLAlchemy
