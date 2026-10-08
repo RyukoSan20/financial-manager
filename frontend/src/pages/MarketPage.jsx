@@ -2,19 +2,86 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, Button, Badge, Spinner } from '../components/ui';
 import { 
   TrendingUp, TrendingDown, RefreshCw, BarChart3,
-  Search, X, BookOpen, PieChart, Activity, DollarSign,
-  ArrowUpRight, ArrowDownRight, Globe, Bitcoin, Gem, Landmark
+  Search, BookOpen, PieChart, Activity, DollarSign,
+  ArrowUpRight, ArrowDownRight, Globe, Bitcoin, Gem, Landmark,
+  Sun, Moon, ChevronUp, ChevronDown, Play, ExternalLink
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
 
+// Dark Mode Toggle Component
+const ThemeToggle = ({ isDark, onToggle }) => (
+  <button
+    onClick={onToggle}
+    className={`relative w-14 h-7 rounded-full transition-all duration-300 ${
+      isDark ? 'bg-gray-700' : 'bg-gray-300'
+    }`}
+    aria-label="Toggle theme"
+  >
+    <span className={`absolute top-0.5 w-6 h-6 rounded-full shadow-md flex items-center justify-center transition-all duration-300 ${
+      isDark ? 'left-7 bg-yellow-400' : 'left-0.5 bg-white'
+    }`}>
+      {isDark ? (
+        <Moon className="w-3.5 h-3.5 text-gray-800" />
+      ) : (
+        <Sun className="w-3.5 h-3.5 text-yellow-500" />
+      )}
+    </span>
+  </button>
+);
+
+// Market Card with proper theming
+const MarketCard = ({ name, value, change, changeValue, positive, unit = '', isDark }) => {
+  return (
+    <div className={`p-4 rounded-xl border transition-all hover:shadow-lg ${
+      isDark 
+        ? 'bg-gray-800/80 border-gray-700 hover:bg-gray-800' 
+        : 'bg-white border-gray-200 hover:bg-gray-50'
+    }`}>
+      <p className={`text-sm font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+        {name}
+      </p>
+      <p className={`text-xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        {value}{unit}
+      </p>
+      <div className={`flex items-center gap-1 text-sm font-medium ${
+        positive ? 'text-green-600' : 'text-red-600'
+      }`}>
+        {positive ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        <span>{changeValue !== undefined ? changeValue : change}</span>
+      </div>
+    </div>
+  );
+};
+
 export const MarketPage = () => {
+  // Dark mode state
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return true;
+  });
+
   const [loading, setLoading] = useState(true);
   const [marketData, setMarketData] = useState(null);
   const [selectedSymbol, setSelectedSymbol] = useState('FX_IDC:USDIDR');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('realtime'); // realtime, table, learn
-  const [activeTab, setActiveTab] = useState('all'); // all, idx, us, crypto, forex
+  const [activeTab, setActiveTab] = useState('all'); // all, idx, us, crypto, forex, commodities
+  const [activeMarketTab, setActiveMarketTab] = useState('forex');
   const tvContainerRef = useRef(null);
+
+  // Apply dark mode
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  // Toggle dark mode
+  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
 
   // Fetch all real-time market data
   const fetchMarketData = useCallback(async () => {
@@ -32,11 +99,11 @@ export const MarketPage = () => {
 
   useEffect(() => {
     fetchMarketData();
-    const interval = setInterval(fetchMarketData, 30000); // Refresh every 30s
+    const interval = setInterval(fetchMarketData, 30000);
     return () => clearInterval(interval);
   }, [fetchMarketData]);
 
-  // Initialize TradingView widget
+  // Initialize TradingView widget with theme
   useEffect(() => {
     if (viewMode !== 'realtime' || !tvContainerRef.current) return;
 
@@ -62,31 +129,26 @@ export const MarketPage = () => {
       save_image: true,
       style: '1',
       symbol: selectedSymbol,
-      theme: 'dark',
+      theme: isDarkMode ? 'dark' : 'light',
       timezone: 'Asia/Jakarta',
-      backgroundColor: '#1f2937',
-      gridColor: 'rgba(46, 46, 46, 0.3)',
+      backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
+      gridColor: isDarkMode ? 'rgba(46, 46, 46, 0.3)' : 'rgba(46, 46, 46, 0.1)',
       withdateranges: true,
       compareSymbols: [],
       support_host: 'https://www.tradingview.com',
       studies: ['RSI@tv-basicstudies', 'MASimple@tv-basicstudies'],
       autosize: true,
       watchlist: [
-        // Forex
         'FX_IDC:USDIDR', 'FX:EURUSD', 'FX:GBPUSD', 'FX:USDJPY',
-        // IDX Stocks
         'IDX:BBCA', 'IDX:BBRI', 'IDX:BMRI', 'IDX:TLKM', 'IDX:ASII', 'IDX:UNVR', 'IDX:ADRO', 'IDX:GOTO',
-        // US Stocks
         'NASDAQ:AAPL', 'NASDAQ:MSFT', 'NASDAQ:GOOGL', 'NASDAQ:TSLA', 'NASDAQ:NVDA',
-        // Crypto
         'BINANCE:BTCUSDT', 'BINANCE:ETHUSDT',
-        // Commodities
         'TVC:GOLD', 'TVC:USOIL',
       ],
     });
 
     tvContainerRef.current.appendChild(script);
-  }, [viewMode, selectedSymbol]);
+  }, [viewMode, selectedSymbol, isDarkMode]);
 
   // Symbol options for TradingView
   const symbolOptions = [
@@ -103,26 +165,16 @@ export const MarketPage = () => {
       { symbol: 'IDX:TLKM', name: 'TLKM' },
       { symbol: 'IDX:ASII', name: 'ASII' },
       { symbol: 'IDX:UNVR', name: 'UNVR' },
-      { symbol: 'IDX:ADRO', name: 'ADRO' },
-      { symbol: 'IDX:GOTO', name: 'GOTO' },
     ]},
     { group: '🇺🇸 Saham US', symbols: [
       { symbol: 'NASDAQ:AAPL', name: 'AAPL' },
       { symbol: 'NASDAQ:MSFT', name: 'MSFT' },
       { symbol: 'NASDAQ:GOOGL', name: 'GOOGL' },
       { symbol: 'NASDAQ:TSLA', name: 'TSLA' },
-      { symbol: 'NASDAQ:NVDA', name: 'NVDA' },
     ]},
     { group: '₿ Crypto', symbols: [
       { symbol: 'BINANCE:BTCUSDT', name: 'BTC' },
       { symbol: 'BINANCE:ETHUSDT', name: 'ETH' },
-      { symbol: 'BINANCE:BNBUSDT', name: 'BNB' },
-      { symbol: 'BINANCE:SOLUSDT', name: 'SOL' },
-    ]},
-    { group: '🪙 Komoditas', symbols: [
-      { symbol: 'TVC:GOLD', name: 'GOLD' },
-      { symbol: 'TVC:USOIL', name: 'OIL' },
-      { symbol: 'TVC:SILVER', name: 'SILVER' },
     ]},
   ];
 
@@ -152,7 +204,8 @@ export const MarketPage = () => {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(s => 
         s.symbol?.toLowerCase().includes(term) || 
-        s.name?.toLowerCase().includes(term)
+        s.name?.toLowerCase().includes(term) ||
+        s.pair?.toLowerCase().includes(term)
       );
     }
     
@@ -164,117 +217,134 @@ export const MarketPage = () => {
     {
       title: '📊 Cara Baca Candlestick',
       icon: BarChart3,
-      content: 'Candlestick menunjukkan Open, High, Low, Close (OHLC). Body hijau = harga naik, merah = turun. Shadow atas/bawah menunjukkan range harga.',
+      content: 'Candlestick menunjukkan Open, High, Low, Close (OHLC). Body hijau = harga naik, merah = turun.',
     },
     {
       title: '📈 Indikator RSI',
       icon: Activity,
-      content: 'RSI (Relative Strength Index) mengukur kecepatan perubahan harga. RSI > 70 = overbought (jenuh beli), RSI < 30 = oversold (jenuh jual).',
+      content: 'RSI > 70 = overbought (jenuh beli), RSI < 30 = oversold (jenuh jual).',
     },
     {
       title: '💰 Dollar Cost Averaging',
       icon: DollarSign,
-      content: 'Strategi investasi rutin dengan jumlah tetap. Contoh: tiap bulan Rp 500rb. Mengurangi risiko beli di harga tertinggi.',
+      content: 'Strategi investasi rutin dengan jumlah tetap untuk kurangi risiko timing.',
     },
     {
       title: '🎯 Support & Resistance',
       icon: PieChart,
-      content: 'Support = level harga где покупатели вступают. Resistance = level где продавцы вступают. Pecah support = trend turun, pecah resistance = trend naik.',
-    },
-    {
-      title: '⚠️ Risk Management',
-      icon: TrendingDown,
-      content: 'Jangan investasi lebih dari 10-20% modal di satu saham. Pasang stop-loss untuk batasi kerugian maksimal 5-10%.',
-    },
-    {
-      title: '📚 Diversifikasi',
-      icon: Globe,
-      content: 'Sebar investasi ke berbagai sektor (bank, consumer, mining) dan asset (saham, obligasi, reksadana) untuk kurangi risiko.',
+      content: 'Support = level beli, Resistance = level jual. Pecah resistance = trend naik.',
     },
   ];
 
+  // Theme-aware colors
+  const bgPrimary = isDarkMode ? 'bg-gray-900' : 'bg-gray-50';
+  const bgCard = isDarkMode ? 'bg-gray-800' : 'bg-white';
+  const bgCardHover = isDarkMode ? 'hover:bg-gray-750' : 'hover:bg-gray-100';
+  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-600';
+  const textMuted = isDarkMode ? 'text-gray-500' : 'text-gray-400';
+  const borderColor = isDarkMode ? 'border-gray-700' : 'border-gray-200';
+  const borderHover = isDarkMode ? 'hover:border-gray-600' : 'hover:border-gray-300';
+
   if (loading && !marketData) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className={`min-h-screen ${bgPrimary} flex items-center justify-center`}>
         <Spinner size="lg" />
-        <span className="ml-3 text-gray-500">Memuat data pasar real-time...</span>
+        <span className={`ml-3 ${textSecondary}`}>Memuat data pasar...</span>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-900 min-h-screen text-white">
+    <div className={`min-h-screen ${bgPrimary} ${textPrimary} p-4 md:p-6`}>
       {/* Header */}
-      <div className="flex flex-wrap justify-between items-center gap-4">
+      <div className={`flex flex-wrap justify-between items-center gap-4 mb-6`}>
         <div>
-          <h1 className="text-2xl font-bold">Market Intelligence</h1>
-          <p className="text-gray-400 text-sm">
-            {marketData?.updated ? `Updated: ${new Date(marketData.updated).toLocaleTimeString()}` : 'Loading...'}
-            <span className="ml-2 text-green-400">● Real-Time</span>
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>Market Intelligence</h1>
+          <p className={`text-sm ${textSecondary} mt-1`}>
+            {marketData?.updated ? `Updated: ${new Date(marketData.updated).toLocaleTimeString()}` : ''}
+            <span className="ml-2 text-green-500 flex items-center gap-1">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              Real-Time
+            </span>
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button size="sm" variant={viewMode === 'learn' ? 'primary' : 'outline'} onClick={() => setViewMode('learn')} className="border-gray-600">
+        <div className="flex gap-3 items-center flex-wrap">
+          {/* Theme Toggle */}
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${bgCard} border ${borderColor}`}>
+            <Sun className={`w-4 h-4 ${textSecondary}`} />
+            <ThemeToggle isDark={isDarkMode} onToggle={toggleDarkMode} />
+            <Moon className={`w-4 h-4 ${textSecondary}`} />
+          </div>
+          
+          <Button size="sm" variant={viewMode === 'learn' ? 'primary' : 'outline'}
+            onClick={() => setViewMode('learn')}
+            className={`${isDarkMode ? 'border-gray-600 text-gray-300' : 'border-gray-300'}`}>
             <BookOpen className="w-4 h-4 mr-2" />
             Belajar
           </Button>
-          <Button size="sm" variant={viewMode === 'table' ? 'primary' : 'outline'} onClick={() => setViewMode('table')} className="border-gray-600">
+          <Button size="sm" variant={viewMode === 'table' ? 'primary' : 'outline'}
+            onClick={() => setViewMode('table')}
+            className={`${isDarkMode ? 'border-gray-600 text-gray-300' : 'border-gray-300'}`}>
             <BarChart3 className="w-4 h-4 mr-2" />
             Tabel
           </Button>
-          <Button size="sm" variant={viewMode === 'realtime' ? 'primary' : 'outline'} onClick={() => setViewMode('realtime')} className="border-gray-600">
+          <Button size="sm" variant={viewMode === 'realtime' ? 'primary' : 'outline'}
+            onClick={() => setViewMode('realtime')}
+            className={`${isDarkMode ? 'border-gray-600 text-gray-300' : 'border-gray-300'}`}>
             <Activity className="w-4 h-4 mr-2" />
             Chart
           </Button>
-          <Button size="sm" variant="outline" onClick={fetchMarketData} className="border-gray-600">
-            <RefreshCw className="w-4 h-4" />
+          <Button size="sm" variant="outline" onClick={fetchMarketData}
+            className={`${isDarkMode ? 'border-gray-600 text-gray-300' : 'border-gray-300'}`}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-gray-800 border-gray-700 p-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <Card className={`${bgCard} border ${borderColor} p-4`}>
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-900 rounded-lg">
-              <BarChart3 className="w-6 h-6 text-blue-400" />
+            <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100'}`}>
+              <BarChart3 className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
             </div>
             <div>
-              <p className="text-gray-400 text-sm">Saham IDX</p>
-              <p className="text-2xl font-bold">{marketData?.idx_stocks?.total || 0}</p>
+              <p className={`text-sm ${textSecondary}`}>Saham IDX</p>
+              <p className={`text-2xl font-bold ${textPrimary}`}>{marketData?.idx_stocks?.total || 0}</p>
             </div>
           </div>
         </Card>
-        <Card className="bg-gray-800 border-gray-700 p-4">
+        <Card className={`${bgCard} border ${borderColor} p-4`}>
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-900 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-green-400" />
+            <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-green-900/50' : 'bg-green-100'}`}>
+              <TrendingUp className={`w-6 h-6 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
             </div>
             <div>
-              <p className="text-gray-400 text-sm">Saham US</p>
-              <p className="text-2xl font-bold">{marketData?.us_stocks?.total || 0}</p>
+              <p className={`text-sm ${textSecondary}`}>Saham US</p>
+              <p className={`text-2xl font-bold ${textPrimary}`}>{marketData?.us_stocks?.total || 0}</p>
             </div>
           </div>
         </Card>
-        <Card className="bg-gray-800 border-gray-700 p-4">
+        <Card className={`${bgCard} border ${borderColor} p-4`}>
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-yellow-900 rounded-lg">
-              <Bitcoin className="w-6 h-6 text-yellow-400" />
+            <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-yellow-900/50' : 'bg-yellow-100'}`}>
+              <Bitcoin className={`w-6 h-6 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} />
             </div>
             <div>
-              <p className="text-gray-400 text-sm">Crypto</p>
-              <p className="text-2xl font-bold">{marketData?.crypto?.total || 0}</p>
+              <p className={`text-sm ${textSecondary}`}>Crypto</p>
+              <p className={`text-2xl font-bold ${textPrimary}`}>{marketData?.crypto?.total || 0}</p>
             </div>
           </div>
         </Card>
-        <Card className="bg-gray-800 border-gray-700 p-4">
+        <Card className={`${bgCard} border ${borderColor} p-4`}>
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-purple-900 rounded-lg">
-              <Landmark className="w-6 h-6 text-purple-400" />
+            <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-purple-900/50' : 'bg-purple-100'}`}>
+              <Landmark className={`w-6 h-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
             </div>
             <div>
-              <p className="text-gray-400 text-sm">Forex</p>
-              <p className="text-2xl font-bold">{marketData?.forex?.total || 0}</p>
+              <p className={`text-sm ${textSecondary}`}>Forex</p>
+              <p className={`text-2xl font-bold ${textPrimary}`}>{marketData?.forex?.total || 0}</p>
             </div>
           </div>
         </Card>
@@ -284,20 +354,22 @@ export const MarketPage = () => {
       {viewMode === 'realtime' && (
         <div className="space-y-4">
           {/* Symbol Selector */}
-          <Card className="bg-gray-800 border-gray-700 p-4">
+          <Card className={`${bgCard} border ${borderColor} p-4`}>
             <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-gray-400 text-sm mr-2">Chart:</span>
+              <span className={`text-sm ${textSecondary} mr-2 font-medium`}>Chart:</span>
               {symbolOptions.map(group => (
                 <div key={group.group} className="flex flex-wrap gap-1">
-                  <span className="text-xs text-gray-500 w-full">{group.group}</span>
+                  <span className={`text-xs ${textMuted} w-full font-medium`}>{group.group}</span>
                   {group.symbols.map(s => (
                     <button
                       key={s.symbol}
                       onClick={() => setSelectedSymbol(s.symbol)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                         selectedSymbol === s.symbol
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : isDarkMode
+                            ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
                       {s.name}
@@ -309,15 +381,27 @@ export const MarketPage = () => {
           </Card>
 
           {/* TradingView Chart */}
-          <Card className="bg-gray-800 border-gray-700 overflow-hidden" style={{ height: '600px' }}>
+          <Card className={`${bgCard} border ${borderColor} overflow-hidden`} style={{ height: '600px' }}>
             <div ref={tvContainerRef} className="w-full h-full" />
           </Card>
 
-          {/* Market Movers */}
+          {/* Quick Market Overview */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {[
+              { name: 'USD/IDR', value: marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.price?.toFixed(0) || '-', change: marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.change_percent?.toFixed(2) + '%' || '-', positive: (marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.change_percent || 0) >= 0 },
+              { name: 'BTC/USD', value: '$' + (marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.price?.toLocaleString() || '-'), change: (marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.change_percent_24h?.toFixed(2) || '-') + '%', positive: (marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.change_percent_24h || 0) >= 0 },
+              { name: 'ETH/USD', value: '$' + (marketData?.crypto?.quotes?.find(c => c.symbol === 'ETH')?.price?.toLocaleString() || '-'), change: (marketData?.crypto?.quotes?.find(c => c.symbol === 'ETH')?.change_percent_24h?.toFixed(2) || '-') + '%', positive: (marketData?.crypto?.quotes?.find(c => c.symbol === 'ETH')?.change_percent_24h || 0) >= 0 },
+              { name: 'GOLD', value: '$' + (marketData?.commodities?.quotes?.find(c => c.symbol === 'GOLD')?.price?.toFixed(0) || '-'), change: (marketData?.commodities?.quotes?.find(c => c.symbol === 'GOLD')?.change_percent?.toFixed(2) || '-') + '%', positive: (marketData?.commodities?.quotes?.find(c => c.symbol === 'GOLD')?.change_percent || 0) >= 0 },
+              { name: 'BBCA', value: 'Rp ' + (marketData?.idx_stocks?.quotes?.find(s => s.symbol === 'BBCA')?.price?.toLocaleString() || '-'), change: (marketData?.idx_stocks?.quotes?.find(s => s.symbol === 'BBCA')?.change_percent?.toFixed(2) || '-') + '%', positive: (marketData?.idx_stocks?.quotes?.find(s => s.symbol === 'BBCA')?.change_percent || 0) >= 0 },
+            ].map((item, idx) => (
+              <MarketCard key={idx} {...item} isDark={isDarkMode} />
+            ))}
+          </div>
+
+          {/* Top Gainers & Losers */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Top Gainers */}
-            <Card className="bg-gray-800 border-gray-700 p-4">
-              <h3 className="font-semibold text-green-400 mb-3 flex items-center gap-2">
+            <Card className={`${bgCard} border ${borderColor} p-4`}>
+              <h3 className={`font-semibold text-green-500 mb-3 flex items-center gap-2 ${textPrimary}`}>
                 <ArrowUpRight className="w-5 h-5" /> Top Gainers
               </h3>
               <div className="space-y-2">
@@ -326,17 +410,19 @@ export const MarketPage = () => {
                   .sort((a, b) => b.change_percent - a.change_percent)
                   .slice(0, 5)
                   .map(stock => (
-                    <div key={stock.symbol} className="flex justify-between items-center p-2 bg-gray-700 rounded">
-                      <span className="font-medium">{stock.symbol}</span>
-                      <span className="text-green-400">+{stock.change_percent?.toFixed(2)}%</span>
+                    <div key={stock.symbol} className={`flex justify-between items-center p-3 rounded-lg ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                      <div>
+                        <span className={`font-semibold ${textPrimary}`}>{stock.symbol}</span>
+                        <span className={`text-sm ${textMuted} ml-2`}>{stock.name}</span>
+                      </div>
+                      <span className="text-green-500 font-bold">+{stock.change_percent?.toFixed(2)}%</span>
                     </div>
                   ))}
               </div>
             </Card>
 
-            {/* Top Losers */}
-            <Card className="bg-gray-800 border-gray-700 p-4">
-              <h3 className="font-semibold text-red-400 mb-3 flex items-center gap-2">
+            <Card className={`${bgCard} border ${borderColor} p-4`}>
+              <h3 className={`font-semibold text-red-500 mb-3 flex items-center gap-2 ${textPrimary}`}>
                 <ArrowDownRight className="w-5 h-5" /> Top Losers
               </h3>
               <div className="space-y-2">
@@ -345,49 +431,14 @@ export const MarketPage = () => {
                   .sort((a, b) => a.change_percent - b.change_percent)
                   .slice(0, 5)
                   .map(stock => (
-                    <div key={stock.symbol} className="flex justify-between items-center p-2 bg-gray-700 rounded">
-                      <span className="font-medium">{stock.symbol}</span>
-                      <span className="text-red-400">{stock.change_percent?.toFixed(2)}%</span>
+                    <div key={stock.symbol} className={`flex justify-between items-center p-3 rounded-lg ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                      <div>
+                        <span className={`font-semibold ${textPrimary}`}>{stock.symbol}</span>
+                        <span className={`text-sm ${textMuted} ml-2`}>{stock.name}</span>
+                      </div>
+                      <span className="text-red-500 font-bold">{stock.change_percent?.toFixed(2)}%</span>
                     </div>
                   ))}
-              </div>
-            </Card>
-          </div>
-
-          {/* Crypto & Forex Quick View */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="bg-gray-800 border-gray-700 p-4">
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Bitcoin className="w-5 h-5 text-yellow-400" /> Crypto
-              </h3>
-              <div className="space-y-2">
-                {marketData?.crypto?.quotes?.slice(0, 6).map(coin => (
-                  <div key={coin.symbol} className="flex justify-between items-center p-2 bg-gray-700 rounded">
-                    <div>
-                      <span className="font-medium">{coin.symbol}</span>
-                      <span className="text-gray-400 text-sm ml-2">{formatPrice(coin.price, 'USD')}</span>
-                    </div>
-                    <span className={coin.change_percent_24h >= 0 ? 'text-green-400' : 'text-red-400'}>
-                      {coin.change_percent_24h >= 0 ? '+' : ''}{coin.change_percent_24h?.toFixed(2)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card className="bg-gray-800 border-gray-700 p-4">
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Landmark className="w-5 h-5 text-purple-400" /> Forex
-              </h3>
-              <div className="space-y-2">
-                {marketData?.forex?.quotes?.slice(0, 6).map(fx => (
-                  <div key={fx.pair} className="flex justify-between items-center p-2 bg-gray-700 rounded">
-                    <span className="font-medium">{fx.pair}</span>
-                    <span className={fx.change_percent >= 0 ? 'text-green-400' : 'text-red-400'}>
-                      {fx.price?.toFixed(4)} ({fx.change_percent >= 0 ? '+' : ''}{fx.change_percent?.toFixed(2)}%)
-                    </span>
-                  </div>
-                ))}
               </div>
             </Card>
           </div>
@@ -398,20 +449,24 @@ export const MarketPage = () => {
       {viewMode === 'table' && (
         <div className="space-y-4">
           {/* Tab Filters */}
-          <Card className="bg-gray-800 border-gray-700 p-4">
+          <Card className={`${bgCard} border ${borderColor} p-4`}>
             <div className="flex flex-wrap gap-2">
               {[
-                { key: 'all', label: 'All' },
-                { key: 'idx', label: '🇮🇩 IDX' },
+                { key: 'forex', label: '💱 Forex' },
+                { key: 'idx', label: '📊 IDX' },
                 { key: 'us', label: '🇺🇸 US' },
                 { key: 'crypto', label: '₿ Crypto' },
-                { key: 'forex', label: '💱 Forex' },
+                { key: 'commodities', label: '🪙 Commodities' },
               ].map(tab => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                    activeTab === tab.key ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === tab.key
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : isDarkMode
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   {tab.label}
@@ -421,153 +476,118 @@ export const MarketPage = () => {
           </Card>
 
           {/* Search */}
-          <Card className="bg-gray-800 border-gray-700 p-4">
+          <Card className={`${bgCard} border ${borderColor} p-4`}>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
               <input
                 type="text"
-                placeholder="Cari saham, crypto, forex..."
+                placeholder="Cari..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
+                className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${borderColor} ${
+                  isDarkMode 
+                    ? 'bg-gray-700 text-white placeholder-gray-400 border-gray-600' 
+                    : 'bg-gray-50 text-gray-900 placeholder-gray-400 border-gray-200'
+                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
               />
             </div>
           </Card>
 
           {/* IDX Stocks Table */}
-          {activeTab === 'all' || activeTab === 'idx' ? (
-            <Card className="bg-gray-800 border-gray-700 overflow-hidden">
-              <div className="p-4 border-b border-gray-700">
-                <h3 className="font-semibold">🇮🇩 Saham Indonesia (IDX)</h3>
+          {activeTab === 'idx' && (
+            <Card className={`${bgCard} border ${borderColor} overflow-hidden`}>
+              <div className={`p-4 border-b ${borderColor}`}>
+                <h3 className={`font-semibold ${textPrimary}`}>🇮🇩 Saham Indonesia (IDX)</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-700">
+                  <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm">Saham</th>
-                      <th className="px-4 py-3 text-right text-sm">Harga</th>
-                      <th className="px-4 py-3 text-right text-sm">Change</th>
-                      <th className="px-4 py-3 text-right text-sm">Open</th>
-                      <th className="px-4 py-3 text-right text-sm">High</th>
-                      <th className="px-4 py-3 text-right text-sm">Low</th>
-                      <th className="px-4 py-3 text-right text-sm">Volume</th>
-                      <th className="px-4 py-3 text-center text-sm">Sektor</th>
+                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>Saham</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Harga</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Change</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Volume</th>
+                      <th className={`px-4 py-3 text-center text-sm font-semibold ${textSecondary}`}>Sektor</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {getFilteredStocks(marketData?.idx_stocks?.quotes, 'idx').map(stock => (
-                      <tr key={stock.symbol} className="hover:bg-gray-700">
-                        <td className="px-4 py-3">
-                          <div className="font-medium">{stock.symbol}</div>
-                          <div className="text-xs text-gray-400">{stock.name}</div>
+                      <tr key={stock.symbol} className={`${bgCardHover} transition-colors`}>
+                        <td className={`px-4 py-3`}>
+                          <div className={`font-semibold ${textPrimary}`}>{stock.symbol}</div>
+                          <div className={`text-xs ${textMuted}`}>{stock.name}</div>
                         </td>
-                        <td className="px-4 py-3 text-right font-mono">{formatPrice(stock.price)}</td>
-                        <td className={`px-4 py-3 text-right font-mono ${stock.change_percent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <td className={`px-4 py-3 text-right font-mono font-semibold ${textPrimary}`}>{formatPrice(stock.price)}</td>
+                        <td className={`px-4 py-3 text-right font-mono font-semibold ${stock.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                           {stock.change_percent >= 0 ? '+' : ''}{stock.change_percent?.toFixed(2)}%
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-gray-300">{formatPrice(stock.open)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-gray-300">{formatPrice(stock.high)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-gray-300">{formatPrice(stock.low)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-gray-300">{formatVolume(stock.volume)}</td>
-                        <td className="px-4 py-3 text-center"><Badge>{stock.sector}</Badge></td>
+                        <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>{formatVolume(stock.volume)}</td>
+                        <td className={`px-4 py-3 text-center`}><Badge variant="outline">{stock.sector}</Badge></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </Card>
-          ) : null}
+          )}
 
           {/* US Stocks Table */}
-          {activeTab === 'all' || activeTab === 'us' ? (
-            <Card className="bg-gray-800 border-gray-700 overflow-hidden">
-              <div className="p-4 border-b border-gray-700">
-                <h3 className="font-semibold">🇺🇸 Saham Amerika (US)</h3>
+          {activeTab === 'us' && (
+            <Card className={`${bgCard} border ${borderColor} overflow-hidden`}>
+              <div className={`p-4 border-b ${borderColor}`}>
+                <h3 className={`font-semibold ${textPrimary}`}>🇺🇸 Saham Amerika (US)</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-700">
+                  <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm">Saham</th>
-                      <th className="px-4 py-3 text-right text-sm">Harga</th>
-                      <th className="px-4 py-3 text-right text-sm">Change</th>
-                      <th className="px-4 py-3 text-right text-sm">Volume</th>
+                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>Saham</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Harga</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Change</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Volume</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {getFilteredStocks(marketData?.us_stocks?.quotes, 'us').map(stock => (
-                      <tr key={stock.symbol} className="hover:bg-gray-700">
-                        <td className="px-4 py-3">
-                          <div className="font-medium">{stock.symbol}</div>
-                          <div className="text-xs text-gray-400">{stock.name}</div>
+                      <tr key={stock.symbol} className={`${bgCardHover} transition-colors`}>
+                        <td className={`px-4 py-3`}>
+                          <div className={`font-semibold ${textPrimary}`}>{stock.symbol}</div>
+                          <div className={`text-xs ${textMuted}`}>{stock.name}</div>
                         </td>
-                        <td className="px-4 py-3 text-right font-mono">{formatPrice(stock.price, 'USD')}</td>
-                        <td className={`px-4 py-3 text-right font-mono ${stock.change_percent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <td className={`px-4 py-3 text-right font-mono font-semibold ${textPrimary}`}>{formatPrice(stock.price, 'USD')}</td>
+                        <td className={`px-4 py-3 text-right font-mono font-semibold ${stock.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                           {stock.change_percent >= 0 ? '+' : ''}{stock.change_percent?.toFixed(2)}%
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-gray-300">{formatVolume(stock.volume)}</td>
+                        <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>{formatVolume(stock.volume)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </Card>
-          ) : null}
-
-          {/* Crypto Table */}
-          {activeTab === 'all' || activeTab === 'crypto' ? (
-            <Card className="bg-gray-800 border-gray-700 overflow-hidden">
-              <div className="p-4 border-b border-gray-700">
-                <h3 className="font-semibold">₿ Cryptocurrency</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-700">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm">Coin</th>
-                      <th className="px-4 py-3 text-right text-sm">Harga</th>
-                      <th className="px-4 py-3 text-right text-sm">24h Change</th>
-                      <th className="px-4 py-3 text-right text-sm">24h Volume</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {getFilteredStocks(marketData?.crypto?.quotes, 'crypto').map(coin => (
-                      <tr key={coin.symbol} className="hover:bg-gray-700">
-                        <td className="px-4 py-3 font-medium">{coin.symbol}</td>
-                        <td className="px-4 py-3 text-right font-mono">{formatPrice(coin.price, 'USD')}</td>
-                        <td className={`px-4 py-3 text-right font-mono ${coin.change_percent_24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {coin.change_percent_24h >= 0 ? '+' : ''}{coin.change_percent_24h?.toFixed(2)}%
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-gray-300">${formatVolume(coin.volume_24h)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          ) : null}
+          )}
 
           {/* Forex Table */}
-          {activeTab === 'all' || activeTab === 'forex' ? (
-            <Card className="bg-gray-800 border-gray-700 overflow-hidden">
-              <div className="p-4 border-b border-gray-700">
-                <h3 className="font-semibold">💱 Forex</h3>
+          {activeTab === 'forex' && (
+            <Card className={`${bgCard} border ${borderColor} overflow-hidden`}>
+              <div className={`p-4 border-b ${borderColor}`}>
+                <h3 className={`font-semibold ${textPrimary}`}>💱 Forex</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-700">
+                  <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm">Pair</th>
-                      <th className="px-4 py-3 text-right text-sm">Harga</th>
-                      <th className="px-4 py-3 text-right text-sm">Change</th>
+                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>Pair</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Harga</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Change</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {getFilteredStocks(marketData?.forex?.quotes, 'forex').map(fx => (
-                      <tr key={fx.pair} className="hover:bg-gray-700">
-                        <td className="px-4 py-3 font-medium">{fx.pair}</td>
-                        <td className="px-4 py-3 text-right font-mono">{fx.price?.toFixed(4)}</td>
-                        <td className={`px-4 py-3 text-right font-mono ${fx.change_percent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <tr key={fx.pair} className={`${bgCardHover} transition-colors`}>
+                        <td className={`px-4 py-3 font-semibold ${textPrimary}`}>{fx.pair}</td>
+                        <td className={`px-4 py-3 text-right font-mono font-semibold ${textPrimary}`}>{fx.price?.toFixed(4)}</td>
+                        <td className={`px-4 py-3 text-right font-mono font-semibold ${fx.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                           {fx.change_percent >= 0 ? '+' : ''}{fx.change_percent?.toFixed(2)}%
                         </td>
                       </tr>
@@ -576,30 +596,97 @@ export const MarketPage = () => {
                 </table>
               </div>
             </Card>
-          ) : null}
+          )}
+
+          {/* Crypto Table */}
+          {activeTab === 'crypto' && (
+            <Card className={`${bgCard} border ${borderColor} overflow-hidden`}>
+              <div className={`p-4 border-b ${borderColor}`}>
+                <h3 className={`font-semibold ${textPrimary}`}>₿ Cryptocurrency</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
+                    <tr>
+                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>Coin</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Harga</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>24h Change</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Volume</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {getFilteredStocks(marketData?.crypto?.quotes, 'crypto').map(coin => (
+                      <tr key={coin.symbol} className={`${bgCardHover} transition-colors`}>
+                        <td className={`px-4 py-3 font-semibold ${textPrimary}`}>{coin.symbol}</td>
+                        <td className={`px-4 py-3 text-right font-mono font-semibold ${textPrimary}`}>{formatPrice(coin.price, 'USD')}</td>
+                        <td className={`px-4 py-3 text-right font-mono font-semibold ${coin.change_percent_24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {coin.change_percent_24h >= 0 ? '+' : ''}{coin.change_percent_24h?.toFixed(2)}%
+                        </td>
+                        <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>${formatVolume(coin.volume_24h)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {/* Commodities Table */}
+          {activeTab === 'commodities' && (
+            <Card className={`${bgCard} border ${borderColor} overflow-hidden`}>
+              <div className={`p-4 border-b ${borderColor}`}>
+                <h3 className={`font-semibold ${textPrimary}`}>🪙 Komoditas</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
+                    <tr>
+                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>Komoditas</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Harga</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Change</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {getFilteredStocks(marketData?.commodities?.quotes, 'commodities').map(item => (
+                      <tr key={item.symbol} className={`${bgCardHover} transition-colors`}>
+                        <td className={`px-4 py-3`}>
+                          <div className={`font-semibold ${textPrimary}`}>{item.symbol}</div>
+                          <div className={`text-xs ${textMuted}`}>{item.name}</div>
+                        </td>
+                        <td className={`px-4 py-3 text-right font-mono font-semibold ${textPrimary}`}>${item.price?.toFixed(2)}/{item.unit}</td>
+                        <td className={`px-4 py-3 text-right font-mono font-semibold ${item.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {item.change_percent >= 0 ? '+' : ''}{item.change_percent?.toFixed(2)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
         </div>
       )}
 
       {/* Learning View */}
       {viewMode === 'learn' && (
         <div className="space-y-6">
-          <Card className="bg-gray-800 border-gray-700 p-6">
-            <h2 className="text-xl font-bold mb-2">📚 Panduan Trading untuk Pemula</h2>
-            <p className="text-gray-400">Pelajari dasar-dasar analisis teknikal dan manajemen risiko.</p>
+          <Card className={`${bgCard} border ${borderColor} p-6`}>
+            <h2 className={`text-xl font-bold mb-2 ${textPrimary}`}>📚 Panduan Trading untuk Pemula</h2>
+            <p className={textSecondary}>Pelajari dasar-dasar analisis teknikal dan manajemen risiko.</p>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {learningContent.map((item, idx) => {
               const Icon = item.icon;
               return (
-                <Card key={idx} className="bg-gray-800 border-gray-700 p-4">
+                <Card key={idx} className={`${bgCard} border ${borderColor} p-5 hover:shadow-lg transition-shadow`}>
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-blue-900 rounded-lg">
-                      <Icon className="w-5 h-5 text-blue-400" />
+                    <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100'}`}>
+                      <Icon className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
                     </div>
                     <div>
-                      <h3 className="font-semibold mb-1">{item.title}</h3>
-                      <p className="text-sm text-gray-400">{item.content}</p>
+                      <h3 className={`font-semibold mb-2 ${textPrimary}`}>{item.title}</h3>
+                      <p className={`text-sm ${textSecondary}`}>{item.content}</p>
                     </div>
                   </div>
                 </Card>
@@ -608,24 +695,16 @@ export const MarketPage = () => {
           </div>
 
           {/* Quick Tips */}
-          <Card className="bg-gray-800 border-gray-700 p-6">
-            <h3 className="font-bold text-lg mb-4">💡 Tips Penting</h3>
+          <Card className={`${bgCard} border ${borderColor} p-6`}>
+            <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}>💡 Tips Penting</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-yellow-900/30 rounded-lg border border-yellow-700">
-                <h4 className="font-semibold text-yellow-400 mb-2">⚠️ Jangan Investasi uang kebutuhan</h4>
-                <p className="text-sm text-gray-300">Gunakan hanya uang dingin. Sisihkan 20-30% dari penghasilan.</p>
+              <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-yellow-900/30 border border-yellow-700' : 'bg-yellow-50 border border-yellow-200'}`}>
+                <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>⚠️ Jangan Investasi uang kebutuhan</h4>
+                <p className={`text-sm ${textSecondary}`}>Gunakan hanya uang dingin. Sisihkan 20-30% dari penghasilan.</p>
               </div>
-              <div className="p-4 bg-green-900/30 rounded-lg border border-green-700">
-                <h4 className="font-semibold text-green-400 mb-2">✅ Mulai dari yang kecil</h4>
-                <p className="text-sm text-gray-300">Tidak perlu modal besar. Mulai dengan Rp 100-500rb.</p>
-              </div>
-              <div className="p-4 bg-blue-900/30 rounded-lg border border-blue-700">
-                <h4 className="font-semibold text-blue-400 mb-2">📊 Diversifikasi</h4>
-                <p className="text-sm text-gray-300">Sebar ke beberapa sektor untuk kurangi risiko.</p>
-              </div>
-              <div className="p-4 bg-purple-900/30 rounded-lg border border-purple-700">
-                <h4 className="font-semibold text-purple-400 mb-2">🕐 Sabar</h4>
-                <p className="text-sm text-gray-300">Saham butuh waktu. Jangan panik jual saat turun sesaat.</p>
+              <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-green-900/30 border border-green-700' : 'bg-green-50 border border-green-200'}`}>
+                <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>✅ Mulai dari yang kecil</h4>
+                <p className={`text-sm ${textSecondary}`}>Tidak perlu modal besar. Mulai dengan Rp 100-500rb.</p>
               </div>
             </div>
           </Card>
