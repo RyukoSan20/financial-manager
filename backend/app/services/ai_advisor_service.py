@@ -22,8 +22,8 @@ GEMINI_API_KEYS = [
 # Filter out empty keys
 GEMINI_API_KEYS = [k for k in GEMINI_API_KEYS if k]
 
-# Model configuration
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+# Model configuration - Updated to latest available
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1/models/{GEMINI_MODEL}:generateContent"
 
 # Free tier limits
