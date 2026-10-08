@@ -3,7 +3,7 @@ import { Card, Button, Badge, Spinner } from '../components/ui';
 import { 
   TrendingUp, TrendingDown, RefreshCw, BarChart3,
   ArrowUpRight, ArrowDownRight, Search, X, ExternalLink,
-  ChevronUp, ChevronDown, Play, BookOpen, TrendingBar
+  ChevronUp, ChevronDown, Play, BookOpen, PieChart
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
 import api from '../services/api';
@@ -168,7 +168,7 @@ export const MarketPage = () => {
     },
     { 
       title: 'Analisis Teknikal', 
-      icon: TrendingUp,
+      icon: BarChart3,
       description: 'Mempelajari indikator dan grafik',
       content: 'Gunakan RSI untuk mengukur overbought/oversold, SMA untuk trend, dan support/resistance untuk titik masuk/keluar.'
     },
