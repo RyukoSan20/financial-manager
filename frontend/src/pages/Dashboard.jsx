@@ -31,6 +31,14 @@ const CHART_COLORS = {
   crosshair: '#94a3b8',
 };
 
+// Timeframe options
+const TIMEFRAMES = [
+  { key: 'daily', label: 'Harian', days: 7 },
+  { key: 'weekly', label: 'Mingguan', weeks: 8 },
+  { key: 'monthly', label: 'Bulanan', months: 12 },
+  { key: 'yearly', label: 'Tahunan', months: 12 },
+];
+
 // Dark mode toggle component
 const DarkModeToggle = ({ isDark, onToggle }) => (
   <button
@@ -88,16 +96,14 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const [userSettings, setUserSettings] = useState(null);
   const [marketData, setMarketData] = useState(null);
   const [summary, setSummary] = useState(null);
-  const [cashFlow, setCashFlow] = useState([]);
+  const [cashFlowSeries, setCashFlowSeries] = useState([]);
+  const [chartConfig, setChartConfig] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [goals, setGoals] = useState([]);
   const [feedStats, setFeedStats] = useState(null);
-  const [timeFilter, setTimeFilter] = useState('monthly');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [activeMarket, setActiveMarket] = useState('forex');
+  const [timeframe, setTimeframe] = useState('monthly');
   const [achievements, setAchievements] = useState([]);
   const [realtimeUpdate, setRealtimeUpdate] = useState(null);
 
@@ -113,38 +119,6 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // Toggle dark mode
   const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
 
-  // Initialize date range based on filter
-  const initializeDateRange = useCallback((filter) => {
-    const now = new Date();
-    const end = new Date(now);
-    end.setHours(23, 59, 59, 999);
-    
-    let start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-    
-    if (filter === 'daily') {
-      // Today only
-    } else if (filter === 'weekly') {
-      start.setDate(end.getDate() - 7);
-    } else if (filter === 'monthly') {
-      start.setMonth(end.getMonth(), 1);
-    } else if (filter === 'yearly') {
-      start.setFullYear(end.getFullYear(), 0, 1);
-    }
-    
-    return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
-    };
-  }, []);
-
-  // Update date range when filter changes
-  useEffect(() => {
-    const dates = initializeDateRange(timeFilter);
-    setStartDate(dates.start);
-    setEndDate(dates.end);
-  }, [timeFilter, initializeDateRange]);
-
   // Fetch market data from realtime API
   const fetchMarketData = useCallback(async () => {
     try {
@@ -157,23 +131,81 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     }
   }, []);
 
-  // Fetch data when dates are ready
-  useEffect(() => {
-    if (startDate && endDate) {
-      fetchData();
+  // Fetch cash flow data with timeframe
+  const fetchCashFlow = useCallback(async () => {
+    try {
+      const response = await api.dashboard.cashFlow(timeframe);
+      if (response.status === 'success') {
+        setCashFlowSeries(response.series || []);
+        setChartConfig(response.chartConfig || null);
+      } else {
+        // Fallback for old format
+        const series = response.monthly || response.daily || response.weekly || [];
+        setCashFlowSeries(series);
+      }
+    } catch (err) {
+      console.error('Failed to fetch cash flow:', err);
+      setCashFlowSeries([]);
     }
-  }, [startDate, endDate]);
+  }, [timeframe]);
 
-  // Auto-refresh market data every 30 seconds
+  // Fetch all dashboard data
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Fetch user settings
+      const settingsResult = await api.get('/settings').catch(() => null);
+      if (settingsResult) setUserSettings(settingsResult);
+      
+      // Fetch all dashboard data in parallel
+      const [
+        summaryData,
+        transactionsData,
+        budgetsData,
+        accountsData,
+        goalsData,
+        feedStatsData,
+      ] = await Promise.allSettled([
+        api.dashboard.summary(),
+        api.transactions.list({ limit: 10 }),
+        api.budgets?.list ? api.budgets.list() : Promise.resolve([]),
+        api.accounts?.list ? api.accounts.list() : Promise.resolve([]),
+        api.goals?.list ? api.goals.list() : Promise.resolve([]),
+        api.get('/feed/stats').catch(() => null),
+      ]);
+
+      if (summaryData.status === 'fulfilled') setSummary(summaryData.value);
+      if (transactionsData.status === 'fulfilled') {
+        const txData = transactionsData.value;
+        setTransactions(Array.isArray(txData) ? txData : (txData?.transactions || []));
+      }
+      if (budgetsData.status === 'fulfilled') setBudgets(Array.isArray(budgetsData.value) ? budgetsData.value : []);
+      if (accountsData.status === 'fulfilled') setAccounts(Array.isArray(accountsData.value) ? accountsData.value : []);
+      if (goalsData.status === 'fulfilled') setGoals(Array.isArray(goalsData.value) ? goalsData.value : []);
+      if (feedStatsData.status === 'fulfilled' && feedStatsData.value) setFeedStats(feedStatsData.value);
+
+      calculateAchievements(summaryData.value, budgetsData.value, goalsData.value);
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load
   useEffect(() => {
+    fetchData();
     fetchMarketData();
-    const interval = setInterval(fetchMarketData, 30000);
-    return () => clearInterval(interval);
-  }, [fetchMarketData]);
+  }, []);
+
+  // Fetch cash flow when timeframe changes
+  useEffect(() => {
+    fetchCashFlow();
+  }, [fetchCashFlow]);
 
   // Initialize chart when data changes
   useEffect(() => {
-    if (cashFlow.length > 0 && cashFlowChartRef.current) {
+    if (cashFlowSeries.length > 0 && cashFlowChartRef.current) {
       initChart();
     }
     return () => {
@@ -184,12 +216,12 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         chartInstanceRef.current = null;
       }
     };
-  }, [cashFlow, timeFilter, isDarkMode]);
+  }, [cashFlowSeries, timeframe, isDarkMode]);
 
   const initChart = useCallback(() => {
-    if (!cashFlowChartRef.current || cashFlow.length === 0) return;
+    if (!cashFlowChartRef.current || cashFlowSeries.length === 0) return;
     
-    import('lightweight-charts').then(({ createChart, ColorType, CrosshairMode, LineStyle, LineSeries, AreaSeries }) => {
+    import('lightweight-charts').then(({ createChart, ColorType, CrosshairMode, LineStyle, LineSeries, AreaSeries, BarSeries }) => {
       if (chartInstanceRef.current) {
         try {
           chartInstanceRef.current.remove();
@@ -202,7 +234,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
 
       const chart = createChart(cashFlowChartRef.current, {
         width: cashFlowChartRef.current.clientWidth || 800,
-        height: 300,
+        height: 350,
         layout: {
           background: { type: ColorType.Solid, color: 'transparent' },
           textColor: textColor,
@@ -225,43 +257,44 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         },
       });
 
-      // Income line
-      const incomeSeries = chart.addSeries(LineSeries, {
-        color: CHART_COLORS.income,
-        lineWidth: 2,
-        title: 'Pemasukan',
-      });
-      
-      // Expense line
-      const expenseSeries = chart.addSeries(LineSeries, {
-        color: CHART_COLORS.expense,
-        lineWidth: 2,
-        title: 'Pengeluaran',
-      });
+      // Prepare data with proper labels
+      const labels = cashFlowSeries.map(s => s.labelX || s.month || s.label || '');
+      const incomeData = cashFlowSeries.map((s, i) => ({ time: i + 1, value: s.totalIncome || s.income || 0 }));
+      const expenseData = cashFlowSeries.map((s, i) => ({ time: i + 1, value: -(s.totalExpense || s.expense || 0) }));
+      const netSavingsData = cashFlowSeries.map((s, i) => ({ time: i + 1, value: s.netSavings || s.net || 0 }));
 
-      // Savings area
-      const savingsAreaSeries = chart.addSeries(AreaSeries, {
-        color: CHART_COLORS.savings + '40',
-        lineColor: CHART_COLORS.savings,
-        lineWidth: 2,
-        topColor: CHART_COLORS.savings + '40',
-        bottomColor: CHART_COLORS.savings + '05',
-        title: 'Tabungan',
-      });
+      // Mode: Delta (income/expense stacked) or Net Worth (accumulated)
+      const mode = chartConfig?.mode || 'delta';
 
-      // Prepare data based on time filter
-      const chartData = cashFlow.map((item, index) => {
-        return {
-          time: index + 1,
-          income: item.income || item.total_income || 0,
-          expense: item.expense || item.total_expense || 0,
-          savings: Math.max(0, (item.income || item.total_income || 0) - (item.expense || item.total_expense || 0)),
-        };
-      });
+      if (mode === 'delta') {
+        // Income line
+        const incomeSeries = chart.addSeries(LineSeries, {
+          color: CHART_COLORS.income,
+          lineWidth: 2,
+          title: 'Pemasukan',
+        });
+        
+        // Expense line (shown as negative values)
+        const expenseSeries = chart.addSeries(LineSeries, {
+          color: CHART_COLORS.expense,
+          lineWidth: 2,
+          title: 'Pengeluaran',
+        });
 
-      incomeSeries.setData(chartData.map(d => ({ time: d.time, value: d.income })));
-      expenseSeries.setData(chartData.map(d => ({ time: d.time, value: d.expense })));
-      savingsAreaSeries.setData(chartData.map(d => ({ time: d.time, value: d.savings })));
+        incomeSeries.setData(incomeData);
+        expenseSeries.setData(expenseData);
+      } else {
+        // Net Worth mode - Area chart for accumulated savings
+        const savingsAreaSeries = chart.addSeries(AreaSeries, {
+          color: CHART_COLORS.savings + '40',
+          lineColor: CHART_COLORS.savings,
+          lineWidth: 2,
+          topColor: CHART_COLORS.savings + '40',
+          bottomColor: CHART_COLORS.savings + '05',
+          title: 'Tabungan Bersih',
+        });
+        savingsAreaSeries.setData(netSavingsData);
+      }
 
       chart.timeScale().fitContent();
       chartInstanceRef.current = chart;
@@ -279,69 +312,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     }).catch(err => {
       console.error('Failed to load chart library:', err);
     });
-  }, [cashFlow, timeFilter]);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      // Fetch user settings
-      const settingsResult = await api.get('/settings').catch(() => null);
-      if (settingsResult) setUserSettings(settingsResult);
-      
-      // Fetch all dashboard data in parallel
-      const [
-        summaryData,
-        cashFlowData,
-        transactionsData,
-        budgetsData,
-        accountsData,
-        goalsData,
-        feedStatsData,
-      ] = await Promise.allSettled([
-        api.dashboard.summary(startDate, endDate),
-        getCashFlowByFilter(timeFilter),
-        api.transactions.list({ start_date: startDate, end_date: endDate, limit: 10 }),
-        api.budgets?.list ? api.budgets.list() : Promise.resolve([]),
-        api.accounts?.list ? api.accounts.list() : Promise.resolve([]),
-        api.goals?.list ? api.goals.list() : Promise.resolve([]),
-        api.get('/feed/stats').catch(() => null),
-      ]);
-
-      if (summaryData.status === 'fulfilled') setSummary(summaryData.value);
-      if (cashFlowData.status === 'fulfilled') {
-        const cashFlowValue = cashFlowData.value;
-        const cashFlowArray = cashFlowValue?.daily || cashFlowValue?.weekly || cashFlowValue?.monthly || cashFlowValue?.yearly || cashFlowValue || [];
-        setCashFlow(cashFlowArray);
-      }
-      if (transactionsData.status === 'fulfilled') {
-        const txData = transactionsData.value;
-        setTransactions(Array.isArray(txData) ? txData : (txData?.transactions || []));
-      }
-      if (budgetsData.status === 'fulfilled') setBudgets(Array.isArray(budgetsData.value) ? budgetsData.value : []);
-      if (accountsData.status === 'fulfilled') setAccounts(Array.isArray(accountsData.value) ? accountsData.value : []);
-      if (goalsData.status === 'fulfilled') setGoals(Array.isArray(goalsData.value) ? goalsData.value : []);
-      if (feedStatsData.status === 'fulfilled' && feedStatsData.value) setFeedStats(feedStatsData.value);
-
-      calculateAchievements(summaryData.value, budgetsData.value, goalsData.value);
-    } catch (err) {
-      console.error('Dashboard fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Get cash flow data based on time filter
-  const getCashFlowByFilter = async (filter) => {
-    try {
-      const response = await api.dashboard.cashFlow(
-        filter === 'daily' ? 1 : filter === 'weekly' ? 7 : filter === 'monthly' ? 30 : 365
-      );
-      return response;
-    } catch (err) {
-      console.error('Cash flow fetch error:', err);
-      return [];
-    }
-  };
+  }, [cashFlowSeries, chartConfig]);
 
   const calculateAchievements = (summaryData, budgetsData, goalsData) => {
     const earned = [];
@@ -447,52 +418,59 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     return price.toFixed(decimals);
   };
 
+  // Theme colors
+  const bgPrimary = isDarkMode ? 'bg-gray-900' : 'bg-gray-50';
+  const bgCard = isDarkMode ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDarkMode ? 'border-gray-700' : 'border-gray-200';
+
   if (loading && !summary) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className={`flex items-center justify-center h-64 ${bgPrimary}`}>
         <Spinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className={`space-y-6 animate-fadeIn p-4 min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`space-y-6 animate-fadeIn p-4 min-h-screen ${bgPrimary}`}>
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>
             {t('dashboard.title', 'Dashboard')}
           </h1>
-          <p className="text-gray-500 mt-1">
+          <p className={`text-sm mt-1 ${textSecondary}`}>
             {new Date().toLocaleDateString(language === 'id' ? 'id-ID' : language === 'ja' ? 'ja-JP' : 'en-US', { month: 'long', year: 'numeric' })}
           </p>
         </div>
         <div className="flex gap-3 flex-wrap items-center">
           {/* Dark Mode Toggle */}
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <Sun className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${bgCard} border ${borderColor}`}>
+            <Sun className={`w-4 h-4 ${textSecondary}`} />
             <DarkModeToggle isDark={isDarkMode} onToggle={toggleDarkMode} />
-            <Moon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            <Moon className={`w-4 h-4 ${textSecondary}`} />
           </div>
           
           {/* Time Filter */}
-          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-            {['daily', 'weekly', 'monthly', 'yearly'].map(filter => (
+          <div className={`flex rounded-lg p-1 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+            {TIMEFRAMES.map(tf => (
               <button
-                key={filter}
-                onClick={() => setTimeFilter(filter)}
-                className={`px-3 py-1 text-sm rounded-md transition-all duration-200 ${
-                  timeFilter === filter 
-                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-md font-medium' 
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                key={tf.key}
+                onClick={() => setTimeframe(tf.key)}
+                className={`px-3 py-1.5 text-sm rounded-md transition-all duration-200 ${
+                  timeframe === tf.key 
+                    ? 'bg-blue-600 text-white shadow-md font-medium' 
+                    : `${textSecondary} hover:bg-gray-200 dark:hover:bg-gray-600`
                 }`}
               >
-                {filter === 'daily' ? 'Harian' : filter === 'weekly' ? 'Mingguan' : filter === 'monthly' ? 'Bulanan' : 'Tahunan'}
+                {tf.label}
               </button>
             ))}
           </div>
           
-          <Button variant="outline" size="sm" onClick={() => { fetchData(); fetchMarketData(); }}>
+          <Button variant="outline" size="sm" onClick={() => { fetchData(); fetchMarketData(); fetchCashFlow(); }}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
           {onScanReceipt && (
@@ -541,58 +519,58 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 border border-green-200 dark:border-green-800">
+        <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-green-600 dark:text-green-400">Total Saldo</p>
-              <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+              <p className={`text-sm ${textSecondary}`}>Total Saldo</p>
+              <p className={`text-2xl font-bold ${textPrimary}`}>
                 {formatCurrency(summary?.total_balance || 0)}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-green-200 dark:bg-green-700 flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-green-900/50' : 'bg-green-100'}`}>
+              <Wallet className={`w-6 h-6 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 border border-blue-200 dark:border-blue-800">
+        <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-blue-600 dark:text-blue-400">Pemasukan</p>
-              <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+              <p className={`text-sm ${textSecondary}`}>Pemasukan</p>
+              <p className={`text-2xl font-bold ${textPrimary}`}>
                 {formatCurrency(summary?.total_income || 0)}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-blue-200 dark:bg-blue-700 flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100'}`}>
+              <TrendingUp className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30 border border-red-200 dark:border-red-800">
+        <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-red-600 dark:text-red-400">Pengeluaran</p>
-              <p className="text-2xl font-bold text-red-700 dark:text-red-300">
+              <p className={`text-sm ${textSecondary}`}>Pengeluaran</p>
+              <p className={`text-2xl font-bold ${textPrimary}`}>
                 {formatCurrency(summary?.total_expense || 0)}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-red-200 dark:bg-red-700 flex items-center justify-center">
-              <TrendingDown className="w-6 h-6 text-red-600 dark:text-red-400" />
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-red-900/50' : 'bg-red-100'}`}>
+              <TrendingDown className={`w-6 h-6 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 border border-purple-200 dark:border-purple-800">
+        <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-purple-600 dark:text-purple-400">Arus Kas</p>
-              <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+              <p className={`text-sm ${textSecondary}`}>Arus Kas</p>
+              <p className={`text-2xl font-bold ${textPrimary}`}>
                 {formatCurrency(summary?.net_cash_flow || 0)}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-purple-200 dark:bg-purple-700 flex items-center justify-center">
-              <Activity className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-purple-900/50' : 'bg-purple-100'}`}>
+              <Activity className={`w-6 h-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
             </div>
           </div>
         </Card>
@@ -600,12 +578,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
 
       {/* Budget & Safe-to-Spend */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Budget Progress */}
-        <Card className="p-4 bg-white dark:bg-gray-800 border dark:border-gray-700">
+        <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <PiggyBank className="w-5 h-5 text-pink-500" />
-              <h3 className="font-semibold text-gray-900 dark:text-white">Anggaran Bulan Ini</h3>
+              <h3 className={`font-semibold ${textPrimary}`}>Anggaran Bulan Ini</h3>
             </div>
             <Badge variant={safeToSpend.status === 'safe' ? 'success' : safeToSpend.status === 'warning' ? 'warning' : 'danger'}>
               {safeToSpend.percent.toFixed(0)}% sisa
@@ -613,10 +590,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           </div>
           <div className="mb-4">
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-500 dark:text-gray-400">Terpakai</span>
-              <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(summary?.total_spent || 0)}</span>
+              <span className={textSecondary}>Terpakai</span>
+              <span className={`font-medium ${textPrimary}`}>{formatCurrency(summary?.total_spent || 0)}</span>
             </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+            <div className={`w-full rounded-full h-4 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
               <div 
                 className={`h-4 rounded-full transition-all duration-500 ${
                   safeToSpend.status === 'danger' ? 'bg-red-500' : 
@@ -626,83 +603,67 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               />
             </div>
             <div className="flex justify-between text-sm mt-1">
-              <span className="text-gray-500 dark:text-gray-400">Budget</span>
-              <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(summary?.total_budget || 0)}</span>
+              <span className={textSecondary}>Budget</span>
+              <span className={`font-medium ${textPrimary}`}>{formatCurrency(summary?.total_budget || 0)}</span>
             </div>
           </div>
           <div className="text-center">
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+            <p className={`text-3xl font-bold ${textPrimary}`}>
               {formatCurrency(safeToSpend.amount)}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Sisa Budget</p>
+            <p className={`text-sm ${textSecondary}`}>Sisa Budget</p>
           </div>
         </Card>
 
-        {/* Safe to Spend */}
-        <Card className="p-4 bg-white dark:bg-gray-800 border dark:border-gray-700">
+        <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-green-500" />
-              <h3 className="font-semibold text-gray-900 dark:text-white">Safe-to-Spend</h3>
+              <h3 className={`font-semibold ${textPrimary}`}>Safe-to-Spend</h3>
             </div>
           </div>
           <div className="text-center mb-4">
-            <p className="text-4xl font-bold text-gray-900 dark:text-white">
+            <p className={`text-4xl font-bold ${textPrimary}`}>
               {formatCurrency(safeToSpend.amount)}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className={`text-sm ${textSecondary}`}>
               Batas pengeluaran harian aman
             </p>
-          </div>
-          <div className="mt-2">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-500 dark:text-gray-400">Sisa</span>
-              <span className="font-medium text-gray-900 dark:text-white">{formatPercent(safeToSpend.percent, 0)}</span>
-            </div>
-            <div className="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-2">
-              <div 
-                className={`h-2 rounded-full transition-all duration-500 ${
-                  safeToSpend.status === 'danger' ? 'bg-red-500' : 
-                  safeToSpend.status === 'warning' ? 'bg-orange-500' : 'bg-green-500'
-                }`}
-                style={{ width: `${Math.min(100, safeToSpend.percent)}%` }}
-              />
-            </div>
           </div>
         </Card>
       </div>
 
-      {/* Cash Flow Chart with filter indicator */}
-      <Card className="p-4 bg-white dark:bg-gray-800 border dark:border-gray-700">
+      {/* Cash Flow Chart with dynamic timeframe */}
+      <Card className={`p-4 ${bgCard} border ${borderColor}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <h3 className="font-semibold text-gray-900 dark:text-white">
+            <Activity className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <h3 className={`font-semibold ${textPrimary}`}>
               Tren Arus Kas
             </h3>
             <Badge variant="outline" className="ml-2">
-              {timeFilter === 'daily' ? 'Hari Ini' : timeFilter === 'weekly' ? '7 Hari Terakhir' : timeFilter === 'monthly' ? 'Bulan Ini' : 'Tahun Ini'}
+              {TIMEFRAMES.find(tf => tf.key === timeframe)?.label || 'Bulanan'}
             </Badge>
           </div>
           <div className="flex gap-4 text-sm">
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="text-gray-600 dark:text-gray-400">Pemasukan</span>
+              <span className={textSecondary}>Pemasukan</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-red-500" />
-              <span className="text-gray-600 dark:text-gray-400">Pengeluaran</span>
+              <span className={textSecondary}>Pengeluaran</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-blue-400" />
-              <span className="text-gray-600 dark:text-gray-400">Tabungan</span>
+              <span className={textSecondary}>Tabungan</span>
             </div>
           </div>
         </div>
-        {cashFlow.length > 0 ? (
-          <div ref={cashFlowChartRef} className="w-full h-[300px]" />
+        {cashFlowSeries.length > 0 ? (
+          <div ref={cashFlowChartRef} className="w-full h-[350px]" />
         ) : (
-          <div className="h-[300px] flex items-center justify-center text-gray-400 dark:text-gray-500">
+          <div className={`h-[350px] flex items-center justify-center ${textSecondary}`}>
             <div className="text-center">
               <Activity className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>Tidak ada data untuk periode ini</p>
@@ -710,14 +671,21 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             </div>
           </div>
         )}
+        
+        {/* Data points indicator */}
+        {cashFlowSeries.length > 0 && (
+          <div className={`mt-3 pt-3 border-t ${borderColor} text-xs ${textSecondary} text-center`}>
+            {cashFlowSeries.length} data points • {chartConfig?.mode === 'net_worth' ? 'Mode Tabungan Bersih' : 'Mode Delta'}
+          </div>
+        )}
       </Card>
 
       {/* Market Overview with Real-Time Data */}
-      <Card className="p-4 bg-white dark:bg-gray-800 border dark:border-gray-700">
+      <Card className={`p-4 ${bgCard} border ${borderColor}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <h3 className="font-semibold text-gray-900 dark:text-white">
+            <BarChart3 className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+            <h3 className={`font-semibold ${textPrimary}`}>
               Overview Pasar
             </h3>
           </div>
@@ -729,132 +697,41 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           )}
         </div>
         
-        {/* Market Tabs */}
-        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-          {[
-            { id: 'forex', name: 'Forex', icon: '💱', color: '#10b981' },
-            { id: 'crypto', name: 'Crypto', icon: '₿', color: '#f7931a' },
-            { id: 'commodities', name: 'Komoditas', icon: '🪙', color: '#eab308' },
-            { id: 'idx', name: 'Saham IDX', icon: '📊', color: '#6366f1' },
-            { id: 'us', name: 'Saham US', icon: '🇺🇸', color: '#ec4899' },
-          ].map(widget => (
-            <button
-              key={widget.id}
-              onClick={() => setActiveMarket(widget.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all duration-200 ${
-                activeMarket === widget.id
-                  ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-medium shadow-sm'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              <span>{widget.icon}</span>
-              <span className="text-sm font-medium">{widget.name}</span>
-            </button>
+        {/* Market Content */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {marketData?.forex?.quotes?.slice(0, 4).map((fx, idx) => (
+            <MarketCard 
+              key={`fx-${idx}`}
+              name={fx.pair}
+              value={fx.price?.toFixed(fx.price > 100 ? 0 : 4) || '-'}
+              changeValue={`${fx.change_percent >= 0 ? '+' : ''}${fx.change_percent?.toFixed(2)}%`}
+              positive={fx.change_percent >= 0}
+              live
+            />
+          ))}
+          {marketData?.crypto?.quotes?.slice(0, 2).map((coin, idx) => (
+            <MarketCard 
+              key={`crypto-${idx}`}
+              name={coin.symbol}
+              value={`$${formatMarketPrice(coin.price)}`}
+              changeValue={`${coin.change_percent_24h >= 0 ? '+' : ''}${coin.change_percent_24h?.toFixed(2)}%`}
+              positive={coin.change_percent_24h >= 0}
+              live
+            />
           ))}
         </div>
-
-        {/* Market Content with Real Data */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* Forex */}
-          {activeMarket === 'forex' && marketData?.forex?.quotes && (
-            <>
-              {marketData.forex.quotes.slice(0, 4).map((fx, idx) => (
-                <MarketCard 
-                  key={idx}
-                  name={fx.pair}
-                  value={fx.price?.toFixed(fx.price > 100 ? 0 : 4) || '-'}
-                  changeValue={`${fx.change_percent >= 0 ? '+' : ''}${fx.change_percent?.toFixed(2)}%`}
-                  positive={fx.change_percent >= 0}
-                  live
-                />
-              ))}
-            </>
-          )}
-          
-          {/* Crypto */}
-          {activeMarket === 'crypto' && marketData?.crypto?.quotes && (
-            <>
-              {marketData.crypto.quotes.slice(0, 4).map((coin, idx) => (
-                <MarketCard 
-                  key={idx}
-                  name={coin.symbol}
-                  value={`$${formatMarketPrice(coin.price)}`}
-                  changeValue={`${coin.change_percent_24h >= 0 ? '+' : ''}${coin.change_percent_24h?.toFixed(2)}%`}
-                  positive={coin.change_percent_24h >= 0}
-                  live
-                />
-              ))}
-            </>
-          )}
-          
-          {/* Commodities */}
-          {activeMarket === 'commodities' && marketData?.commodities?.quotes && (
-            <>
-              {marketData.commodities.quotes.slice(0, 4).map((item, idx) => (
-                <MarketCard 
-                  key={idx}
-                  name={item.symbol}
-                  value={`$${formatMarketPrice(item.price)}/${item.unit || ''}`}
-                  changeValue={`${item.change_percent >= 0 ? '+' : ''}${item.change_percent?.toFixed(2)}%`}
-                  positive={item.change_percent >= 0}
-                  live
-                />
-              ))}
-            </>
-          )}
-          
-          {/* IDX Stocks */}
-          {activeMarket === 'idx' && marketData?.idx_stocks?.quotes && (
-            <>
-              {marketData.idx_stocks.quotes.slice(0, 4).map((stock, idx) => (
-                <MarketCard 
-                  key={idx}
-                  name={stock.symbol}
-                  value={`Rp ${formatMarketPrice(stock.price, 0)}`}
-                  changeValue={`${stock.change_percent >= 0 ? '+' : ''}${stock.change_percent?.toFixed(2)}%`}
-                  positive={stock.change_percent >= 0}
-                  live
-                />
-              ))}
-            </>
-          )}
-          
-          {/* US Stocks */}
-          {activeMarket === 'us' && marketData?.us_stocks?.quotes && (
-            <>
-              {marketData.us_stocks.quotes.slice(0, 4).map((stock, idx) => (
-                <MarketCard 
-                  key={idx}
-                  name={stock.symbol}
-                  value={`$${formatMarketPrice(stock.price)}`}
-                  changeValue={`${stock.change_percent >= 0 ? '+' : ''}${stock.change_percent?.toFixed(2)}%`}
-                  positive={stock.change_percent >= 0}
-                  live
-                />
-              ))}
-            </>
-          )}
-          
-          {!marketData && (
-            <div className="col-span-4 text-center py-8 text-gray-400 dark:text-gray-500">
-              <Activity className="w-8 h-8 mx-auto mb-2 animate-pulse" />
-              <p>Memuat data pasar real-time...</p>
-            </div>
-          )}
-        </div>
         
-        {/* Source Attribution */}
-        <div className="mt-4 pt-3 border-t dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500 text-center">
+        <div className={`mt-4 pt-3 border-t ${borderColor} text-xs ${textSecondary} text-center`}>
           Data real-time dari Yahoo Finance • Auto-refresh setiap 30 detik
         </div>
       </Card>
 
       {/* Achievements */}
       {achievements.length > 0 && (
-        <Card className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 border border-purple-200 dark:border-purple-800">
+        <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center gap-2 mb-4">
-            <Award className="w-5 h-5 text-purple-600" />
-            <h3 className="font-semibold text-gray-900 dark:text-white">
+            <Award className="w-5 h-5 text-purple-500" />
+            <h3 className={`font-semibold ${textPrimary}`}>
               Pencapaian
             </h3>
           </div>
@@ -866,11 +743,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               return (
                 <div 
                   key={achievementId}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full ${bgCard} border ${borderColor}`}
                   title={achievement.description}
                 >
                   <span style={{ color: achievement.color }}><Icon className="w-5 h-5" /></span>
-                  <span className="font-medium text-sm text-gray-900 dark:text-white">{achievement.name}</span>
+                  <span className={`font-medium text-sm ${textPrimary}`}>{achievement.name}</span>
                 </div>
               );
             })}
@@ -878,12 +755,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         </Card>
       )}
 
-      {/* Recent Transactions & Pending Feed */}
+      {/* Recent Transactions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Transactions */}
-        <Card className="p-4 bg-white dark:bg-gray-800 border dark:border-gray-700">
+        <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white">
+            <h3 className={`font-semibold ${textPrimary}`}>
               Transaksi Terbaru
             </h3>
             <Button variant="ghost" size="sm" onClick={() => window.location.href = '/transactions'}>
@@ -895,7 +771,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               {transactions.slice(0, 5).map((tx, idx) => {
                 if (!tx) return null;
                 return (
-                  <div key={tx.id || idx} className="flex items-center justify-between py-2 border-b dark:border-gray-700 last:border-0">
+                  <div key={tx.id || idx} className={`flex items-center justify-between py-2 border-b ${borderColor} last:border-0`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                         tx.type === 'income' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'
@@ -907,15 +783,15 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{tx.description || 'Transaksi'}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{tx.category_name || tx.category || 'Lainnya'}</p>
+                        <p className={`font-medium ${textPrimary}`}>{tx.description || 'Transaksi'}</p>
+                        <p className={`text-sm ${textSecondary}`}>{tx.category_name || tx.category || 'Lainnya'}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className={`font-semibold ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                         {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount || 0)}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className={`text-xs ${textSecondary}`}>
                         {tx.date ? new Date(tx.date).toLocaleDateString() : ''}
                       </p>
                     </div>
@@ -924,18 +800,17 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               })}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-400 dark:text-gray-500">
+            <div className={`text-center py-8 ${textSecondary}`}>
               <Wallet className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>Belum ada transaksi</p>
-              <p className="text-sm">Tambahkan transaksi pertama Anda</p>
             </div>
           )}
         </Card>
 
         {/* Pending Feed Review */}
-        <Card className={`p-4 bg-white dark:bg-gray-800 border dark:border-gray-700 ${feedStats && feedStats.pending > 0 ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800' : ''}`}>
+        <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white">
+            <h3 className={`font-semibold ${textPrimary}`}>
               Review Transaksi
             </h3>
             {feedStats && feedStats.pending > 0 && (
@@ -944,15 +819,12 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           </div>
           {feedStats && feedStats.pending > 0 ? (
             <div className="space-y-3">
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+              <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-yellow-900/20' : 'bg-yellow-50'} border ${isDarkMode ? 'border-yellow-800' : 'border-yellow-200'}`}>
                 <div className="flex items-center gap-3">
                   <Bell className="w-5 h-5 text-yellow-600" />
                   <div>
-                    <p className="font-medium text-yellow-800 dark:text-yellow-200">
+                    <p className={`font-medium ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>
                       {feedStats.pending} transaksi menunggu review
-                    </p>
-                    <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                      Segera tinjau transaksi dari scan struk
                     </p>
                   </div>
                 </div>
@@ -962,26 +834,26 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               </Button>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-400 dark:text-gray-500">
+            <div className={`text-center py-8 ${textSecondary}`}>
               <CheckCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>Tidak ada transaksi tertunda</p>
             </div>
           )}
           
           {feedStats && (
-            <div className="mt-4 pt-4 border-t dark:border-gray-700">
+            <div className={`mt-4 pt-4 border-t ${borderColor}`}>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{feedStats.approved || 0}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Disetujui</p>
+                  <p className="text-2xl font-bold text-green-600">{feedStats.approved || 0}</p>
+                  <p className={`text-xs ${textSecondary}`}>Disetujui</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">{feedStats.rejected || 0}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Ditolak</p>
+                  <p className="text-2xl font-bold text-red-600">{feedStats.rejected || 0}</p>
+                  <p className={`text-xs ${textSecondary}`}>Ditolak</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">{feedStats.pending || 0}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Tertunda</p>
+                  <p className={`text-2xl font-bold ${textPrimary}`}>{feedStats.pending || 0}</p>
+                  <p className={`text-xs ${textSecondary}`}>Tertunda</p>
                 </div>
               </div>
             </div>

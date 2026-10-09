@@ -1,11 +1,12 @@
-"""Dashboard API routes with multi-tenancy."""
+"""Dashboard API routes with multi-tenancy and dynamic time intervals."""
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import Optional
-from datetime import date, timedelta
+from typing import Optional, Literal
+from datetime import date, timedelta, datetime
 from decimal import Decimal
+from calendar import month_abbr
 
 from app.core.database import get_db
 from app.core.security import get_current_user_optional
@@ -18,6 +19,10 @@ from app.services.calculation_service import calculation_service
 
 router = APIRouter()
 
+# Month abbreviations for labels
+MONTH_LABELS = {i: month_abbr[i] for i in range(1, 13)}
+DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
 
 def get_current_month_range():
     """Get start and end of current month."""
@@ -28,6 +33,24 @@ def get_current_month_range():
     else:
         end = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
     return start, end
+
+
+def get_category_breakdown(db: Session, start: date, end: date, user_id: Optional[int] = None):
+    """Get expense breakdown by category for a date range."""
+    query = db.query(
+        Category.name,
+        func.sum(Transaction.amount).label('total')
+    ).join(Transaction, Category.id == Transaction.category_id).filter(
+        Transaction.type == "expense",
+        Transaction.date >= start,
+        Transaction.date <= end
+    )
+    
+    if user_id:
+        query = query.filter(Transaction.user_id == user_id)
+    
+    results = query.group_by(Category.name).all()
+    return {row.name: float(row.total) for row in results}
 
 
 @router.get("/summary")
@@ -48,166 +71,239 @@ def get_dashboard_summary(
     account_query = db.query(Account).filter(Account.is_active == True)
     if current_user:
         account_query = account_query.filter(Account.user_id == current_user.id)
-    accounts = account_query.all()
-    total_balance = sum(a.balance for a in accounts)
     
-    # Get income/expense for period
-    income_query = db.query(func.sum(Transaction.amount)).filter(
-        Transaction.type == "income",
+    # Get total balance
+    total_balance = sum(float(acc.balance or 0) for acc in account_query.all())
+    
+    # Transaction summaries
+    base_tx_query = db.query(
+        Transaction.type,
+        func.sum(Transaction.amount).label('total')
+    ).filter(
         Transaction.date >= start_date,
         Transaction.date <= end_date
     )
-    expense_query = db.query(func.sum(Transaction.amount)).filter(
-        Transaction.type == "expense",
-        Transaction.date >= start_date,
-        Transaction.date <= end_date
-    )
-    
     if current_user:
-        income_query = income_query.filter(Transaction.user_id == current_user.id)
-        expense_query = expense_query.filter(Transaction.user_id == current_user.id)
+        base_tx_query = base_tx_query.filter(Transaction.user_id == current_user.id)
     
-    total_income = income_query.scalar() or Decimal("0")
-    total_expense = expense_query.scalar() or Decimal("0")
+    tx_summary = base_tx_query.group_by(Transaction.type).all()
     
-    # Get budget info
-    budget_query = db.query(Budget).filter(Budget.is_active == True)
+    total_income = sum(float(row.total) for row in tx_summary if row.type == 'income') or 0
+    total_expense = sum(float(row.total) for row in tx_summary if row.type == 'expense') or 0
+    
+    # Budget info
+    budget_query = db.query(func.sum(Budget.amount)).filter(Budget.is_active == True)
     if current_user:
         budget_query = budget_query.filter(Budget.user_id == current_user.id)
-    budgets = budget_query.all()
-    total_budget = sum(b.amount for b in budgets)
-    
-    # Calculate spending within budget periods
-    total_spent = Decimal("0")
-    for budget in budgets:
-        query = db.query(func.sum(Transaction.amount)).filter(
-            Transaction.type == "expense",
-            Transaction.date >= budget.start_date,
-        )
-        if current_user:
-            query = query.filter(Transaction.user_id == current_user.id)
-        if budget.account_id:
-            query = query.filter(Transaction.account_id == budget.account_id)
-        if budget.category_id:
-            query = query.filter(Transaction.category_id == budget.category_id)
-        if budget.end_date:
-            query = query.filter(Transaction.date <= budget.end_date)
-        
-        spent = query.scalar() or Decimal("0")
-        total_spent += min(spent, budget.amount)
-    
-    # Calculate days
-    today = date.today()
-    days_in_period = (end_date - start_date).days + 1
-    days_elapsed = (min(today, end_date) - start_date).days + 1
-    
-    # Use calculation service for all metrics
-    metrics = calculation_service.get_dashboard_metrics(
-        total_balance=total_balance,
-        total_income=total_income,
-        total_expense=total_expense,
-        total_budget=total_budget,
-        total_spent=total_spent,
-        days_elapsed=days_elapsed,
-        days_in_period=days_in_period
-    )
-    
-    # Get expense breakdown by category
-    expense_by_category = {}
-    expense_query = db.query(
-        Category.name,
-        func.sum(Transaction.amount).label("total")
-    ).join(Transaction).filter(
-        Transaction.type == "expense",
-        Transaction.date >= start_date,
-        Transaction.date <= end_date
-    )
-    if current_user:
-        expense_query = expense_query.filter(Transaction.user_id == current_user.id)
-    expense_transactions = expense_query.group_by(Category.name).all()
-    
-    for cat_name, total in expense_transactions:
-        expense_by_category[cat_name] = total
-    
-    # Get income breakdown by category
-    income_by_category = {}
-    income_query = db.query(
-        Category.name,
-        func.sum(Transaction.amount).label("total")
-    ).join(Transaction).filter(
-        Transaction.type == "income",
-        Transaction.date >= start_date,
-        Transaction.date <= end_date
-    )
-    if current_user:
-        income_query = income_query.filter(Transaction.user_id == current_user.id)
-    income_transactions = income_query.group_by(Category.name).all()
-    
-    for cat_name, total in income_transactions:
-        income_by_category[cat_name] = total
+    total_budget = float(budget_query.scalar() or 0)
     
     return {
-        **metrics,
-        "period": {"start": start_date, "end": end_date},
-        "expense_by_category": expense_by_category,
-        "income_by_category": income_by_category,
-        "account_count": len(accounts)
+        "total_balance": total_balance,
+        "total_income": total_income,
+        "total_expense": total_expense,
+        "net_cash_flow": total_income - total_expense,
+        "total_budget": total_budget,
+        "total_spent": total_expense,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
     }
 
 
 @router.get("/cash-flow")
 def get_cash_flow(
-    months: int = Query(default=6, ge=1, le=24),
+    timeframe: Literal["daily", "weekly", "monthly", "yearly"] = Query(default="monthly"),
+    months: int = Query(default=12, ge=1, le=24),
     current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    """Get cash flow trend for last N months."""
+    """
+    Get cash flow data with dynamic time intervals.
+    
+    Args:
+        timeframe: daily (last 7 days), weekly (last 8 weeks), monthly (last N months), yearly (YTD)
+        months: Number of months for monthly/yearly view
+    
+    Returns:
+        JSON with series data for chart rendering
+    """
     today = date.today()
-    monthly_data = []
+    series = []
     
-    for i in range(months - 1, -1, -1):
-        target_month = today.month - i
-        target_year = today.year
-        while target_month <= 0:
-            target_month += 12
-            target_year -= 1
-        
-        start = date(target_year, target_month, 1)
-        if target_month == 12:
-            end = date(target_year + 1, 1, 1) - timedelta(days=1)
-        else:
-            end = date(target_year, target_month + 1, 1) - timedelta(days=1)
-        
-        income_query = db.query(func.sum(Transaction.amount)).filter(
-            Transaction.type == "income",
-            Transaction.date >= start,
-            Transaction.date <= end
-        )
-        expense_query = db.query(func.sum(Transaction.amount)).filter(
-            Transaction.type == "expense",
-            Transaction.date >= start,
-            Transaction.date <= end
-        )
-        
-        if current_user:
-            income_query = income_query.filter(Transaction.user_id == current_user.id)
-            expense_query = expense_query.filter(Transaction.user_id == current_user.id)
-        
-        income = income_query.scalar() or Decimal("0")
-        expense = expense_query.scalar() or Decimal("0")
-        
-        monthly_data.append({
-            "month": start.strftime("%Y-%m"),
-            "income": income,
-            "expense": expense,
-            "net": income - expense
-        })
+    if timeframe == "daily":
+        # Last 7 days - hourly aggregation
+        for i in range(6, -1, -1):
+            target_date = today - timedelta(days=i)
+            start = datetime.combine(target_date, datetime.min.time())
+            end = datetime.combine(target_date, datetime.max.time())
+            
+            income_query = db.query(func.sum(Transaction.amount)).filter(
+                Transaction.type == "income",
+                Transaction.date >= start.date(),
+                Transaction.date <= end.date()
+            )
+            expense_query = db.query(func.sum(Transaction.amount)).filter(
+                Transaction.type == "expense",
+                Transaction.date >= start.date(),
+                Transaction.date <= end.date()
+            )
+            
+            if current_user:
+                income_query = income_query.filter(Transaction.user_id == current_user.id)
+                expense_query = expense_query.filter(Transaction.user_id == current_user.id)
+            
+            income = float(income_query.scalar() or 0)
+            expense = float(expense_query.scalar() or 0)
+            
+            # Get day name
+            day_name = DAY_LABELS[target_date.weekday()]
+            label_x = f"{day_name}, {target_date.strftime('%d %b')}"
+            
+            series.append({
+                "timestamp": target_date.isoformat(),
+                "labelX": label_x,
+                "totalIncome": income,
+                "totalExpense": expense,
+                "netSavings": income - expense,
+                "breakdownExpense": get_category_breakdown(db, start.date(), end.date(), current_user.id if current_user else None)
+            })
+            
+    elif timeframe == "weekly":
+        # Last 8 weeks
+        for i in range(7, -1, -1):
+            week_start = today - timedelta(days=today.weekday() + 7 * i)
+            week_end = week_start + timedelta(days=6)
+            
+            income_query = db.query(func.sum(Transaction.amount)).filter(
+                Transaction.type == "income",
+                Transaction.date >= week_start,
+                Transaction.date <= week_end
+            )
+            expense_query = db.query(func.sum(Transaction.amount)).filter(
+                Transaction.type == "expense",
+                Transaction.date >= week_start,
+                Transaction.date <= week_end
+            )
+            
+            if current_user:
+                income_query = income_query.filter(Transaction.user_id == current_user.id)
+                expense_query = expense_query.filter(Transaction.user_id == current_user.id)
+            
+            income = float(income_query.scalar() or 0)
+            expense = float(expense_query.scalar() or 0)
+            
+            label_x = f"W{i+1} ({week_start.strftime('%d %b')})"
+            
+            series.append({
+                "timestamp": week_start.isoformat(),
+                "labelX": label_x,
+                "totalIncome": income,
+                "totalExpense": expense,
+                "netSavings": income - expense,
+                "breakdownExpense": get_category_breakdown(db, week_start, week_end, current_user.id if current_user else None)
+            })
+            
+    elif timeframe == "yearly":
+        # Year to date - monthly aggregation
+        year_start = date(today.year, 1, 1)
+        for month in range(1, today.month + 1):
+            start = date(today.year, month, 1)
+            if month == 12:
+                end = date(today.year + 1, 1, 1) - timedelta(days=1)
+            else:
+                end = date(today.year, month + 1, 1) - timedelta(days=1)
+            
+            income_query = db.query(func.sum(Transaction.amount)).filter(
+                Transaction.type == "income",
+                Transaction.date >= start,
+                Transaction.date <= end
+            )
+            expense_query = db.query(func.sum(Transaction.amount)).filter(
+                Transaction.type == "expense",
+                Transaction.date >= start,
+                Transaction.date <= end
+            )
+            
+            if current_user:
+                income_query = income_query.filter(Transaction.user_id == current_user.id)
+                expense_query = expense_query.filter(Transaction.user_id == current_user.id)
+            
+            income = float(income_query.scalar() or 0)
+            expense = float(expense_query.scalar() or 0)
+            
+            label_x = MONTH_LABELS[month]
+            
+            series.append({
+                "timestamp": start.isoformat(),
+                "labelX": label_x,
+                "totalIncome": income,
+                "totalExpense": expense,
+                "netSavings": income - expense,
+                "breakdownExpense": get_category_breakdown(db, start, end, current_user.id if current_user else None)
+            })
+            
+    else:  # monthly (default)
+        # Last N months
+        for i in range(months - 1, -1, -1):
+            target_month = today.month - i
+            target_year = today.year
+            while target_month <= 0:
+                target_month += 12
+                target_year -= 1
+            
+            start = date(target_year, target_month, 1)
+            if target_month == 12:
+                end = date(target_year + 1, 1, 1) - timedelta(days=1)
+            else:
+                end = date(target_year, target_month + 1, 1) - timedelta(days=1)
+            
+            income_query = db.query(func.sum(Transaction.amount)).filter(
+                Transaction.type == "income",
+                Transaction.date >= start,
+                Transaction.date <= end
+            )
+            expense_query = db.query(func.sum(Transaction.amount)).filter(
+                Transaction.type == "expense",
+                Transaction.date >= start,
+                Transaction.date <= end
+            )
+            
+            if current_user:
+                income_query = income_query.filter(Transaction.user_id == current_user.id)
+                expense_query = expense_query.filter(Transaction.user_id == current_user.id)
+            
+            income = float(income_query.scalar() or 0)
+            expense = float(expense_query.scalar() or 0)
+            
+            label_x = f"{MONTH_LABELS[target_month]} {target_year}"
+            
+            series.append({
+                "timestamp": start.isoformat(),
+                "labelX": label_x,
+                "totalIncome": income,
+                "totalExpense": expense,
+                "netSavings": income - expense,
+                "breakdownExpense": get_category_breakdown(db, start, end, current_user.id if current_user else None)
+            })
     
-    return {"monthly": monthly_data}
+    return {
+        "status": "success",
+        "meta": {
+            "timeframe": timeframe,
+            "dataPoints": len(series),
+            "startDate": series[0]["timestamp"] if series else None,
+            "endDate": series[-1]["timestamp"] if series else None,
+        },
+        "series": series,
+        "chartConfig": {
+            "xAxisLabel": "Periode",
+            "yAxisLabel": "Jumlah (Rp)",
+            "mode": "net_worth" if timeframe in ["monthly", "yearly"] else "delta"
+        }
+    }
 
 
 @router.get("/category-breakdown")
-def get_category_breakdown(
+def get_category_breakdown_api(
     type: str = Query(..., regex="^(income|expense)$"),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -220,8 +316,8 @@ def get_category_breakdown(
         end_date = end_date or date.today()
     
     query = db.query(
-        Category,
-        func.sum(Transaction.amount).label("total")
+        Category.name,
+        func.sum(Transaction.amount).label('total')
     ).join(Transaction, Category.id == Transaction.category_id).filter(
         Transaction.type == type,
         Transaction.date >= start_date,
@@ -231,27 +327,11 @@ def get_category_breakdown(
     if current_user:
         query = query.filter(Transaction.user_id == current_user.id)
     
-    categories = query.group_by(Category.id).all()
-    
-    total = sum(cat[1] for cat in categories)
-    
-    breakdown = []
-    for category, total_amount in categories:
-        percentage = (total_amount / total * 100) if total > 0 else 0
-        breakdown.append({
-            "id": category.id,
-            "name": category.name,
-            "icon": category.icon,
-            "color": category.color,
-            "amount": total_amount,
-            "percentage": round(float(percentage), 2)
-        })
-    
-    breakdown.sort(key=lambda x: x["amount"], reverse=True)
+    categories = query.group_by(Category.id, Category.name).all()
     
     return {
-        "type": type,
-        "period": {"start": start_date, "end": end_date},
-        "total": total,
-        "categories": breakdown
+        "categories": [{"name": cat.name, "total": float(cat.total)} for cat in categories],
+        "total": sum(float(cat.total) for cat in categories),
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
     }
