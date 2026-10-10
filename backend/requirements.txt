@@ -24,14 +24,14 @@ httpx==0.27.2
 python-dateutil==2.9.0
 requests==2.32.0
 
-# OCR - Multiple engines for ensemble
-Pillow>=10.0.0
-pytesseract>=0.3.10
-opencv-python-headless>=4.8.0
-rapidocr-onnxruntime>=1.3.0
-easyocr>=1.7.0
+# OCR - DISABLED for Railway build (easyocr too heavy ~4GB)
+# Keep these commented for future when using larger instance
+# Pillow>=10.0.0
+# pytesseract>=0.3.10
+# opencv-python-headless>=4.8.0
+# rapidocr-onnxruntime>=1.3.0
+# easyocr>=1.7.0
 
-# Vector Search + Fuzzy Matching (DISABLED for Railway build - use rapidfuzz only)
-# faiss-cpu>=1.7.0
+# Vector Search + Fuzzy Matching
 rapidfuzz>=3.0.0
 numpy>=1.24.0
