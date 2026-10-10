@@ -37,10 +37,3 @@ build/
 # OS
 .DS_Store
 Thumbs.db
-
-# Node (for backend if using pnpm)
-node_modules/
-pnpm-lock.yaml
-
-# Railway
-.railway/
