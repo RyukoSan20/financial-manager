@@ -16,7 +16,7 @@ from . import (
     data,
     parser,
     ai_advisor,
-    scan_jobs,
+    # scan_jobs disabled (OCR - too heavy)
     feed,
     exchange,
     market,

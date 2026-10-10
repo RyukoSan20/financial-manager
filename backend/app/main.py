@@ -9,7 +9,8 @@ from app.api.routes import (
     accounts, categories, transactions, budgets,
     dashboard, calculators,
     transfers, recurring, goals, debts, analytics,
-    auth, data, parser, ai_advisor, scan_jobs, feed,
+    auth, data, parser, ai_advisor, feed,
+    # scan_jobs disabled (OCR)
     exchange, market, finnhub, ninjas, market_intel, zap_ink,
     realtime_market
 )
