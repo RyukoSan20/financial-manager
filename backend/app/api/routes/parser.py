@@ -23,8 +23,17 @@ from app.services.parser_service import (
     parse_receipt,
     ParsedTransaction
 )
-from app.services.ocr_service import ocr_service, OCRResult
-from app.services.geocoding_service import geocoding_service, geocode_merchant
+try:
+    from app.services.ocr_service import ocr_service, OCRResult
+except ImportError:
+    ocr_service = None
+    OCRResult = None
+
+try:
+    from app.services.geocoding_service import geocoding_service, geocode_merchant
+except ImportError:
+    geocoding_service = None
+    geocode_merchant = None
 try:
     from app.services.catalog_service import match_items_to_catalog
     CATALOG_AVAILABLE = True
