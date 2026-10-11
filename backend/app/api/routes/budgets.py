@@ -72,7 +72,7 @@ def list_budgets(
             "category_id": budget.category_id,
             "account_id": budget.account_id,
             "is_active": budget.is_active,
-            "period_type": budget.period_type,
+            "period_type": budget.period,
         }
         result.append(budget_dict)
     
