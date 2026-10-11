@@ -7,7 +7,7 @@ const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL.replace(/\/api$/, '');
   }
-  return 'https://financial-manager-production-26f7.up.railway.app';
+  return import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://fin-manager-production.up.railway.app';
 };
 const API_URL = getApiUrl();
 

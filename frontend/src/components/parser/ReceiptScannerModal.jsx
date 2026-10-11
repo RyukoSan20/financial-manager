@@ -120,7 +120,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
       // Call new scan-jobs upload endpoint
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-26f7.up.railway.app';
+      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://fin-manager-production.up.railway.app';
       
       const formData = new FormData();
       formData.append('file', file);
@@ -226,7 +226,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       formData.append('file', file);
 
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-26f7.up.railway.app';
+      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://fin-manager-production.up.railway.app';
       
       let parseResponse;
       let lastError = null;

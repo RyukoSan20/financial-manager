@@ -46,3 +46,4 @@ coverage/
 # Vercel
 .vercel
 .DS_Store
+.env*

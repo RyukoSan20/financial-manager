@@ -87,7 +87,7 @@ export const MarketPage = () => {
   const fetchMarketData = useCallback(async () => {
     setLoading(true);
     try {
-      const resp = await fetch('https://financial-manager-production-26f7.up.railway.app/realtime/summary');
+      const resp = await fetch(`${import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://fin-manager-production.up.railway.app'}/realtime/summary`);
       const data = await resp.json();
       setMarketData(data);
     } catch (err) {
