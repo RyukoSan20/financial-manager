@@ -20,6 +20,49 @@ from app.models.user import User
 
 router = APIRouter()
 
+# Dashboard summary endpoint for frontend compatibility
+@router.get("/summary")
+def get_dashboard_summary(
+    start_date: Optional[str] = Query(default=None),
+    end_date: Optional[str] = Query(default=None),
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Get dashboard summary data."""
+    from datetime import datetime
+    
+    # Parse dates or use default
+    if start_date:
+        start = datetime.strptime(start_date, '%Y-%m-%d').date()
+    else:
+        start = date.today() - timedelta(days=30)
+    
+    if end_date:
+        end = datetime.strptime(end_date, '%Y-%m-%d').date()
+    else:
+        end = date.today()
+    
+    user_id = current_user.id if current_user else None
+    
+    # Get totals
+    totals = get_totals_by_date(db, start, end, user_id)
+    
+    # Get category breakdown
+    income_cats = get_category_breakdown_by_date(db, start, end, 'income', user_id)
+    expense_cats = get_category_breakdown_by_date(db, start, end, 'expense', user_id)
+    
+    return {
+        "totalIncome": totals['totalIncome'],
+        "totalExpense": totals['totalExpense'],
+        "netSavings": totals['netSavings'],
+        "incomeByCategory": income_cats,
+        "expenseByCategory": expense_cats,
+        "period": {
+            "start": str(start),
+            "end": str(end)
+        }
+    }
+
 # Constants
 MONTH_LABELS = {i: month_abbr[i] for i in range(1, 13)}
 DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
