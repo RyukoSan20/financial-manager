@@ -151,6 +151,16 @@ def _run_schema_migrations():
                 except Exception as e:
                     print(f"[MIGRATION] Failed to add supabase_id: {e}")
 
+            # Migration: Add period_type to budgets if missing
+            try:
+                budgets_columns = [col['name'] for col in inspector.get_columns('budgets')]
+                if 'period_type' not in budgets_columns:
+                    conn.execute(text("ALTER TABLE budgets ADD COLUMN period_type VARCHAR(20) DEFAULT 'monthly'"))
+                    conn.commit()
+                    print("[MIGRATION] Added period_type column to budgets")
+            except Exception as e:
+                print(f"[MIGRATION] budgets period_type: {e}")
+
     except Exception as e:
         print(f"[MIGRATION] Warning: {e}")
 
