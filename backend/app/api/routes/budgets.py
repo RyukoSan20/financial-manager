@@ -1,6 +1,7 @@
 """Budget API routes with multi-tenancy."""
 
-from fastapi import APIRouter, Depends, HTTPException, RedirectResponse, status
+from fastapi import APIRouter, Depends, HTTPException
+from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date
@@ -19,7 +20,7 @@ router = APIRouter()
 # Fix redirect to HTTPS
 @router.get("", include_in_schema=False)
 def redirect_to_slash():
-    return RedirectResponse(url="/budgets/", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+    return RedirectResponse(url="/budgets/", status_code=308)
 
 @router.get("/", response_model=List[dict])
 def list_budgets(

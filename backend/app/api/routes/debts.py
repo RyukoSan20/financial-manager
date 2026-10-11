@@ -1,6 +1,7 @@
 """Debt API routes with multi-tenancy."""
 
-from fastapi import APIRouter, Depends, HTTPException, RedirectResponse, status
+from fastapi import APIRouter, Depends, HTTPException
+from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date, timedelta
@@ -27,12 +28,12 @@ router = APIRouter()
 # Fix redirect to HTTPS
 @router.get("", include_in_schema=False)
 def redirect_to_slash():
-    return RedirectResponse(url="/debts/", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+    return RedirectResponse(url="/debts/", status_code=308)
 
 # Fix redirect to HTTPS
 @router.get("/summary", include_in_schema=False)
 def redirect_summary_to_slash():
-    return RedirectResponse(url="/debts/summary/", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+    return RedirectResponse(url="/debts/summary/", status_code=308)
 
 @router.get("/", response_model=List[DebtWithProgress])
 def list_debts(

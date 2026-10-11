@@ -1,6 +1,7 @@
 """Recurring Rule API routes with multi-tenancy."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, RedirectResponse, status
+from fastapi import APIRouter, Depends, HTTPException, Query
+from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, timedelta
@@ -21,7 +22,7 @@ router = APIRouter()
 # Fix redirect to HTTPS
 @router.get("", include_in_schema=False)
 def redirect_to_slash():
-    return RedirectResponse(url="/recurring/", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+    return RedirectResponse(url="/recurring/", status_code=308)
 
 def calculate_next_occurrence(rule: RecurringRule, from_date: date = None) -> date:
     """Calculate next occurrence date based on frequency."""
