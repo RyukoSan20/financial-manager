@@ -475,7 +475,7 @@ def get_accounts_for_filter(
                 "name": acc.name,
                 "balance": float(acc.balance or 0),
                 "currency": acc.currency or "IDR",
-                "type": acc.type,
+                "type": acc.account_type,
             }
             for acc in accounts
         ],
