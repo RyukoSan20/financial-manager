@@ -1,6 +1,6 @@
 """Debt API routes with multi-tenancy."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, RedirectResponse, status
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date, timedelta
@@ -24,6 +24,15 @@ from app.services.calculation.formulas import AmortizationResult
 
 router = APIRouter()
 
+# Fix redirect to HTTPS
+@router.get("", include_in_schema=False)
+def redirect_to_slash():
+    return RedirectResponse(url="/debts/", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+
+# Fix redirect to HTTPS
+@router.get("/summary", include_in_schema=False)
+def redirect_summary_to_slash():
+    return RedirectResponse(url="/debts/summary/", status_code=status.HTTP_308_PERMANENT_REDIRECT)
 
 @router.get("/", response_model=List[DebtWithProgress])
 def list_debts(

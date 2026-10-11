@@ -1,6 +1,6 @@
 """Budget API routes with multi-tenancy."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, RedirectResponse, status
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date
@@ -16,6 +16,10 @@ from app.services.calculation_service import calculation_service
 
 router = APIRouter()
 
+# Fix redirect to HTTPS
+@router.get("", include_in_schema=False)
+def redirect_to_slash():
+    return RedirectResponse(url="/budgets/", status_code=status.HTTP_308_PERMANENT_REDIRECT)
 
 @router.get("/", response_model=List[dict])
 def list_budgets(
