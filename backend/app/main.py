@@ -35,6 +35,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:5173",
         "https://financial-manager-inky.vercel.app",
+        "https://financial-manager-opal.vercel.app",
     ],
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
