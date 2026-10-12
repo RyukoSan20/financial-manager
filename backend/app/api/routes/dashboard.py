@@ -243,19 +243,17 @@ def get_cash_flow(
         start, end = get_date_range(timeframe)
     
     granularity = GRANULARITY_CONFIG[timeframe]['granularity']
-    user_id = current_user.id if current_user else None
+    user_id = current_user.id if current_user else 1  # Default to user 1 if not authenticated
     
     series = []
     running_balance = 0
     
-    # Build base query filter
+    # Build base query filter - always filter by user_id for security
     base_filter = [
         Transaction.date >= start,
-        Transaction.date <= end
+        Transaction.date <= end,
+        Transaction.user_id == user_id
     ]
-    
-    if user_id:
-        base_filter.append(Transaction.user_id == user_id)
     
     if account_id:
         base_filter.append(Transaction.account_id == account_id)

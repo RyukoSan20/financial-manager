@@ -12,6 +12,7 @@ import {
 import { formatCurrency, formatNumber, formatPercent } from '../utils/format';
 import api from '../services/api';
 import { useTranslation } from '../i18n';
+import AIAssistant from '../components/common/AIAssistant';
 
 // ============================================================================
 // ACHIEVEMENTS CONFIGURATION - DIPULIHKAN DAN DIENHANCE
@@ -1296,6 +1297,13 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           </div>
         </Card>
       )}
+      
+      {/* AI Assistant */}
+      <AIAssistant userData={{
+        totalBalance: summary?.total_balance || 0,
+        totalIncome: summary?.total_income || 0,
+        totalExpense: summary?.total_expense || 0,
+      }} />
       
     </div>
   );
