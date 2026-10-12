@@ -20,7 +20,7 @@ router = APIRouter()
 # Fix redirect to HTTPS
 @router.get("", include_in_schema=False)
 def redirect_to_slash():
-    return RedirectResponse(url="/budgets/", status_code=308)
+    return RedirectResponse(url="/api/budgets/", status_code=308)
 
 @router.get("/", response_model=List[dict])
 def list_budgets(

@@ -51,10 +51,44 @@ def get_dashboard_summary(
     income_cats = get_category_breakdown_by_date(db, start, end, 'income', user_id)
     expense_cats = get_category_breakdown_by_date(db, start, end, 'expense', user_id)
     
+    # Get total balance (sum of all account balances)
+    account_query = db.query(func.sum(Account.balance))
+    if user_id:
+        account_query = account_query.filter(Account.user_id == user_id)
+    total_balance = float(account_query.scalar() or 0)
+    
+    # Get budget info
+    from app.models.budget import Budget
+    from calendar import monthrange
+    first_day = date(end.year, end.month, 1)
+    _, last_day = monthrange(end.year, end.month)
+    month_end = date(end.year, end.month, last_day)
+    
+    budget_query = db.query(func.sum(Budget.amount))
+    if user_id:
+        budget_query = budget_query.filter(Budget.user_id == user_id)
+    total_budget = float(budget_query.scalar() or 0)
+    
+    # Calculate total spent this month
+    spent_query = db.query(func.sum(Transaction.amount)).filter(
+        Transaction.type == 'expense',
+        Transaction.date >= first_day,
+        Transaction.date <= end
+    )
+    if user_id:
+        spent_query = spent_query.filter(Transaction.user_id == user_id)
+    total_spent = float(spent_query.scalar() or 0)
+    
     return {
         "totalIncome": totals['totalIncome'],
         "totalExpense": totals['totalExpense'],
         "netSavings": totals['netSavings'],
+        # Frontend expected fields
+        "total_balance": total_balance,
+        "net_cash_flow": totals['netSavings'],
+        "total_spent": total_spent,
+        "total_budget": total_budget,
+        # Category breakdown
         "incomeByCategory": income_cats,
         "expenseByCategory": expense_cats,
         "period": {
@@ -117,10 +151,11 @@ def get_category_breakdown_by_date(
     user_id: Optional[int] = None
 ) -> Dict[str, float]:
     """Get category breakdown for a date range."""
+    # Use LEFT JOIN to include transactions without category
     query = db.query(
-        Category.name,
+        func.coalesce(Category.name, 'Lainnya').label('category_name'),
         func.sum(Transaction.amount).label('total')
-    ).join(Transaction, Category.id == Transaction.category_id).filter(
+    ).outerjoin(Category, Category.id == Transaction.category_id).filter(
         Transaction.type == tx_type,
         Transaction.date >= start,
         Transaction.date <= end
@@ -129,8 +164,8 @@ def get_category_breakdown_by_date(
     if user_id:
         query = query.filter(Transaction.user_id == user_id)
     
-    results = query.group_by(Category.name).all()
-    return {row.name: float(row.total) for row in results}
+    results = query.group_by(func.coalesce(Category.name, 'Lainnya')).all()
+    return {row.category_name: float(row.total) for row in results}
 
 
 def get_totals_by_date(

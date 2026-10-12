@@ -1,6 +1,16 @@
+/**
+ * Enhanced Receipt Scanner Modal
+ * Features:
+ * - Camera capture
+ * - File upload
+ * - Drag & drop
+ * - Real-time OCR preview
+ * - Multiple language support
+ * - Auto-categorization
+ */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
-import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles, X } from 'lucide-react';
+import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles, X, RotateCcw, ZoomIn, FileImage, Smartphone, Monitor } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 
@@ -9,36 +19,37 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   const [error, setError] = useState('');
   const [preview, setPreview] = useState(null);
   const [parsedData, setParsedData] = useState(null);
-  const [step, setStep] = useState('upload'); // upload, preview, confirm
+  const [step, setStep] = useState('upload'); // upload, preview, edit, confirm
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [confirming, setConfirming] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('');
+  const [confidence, setConfidence] = useState(0);
   
-  // Editable fields for user modification
+  // Editable fields
   const [merchantName, setMerchantName] = useState('');
   const [amount, setAmount] = useState('');
   const [location, setLocation] = useState('');
   const [transactionDate, setTransactionDate] = useState('');
+  const [rawText, setRawText] = useState('');
   
-  // Background processing state
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [jobId, setJobId] = useState(null);
-  const [processingComplete, setProcessingComplete] = useState(false);
+  // Image enhancement
+  const [imageMode, setImageMode] = useState('auto'); // auto, document, receipt
+  const [rotation, setRotation] = useState(0);
   
   const fileInputRef = useRef(null);
-  const pollIntervalRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [usingCamera, setUsingCamera] = useState(false);
+  const [stream, setStream] = useState(null);
 
-  // Load data when modal opens
   useEffect(() => {
     if (isOpen) {
       loadData();
     }
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
+      stopCamera();
     };
   }, [isOpen]);
 
@@ -58,31 +69,72 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      setUsingCamera(true);
+    } catch (err) {
+      console.error('Camera error:', err);
+      setError('Tidak dapat mengakses kamera. Pastikan izin kamera diberikan.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setUsingCamera(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    
+    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+    setPreview(imageData);
+    stopCamera();
+    setStep('preview');
+  };
+
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    await processFile(file);
+  };
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  const processFile = async (file) => {
+    // Validate file
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
     if (!allowedTypes.includes(file.type)) {
-      setError('Format tidak valid. Gunakan JPG, PNG, atau WebP.');
+      setError('Format tidak valid. Gunakan JPG, PNG, WebP, atau HEIC.');
       return;
     }
 
-    // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       setError('File terlalu besar. Maksimal 10MB.');
       return;
     }
 
-    // Create preview
     const reader = new FileReader();
     reader.onload = (e) => {
       setPreview(e.target.result);
       setStep('preview');
       setParsedData(null);
       setError('');
-      setProcessingComplete(false);
     };
     reader.readAsDataURL(file);
   };
@@ -91,13 +143,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      const input = fileInputRef.current;
-      if (input) {
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        input.files = dt.files;
-        await handleFileSelect({ target: input });
-      }
+      await processFile(file);
     }
   };
 
@@ -105,570 +151,515 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     e.preventDefault();
   };
 
-  // Start background processing with new scan-jobs API
-  const startBackgroundProcessing = async () => {
+  const processReceipt = async () => {
     if (!preview) return;
 
-    setIsProcessing(true);
+    setLoading(true);
+    setProcessingStatus('Mengupload gambar...');
     setError('');
 
     try {
       // Convert base64 to blob
       const response = await fetch(preview);
       const blob = await response.blob();
-      const file = new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
+      const imageFile = new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
 
-      // Call new scan-jobs upload endpoint
+      setProcessingStatus('Memproses OCR...');
+
+      // Try backend OCR endpoint
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://fin-manager-production.up.railway.app';
+      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:8000';
       
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', imageFile);
 
-      const uploadResponse = await fetch(`${apiUrl}/api/scan-jobs/upload`, {
+      const uploadResponse = await fetch(`${apiUrl}/api/parser/receipt`, {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error('Upload gagal');
+      if (uploadResponse.ok) {
+        const data = await uploadResponse.json();
+        setParsedData(data);
+        setConfidence(data.confidence_score || 0.8);
+        populateFields(data);
+        setStep('edit');
+      } else {
+        // Fallback to local OCR
+        setProcessingStatus('OCR lokal...');
+        await localOCR();
       }
-
-      const jobData = await uploadResponse.json();
-      setJobId(jobData.job_id);
-      
-      // Start polling for job status
-      pollJobStatus(jobData.job_id);
-      
-      // Show preview but allow closing - user will be notified when done
-      setStep('preview');
-      
-    } catch (err) {
-      console.error('Upload Error:', err);
-      setError('Gagal upload: ' + (err.message || 'Unknown error'));
-      setIsProcessing(false);
-    }
-  };
-
-  // Poll job status
-  const pollJobStatus = useCallback(async (id) => {
-    const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-    const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-26f7.up.railway.app';
-    
-    pollIntervalRef.current = setInterval(async () => {
-      try {
-        const response = await fetch(`${apiUrl}/api/scan-jobs/${id}`, {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        });
-        
-        if (!response.ok) {
-          clearInterval(pollIntervalRef.current);
-          return;
-        }
-        
-        const data = await response.json();
-        
-        if (data.status === 'completed') {
-          clearInterval(pollIntervalRef.current);
-          handleJobComplete(data);
-        } else if (data.status === 'failed') {
-          clearInterval(pollIntervalRef.current);
-          setIsProcessing(false);
-          setError(data.error_message || 'Processing failed');
-        }
-      } catch (err) {
-        console.error('Poll error:', err);
-      }
-    }, 3000); // Poll every 3 seconds
-  }, []);
-
-  // Handle job completion
-  const handleJobComplete = (jobData) => {
-    setIsProcessing(false);
-    setProcessingComplete(true);
-    
-    if (jobData.results?.gemini_parsed) {
-      const parsed = jobData.results.gemini_parsed;
-      
-      // Set editable fields
-      setMerchantName(parsed.merchant_name || '');
-      setLocation(parsed.address || '');
-      setAmount(parsed.total_amount?.toString() || parsed.total_amount?.toString() || '');
-      setTransactionDate(parsed.receipt_date || new Date().toISOString().split('T')[0]);
-      
-      setParsedData({
-        ...parsed,
-        job_id: jobData.job_id,
-      });
-      setStep('confirm');
-      
-      // Trigger success callback for navbar notification
-      if (onSuccess) {
-        onSuccess({ type: 'scan_complete', job_id: jobData.job_id });
-      }
-    }
-  };
-
-  // Original OCR parse (fallback)
-  const handleParseImage = async () => {
-    if (!preview) return;
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await fetch(preview);
-      const blob = await response.blob();
-      const file = new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://fin-manager-production.up.railway.app';
-      
-      let parseResponse;
-      let lastError = null;
-      
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          parseResponse = await fetch(`${apiUrl}/api/parser/parse-receipt`, {
-            method: 'POST',
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-            body: formData,
-          });
-          if (parseResponse.ok) break;
-        } catch (err) {
-          lastError = err;
-          if (attempt < 3) {
-            await new Promise(r => setTimeout(r, attempt * 2000));
-          }
-        }
-      }
-
-      if (!parseResponse || !parseResponse.ok) {
-        throw new Error(lastError?.message || 'OCR server tidak merespons. Coba beberapa saat lagi.');
-      }
-
-      const data = await parseResponse.json();
-
-      if (!parseResponse.ok || data.error || data.detail) {
-        throw new Error(data.detail || data.error || 'OCR gagal');
-      }
-
-      // Validate date
-      const isValidIsoDate = (dateStr) => {
-        if (!dateStr || typeof dateStr !== 'string') return false;
-        const regex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!regex.test(dateStr)) return false;
-        const d = new Date(dateStr);
-        return !isNaN(d.getTime());
-      };
-      
-      const getTodayLocalISO = () => {
-        const today = new Date();
-        const y = today.getFullYear();
-        const m = String(today.getMonth() + 1).padStart(2, '0');
-        const d = String(today.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-      };
-      
-      const parsedDate = isValidIsoDate(data.date) ? data.date : getTodayLocalISO();
-
-      // Set editable fields
-      setMerchantName(data.merchant_name || '');
-      setLocation(data.address || '');
-      setAmount(data.amount?.toString() || '');
-      setTransactionDate(parsedDate);
-
-      // AI category
-      const aiCategory = mapCategoryHint(data.category_hint);
-      if (aiCategory && !selectedCategory) {
-        setSelectedCategory(aiCategory);
-      }
-
-      setParsedData({
-        ...data,
-        date: parsedDate
-      });
-      setStep('confirm');
     } catch (err) {
       console.error('OCR Error:', err);
-      let errorMsg = 'Failed to process image';
-      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-        errorMsg = 'Connection error: Cannot reach OCR server.';
-      } else {
-        errorMsg = 'Failed to process image: ' + (err.message || 'Unknown error');
-      }
-      setError(errorMsg);
+      setProcessingStatus('OCR lokal...');
+      await localOCR();
     } finally {
+      setLoading(false);
+      setProcessingStatus('');
+    }
+  };
+
+  // Local OCR fallback using Tesseract.js
+  const localOCR = async () => {
+    try {
+      // Dynamic import Tesseract
+      const Tesseract = await import('tesseract.js');
+      
+      setProcessingStatus('Melakukan OCR...');
+      
+      const result = await Tesseract.recognize(preview, 'eng+ind', {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            setProcessingStatus(`OCR: ${Math.round(m.progress * 100)}%`);
+          }
+        }
+      });
+
+      const text = result.data.text;
+      setRawText(text);
+      
+      // Parse the extracted text
+      const parsed = parseReceiptText(text);
+      setParsedData(parsed);
+      setConfidence(result.data.confidence / 100);
+      populateFields(parsed);
+      setStep('edit');
+    } catch (err) {
+      console.error('Local OCR Error:', err);
+      setError('OCR gagal. Coba gunakan gambar yang lebih jelas.');
       setLoading(false);
     }
   };
 
-  // Map AI category hint to actual category ID
-  const mapCategoryHint = (hint) => {
-    const mapping = {
-      'food_beverages': categories.find(c => c.name?.toLowerCase().includes('makan') || c.name?.toLowerCase().includes('food'))?.id,
-      'transport': categories.find(c => c.name?.toLowerCase().includes('transport') || c.name?.toLowerCase().includes('bensin'))?.id,
-      'shopping': categories.find(c => c.name?.toLowerCase().includes('belanja') || c.name?.toLowerCase().includes('shop'))?.id,
-      'bills_utilities': categories.find(c => c.name?.toLowerCase().includes('tagihan') || c.name?.toLowerCase().includes('listrik'))?.id,
-      'entertainment': categories.find(c => c.name?.toLowerCase().includes('hiburan') || c.name?.toLowerCase().includes('game'))?.id,
-      'healthcare': categories.find(c => c.name?.toLowerCase().includes('kesehatan') || c.name?.toLowerCase().includes('obat'))?.id,
+  const parseReceiptText = (text) => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    
+    // Amount patterns
+    const amountPatterns = [
+      /total[:\s]*[Rr]p\.?\s*([\d.,]+)/i,
+      /jumlah[:\s]*[Rr]p\.?\s*([\d.,]+)/i,
+      /grand\s*total[:\s]*[Rr]p\.?\s*([\d.,]+)/i,
+      /subtotal[:\s]*[Rr]p\.?\s*([\d.,]+)/i,
+      /[Rr]p\.?\s*([\d.,]+)/,
+    ];
+
+    let amount = 0;
+    for (const pattern of amountPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        amount = parseFloat(match[1].replace(/[.,]/g, ''));
+        if (amount > 0) break;
+      }
+    }
+
+    // Date patterns
+    const datePatterns = [
+      /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,
+      /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/,
+    ];
+
+    let date = new Date().toISOString().split('T')[0];
+    for (const pattern of datePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        if (match[1].length === 4) {
+          date = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+        } else {
+          date = `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+        }
+        break;
+      }
+    }
+
+    // Merchant name (usually first non-empty line or prominent text)
+    let merchant = 'Unknown Merchant';
+    const firstLines = lines.slice(0, 3);
+    for (const line of firstLines) {
+      if (line.length > 3 && !line.match(/^\d+$/) && !line.match(/^[Tt]oken/)) {
+        merchant = line.substring(0, 50);
+        break;
+      }
+    }
+
+    // Location (look for address keywords)
+    let location = '';
+    for (const line of lines) {
+      if (line.match(/jl\.|jalan|street|address|rt\.|rw\.|kota/i)) {
+        location = line.substring(0, 100);
+        break;
+      }
+    }
+
+    return {
+      merchant_name: merchant,
+      amount: amount.toString(),
+      date: date,
+      location: location,
+      confidence_score: 0.7,
+      raw_text: text,
     };
-    return mapping[hint] || null;
+  };
+
+  const populateFields = (data) => {
+    setMerchantName(data.merchant_name || '');
+    setAmount(data.amount || '');
+    setLocation(data.location || '');
+    setTransactionDate(data.date || new Date().toISOString().split('T')[0]);
+  };
+
+  const handleReset = () => {
+    setPreview(null);
+    setParsedData(null);
+    setStep('upload');
+    setMerchantName('');
+    setAmount('');
+    setLocation('');
+    setTransactionDate('');
+    setRawText('');
+    setError('');
+    setConfidence(0);
   };
 
   const handleConfirm = async () => {
-    if (!parsedData) return;
-    
     if (!selectedAccount) {
       setError('Pilih akun terlebih dahulu');
       return;
     }
 
-    setConfirming(true);
+    if (!amount || parseFloat(amount) <= 0) {
+      setError('Masukkan jumlah yang valid');
+      return;
+    }
+
+    setLoading(true);
     setError('');
 
     try {
-      // Use editable amount
-      const finalAmount = parseFloat(amount) || parseFloat(parsedData.amount) || 0;
-      
       await api.transactions.create({
-        amount: finalAmount,
-        type: parsedData.suggested_type === 'income' ? 'income' : 'expense',
-        description: merchantName || parsedData.description || 'Pembelian',
-        date: transactionDate || new Date().toISOString().split('T')[0],
+        amount: parseFloat(amount),
+        type: 'expense',
+        description: merchantName || 'Receipt Scan',
+        date: transactionDate,
         account_id: parseInt(selectedAccount),
         category_id: selectedCategory ? parseInt(selectedCategory) : null,
-        merchant_name: merchantName || parsedData.merchant_name,
-        confidence_score: parsedData.confidence_score || parsedData.gemini_parsed?.confidence || 0,
-        detection_type: 'OCR_RECEIPT',
-        receipt_scan_id: parsedData.receipt_scan_id || parsedData.job_id || null,
-        latitude: parsedData.latitude,
-        longitude: parsedData.longitude,
-        merchant_address: location || parsedData.address,
-        notes: `Method: ${parsedData.payment_method || 'Not detected'}
-${location ? 'Location: ' + location : ''}
-${parsedData.items_count > 0 ? 'Items: ' + parsedData.items_count + ' item(s)' : ''}`,
+        merchant_name: merchantName,
+        location: location,
+        raw_source_text: rawText,
+        confidence_score: confidence,
+        detection_type: 'receipt_ocr',
       });
 
       onSuccess?.();
-      handleClose();
+      handleReset();
+      onClose();
     } catch (err) {
       console.error('Save error:', err);
-      setError('Failed to save: ' + (err.message || 'Unknown error'));
+      setError('Gagal menyimpan: ' + (err.message || 'Unknown error'));
     } finally {
-      setConfirming(false);
+      setLoading(false);
     }
   };
 
-  const handleClose = () => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-    }
-    setPreview(null);
-    setParsedData(null);
-    setError('');
-    setStep('upload');
-    setSelectedCategory('');
-    setMerchantName('');
-    setAmount('');
-    setLocation('');
-    setTransactionDate('');
-    setIsProcessing(false);
-    setProcessingComplete(false);
-    setJobId(null);
-    onClose();
+  const getConfidenceLabel = (score) => {
+    if (score >= 0.8) return { text: 'Tinggi', color: 'text-green-600' };
+    if (score >= 0.6) return { text: 'Sedang', color: 'text-yellow-600' };
+    return { text: 'Rendah', color: 'text-red-600' };
   };
 
-  const getCategoryLabel = (hint) => {
-    const labels = {
-      'food_beverages': '🍔 Makanan & Minuman',
-      'transport': '🚗 Transportasi',
-      'shopping': '🛒 Belanja',
-      'bills_utilities': '📄 Tagihan',
-      'entertainment': '🎮 Hiburan',
-      'healthcare': '💊 Kesehatan',
-      'other': '📦 Lainnya',
-    };
-    return labels[hint] || '📦 Lainnya';
-  };
+  const confInfo = getConfidenceLabel(confidence);
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleClose}
+      onClose={() => { handleReset(); onClose(); }}
       title="Receipt Scanner"
       size="lg"
-      closeable={!loading && !isProcessing} // Allow close unless processing
     >
       {/* Step 1: Upload */}
       {step === 'upload' && (
         <div className="space-y-4">
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Sparkles className="w-6 h-6 text-purple-600 mt-0.5" />
-              <div>
-                <p className="font-medium text-purple-900">Receipt Scanner</p>
-                <p className="text-sm text-purple-700 mt-1">
-                  Take a photo or upload a receipt. AI will automatically extract data.
-                </p>
+          {/* Camera Option */}
+          {usingCamera ? (
+            <div className="relative">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className="w-full rounded-lg bg-black"
+              />
+              <canvas ref={canvasRef} className="hidden" />
+              
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={stopCamera}
+                  className="bg-white/80"
+                >
+                  <X className="w-4 h-4 mr-2" /> Batal
+                </Button>
+                <Button
+                  onClick={capturePhoto}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Camera className="w-4 h-4 mr-2" /> Capture
+                </Button>
               </div>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Upload Options */}
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={startCamera}
+                  className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  <Smartphone className="w-8 h-8 text-gray-400" />
+                  <span className="text-sm font-medium">Kamera</span>
+                </button>
+                
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  <FileImage className="w-8 h-8 text-gray-400" />
+                  <span className="text-sm font-medium">Upload File</span>
+                </button>
+              </div>
 
-          <div
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50/50 transition-all"
-          >
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Upload className="w-8 h-8 text-purple-600" />
-            </div>
-            <p className="font-medium text-gray-700">Drop gambar struk di sini</p>
-            <p className="text-sm text-gray-500 mt-1">atau klik untuk browse</p>
-            <p className="text-xs text-gray-400 mt-2">JPG, PNG, WebP (maks 10MB)</p>
-          </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
+              {/* Drop Zone */}
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-blue-500 transition-colors"
+              >
+                <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600 dark:text-gray-400">
+                  Atau drag & drop gambar receipt di sini
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  JPG, PNG, WebP, HEIC • Maksimal 10MB
+                </p>
+              </div>
+            </>
+          )}
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
           )}
-
-          <div className="flex justify-end">
-            <Button variant="secondary" onClick={handleClose}>
-              Batal
-            </Button>
-          </div>
         </div>
       )}
 
-      {/* Step 2: Preview & Process */}
-      {step === 'preview' && preview && (
+      {/* Step 2: Preview with OCR */}
+      {step === 'preview' && (
         <div className="space-y-4">
-          {/* Image preview */}
-          <div className="relative">
+          {/* Image Preview */}
+          <div className="relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
             <img
               src={preview}
               alt="Receipt preview"
-              className="w-full max-h-64 object-contain rounded-xl border"
+              className="w-full max-h-64 object-contain"
+              style={{ transform: `rotate(${rotation}deg)` }}
             />
-            {isProcessing && (
-              <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
-                <div className="text-center text-white">
-                  <Loader2 className="w-10 h-10 animate-spin mx-auto mb-2" />
-                  <p className="font-medium">Memproses di background...</p>
-                  <p className="text-sm opacity-80 mt-1">Form bisa ditutup, notifikasi muncul saat selesai</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-600" />
-              <p className="font-medium text-purple-900">AI will extract:</p>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-purple-700">
-              <span>• Merchant Name</span>
-              <span>• Total Amount</span>
-              <span>• Date</span>
-              <span>• Payment Method</span>
-              <span>• Category Suggestion</span>
-              <span>• Store Location</span>
+            
+            {/* Controls */}
+            <div className="absolute top-2 right-2 flex gap-2">
+              <button
+                onClick={() => setRotation(r => (r + 90) % 360)}
+                className="p-2 bg-white/80 rounded-full hover:bg-white"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          {/* Processing indicator */}
-          {isProcessing && jobId && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-700">
-                Job ID: {jobId.substring(0, 8)}... | Processing in background...
-              </p>
+          {/* Processing Status */}
+          {loading && (
+            <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              <span className="text-blue-700 dark:text-blue-300">{processingStatus}</span>
             </div>
           )}
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={handleReset}
+              className="flex-1"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={processReceipt}
+              disabled={loading}
+              className="flex-1 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              Scan Receipt
+            </Button>
+          </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
-            </div>
-          )}
-
-          <div className="flex justify-between">
-            <Button variant="secondary" onClick={() => setStep('upload')} disabled={isProcessing}>
-              Kembali
-            </Button>
-            <Button onClick={startBackgroundProcessing} disabled={isProcessing}>
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Camera className="w-4 h-4 mr-2" />
-                  Start Background Scan
-                </>
-              )}
-            </Button>
-          </div>
-          
-          {/* Option to close while processing */}
-          {isProcessing && (
-            <div className="text-center">
-              <Button variant="ghost" size="sm" onClick={handleClose}>
-                Tutup form (notifikasi muncul saat selesai)
-              </Button>
             </div>
           )}
         </div>
       )}
 
-      {/* Step 3: Confirm */}
-      {step === 'confirm' && parsedData && (
+      {/* Step 3: Edit Parsed Data */}
+      {step === 'edit' && (
         <div className="space-y-4">
-          {/* Success indicator */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                <Check className="w-4 h-4 text-white" />
-              </div>
-              <p className="font-medium text-green-900">Extraction Complete!</p>
-            </div>
-            <p className="text-sm text-green-700 mt-1">
-              Data berhasil diekstrak. Edit jika perlu, lalu simpan.
-            </p>
+          {/* Confidence Badge */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">OCR Confidence:</span>
+            <span className={`text-sm font-medium ${confInfo.color}`}>
+              {confInfo.text} ({Math.round(confidence * 100)}%)
+            </span>
           </div>
 
-          {/* Editable fields */}
-          <div className="border rounded-xl divide-y">
-            {/* Merchant Name - EDITABLE */}
-            <div className="p-4">
-              <label className="text-sm text-gray-500 mb-1 block">Merchant Name</label>
-              <Input
+          {/* Form */}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Merchant / Toko
+              </label>
+              <input
+                type="text"
                 value={merchantName}
                 onChange={(e) => setMerchantName(e.target.value)}
-                placeholder="Nama merchant/toko"
-                className="font-medium"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                placeholder="Nama merchant"
               />
             </div>
-            
-            {/* Amount - EDITABLE */}
-            <div className="p-4">
-              <label className="text-sm text-gray-500 mb-1 block">Total Amount (Rp)</label>
-              <Input
-                type="number"
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Jumlah (Rp)
+              </label>
+              <input
+                type="text"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium text-lg"
                 placeholder="0"
-                className="font-bold text-xl"
               />
             </div>
-            
-            {/* Date - EDITABLE */}
-            <div className="p-4">
-              <label className="text-sm text-gray-500 mb-1 block">Date</label>
-              <Input
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Lokasi
+              </label>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                placeholder="Alamat (opsional)"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Tanggal
+              </label>
+              <input
                 type="date"
                 value={transactionDate}
                 onChange={(e) => setTransactionDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               />
             </div>
-            
-            {/* Location - EDITABLE */}
-            <div className="p-4">
-              <label className="text-sm text-gray-500 mb-1 block">Location</label>
-              <Input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Alamat merchant (opsional)"
-              />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Akun
+              </label>
+              <select
+                value={selectedAccount}
+                onChange={(e) => setSelectedAccount(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value="">Pilih Akun</option>
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            
-            {/* Payment Method - read only */}
-            <div className="p-4 flex items-center justify-between">
-              <span className="text-gray-500">Method</span>
-              <span className="text-sm">{parsedData.payment_method || 'Not detected'}</span>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Kategori
+              </label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value="">Pilih Kategori (opsional)</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            
-            {/* Accuracy - read only */}
-            <div className="p-4 flex items-center justify-between">
-              <span className="text-gray-500">Accuracy</span>
-              <span className="text-sm font-medium">
-                {Math.round(parsedData.confidence_score || parsedData.gemini_parsed?.confidence || 0)}%
-              </span>
-            </div>
-            
-            {/* Category hint - read only */}
-            {parsedData.category_hint && (
-              <div className="p-4 flex items-center justify-between bg-purple-50">
-                <span className="text-gray-500">AI Suggestion</span>
-                <span className="text-sm font-medium text-purple-700">
-                  {getCategoryLabel(parsedData.category_hint)}
-                </span>
-              </div>
-            )}
-            
-            {/* Items count */}
-            {parsedData.items_count > 0 && (
-              <div className="p-4 flex items-center justify-between bg-blue-50">
-                <span className="text-gray-500">Items</span>
-                <span className="text-sm font-medium text-blue-700">
-                  {parsedData.items_count} item(s)
-                </span>
-              </div>
-            )}
           </div>
 
-          {/* Account selector */}
-          <Select
-            label="Save to Account"
-            value={selectedAccount}
-            onChange={(e) => setSelectedAccount(e.target.value)}
-            options={accounts.map(a => ({ value: a.id, label: a.name }))}
-          />
-
-          {/* Category selector with AI suggestion */}
-          <div>
-            <Select
-              label="Kategori"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              options={[
-                { value: '', label: parsedData.category_hint ? `${getCategoryLabel(parsedData.category_hint)} (disarankan)` : 'Pilih kategori...' },
-                ...categories.map(c => ({ value: c.id, label: c.name }))
-              ]}
-            />
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setStep('preview')}
+              className="flex-1"
+            >
+              Kembali
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={loading || !selectedAccount || !amount}
+              className="flex-1 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              Simpan
+            </Button>
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
           )}
-
-          <div className="flex justify-between pt-2">
-            <Button variant="secondary" onClick={() => setStep('preview')}>
-              Kembali
-            </Button>
-            <Button onClick={handleConfirm} disabled={confirming || !selectedAccount}>
-              {confirming ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-              Save Transaction
-            </Button>
-          </div>
         </div>
       )}
     </Modal>

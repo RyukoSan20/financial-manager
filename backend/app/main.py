@@ -12,11 +12,14 @@ from app.api.routes import (
     auth, data, parser, ai_advisor, feed,
     # scan_jobs disabled (OCR)
     exchange, market, finnhub, ninjas, market_intel, zap_ink,
-    realtime_market
+    realtime_market, logs
 )
 
 # Import models to register with SQLAlchemy
 from app.models import *  # noqa: F401, F403
+
+# Import middleware
+from app.middleware import LoggingMiddleware
 
 settings = get_settings()
 
@@ -28,6 +31,9 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# Add logging middleware
+app.add_middleware(LoggingMiddleware)
+
 # CORS - configured from settings
 app.add_middleware(
     CORSMiddleware,
@@ -36,8 +42,11 @@ app.add_middleware(
         "http://localhost:5173",
         "https://financial-manager-inky.vercel.app",
         "https://financial-manager-opal.vercel.app",
+        "https://frontend-virid-alpha-24.vercel.app",
+        "https://frontend-6d6f9rilf-fin-pro2.vercel.app",
+        "https://fin-manager-production.up.railway.app",
     ],
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.trycloudflare\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -189,7 +198,8 @@ app.include_router(finnhub.router, prefix="/api/finnhub")
 app.include_router(ninjas.router, prefix="")
 app.include_router(market_intel.router, prefix="")
 app.include_router(zap_ink.router, prefix="")
-app.include_router(realtime_market.router, prefix="")
+app.include_router(realtime_market.router, prefix="", tags=["realtime-market"])
+app.include_router(logs.router, prefix="/api", tags=["Logs"])
 
 
 # Recurring auto-generator cron endpoint (for Railway cron)

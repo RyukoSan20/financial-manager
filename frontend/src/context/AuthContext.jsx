@@ -2,14 +2,24 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
 
-// Use Railway backend URL in production, localhost for dev
+// Use VITE_API_URL from environment, fallback to localhost for local dev
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL.replace(/\/api$/, '');
   }
-  return import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://fin-manager-production.up.railway.app';
+  // Default to localhost for local development
+  return 'http://localhost:8000';
 };
 const API_URL = getApiUrl();
+
+const getRedirectUrl = () => {
+  // Dynamic redirect URL based on current origin
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  // Fallback for SSR
+  return 'https://frontend-virid-alpha-24.vercel.app';
+};
 
 const AuthContext = createContext(null);
 

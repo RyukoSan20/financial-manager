@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react';
+/**
+ * Enhanced Text Parser Modal
+ * Supports: SMS bank, QRIS, e-wallet notifications, and manual text
+ * Improved parsing with multi-language support
+ */
+import { useState, useEffect, useCallback } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
-import { Camera, FileText, Loader2, Check, Sparkles, AlertCircle } from 'lucide-react';
+import { Camera, FileText, Loader2, Check, Sparkles, AlertCircle, ChevronDown, ChevronUp, Copy, Trash2, Zap } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 
@@ -13,9 +18,30 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
   const [confirming, setConfirming] = useState(false);
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [step, setStep] = useState('input'); // input, preview, confirm
+  const [step, setStep] = useState('input');
+  const [expandedResult, setExpandedResult] = useState(null);
+  const [parseDetails, setParseDetails] = useState(null);
 
-  // Load accounts and categories on open
+  // Sample texts for quick testing
+  const sampleTexts = [
+    {
+      label: '🏦 SMS BCA',
+      text: 'Transfer berhasil Rp500.000 dari JOHN DOE ke JANE SMITH. Tanggal: 12/10/2024 14:30. Ref: BC123456'
+    },
+    {
+      label: '📱 GoPay',
+      text: 'GOPAY - Pembayaran GoFood Rp45.000 ke WARUNG IBU. Sisa saldo: Rp125.000. 12 Okt 2024 13:45'
+    },
+    {
+      label: '💳 QRIS',
+      text: 'QRIS - Pembayaran Rp150.000 di TOKO BANGUNAN. Merchant: Toko Material Jaya. 12/10/24 10:00'
+    },
+    {
+      label: '💰 Transfer Masuk',
+      text: 'Anda menerima transfer Rp2.500.000 dari BUDI SANTOSO. Tanggal 12 Oktober 2024 09:15. Saldo: Rp5.750.000'
+    }
+  ];
+
   useEffect(() => {
     if (isOpen) {
       loadData();
@@ -37,7 +63,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
 
   const handleParse = async () => {
     if (!rawText.trim()) {
-      setError('Masukkan teks SMS atau QRIS terlebih dahulu');
+      setError('Masukkan teks terlebih dahulu');
       return;
     }
 
@@ -58,7 +84,18 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
       const parsed = Array.isArray(response) ? response : [];
       
       if (parsed.length === 0) {
-        setError('Tidak ada transaksi terdeteksi. Coba format SMS yang berbeda.');
+        // Try local parsing as fallback
+        const localParsed = localParse(rawText);
+        if (localParsed.length > 0) {
+          setResults(localParsed);
+          setSelectedResult({
+            ...localParsed[0],
+            account_id: accounts[0]?.id || ''
+          });
+          setParseDetails({ method: 'Local Parser', confidence: 0.85 });
+        } else {
+          setError('Tidak ada transaksi terdeteksi. Coba format teks yang berbeda.');
+        }
         return;
       }
 
@@ -67,13 +104,129 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
         ...parsed[0],
         account_id: parsed[0].account_id || accounts[0]?.id || ''
       });
+      setParseDetails({ method: 'AI Parser', confidence: parsed[0].confidence_score });
       setStep('preview');
     } catch (err) {
       console.error('Parse error:', err);
-      setError('Gagal parse: ' + (err.message || 'Unknown error'));
+      // Fallback to local parsing
+      const localParsed = localParse(rawText);
+      if (localParsed.length > 0) {
+        setResults(localParsed);
+        setSelectedResult({
+          ...localParsed[0],
+          account_id: accounts[0]?.id || ''
+        });
+        setParseDetails({ method: 'Local Parser', confidence: 0.75 });
+        setStep('preview');
+      } else {
+        setError('Gagal parse: ' + (err.message || 'Unknown error'));
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  // Local parsing fallback
+  const localParse = (text) => {
+    const results = [];
+    const upperText = text.toUpperCase();
+    
+    // Amount patterns (IDR with dots, commas, or plain)
+    const amountPatterns = [
+      /Rp\.?\s*([\d.,]+)/i,
+      /([\d.,]+)\s*Rp/i,
+      /(?:total|amount|jumlah|bayar|transfer)\s*:?\s*Rp?\s*([\d.,]+)/i,
+      /Rp\s*([\d.,]+)/i,
+      /(?:^|\s)([\d]{1,3}(?:[.,]\d{3})+)(?:\s|$)/,
+    ];
+
+    let amount = null;
+    for (const pattern of amountPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const raw = match[1] || match[2];
+        amount = parseFloat(raw.replace(/[.,]/g, ''));
+        if (!isNaN(amount) && amount > 0) break;
+      }
+    }
+
+    // Type detection
+    let type = 'expense';
+    const incomeKeywords = ['masuk', 'terima', 'dari', 'credit', 'incoming', 'deposit', 'received', 'masukan'];
+    const expenseKeywords = ['bayar', 'keluar', 'ke', 'debit', 'purchase', 'payment', 'transfer', 'beli'];
+    
+    for (const kw of incomeKeywords) {
+      if (upperText.includes(kw.toUpperCase())) {
+        type = 'income';
+        break;
+      }
+    }
+    for (const kw of expenseKeywords) {
+      if (upperText.includes(kw.toUpperCase()) && type === 'income') {
+        // Check if it's actually expense
+        const expensePatterns = ['BAYAR', 'BELI', 'PEMBAYARAN', 'PEMBELIAN'];
+        for (const ep of expensePatterns) {
+          if (upperText.includes(ep)) {
+            type = 'expense';
+            break;
+          }
+        }
+      }
+    }
+
+    // Date extraction
+    const datePatterns = [
+      /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/,
+      /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/,
+      /(\d{1,2})\s+(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+(\d{4})/i,
+      /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{4})/i,
+    ];
+    
+    let dateStr = null;
+    for (const pattern of datePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        // Simple date construction
+        if (match[1].length === 4) {
+          dateStr = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+        } else {
+          const year = match[3].length === 2 ? '20' + match[3] : match[3];
+          dateStr = `${year}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+        }
+        break;
+      }
+    }
+
+    // Merchant/source extraction
+    let merchant = null;
+    const merchantPatterns = [
+      /(?:di|ke|pada)\s+([A-Z][A-Za-z\s]+?)(?:\.|\s+tanggal|\s+saldo|\s+ref|\s+\d|$)/i,
+      /(?:merchant|toko|tempat)\s*:?\s*([A-Za-z\s]+?)(?:\.|$)/i,
+    ];
+    
+    for (const pattern of merchantPatterns) {
+      const match = text.match(pattern);
+      if (match && match[1] && match[1].length > 2) {
+        merchant = match[1].trim();
+        break;
+      }
+    }
+
+    if (amount) {
+      results.push({
+        amount: amount.toString(),
+        transaction_type: type.toUpperCase(),
+        suggested_type: type,
+        merchant_name: merchant || 'Parsed Transaction',
+        description: merchant || 'Transaction from parsed text',
+        date: dateStr || new Date().toISOString().split('T')[0],
+        confidence_score: 0.75,
+        detection_type: 'local_parser',
+        raw_text: text,
+      });
+    }
+
+    return results;
   };
 
   const handleConfirm = async () => {
@@ -103,7 +256,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
         merchant_name: selectedResult.merchant_name,
         raw_source_text: rawText,
         confidence_score: selectedResult.confidence_score,
-        detection_type: selectedResult.detection_type,
+        detection_type: selectedResult.detection_type || 'local_parser',
         latitude: selectedResult.latitude,
         longitude: selectedResult.longitude,
       });
@@ -124,7 +277,16 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
     setSelectedResult(null);
     setError('');
     setStep('input');
+    setParseDetails(null);
     onClose();
+  };
+
+  const useSample = (text) => {
+    setRawText(text);
+  };
+
+  const toggleExpand = (index) => {
+    setExpandedResult(expandedResult === index ? null : index);
   };
 
   const getTypeLabel = (type) => {
@@ -132,155 +294,250 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const getTypeColor = (type) => {
-    return type === 'CREDIT' || type === 'income' ? 'text-green-600' : 'text-red-600';
+    return type === 'CREDIT' || type === 'income' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50';
   };
 
-  const getTypeIcon = (type) => {
-    return type === 'CREDIT' || type === 'income' ? '+' : '-';
+  const getConfidenceColor = (score) => {
+    if (score >= 0.8) return 'text-green-600';
+    if (score >= 0.6) return 'text-yellow-600';
+    return 'text-red-600';
   };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Parse SMS / QRIS"
+      title="Smart Text Parser"
       size="lg"
     >
       {/* Step 1: Input */}
       {step === 'input' && (
         <div className="space-y-4">
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <FileText className="w-6 h-6 text-blue-600 mt-0.5" />
-              <div>
-                <p className="font-medium text-blue-900">Parse SMS atau QRIS</p>
-                <p className="text-sm text-blue-700 mt-1">
-                  Tempel teks notifikasi bank, e-wallet, atau konfirmasi QRIS untuk di-parse otomatis.
-                </p>
-              </div>
+          {/* Quick Samples */}
+          <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
+            <p className="text-sm text-blue-800 dark:text-blue-300 mb-2 font-medium">💡 Contoh cepat:</p>
+            <div className="flex flex-wrap gap-2">
+              {sampleTexts.map((sample, i) => (
+                <button
+                  key={i}
+                  onClick={() => useSample(sample.text)}
+                  className="text-xs px-2 py-1 bg-white dark:bg-gray-700 rounded border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
+                >
+                  {sample.label}
+                </button>
+              ))}
             </div>
           </div>
 
+          {/* Text Input */}
           <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Tempel atau ketik teks SMS / QRIS / notifikasi
+            </label>
             <textarea
               value={rawText}
-              onChange={(e) => {
-                setRawText(e.target.value);
-                setError('');
-              }}
-              placeholder={`Tempel teks di sini...\n\nContoh SMS BCA:\nPEMBAYARAN GOJEK 15/09/26 17:30 ke GOPAY-8612 Sejumlah Rp50.000.\n\nContoh QRIS:\nQRIS Payment di WARKOP MAMA Sejumlah Rp25.000.`}
-              className="w-full h-48 p-4 border border-gray-200 rounded-xl font-mono text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              onChange={(e) => setRawText(e.target.value)}
+              placeholder="Tempel teks SMS bank, QRIS, GoPay, OVO, Dana, transfer, dll..."
+              className="w-full h-40 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                         placeholder-gray-400 dark:placeholder-gray-500 resize-none
+                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
-            <p className="text-xs text-gray-400 mt-1 text-right">
-              {rawText.length} karakter
-            </p>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setRawText('')}
+              className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1"
+            >
+              <Trash2 className="w-4 h-4" /> Clear
+            </button>
+            
+            <Button
+              onClick={handleParse}
+              disabled={loading || !rawText.trim()}
+              className="flex items-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Parsing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Parse Sekarang
+                </>
+              )}
+            </Button>
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
           )}
-
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={handleClose}>
-              Batal
-            </Button>
-            <Button onClick={handleParse} disabled={loading || !rawText.trim()}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-              {loading ? 'Parsing...' : 'Parse Teks'}
-            </Button>
-          </div>
         </div>
       )}
 
       {/* Step 2: Preview Results */}
       {step === 'preview' && results.length > 0 && (
         <div className="space-y-4">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                <Check className="w-4 h-4 text-white" />
-              </div>
-              <p className="font-medium text-green-900">
-                Ditemukan {results.length} transaksi
-              </p>
+          {/* Parse Info */}
+          {parseDetails && (
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
+              <Zap className="w-4 h-4" />
+              <span>Parsed dengan {parseDetails.method}</span>
+              <span>•</span>
+              <span className={getConfidenceColor(parseDetails.confidence)}>
+                {Math.round(parseDetails.confidence * 100)}% confidence
+              </span>
             </div>
-          </div>
+          )}
 
-          {/* Results list */}
-          <div className="space-y-2 max-h-72 overflow-y-auto">
+          {/* Results List */}
+          <div className="space-y-3 max-h-80 overflow-y-auto">
             {results.map((result, index) => (
               <div
                 key={index}
-                onClick={() => setSelectedResult({ ...result, account_id: selectedResult?.account_id || accounts[0]?.id || '' })}
-                className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  selectedResult === result || selectedResult?.amount === result.amount
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                  selectedResult === result 
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' 
+                    : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
                 }`}
+                onClick={() => setSelectedResult({ ...result, account_id: result.account_id || accounts[0]?.id || '' })}
               >
-                <div className="flex justify-between items-start">
+                <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-lg font-bold ${getTypeColor(result.transaction_type)}`}>
-                        {getTypeIcon(result.transaction_type)}
-                      </span>
-                      <p className="font-medium">
-                        {result.merchant_name || result.description || 'Unknown'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                      <span className="px-2 py-0.5 bg-gray-100 rounded-full">
-                        {result.detection_type}
-                      </span>
-                      <span>{result.account_source || 'Bank'}</span>
-                      {result.confidence_score && (
-                        <span className="text-blue-600">
-                          {Math.round(result.confidence_score * 100)}% match
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={`font-bold text-lg ${getTypeColor(result.transaction_type)}`}>
-                      {getTypeIcon(result.transaction_type)}{formatCurrency(parseFloat(result.amount) || 0)}
+                    {/* Type Badge */}
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(result.suggested_type || result.transaction_type)}`}>
+                      {getTypeLabel(result.suggested_type || result.transaction_type)}
+                    </span>
+                    
+                    {/* Amount */}
+                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-2">
+                      {formatCurrency(parseFloat(result.amount) || 0)}
                     </p>
+                    
+                    {/* Description */}
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      {result.merchant_name || result.description || 'Transaction'}
+                    </p>
+                    
+                    {/* Date */}
+                    {result.date && (
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        📅 {result.date}
+                      </p>
+                    )}
                   </div>
+
+                  {/* Expand Button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleExpand(index); }}
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  >
+                    {expandedResult === index ? (
+                      <ChevronUp className="w-5 h-5 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-400" />
+                    )}
+                  </button>
                 </div>
+
+                {/* Expanded Details */}
+                {expandedResult === index && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2 text-sm">
+                    {result.reference_number && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Reference:</span>
+                        <span className="font-mono">{result.reference_number}</span>
+                      </div>
+                    )}
+                    {result.merchant_address && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Address:</span>
+                        <span>{result.merchant_address}</span>
+                      </div>
+                    )}
+                    {result.account_source && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Source:</span>
+                        <span>{result.account_source}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Confidence:</span>
+                      <span className={getConfidenceColor(result.confidence_score)}>
+                        {Math.round(result.confidence_score * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
 
-          {/* Account selector */}
+          {/* Account Selection */}
           <div>
-            <Select
-              label="Simpan ke Akun"
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Akun Tujuan
+            </label>
+            <select
               value={selectedResult?.account_id || ''}
               onChange={(e) => setSelectedResult({ ...selectedResult, account_id: e.target.value })}
-              options={accounts.map(a => ({ value: a.id, label: a.name }))}
-            />
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            >
+              <option value="">Pilih Akun</option>
+              {accounts.map((acc) => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.name} - {formatCurrency(acc.balance, acc.currency)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setStep('input');
+                setResults([]);
+                setSelectedResult(null);
+              }}
+              className="flex-1"
+            >
+              Kembali
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={confirming || !selectedResult?.account_id}
+              className="flex-1 flex items-center justify-center gap-2"
+            >
+              {confirming ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  Simpan Transaction
+                </>
+              )}
+            </Button>
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
           )}
-
-          <div className="flex justify-between">
-            <Button variant="secondary" onClick={() => setStep('input')}>
-              Kembali
-            </Button>
-            <Button 
-              onClick={handleConfirm} 
-              disabled={confirming || !selectedResult?.account_id}
-            >
-              {confirming ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-              Simpan Transaksi
-            </Button>
-          </div>
         </div>
       )}
     </Modal>

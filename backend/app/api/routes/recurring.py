@@ -22,7 +22,7 @@ router = APIRouter()
 # Fix redirect to HTTPS
 @router.get("", include_in_schema=False)
 def redirect_to_slash():
-    return RedirectResponse(url="/recurring/", status_code=308)
+    return RedirectResponse(url="/api/recurring/", status_code=308)
 
 def calculate_next_occurrence(rule: RecurringRule, from_date: date = None) -> date:
     """Calculate next occurrence date based on frequency."""

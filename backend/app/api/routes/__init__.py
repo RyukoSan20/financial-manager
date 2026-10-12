@@ -16,8 +16,8 @@ from . import (
     data,
     parser,
     ai_advisor,
-    # scan_jobs disabled (OCR - too heavy)
     feed,
+    # scan_jobs disabled (OCR - too heavy)
     exchange,
     market,
     finnhub,
@@ -25,4 +25,5 @@ from . import (
     market_intel,
     zap_ink,
     realtime_market,
+    logs,
 )

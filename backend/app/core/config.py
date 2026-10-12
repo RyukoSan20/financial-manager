@@ -29,11 +29,14 @@ class Settings(BaseSettings):
         "https://financial-manager-flax.vercel.app",
         "https://financial-manager-nu.vercel.app",
         "https://financial-manager-inky.vercel.app",
-        "https://financial-manager-kwi4rf5e7-fin-pro2.vercel.app",
-        "https://financial-manager-b5zc5d9ic-fin-pro2.vercel.app",
-        "https://financial-manager-r7x3zl5if-fin-pro2.vercel.app",
+        "https://frontend-virid-alpha-24.vercel.app",
+        "https://frontend-6d6f9rilf-fin-pro2.vercel.app",
+        "https://frontend-cebozu5p0-fin-pro2.vercel.app",
         "https://*.vercel.app",
         "https://financial-manager-production-a042.up.railway.app",
+        "https://fin-manager-production.up.railway.app",
+        "https://nowhere-douglas-cold-somerset.trycloudflare.com",
+        "https://*.trycloudflare.com",
     ]
     
     # Currency

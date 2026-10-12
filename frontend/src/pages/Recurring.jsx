@@ -53,7 +53,7 @@ export const Recurring = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://fin-manager-production.up.railway.app';
+      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:8000';
       
       const response = await fetch(`${apiUrl}/api/cron/process-recurring`, { 
         method: 'POST',

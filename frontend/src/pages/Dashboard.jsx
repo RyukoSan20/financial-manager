@@ -338,7 +338,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // Fetch market data from realtime API
   const fetchMarketData = useCallback(async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://fin-manager-production.up.railway.app'}/realtime/summary`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:8000'}/realtime/summary`);
       const data = await response.json();
       setMarketData(data);
       setRealtimeUpdate(new Date());
@@ -356,7 +356,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         params.append('account_id', selectedAccount);
       }
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://fin-manager-production.up.railway.app/api'}/dashboard/cash-flow?${params}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/dashboard/cash-flow?${params}`);
       const data = await response.json();
       
       if (data.status === 'success') {

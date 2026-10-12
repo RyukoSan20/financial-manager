@@ -3,13 +3,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase } from '../lib/supabase';
 
-// Use Railway backend URL in production, localhost for dev
+// Use VITE_API_URL from environment, fallback to localhost for local dev
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL.replace(/\/api$/, '');
   }
-  // Railway backend URL
-  return import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://fin-manager-production.up.railway.app';
+  return 'http://localhost:8000';
 };
 const API_URL = getApiUrl();
 
