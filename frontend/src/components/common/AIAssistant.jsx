@@ -13,8 +13,8 @@ import {
   Sparkles, TrendingUp, TrendingDown, Wallet, Plus, AlertCircle,
   Loader2, Minimize2, Maximize2
 } from 'lucide-react';
-import api from '../services/api';
-import { formatCurrency } from '../utils/format';
+import api from '../../services/api';
+import { formatCurrency } from '../../utils/format';
 
 const AIAssistant = ({ userData = {} }) => {
   const [isOpen, setIsOpen] = useState(false);
