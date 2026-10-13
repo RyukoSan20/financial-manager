@@ -235,11 +235,27 @@ const AIAssistant = ({ userData = {} }) => {
     setIsTyping(true);
 
     try {
-      // Try backend AI first
-      const response = await api.ai.chat({ message: userMsg, language });
-      const aiResponse = response.response || response;
-      setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
+      // Try backend AI first with full user data context
+      const response = await api.ai.chat({ 
+        message: userMsg, 
+        language,
+        userData: {
+          balance: userData.totalBalance || 0,
+          income: userData.totalIncome || 0,
+          expense: userData.totalExpense || 0,
+          currency: 'IDR'
+        }
+      });
+      
+      if (response && response.response) {
+        setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
+      } else if (response && typeof response === 'string') {
+        setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      } else {
+        throw new Error('Invalid response');
+      }
     } catch (err) {
+      console.error('AI chat error:', err);
       // Fallback to local AI response
       const localResponse = generateLocalResponse(userMsg);
       setMessages(prev => [...prev, { role: 'assistant', content: localResponse }]);
@@ -255,24 +271,157 @@ const AIAssistant = ({ userData = {} }) => {
     const income = userData.totalIncome || 0;
     const expense = userData.totalExpense || 0;
     const savings = income - expense;
+    const savingsRate = income > 0 ? ((savings / income) * 100).toFixed(1) : 0;
     
-    if (lower.includes('analisis') || lower.includes('budget') || lower.includes('分析') || lower.includes('分析') || lower.includes('analyze')) {
-      return `${t[lang].balance}: ${formatCurrency(balance)}\n${t[lang].income}: ${formatCurrency(income)}\n${t[lang].expense}: ${formatCurrency(expense)}\n${t[lang].netSavings}: ${formatCurrency(savings)}\n\n${savings > 0 ? t[lang].positive : t[lang].negative}\n\n**Budgeting Tips (${LANGUAGES[lang].name}):**\n1. 50/30/20 Rule\n2. Track every expense\n3. Save 20% first`;
+    // Report Investasi
+    if (lower.includes('report') && (lower.includes('investasi') || lower.includes('invest'))) {
+      return `📊 **LAPORAN INVESTASI ANDA**
+
+**Kondisi Keuangan:**
+• Saldo: ${formatCurrency(balance)}
+• Total Income: ${formatCurrency(income)}
+• Total Expense: ${formatCurrency(expense)}
+• Net Savings: ${formatCurrency(savings)} (${savingsRate}%)
+
+**Analisis:**
+${savings > 0 ? '✅ Kondisi baik - Anda surplus!' : '⚠️ Perlu perbaikan - Anda defisit'}
+
+**Portofolio Rekomendasi:**
+1. **Emergency Fund**: ${formatCurrency(expense * 3)} (3 bulan expenses)
+2. **Reksa Dana Index**: IHSG + Nasdaq
+3. **SBN**: Surat Utang Negara
+4. **Deposito**: Untuk dana tidak terpakai
+
+**Langkah Selanjutnya:**
+1. Bangun emergency fund dulu
+2. Diversifikasi investasi
+3. Review budget bulanan
+
+Mau saya bantu analisis lebih detail?`;
     }
     
+    // Analisis Budget
+    if (lower.includes('analisis') || lower.includes('budget') || lower.includes('分析') || lower.includes('analyze')) {
+      const expenseRatio = income > 0 ? ((expense / income) * 100).toFixed(1) : 0;
+      return `📈 **ANALISIS BUDGET**
+
+**Ringkasan:**
+• Saldo: ${formatCurrency(balance)}
+• Income: ${formatCurrency(income)}
+• Expense: ${formatCurrency(expense)}
+• Net: ${formatCurrency(savings)} (${savingsRate}%)
+• Expense Ratio: ${expenseRatio}%
+
+**Status Budget:**
+${expenseRatio > 100 ? '⚠️ Warning! Pengeluaran > Income' : '✅ Expense ratio sehat'}
+
+**Rekomendasi:**
+1. Target expense < 80% income
+2. Sisihkan ${formatCurrency(income * 0.2)}/bulan untuk tabungan
+3. Catat setiap transaksi
+
+Mau tips budgeting lebih detail?`;
+    }
+    
+    // Saran Investasi
     if (lower.includes('investasi') || lower.includes('invest') || lower.includes('投資') || lower.includes('投资')) {
-      return `📈 **Investment Advice (${LANGUAGES[lang].name}):**\n\nEmergency Fund: 3-6 months expenses\n\n1. Index Fund (IHSG/Nasdaq)\n2. Government Bonds (SBN)\n3. Deposito\n\nRisk Profile:\n• Conservative: 70% bonds, 30% stocks\n• Moderate: 50/50\n• Aggressive: 80% stocks`;
+      return `📈 **SARAN INVESTASI**
+
+**Profile Anda:**
+• Dana tersedia: ${formatCurrency(balance)}
+• Risk tolerance: ${savings > 0 ? 'Moderate' : 'Conservative'}
+
+**Alokasi Rekomendasi:**
+
+**Dana Darurat (30%):**
+• Deposito: ${formatCurrency(balance * 0.3)}
+• Likuid & aman
+
+**Investasi Jangka Menengah (40%):**
+• Reksa Dana Pasar Uang: ${formatCurrency(balance * 0.2)}
+• Reksa Dana Obligasi: ${formatCurrency(balance * 0.2)}
+
+**Investasi Jangka Panjang (30%):**
+• Reksa Dana Saham: ${formatCurrency(balance * 0.15)}
+• Emas: ${formatCurrency(balance * 0.15)}
+
+**Tips:**
+1. Mulai dari kecil, rutin
+2. Diversifikasi
+3. Jangan panic sell
+
+Mau saya hitung return ekspektasi?`;
     }
     
+    // Cek Tabungan
     if (lower.includes('tabung') || lower.includes('saving') || lower.includes('貯蓄') || lower.includes('储蓄')) {
-      return `💰 **Savings Tips (${LANGUAGES[lang].name}):**\n\n1. Pay Yourself First\n2. Automate savings\n3. 50/30/20 Rule\n4. Emergency Fund first!`;
+      const monthlyTarget = income * 0.2;
+      const monthsToEmergency = expense * 6;
+      return `💰 **CEK TABUNGAN**
+
+**Kondisi Saat Ini:**
+• Saldo: ${formatCurrency(balance)}
+• Tabungan/bulan: ${formatCurrency(monthlyTarget)}
+• Target Emergency Fund: ${formatCurrency(monthsToEmergency)}
+
+**Progress Emergency Fund:**
+${balance >= monthsToEmergency ? '✅ Target tercapai!' : `${((balance / monthsToEmergency) * 100).toFixed(1)}% - Masih ${formatCurrency(monthsToEmergency - balance)} lagi`}
+
+**Tips Menabung:**
+1. Pay yourself first - tabung dulu sebelum belanja
+2. Otomatis - setup auto-debit ke rekening tabungan
+3. 50/30/20 Rule:
+   - 50% Kebutuhan
+   - 30% Keinginan
+   - 20% Tabungan/Investasi
+
+Mau saya bantu buat rencana tabungan?`;
     }
     
+    // Input Transaksi
     if (lower.includes('input') || lower.includes('tambah') || lower.includes('transaksi') || lower.includes('入力') || lower.includes('输入')) {
-      return `💵 **Input Transaction (${LANGUAGES[lang].name}):**\n\n1. Click **+** button\n2. Select type\n3. Fill amount, category\n4. Submit\n\nOr use:\n• 📱 Receipt Scanner\n• 📝 Text Parser`;
+      return `💵 **INPUT TRANSAKSI**
+
+Untuk input transaksi baru:
+1. Click tombol **+** di dashboard
+2. Pilih jenis (💸 Pengeluaran / 💰 Pemasukan)
+3. Isi jumlah, kategori, deskripsi
+4. Submit
+
+**Quick Input:**
+• 📱 **Receipt Scanner** - scan struk belanja
+• 📝 **Text Parser** - paste SMS bank/ewallet
+• ⌨️ **Manual** - ketik langsung
+
+Mau saya bantu setup recurring transaction?`;
     }
     
-    return `💡 **Help (${LANGUAGES[lang].name}):**\n\n• 📊 Financial analysis\n• 💰 Savings tips\n• 📈 Investment advice\n• 🎯 Goal setting\n• ❓ General questions\n\n${LANGUAGES[lang].name} ✓`;
+    // Default help
+    return `💡 **HELLO! AI ASSISTANT**
+
+Saya bisa bantu Anda dengan:
+
+📊 **Analisis Keuangan**
+• Budget analysis
+• Cash flow report
+• Expense tracking
+
+💰 **Investasi**
+• Portfolio recommendations
+• Risk assessment
+• Investment strategies
+
+🎯 **Goals**
+• Savings plan
+• Target calculator
+• Progress tracking
+
+❓ **Pertanyaan Umum**
+• Tips finance
+• Calculator
+• General advice
+
+Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
   };
 
   const handleQuickAction = (action) => {
