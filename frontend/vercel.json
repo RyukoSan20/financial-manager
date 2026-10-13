@@ -7,11 +7,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://famous-poets-smash.loca.lt/api/:path*"
+      "destination": "https://fin-manager-production.up.railway.app/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://famous-poets-smash.loca.lt/health"
+      "destination": "https://fin-manager-production.up.railway.app/health"
     }
   ]
 }
