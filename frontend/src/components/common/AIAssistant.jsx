@@ -3,77 +3,226 @@
  * Features:
  * - Floating button di pojok kiri
  * - Chat interface dengan AI
- * - Voice input (Web Speech API)
+ * - Voice input (Web Speech API) - multi-language
  * - Quick actions untuk input transaksi
  * - Real-time financial advice
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   MessageSquare, X, Send, Mic, MicOff, ChevronDown, ChevronUp,
   Sparkles, TrendingUp, TrendingDown, Wallet, Plus, AlertCircle,
-  Loader2, Minimize2, Maximize2
+  Loader2, Minimize2, Maximize2, Globe, Volume2
 } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
+
+// Language configurations
+const LANGUAGES = {
+  id: { code: 'id-ID', name: 'Bahasa Indonesia', flag: '🇮🇩' },
+  en: { code: 'en-US', name: 'English', flag: '🇺🇸' },
+  ja: { code: 'ja-JP', name: '日本語', flag: '🇯🇵' },
+  zh: { code: 'zh-CN', name: '中文', flag: '🇨🇳' },
+  ms: { code: 'ms-MY', name: 'Bahasa Melayu', flag: '🇲🇾' },
+};
+
+// Translations
+const t = {
+  id: {
+    welcome: 'Halo! Saya AI Assistant Anda. Saya bisa membantu:\n\n• 📊 Analisis keuangan\n• 💰 Input transaksi\n• 📈 Saran investasi\n• 🎯 Goal tracking\n• ❓ Tanya apa saja\n\nKlik mic untuk voice input!',
+    placeholder: 'Tanyakan AI...',
+    quickActions: 'Quick Actions',
+    listening: 'Mendengarkan...',
+    voiceError: 'Voice tidak tersedia di browser ini',
+    analyzing: 'Menganalisis...',
+    balance: 'Saldo',
+    income: 'Total Pemasukan',
+    expense: 'Total Pengeluaran',
+    netSavings: 'Net Savings',
+    positive: '✅ Net savings positif! Pertahankan ini.',
+    negative: '⚠️ Pengeluaran lebih besar dari income.',
+    actions: {
+      input_expense: 'Input Pengeluaran',
+      input_income: 'Input Pemasukan',
+      analyze_budget: 'Analisis Budget',
+      check_savings: 'Cek Tabungan',
+      investment_advice: 'Saran Investasi',
+      help: 'Bantuan'
+    }
+  },
+  en: {
+    welcome: 'Hello! I\'m your AI Assistant. I can help:\n\n• 📊 Financial analysis\n• 💰 Transaction input\n• 📈 Investment advice\n• 🎯 Goal tracking\n• ❓ Ask anything\n\nClick mic for voice input!',
+    placeholder: 'Ask AI...',
+    quickActions: 'Quick Actions',
+    listening: 'Listening...',
+    voiceError: 'Voice not available in this browser',
+    analyzing: 'Analyzing...',
+    balance: 'Balance',
+    income: 'Total Income',
+    expense: 'Total Expense',
+    netSavings: 'Net Savings',
+    positive: '✅ Positive net savings! Keep it up.',
+    negative: '⚠️ Expenses exceed income.',
+    actions: {
+      input_expense: 'Input Expense',
+      input_income: 'Input Income',
+      analyze_budget: 'Budget Analysis',
+      check_savings: 'Check Savings',
+      investment_advice: 'Investment Advice',
+      help: 'Help'
+    }
+  },
+  ja: {
+    welcome: 'こんにちは！AIアシスタントです。以下のことができます：\n\n• 📊 財務分析\n• 💰 取引入力\n• 📈 投資提案\n• 🎯 目標追跡\n• ❓ なんでも質問\n\nマイクをクリックして音声入力！',
+    placeholder: 'AIに質問...',
+    quickActions: 'クイックアクション',
+    listening: '聞いています...',
+    voiceError: 'このブラウザでは音声は利用できません',
+    analyzing: '分析中...',
+    balance: '残高',
+    income: '総収入',
+    expense: '総支出',
+    netSavings: '純貯蓄',
+    positive: '✅ 純貯蓄がプラスです！この調子で。',
+    negative: '⚠️ 支出が収入を超えています。',
+    actions: {
+      input_expense: '支出を入力',
+      input_income: '収入を入力',
+      analyze_budget: '予算分析',
+      check_savings: '貯蓄確認',
+      investment_advice: '投資提案',
+      help: 'ヘルプ'
+    }
+  },
+  zh: {
+    welcome: '你好！我是您的AI助手。我可以帮您：\n\n• 📊 财务分析\n• 💰 输入交易\n• 📈 投资建议\n• 🎯 目标追踪\n• ❓ 随意提问\n\n点击麦克风进行语音输入！',
+    placeholder: '询问AI...',
+    quickActions: '快捷操作',
+    listening: '正在聆听...',
+    voiceError: '此浏览器不支持语音功能',
+    analyzing: '分析中...',
+    balance: '余额',
+    income: '总收入',
+    expense: '总支出',
+    netSavings: '净储蓄',
+    positive: '✅ 净储蓄为正！继续保持。',
+    negative: '⚠️ 支出超过收入。',
+    actions: {
+      input_expense: '输入支出',
+      input_income: '输入收入',
+      analyze_budget: '预算分析',
+      check_savings: '查看储蓄',
+      investment_advice: '投资建议',
+      help: '帮助'
+    }
+  },
+  ms: {
+    welcome: 'Helo! Saya AI Assistant anda. Saya boleh bantu:\n\n• 📊 Analisis kewangan\n• 💰 Input transaksi\n• 📈 Nasihat pelaburan\n• 🎯 Jejak matlamat\n• ❓ Tanya apa-apa\n\nKlik mic untuk input suara!',
+    placeholder: 'Tanya AI...',
+    quickActions: 'Tindakan Pantas',
+    listening: 'Mendengar...',
+    voiceError: 'Suara tidak tersedia di pelayar ini',
+    analyzing: 'Menganalisis...',
+    balance: 'Baki',
+    income: 'Jumlah Pendapatan',
+    expense: 'Jumlah Perbelanjaan',
+    netSavings: 'Simpanan Bersih',
+    positive: '✅ Simpanan bersih positif! Teruskan.',
+    negative: '⚠️ Perbelanjaan melebihi pendapatan.',
+    actions: {
+      input_expense: 'Input Perbelanjaan',
+      input_income: 'Input Pendapatan',
+      analyze_budget: 'Analisis Bajet',
+      check_savings: 'Semak Simpanan',
+      investment_advice: 'Nasihat Pelaburan',
+      help: 'Bantuan'
+    }
+  }
+};
 
 const AIAssistant = ({ userData = {} }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: 'Halo! Saya AI Assistant Anda. Saya bisa membantu:\n\n• 📊 Analisis keuangan\n• 💰 Input transaksi\n• 📈 Saran investasi\n• 🎯 Goal tracking\n• ❓ Tanya apa saja\n\nKlik mic untuk voice input!'
-    }
-  ]);
+  const [messages, setMessages] = useState([]);
+  const [language, setLanguage] = useState('id');
   const [isListening, setIsListening] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   
-  // Quick actions
-  const quickActions = [
-    { icon: Plus, label: 'Input Pengeluaran', action: 'input_expense', color: 'text-red-500' },
-    { icon: Plus, label: 'Input Pemasukan', action: 'input_income', color: 'text-green-500' },
-    { icon: TrendingUp, label: 'Analisis Budget', action: 'analyze_budget', color: 'text-blue-500' },
-    { icon: Wallet, label: 'Cek Tabungan', action: 'check_savings', color: 'text-purple-500' },
-    { icon: Sparkles, label: 'Saran Investasi', action: 'investment_advice', color: 'text-yellow-500' },
-    { icon: AlertCircle, label: 'Bantuan', action: 'help', color: 'text-gray-500' },
-  ];
-
+  // Initialize messages with welcome in current language
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    setMessages([{ role: 'assistant', content: t[language].welcome }]);
+  }, []);
+
+  // Change language
+  const changeLanguage = (lang) => {
+    setLanguage(lang);
+    setShowLanguagePicker(false);
+    setMessages([{ role: 'assistant', content: t[lang].welcome }]);
+  };
 
   // Initialize speech recognition
   useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      setVoiceSupported(true);
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = LANGUAGES[language]?.code || 'id-ID';
       
       recognitionRef.current.onresult = (event) => {
         const transcript = Array.from(event.results)
           .map(result => result[0].transcript)
           .join('');
         setMessage(transcript);
+        
+        // Auto-send if final result
+        if (event.results[0].isFinal) {
+          sendMessage(transcript);
+        }
+      };
+      
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
       };
       
       recognitionRef.current.onend = () => {
         setIsListening(false);
       };
     }
-  }, []);
+  }, [language]);
+
+  // Update recognition language when language changes
+  useEffect(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.lang = LANGUAGES[language]?.code || 'id-ID';
+    }
+  }, [language]);
 
   const toggleListening = () => {
+    if (!voiceSupported) {
+      alert(t[language].voiceError);
+      return;
+    }
+
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
     } else {
-      recognitionRef.current?.start();
-      setIsListening(true);
+      try {
+        recognitionRef.current?.start();
+        setIsListening(true);
+      } catch (err) {
+        console.error('Failed to start recognition:', err);
+        setIsListening(false);
+      }
     }
   };
 
@@ -87,7 +236,7 @@ const AIAssistant = ({ userData = {} }) => {
 
     try {
       // Try backend AI first
-      const response = await api.ai.chat({ message: userMsg });
+      const response = await api.ai.chat({ message: userMsg, language });
       const aiResponse = response.response || response;
       setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
     } catch (err) {
@@ -100,82 +249,30 @@ const AIAssistant = ({ userData = {} }) => {
   };
 
   const generateLocalResponse = (msg) => {
+    const lang = language;
     const lower = msg.toLowerCase();
+    const balance = userData.totalBalance || 0;
+    const income = userData.totalIncome || 0;
+    const expense = userData.totalExpense || 0;
+    const savings = income - expense;
     
-    if (lower.includes('analisis') || lower.includes('budget')) {
-      const balance = userData.totalBalance || 0;
-      const income = userData.totalIncome || 0;
-      const expense = userData.totalExpense || 0;
-      const savings = income - expense;
-      
-      return `📊 **Analisis Keuangan Anda:**
-
-• Saldo: ${formatCurrency(balance)}
-• Total Income: ${formatCurrency(income)}
-• Total Expense: ${formatCurrency(expense)}
-• Net Savings: ${formatCurrency(savings)}
-
-${savings > 0 ? '✅ Net savings positif! Pertahankan ini.' : '⚠️ Pengeluaran lebih besar dari income.'}
-
-**Tips Budgeting:**
-1. Gunakan aturan 50/30/20
-2. Catat setiap pengeluaran
-3. Sisihkan 20% untuk tabungan`;
+    if (lower.includes('analisis') || lower.includes('budget') || lower.includes('分析') || lower.includes('分析') || lower.includes('analyze')) {
+      return `${t[lang].balance}: ${formatCurrency(balance)}\n${t[lang].income}: ${formatCurrency(income)}\n${t[lang].expense}: ${formatCurrency(expense)}\n${t[lang].netSavings}: ${formatCurrency(savings)}\n\n${savings > 0 ? t[lang].positive : t[lang].negative}\n\n**Budgeting Tips (${LANGUAGES[lang].name}):**\n1. 50/30/20 Rule\n2. Track every expense\n3. Save 20% first`;
     }
     
-    if (lower.includes('investasi') || lower.includes('invest')) {
-      return `📈 **Saran Investasi:**
-
-Untuk pemula dengan tabungan ${formatCurrency(userData.totalBalance || 0)}:
-
-1. **Emergency Fund** dulu (3-6 bulan expenses)
-2. **Reksa Dana Index** - IHSG atau Nasdaq
-3. **SBN (Surat Utang Negara)** - rendah risiko
-4. **Deposito** - untuk dana mendesak
-
-**Risk Profile:**
-• Conservative: 70% obligasi, 30% saham
-• Moderate: 50% saham, 50% obligasi
-• Aggressive: 80% saham, 20% obligasi`;
+    if (lower.includes('investasi') || lower.includes('invest') || lower.includes('投資') || lower.includes('投资')) {
+      return `📈 **Investment Advice (${LANGUAGES[lang].name}):**\n\nEmergency Fund: 3-6 months expenses\n\n1. Index Fund (IHSG/Nasdaq)\n2. Government Bonds (SBN)\n3. Deposito\n\nRisk Profile:\n• Conservative: 70% bonds, 30% stocks\n• Moderate: 50/50\n• Aggressive: 80% stocks`;
     }
     
-    if (lower.includes('tabung') || lower.includes('saving')) {
-      return `💰 **Tips Menabung:**
-
-1. **Pay Yourself First** - tabung sebelum belanja
-2. **Otomatis** - standing instruction ke tabungan
-3. **50/30/20 Rule**:
-   - 50% Kebutuhan
-   - 30% Keinginan  
-   - 20% Tabungan
-
-4. **Lawan Hedonic Adaptation**
-5. **Emergency Fund** dulu!`;
+    if (lower.includes('tabung') || lower.includes('saving') || lower.includes('貯蓄') || lower.includes('储蓄')) {
+      return `💰 **Savings Tips (${LANGUAGES[lang].name}):**\n\n1. Pay Yourself First\n2. Automate savings\n3. 50/30/20 Rule\n4. Emergency Fund first!`;
     }
     
-    if (lower.includes('input') || lower.includes('tambah') || lower.includes('transaksi')) {
-      return `💵 **Input Transaksi:**
-
-Untuk input transaksi baru:
-1. Klik tombol **+** di dashboard
-2. Pilih jenis (pengeluaran/pemasukan)
-3. Isi jumlah, kategori, dan deskripsi
-4. Submit
-
-Atau gunakan:
-• 📱 Receipt Scanner - scan struk
-• 📝 Text Parser - paste SMS bank`;
+    if (lower.includes('input') || lower.includes('tambah') || lower.includes('transaksi') || lower.includes('入力') || lower.includes('输入')) {
+      return `💵 **Input Transaction (${LANGUAGES[lang].name}):**\n\n1. Click **+** button\n2. Select type\n3. Fill amount, category\n4. Submit\n\nOr use:\n• 📱 Receipt Scanner\n• 📝 Text Parser`;
     }
     
-    return `💡 Saya bisa membantu Anda dengan:
-
-• 📊 Analisis keuangan personal
-• 💰 Tips menabung dan budgeting
-• 📈 Saran investasi
-• 🎯 Goal setting
-• ❓ Pertanyaan umum
-
-Silakan tanyakan!`;
+    return `💡 **Help (${LANGUAGES[lang].name}):**\n\n• 📊 Financial analysis\n• 💰 Savings tips\n• 📈 Investment advice\n• 🎯 Goal setting\n• ❓ General questions\n\n${LANGUAGES[lang].name} ✓`;
   };
 
   const handleQuickAction = (action) => {
@@ -183,21 +280,23 @@ Silakan tanyakan!`;
     
     switch(action) {
       case 'analyze_budget':
-        sendMessage('Analisis budget saya');
+        sendMessage(language === 'id' ? 'Analisis budget saya' : language === 'ja' ? '予算を分析' : 'Analyze my budget');
         break;
       case 'investment_advice':
-        sendMessage('Berikan saran investasi');
+        sendMessage(language === 'id' ? 'Berikan saran investasi' : language === 'ja' ? '投資提案' : 'Give investment advice');
         break;
       case 'check_savings':
-        sendMessage('Cek tabungan saya');
-        break;
-      case 'help':
-        sendMessage('Bantuan');
+        sendMessage(language === 'id' ? 'Cek tabungan saya' : language === 'ja' ? '貯蓄を確認' : 'Check my savings');
         break;
       default:
-        sendMessage(`Saya mau ${action.replace('_', ' ')}`);
+        sendMessage(t[language].actions[action]);
     }
   };
+
+  // Scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   if (!isOpen) {
     // Floating button
@@ -208,7 +307,7 @@ Silakan tanyakan!`;
         title="AI Assistant"
       >
         <Sparkles className="w-6 h-6 text-white" />
-        <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></span>
+        <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
       </button>
     );
   }
@@ -220,6 +319,7 @@ Silakan tanyakan!`;
         <div className="flex items-center gap-3">
           <Sparkles className="w-5 h-5 text-white" />
           <span className="font-semibold text-white">AI Assistant</span>
+          <span className="text-white/80 text-xs">{LANGUAGES[language].flag}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -239,32 +339,60 @@ Silakan tanyakan!`;
 
       {!isMinimized && (
         <>
-          {/* Quick Actions Toggle */}
-          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+          {/* Language Picker & Quick Actions */}
+          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            {/* Language Picker */}
+            <div className="relative">
+              <button
+                onClick={() => setShowLanguagePicker(!showLanguagePicker)}
+                className="flex items-center gap-1 text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700"
+              >
+                <Globe className="w-4 h-4" />
+                {LANGUAGES[language].name}
+              </button>
+              
+              {showLanguagePicker && (
+                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-1 z-10 min-w-[150px]">
+                  {Object.entries(LANGUAGES).map(([code, lang]) => (
+                    <button
+                      key={code}
+                      onClick={() => changeLanguage(code)}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2 ${language === code ? 'bg-purple-50 dark:bg-purple-900/30' : ''}`}
+                    >
+                      <span>{lang.flag}</span>
+                      <span>{lang.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Quick Actions Toggle */}
             <button
               onClick={() => setShowQuickActions(!showQuickActions)}
-              className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700"
+              className="flex items-center gap-1 text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700"
             >
               <Plus className="w-4 h-4" />
-              Quick Actions
+              {t[language].quickActions}
               {showQuickActions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
-            
-            {showQuickActions && (
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {quickActions.map((action, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleQuickAction(action.action)}
-                    className="flex items-center gap-2 px-3 py-2 text-xs bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                  >
-                    <action.icon className={`w-4 h-4 ${action.color}`} />
-                    {action.label}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
+          
+          {/* Quick Actions Grid */}
+          {showQuickActions && (
+            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 grid grid-cols-2 gap-2">
+              {Object.entries(t[language].actions).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => handleQuickAction(key)}
+                  className="flex items-center justify-center gap-2 px-3 py-2 text-xs bg-white dark:bg-gray-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 border border-gray-200 dark:border-gray-600 transition-colors"
+                >
+                  <Sparkles className="w-3 h-3 text-purple-500" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -284,6 +412,19 @@ Silakan tanyakan!`;
                 </div>
               </div>
             ))}
+            
+            {isListening && (
+              <div className="flex justify-start">
+                <div className="bg-red-100 dark:bg-red-900/30 px-4 py-2 rounded-2xl rounded-bl-md flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{animationDelay: '150ms'}} />
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{animationDelay: '300ms'}} />
+                  </div>
+                  <span className="text-sm text-red-600 dark:text-red-400">{t[language].listening}</span>
+                </div>
+              </div>
+            )}
             
             {isTyping && (
               <div className="flex justify-start">
@@ -308,28 +449,30 @@ Silakan tanyakan!`;
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                placeholder="Tanyakan AI..."
+                placeholder={t[language].placeholder}
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm"
+                disabled={isListening}
               />
               
               {/* Voice Button */}
               <button
                 onClick={toggleListening}
-                className={`p-2 rounded-full ${isListening ? 'bg-red-500 animate-pulse' : 'bg-gray-100 dark:bg-gray-700'} hover:opacity-80`}
-                title={isListening ? 'Stop recording' : 'Voice input'}
+                className={`p-2 rounded-full ${isListening ? 'bg-red-500 animate-pulse' : 'bg-gray-100 dark:bg-gray-700'} hover:opacity-80 transition-colors`}
+                title={voiceSupported ? (isListening ? t[language].listening : 'Voice input') : t[language].voiceError}
+                disabled={!voiceSupported}
               >
                 {isListening ? (
-                  <MicOff className="w-5 h-5 text-white" />
+                  <Volume2 className="w-5 h-5 text-white" />
                 ) : (
-                  <Mic className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                  <Mic className={`w-5 h-5 ${voiceSupported ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400'}`} />
                 )}
               </button>
               
               {/* Send Button */}
               <button
                 onClick={() => sendMessage()}
-                disabled={!message.trim()}
-                className="p-2 bg-purple-500 rounded-full hover:bg-purple-600 disabled:opacity-50"
+                disabled={!message.trim() || isTyping}
+                className="p-2 bg-purple-500 rounded-full hover:bg-purple-600 disabled:opacity-50 transition-colors"
               >
                 <Send className="w-5 h-5 text-white" />
               </button>
