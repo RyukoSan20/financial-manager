@@ -7,11 +7,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://advocate-jam-seattle-derby.trycloudflare.com/api/:path*"
+      "destination": "https://financial-manager.6bd2599c-3bbe-4398-a09c-aa713eb54a97.trycloudflare.com/api/:path*"
     },
     {
       "source": "/intel/:path*",
-      "destination": "https://advocate-jam-seattle-derby.trycloudflare.com/intel/:path*"
+      "destination": "https://financial-manager.6bd2599c-3bbe-4398-a09c-aa713eb54a97.trycloudflare.com/intel/:path*"
     },
     {
       "source": "/((?!api/|intel/).*)",
