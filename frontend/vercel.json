@@ -12,6 +12,10 @@
     {
       "source": "/health",
       "destination": "https://fin-manager-production.up.railway.app/health"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "/index.html"
     }
   ]
 }
