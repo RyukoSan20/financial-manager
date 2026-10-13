@@ -3,43 +3,5 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
-  "devCommand": "npm run dev",
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://sweet-moles-beam.loca.lt/api/:path*"
-    },
-    {
-      "source": "/intel/:path*",
-      "destination": "https://sweet-moles-beam.loca.lt/intel/:path*"
-    },
-    {
-      "source": "/((?!api/|intel/).*)",
-      "destination": "/index.html"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/sw.js",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        },
-        {
-          "key": "Service-Worker-Allowed",
-          "value": "/"
-        }
-      ]
-    },
-    {
-      "source": "/manifest.json",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/manifest+json"
-        }
-      ]
-    }
-  ]
+  "devCommand": "npm run dev"
 }
