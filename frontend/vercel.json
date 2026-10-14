@@ -14,7 +14,10 @@
       "destination": "https://fin-manager-production.up.railway.app/health"
     }
   ],
-  "fallback": {
-    "cache-Control": "public, max-age=0, must-revalidate"
-  }
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
