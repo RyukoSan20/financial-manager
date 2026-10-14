@@ -12,10 +12,9 @@
     {
       "source": "/health",
       "destination": "https://fin-manager-production.up.railway.app/health"
-    },
-    {
-      "source": "/auth/:path*",
-      "destination": "/index.html"
     }
-  ]
+  ],
+  "fallback": {
+    "cache-Control": "public, max-age=0, must-revalidate"
+  }
 }

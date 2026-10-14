@@ -1,5 +1,5 @@
-// API Configuration with JWT Interceptor
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// Railway backend - stable production URL
+const API_BASE_URL = 'https://fin-manager-production.up.railway.app/api';
 
 // Support both backend JWT (token) and Supabase (sb_token)
 const TOKEN_KEYS = ['token', 'sb_token'];

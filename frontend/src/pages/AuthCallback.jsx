@@ -3,14 +3,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase } from '../lib/supabase';
 
-// Use VITE_API_URL from environment, fallback to localhost for local dev
-const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL.replace(/\/api$/, '');
-  }
-  return 'http://localhost:8000';
-};
-const API_URL = getApiUrl();
+// Use relative path - Vercel rewrites handle proxying to Railway backend
+const API_URL = '/api';
 
 export const AuthCallback = () => {
   const [error, setError] = useState('');
