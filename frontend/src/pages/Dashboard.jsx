@@ -10,7 +10,7 @@ import {
   LineChart, PieChart as PieChartIcon
 } from 'lucide-react';
 import { formatCurrency, formatNumber, formatPercent } from '../utils/format';
-import api from '../services/api';
+import api, { API_BASE_URL } from '../services/api';
 import { useTranslation } from '../i18n';
 import AIAssistant from '../components/common/AIAssistant';
 
@@ -357,7 +357,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         params.append('account_id', selectedAccount);
       }
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/dashboard/cash-flow?${params}`);
+      const response = await fetch(`${API_BASE_URL}/dashboard/cash-flow?${params}`);
       const data = await response.json();
       
       if (data.status === 'success') {
