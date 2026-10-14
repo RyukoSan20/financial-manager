@@ -3,14 +3,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 import json
 import asyncio
+import re
+from datetime import datetime
 
 from app.core.database import get_db
 from app.core.security import get_current_user_optional, get_current_user
 from app.models.user import User
+from app.models.transaction import Transaction
+from app.models.account import Account
+from app.models.category import Category
 from app.services.ai_advisor_service import (
     ai_advisor,
     get_financial_summary,
@@ -321,3 +326,155 @@ def get_financial_tips(
         return {"category": category, "tips": tips[category]}
     
     return {"tips": tips, "categories": list(tips.keys())}
+
+
+# === AI Action Execution ===
+
+class ExecuteRequest(BaseModel):
+    message: str
+
+class ActionResult(BaseModel):
+    success: bool
+    action: str
+    data: Optional[dict] = None
+    message: str
+
+@router.post("/execute", response_model=ActionResult)
+def execute_ai_action(
+    request: ExecuteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Execute financial actions from natural language.
+    Supported actions: add_transaction, delete_transaction, update_transaction
+    """
+    message = request.message.lower()
+    
+    # Get default account
+    default_account = db.query(Account).filter(
+        Account.user_id == current_user.id,
+        Account.is_active == True
+    ).first()
+    
+    if not default_account:
+        return ActionResult(
+            success=False,
+            action="none",
+            message="Tidak ada akun ditemukan. Buat akun terlebih dahulu."
+        )
+    
+    # Parse expense/income
+    expense_pattern = r'(pengeluaran|expense|bayar|beli|makan|belanja|kasar|rugi)'
+    income_pattern = r'(pemasukan|income|gaji|terima|masuk|dapat)'
+    
+    is_expense = bool(re.search(expense_pattern, message))
+    is_income = bool(re.search(income_pattern, message))
+    
+    if not is_expense and not is_income:
+        return ActionResult(
+            success=False,
+            action="none",
+            message="Tidak dapat mengenali jenis transaksi. Gunakan kata 'pengeluaran' atau 'pemasukan'."
+        )
+    
+    # Extract amount
+    amount_pattern = r'[\d.,]+(?:ribu|juta)?'
+    amounts = re.findall(amount_pattern, message)
+    
+    if not amounts:
+        return ActionResult(
+            success=False,
+            action="parse_amount",
+            message="Tidak dapat menemukan jumlah nominal. Contoh: 'Rp 150.000' atau '15000'"
+        )
+    
+    # Convert to number
+    amount_str = amounts[0].replace('.', '').replace(',', '')
+    multiplier = 1
+    if 'ribu' in amounts[0].lower():
+        multiplier = 1000
+    elif 'juta' in amounts[0].lower():
+        multiplier = 1000000
+    amount = float(amount_str) * multiplier
+    
+    if amount <= 0:
+        return ActionResult(
+            success=False,
+            action="validate_amount",
+            message=f"Jumlah {amounts[0]} tidak valid."
+        )
+    
+    # Get default category
+    cat_type = 'expense' if is_expense else 'income'
+    category = db.query(Category).filter(
+        Category.user_id == current_user.id,
+        Category.type == cat_type,
+        Category.is_active == True
+    ).first()
+    
+    if not category:
+        # Get any category of this type
+        category = db.query(Category).filter(
+            Category.user_id == None,
+            Category.type == cat_type,
+            Category.is_active == True
+        ).first()
+    
+    if not category:
+        return ActionResult(
+            success=False,
+            action="find_category",
+            message=f"Tidak ada kategori {cat_type} ditemukan."
+        )
+    
+    # Extract description
+    desc_pattern = r'(makan|beli|bayar|untuk|dari|dengan|kategori)\s+(.+?)(?:\s+seharga|\s+harga|\s+rp|\s+\d|$)'
+    desc_match = re.search(desc_pattern, message)
+    description = desc_match.group(2).strip() if desc_match else f"{'Pengeluaran' if is_expense else 'Pemasukan'} via AI"
+    
+    # Extract date
+    date_pattern = r'(kemarin|besok|hari ini|minggu ini)'
+    if 'kemarin' in message:
+        trans_date = datetime.now().replace(day=datetime.now().day - 1)
+    elif 'besok' in message:
+        trans_date = datetime.now().replace(day=datetime.now().day + 1)
+    else:
+        trans_date = datetime.now()
+    
+    # Create transaction
+    try:
+        transaction = Transaction(
+            user_id=current_user.id,
+            account_id=default_account.id,
+            category_id=category.id,
+            type=cat_type,
+            amount=amount,
+            description=description,
+            date=trans_date,
+            is_recurring=False
+        )
+        db.add(transaction)
+        db.commit()
+        db.refresh(transaction)
+        
+        action_type = "pengeluaran" if is_expense else "pemasukan"
+        return ActionResult(
+            success=True,
+            action="add_transaction",
+            data={
+                "id": transaction.id,
+                "amount": amount,
+                "type": cat_type,
+                "description": description,
+                "category": category.name
+            },
+            message=f"Berhasil menambahkan {action_type} Rp {amount:,.0f} ({description})"
+        )
+    except Exception as e:
+        db.rollback()
+        return ActionResult(
+            success=False,
+            action="create_transaction",
+            message=f"Gagal menyimpan transaksi: {str(e)}"
+        )

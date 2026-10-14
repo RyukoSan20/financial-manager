@@ -251,6 +251,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ message }),
     }),
+    execute: (message) => api.request('/ai/execute', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
   },
 
   // Calculators

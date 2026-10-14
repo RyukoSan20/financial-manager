@@ -235,27 +235,61 @@ const AIAssistant = ({ userData = {} }) => {
     setIsTyping(true);
 
     try {
-      // Try backend AI first with full user data context
-      const response = await api.ai.chat({ 
-        message: userMsg, 
-        language,
-        userData: {
-          balance: userData.totalBalance || 0,
-          income: userData.totalIncome || 0,
-          expense: userData.totalExpense || 0,
-          currency: 'IDR'
-        }
-      });
+      // First, try to execute action (for transaction commands)
+      const actionResult = await api.ai.execute(userMsg);
       
-      if (response && response.response) {
-        setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
-      } else if (response && typeof response === 'string') {
-        setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      if (actionResult && actionResult.success) {
+        // Action was executed successfully
+        const successMsg = `${actionResult.message}\n\nData keuangan Anda sudah diperbarui!`;
+        setMessages(prev => [...prev, { role: 'assistant', content: successMsg }]);
+        
+        // Trigger dashboard refresh if callback provided
+        if (userData.onRefresh) {
+          setTimeout(() => userData.onRefresh(), 1000);
+        }
+      } else if (actionResult && !actionResult.success && actionResult.message) {
+        // Action failed or couldn't be parsed - fallback to chat
+        const chatResponse = await api.ai.chat({ 
+          message: userMsg, 
+          language,
+          userData: {
+            balance: userData.totalBalance || 0,
+            income: userData.totalIncome || 0,
+            expense: userData.totalExpense || 0,
+            currency: 'IDR'
+          }
+        });
+        
+        if (chatResponse && chatResponse.response) {
+          setMessages(prev => [...prev, { role: 'assistant', content: chatResponse.response }]);
+        } else if (chatResponse && typeof chatResponse === 'string') {
+          setMessages(prev => [...prev, { role: 'assistant', content: chatResponse }]);
+        } else {
+          throw new Error('Invalid response');
+        }
       } else {
-        throw new Error('Invalid response');
+        // No action result - try chat only
+        const response = await api.ai.chat({ 
+          message: userMsg, 
+          language,
+          userData: {
+            balance: userData.totalBalance || 0,
+            income: userData.totalIncome || 0,
+            expense: userData.totalExpense || 0,
+            currency: 'IDR'
+          }
+        });
+        
+        if (response && response.response) {
+          setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
+        } else if (response && typeof response === 'string') {
+          setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+        } else {
+          throw new Error('Invalid response');
+        }
       }
     } catch (err) {
-      console.error('AI chat error:', err);
+      console.error('AI error:', err);
       // Fallback to local AI response
       const localResponse = generateLocalResponse(userMsg);
       setMessages(prev => [...prev, { role: 'assistant', content: localResponse }]);
