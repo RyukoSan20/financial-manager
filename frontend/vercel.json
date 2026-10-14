@@ -4,19 +4,25 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "devCommand": "npm run dev",
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "https://fin-manager-production.up.railway.app/api/$1"
+      "source": "/api/:path*",
+      "destination": "https://fin-manager-production.up.railway.app/api/:path*"
     },
     {
-      "src": "/health",
-      "dest": "https://fin-manager-production.up.railway.app/health"
-    },
+      "source": "/health",
+      "destination": "https://fin-manager-production.up.railway.app/health"
+    }
+  ],
+  "headers": [
     {
-      "src": "/(.*)",
-      "dest": "/index.html",
-      "status": 200
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     }
   ]
 }
