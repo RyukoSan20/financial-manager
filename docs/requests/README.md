@@ -18,6 +18,7 @@
 | [FR-006](./pending/FR-006-pdf-reports.md) | Monthly PDF Reports | Low | 2026-10-15 |
 | [FR-007](./pending/FR-007-budget-notifications.md) | Budget Limit Notifications | Medium | 2026-10-15 |
 | [FR-008](./pending/FR-008-bank-sync.md) | Bank Sync (Plaid) | Low | 2026-10-15 |
+| [FR-009](./pending/FR-009-merchant-pos.md) | Merchant POS & QRIS Webhook | High | 2026-10-15 |
 
 ---
 
