@@ -3,6 +3,7 @@ export { Dashboard } from './Dashboard';
 export { MarketPage } from './MarketPage';
 export { default as Transactions } from './Transactions';
 export { default as CategoryExpenses } from './CategoryExpenses';
+export { default as MerchantManager } from './MerchantManager';
 export { default as Accounts } from './Accounts';
 export { default as Budgets } from './Budgets';
 export { default as Goals } from './Goals';

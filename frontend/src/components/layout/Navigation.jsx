@@ -1,8 +1,8 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Receipt, 
-  Wallet, 
+import {
+  LayoutDashboard,
+  Receipt,
+  Wallet,
   PiggyBank,
   Repeat,
   Target,
@@ -25,7 +25,8 @@ import {
   Map,
   Sparkles,
   PieChart,
-  BellRing
+  BellRing,
+  ShoppingBag
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -826,6 +827,7 @@ export const BottomSheet = ({ isOpen, onClose, title, children }) => {
 // More Page
 export const MorePage = () => {
   const menuItems = [
+    { icon: ShoppingBag, label: 'Toko / Merchant', href: '/merchant', color: 'bg-indigo-100 text-indigo-600', desc: 'POS & Kasir Cepat' },
     { icon: PieChart, label: 'Category Expenses', href: '/category-expenses', color: 'bg-teal-100 text-teal-600', desc: 'View spending by category' },
     { icon: Target, label: 'Goals', href: '/goals', color: 'bg-purple-100 text-purple-600', desc: 'Track your savings goals' },
     { icon: CreditCard, label: 'Debts', href: '/debts', color: 'bg-orange-100 text-orange-600', desc: 'Manage loans & credits' },

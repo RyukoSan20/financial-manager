@@ -6,12 +6,12 @@ import { NotificationToast } from './components/notifications/NotificationBell';
 import { Layout } from './components/layout/Layout';
 import { AddTransactionPage, MorePage } from './components/layout/Navigation';
 import { I18nProvider } from './i18n';
-import { 
+import {
   Dashboard,
   MarketPage,
-  Transactions, 
-  Accounts, 
-  Budgets, 
+  Transactions,
+  Accounts,
+  Budgets,
   Goals,
   Debts,
   Recurring,
@@ -23,7 +23,8 @@ import {
   MerchantMap,
   AIAdvisor,
   CategoryExpenses,
-  FeedPage
+  FeedPage,
+  MerchantManager
 } from './pages';
 import { AuthCallback } from './pages/AuthCallback';
 
@@ -113,6 +114,7 @@ function App() {
               <Route path="recurring" element={<Recurring />} />
               <Route path="calculators" element={<Calculators />} />
               <Route path="analytics" element={<Analytics />} />
+              <Route path="merchant" element={<MerchantManager />} />
               <Route path="map" element={<MerchantMap />} />
               <Route path="advisor" element={<AIAdvisor />} />
               <Route path="feed" element={<FeedPage />} />
