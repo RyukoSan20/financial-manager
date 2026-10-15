@@ -54,6 +54,15 @@ class Transaction(Base):
     source = Column(String(30), default="manual")  # camera_scan, email_forward, whatsapp, manual, ocr, api
     raw_data = Column(Text, nullable=True)  # Raw JSON from Gemini/parser
     
+    # === MERCHANT FIELDS (NEW) ===
+    # Merchant/Toko transaction flag
+    is_merchant = Column(Boolean, default=False)  # True if this is a merchant/store transaction
+    merchant_id = Column(Integer, ForeignKey("merchants.id", ondelete="SET NULL"), nullable=True)
+    
+    # Payment method for merchant transactions
+    payment_method = Column(String(20), nullable=True)  # QRIS, CASH, EDC, TRANSFER
+    reference_number = Column(String(100), nullable=True)  # QRIS ref, receipt number, etc
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -64,4 +73,5 @@ class Transaction(Base):
     transfer = relationship("Transfer", back_populates="transactions")
     recurring_rule = relationship("RecurringRule", back_populates="generated_transactions")
     receipt_scan = relationship("ReceiptScan", foreign_keys=[receipt_scan_id])
+    merchant = relationship("Merchant", back_populates="transactions")
     items = relationship("TransactionItem", back_populates="transaction", cascade="all, delete-orphan")

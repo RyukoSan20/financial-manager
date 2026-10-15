@@ -13,6 +13,7 @@ from app.models.net_worth import NetWorthSnapshot
 from app.models.receipt import ReceiptScan, ReceiptItem, ProductCatalog
 from app.models.scan_job import ScanJob, ScanChunk, JobStatus
 from app.models.activity_log import ActivityLog, ActivityLogger
+from app.models.merchant import Merchant, MerchantProduct, DailySettlement
 
 __all__ = [
     "Account",
@@ -35,4 +36,7 @@ __all__ = [
     "JobStatus",
     "ActivityLog",
     "ActivityLogger",
+    "Merchant",
+    "MerchantProduct",
+    "DailySettlement",
 ]

@@ -26,4 +26,6 @@ from . import (
     zap_ink,
     realtime_market,
     logs,
+    merchant,
+    webhooks,
 )
