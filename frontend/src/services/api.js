@@ -1,6 +1,6 @@
 // Railway backend - stable production URL
 // For local development, use: http://fin-manager-rafi-test.loca.lt/api
-export const API_BASE_URL = 'https://fin-manager-production.up.railway.app/api';
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'https://fin-manager-production.up.railway.app') + '/api';
 
 // Support both backend JWT (token) and Supabase (sb_token)
 const TOKEN_KEYS = ['token', 'sb_token'];

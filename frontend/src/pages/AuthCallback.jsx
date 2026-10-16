@@ -11,7 +11,7 @@ const getApiUrl = () => {
   // Default to Railway for production
   return 'https://fin-manager-production.up.railway.app';
 };
-const API_URL = getApiUrl();
+const API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || 'https://fin-manager-production.up.railway.app';
 
 export const AuthCallback = () => {
   const [error, setError] = useState('');
