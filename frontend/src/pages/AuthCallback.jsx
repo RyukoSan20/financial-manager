@@ -3,8 +3,15 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase } from '../lib/supabase';
 
-// Use relative path - Vercel rewrites handle proxying to Railway backend
-const API_URL = 'https://fin-manager-production.up.railway.app';
+// Use VITE_API_URL env var, fallback to Railway
+const getApiUrl = () => {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // Default to Railway for production
+  return 'https://fin-manager-production.up.railway.app';
+};
+const API_URL = getApiUrl();
 
 export const AuthCallback = () => {
   const [error, setError] = useState('');
