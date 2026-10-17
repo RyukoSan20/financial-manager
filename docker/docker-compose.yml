@@ -7,17 +7,20 @@ services:
     container_name: finmanager-db
     environment:
       POSTGRES_USER: finmanager
-      POSTGRES_PASSWORD: finmanager_secret_2024
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-finmanager_secret_2024}
       POSTGRES_DB: finmanager
     ports:
       - "5432:5432"
     volumes:
       - ./volumes/postgres:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U finmanager -d finmanager"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - finmanager-net
 
   # FastAPI Backend
   backend:
@@ -26,12 +29,13 @@ services:
       dockerfile: ../docker/Dockerfile
     container_name: finmanager-api
     environment:
-      DATABASE_URL: postgresql://finmanager:finmanager_secret_2024@postgres:5432/finmanager
-      SUPABASE_URL: https://slrtkzgnwaovzvkjmfwz.supabase.co
+      DATABASE_URL: postgresql://finmanager:${DB_PASSWORD:-finmanager_secret_2024}@postgres:5432/finmanager
+      SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SECRET_KEY: your-super-secret-key-change-in-production
+      SECRET_KEY: ${SECRET_KEY:-your-super-secret-key-change-this-in-production}
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+      DEBUG: "true"
     ports:
       - "8000:8000"
     depends_on:
@@ -42,7 +46,27 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - finmanager-net
+
+  # Nginx Reverse Proxy (for HTTPS in production)
+  nginx:
+    image: nginx:alpine
+    container_name: finmanager-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    networks:
+      - finmanager-net
+    profiles:
+      - production
 
 networks:
-  default:
+  finmanager-net:
     name: finmanager-network
+    driver: bridge
