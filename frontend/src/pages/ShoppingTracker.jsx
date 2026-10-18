@@ -15,6 +15,10 @@ const ShoppingTracker = () => {
   const [wishlistPriority, setWishlistPriority] = useState("medium");
   const [budgetInput, setBudgetInput] = useState(budget.toString());
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -155,6 +159,44 @@ const ShoppingTracker = () => {
     return `Rp ${parseFloat(v).toLocaleString("id-ID")}`;
   };
 
+  // Search product prices across marketplaces
+  const searchPrices = async (itemName) => {
+    if (!itemName || itemName.length < 2) return;
+    
+    const token = getToken();
+    if (!token) return;
+    
+    setSearching(true);
+    setSearchResults(null);
+    setSelectedItem(itemName);
+    setSearchModalOpen(true);
+    
+    try {
+      const res = await fetch(`${API_URL}/search/price?q=${encodeURIComponent(itemName)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data);
+      } else {
+        console.error("Search failed:", res.status);
+      }
+    } catch (e) {
+      console.error("Search error:", e);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Open search modal for a specific item
+  const openSearch = (item) => {
+    setSelectedItem(item.name || item);
+    setSearchModalOpen(true);
+    setSearchQuery(item.name || item);
+    searchPrices(item.name || item);
+  };
+
   const getSpent = () => items.reduce((s, i) => s + (i.current_price || 0), 0);
   const getWishlistTotal = () => wishlist.reduce((s, i) => s + (i.target_price || 0), 0);
   const budgetPercent = budget > 0 ? (getSpent() / budget * 100).toFixed(0) : 0;
@@ -241,7 +283,14 @@ const ShoppingTracker = () => {
                     <p className="font-medium">{item.name}</p>
                     <p className="text-sm text-gray-500">{item.category || "Umum"}</p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => openSearch(item)}
+                      className="px-3 py-1 bg-blue-100 text-blue-600 rounded-lg text-sm"
+                      title="Cari harga"
+                    >
+                      🔍
+                    </button>
                     <span className="font-semibold">{formatCurrency(item.current_price)}</span>
                     <button onClick={() => deleteItem(item.id)} className="text-red-500 p-1">🗑️</button>
                   </div>
@@ -367,6 +416,73 @@ const ShoppingTracker = () => {
       <button onClick={loadData} className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium mt-4">
         🔄 Refresh
       </button>
+
+      {/* Search Price Modal */}
+      {searchModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+          <div className="bg-white w-full rounded-t-3xl max-h-[80vh] overflow-auto">
+            <div className="sticky top-0 bg-white p-4 border-b flex items-center justify-between">
+              <h3 className="font-semibold">Cari Harga: {selectedItem}</h3>
+              <button onClick={() => setSearchModalOpen(false)} className="text-gray-500">✕</button>
+            </div>
+            
+            <div className="p-4">
+              {searching ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                </div>
+              ) : searchResults ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500 mb-4">
+                    {searchResults.note || "Klik untuk membuka marketplace"}
+                  </p>
+                  
+                  <div className="space-y-2">
+                    {searchResults.searches?.map((market) => (
+                      <a
+                        key={market.id}
+                        href={market.search_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">
+                            {market.marketplace === 'shopee' ? '🛒' :
+                             market.marketplace === 'tokopedia' ? '🏪' :
+                             market.marketplace === 'lazada' ? '📦' :
+                             market.marketplace === 'blibli' ? '🎁' :
+                             market.marketplace === 'tiktok' ? '🎵' : '🔗'}
+                          </span>
+                          <div>
+                            <p className="font-medium capitalize">{market.marketplace}</p>
+                            <p className="text-xs text-gray-500">Cek harga terbaru</p>
+                          </div>
+                        </div>
+                        <span className="text-blue-500">→</span>
+                      </a>
+                    ))}
+                  </div>
+                  
+                  <p className="text-xs text-gray-400 text-center mt-4">
+                    * Harga adalah perkiraan dari hasil pencarian. Selalu cek harga final di toko.
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>Gagal memuat hasil pencarian</p>
+                  <button 
+                    onClick={() => searchPrices(selectedItem)}
+                    className="mt-2 text-blue-500"
+                  >
+                    Coba lagi
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

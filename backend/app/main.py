@@ -10,6 +10,7 @@ from app.api.routes import (
     dashboard, calculators,
     transfers, recurring, goals, debts, analytics,
     auth, data, parser, ai_advisor, feed, shopping,
+    category_hints, search,
     # scan_jobs disabled (OCR)
     exchange, market, finnhub, ninjas, market_intel, zap_ink,
     realtime_market, logs, merchant, webhooks, location
@@ -316,4 +317,8 @@ async def global_exception_handler(request, exc):
             "path": str(request.url),
         }
     )
+
+
+# Product Search - Price comparison via marketplace search
+app.include_router(search.router, tags=["Product Search"])
 # trigger redeploy
