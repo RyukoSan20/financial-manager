@@ -51,6 +51,13 @@ const navItems = (t) => [
   { name: t('nav.calculators'), href: '/calculators', icon: Calculator },
   { name: t('nav.analytics'), href: '/analytics', icon: BarChart3 },
   { name: t('nav.advisor'), href: '/advisor', icon: Sparkles },
+  { name: t('nav.map'), href: '/map', icon: Map },
+  { name: t('nav.healthCoach'), href: '/health-coach', icon: Heart },
+  { name: t('nav.shopping'), href: '/shopping', icon: ShoppingCart },
+  { name: t('nav.gmail'), href: '/gmail', icon: Mail },
+  { name: t('nav.merchant'), href: '/merchant', icon: ShoppingBag },
+  { name: t('nav.categoryExpenses'), href: '/category-expenses', icon: PieChart },
+  { name: t('nav.settings'), href: '/settings', icon: Settings },
 ];
 
 const bottomNavItems = (t) => [

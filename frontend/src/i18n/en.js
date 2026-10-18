@@ -52,6 +52,12 @@ export default {
     more: "More",
     scan_receipt: "Scan Receipt",
     add: "Add",
+    map: "Spending Map",
+    healthCoach: "Health Coach",
+    shopping: "Shopping",
+    gmail: "Gmail Sync",
+    merchant: "Merchant",
+    categoryExpenses: "Category Expenses",
   },
   
   // Dashboard

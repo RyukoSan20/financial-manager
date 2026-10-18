@@ -52,6 +52,12 @@ export default {
     more: "Lainnya",
     scan_receipt: "Scan Struk",
     add: "Tambah",
+    map: "Peta Pengeluaran",
+    healthCoach: "Health Coach",
+    shopping: "Belanja",
+    gmail: "Gmail Sync",
+    merchant: "Toko / Merchant",
+    categoryExpenses: "Kategori Pengeluaran",
   },
   
   // Dashboard
