@@ -15,5 +15,8 @@ export { default as Login } from './Login';
 export { default as Register } from './Register';
 export { default as Settings } from './Settings';
 export { default as MerchantMap } from './MerchantMap';
+export { default as HealthCoach } from './HealthCoach';
+export { default as ShoppingTracker } from './ShoppingTracker';
+export { default as GmailIntegration } from './GmailIntegration';
 export { default as AIAdvisor } from './AIAdvisor';
 export { default as FeedPage } from './Feed/FeedPage';

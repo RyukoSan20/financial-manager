@@ -339,6 +339,54 @@ export const api = {
   // Health check
   health: () => api.request('/health'),
   info: () => api.request('/info'),
+
+  // Advanced Pipeline APIs
+  healthCoach: {
+    score: () => api.request('/health-coach/score'),
+    audit: () => api.request('/health-coach/audit'),
+    recommendations: () => api.request('/health-coach/recommendations'),
+  },
+
+  location: {
+    stats: (period = 'current') => api.request(`/location/stats?period=${period}`),
+    heatmap: () => api.request('/location/heatmap'),
+    topLocations: (limit = 10) => api.request(`/location/top-locations?limit=${limit}`),
+  },
+
+  shopping: {
+    items: (transactionId = null, limit = 50) => {
+      const params = new URLSearchParams({ limit });
+      if (transactionId) params.append('transaction_id', transactionId);
+      return api.request(`/shopping/items?${params.toString()}`);
+    },
+    priceHistory: (itemName) => api.request(`/shopping/price-history/${encodeURIComponent(itemName)}`),
+    priceComparison: (itemName) => api.request(`/shopping/price-comparison?item_name=${encodeURIComponent(itemName)}`),
+    wishlist: () => api.request('/shopping/wishlist'),
+    addWishlist: (data) => api.request('/shopping/wishlist', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    updateWishlist: (id, data) => api.request(`/shopping/wishlist/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    deleteWishlist: (id) => api.request(`/shopping/wishlist/${id}`, { method: 'DELETE' }),
+  },
+
+  gmail: {
+    connect: () => api.request('/integrations/gmail/connect'),
+    callback: (code, state) => api.request(`/integrations/gmail/callback?code=${code}&state=${state}`),
+    status: () => api.request('/integrations/gmail/status'),
+    disconnect: () => api.request('/integrations/gmail/disconnect', { method: 'POST' }),
+    sync: () => api.request('/integrations/gmail/sync', { method: 'POST' }),
+  },
+
+  errors: {
+    report: (errorData) => api.request('/errors/client', {
+      method: 'POST',
+      body: JSON.stringify(errorData),
+    }),
+  },
   
   // Generic GET for custom endpoints
   get: (path) => api.request(path),

@@ -26,7 +26,10 @@ import {
   Sparkles,
   PieChart,
   BellRing,
-  ShoppingBag
+  ShoppingBag,
+  Heart,
+  ShoppingCart,
+  Mail
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -835,6 +838,9 @@ export const MorePage = () => {
     { icon: Calculator, label: 'Calculators', href: '/calculators', color: 'bg-green-100 text-green-600', desc: 'Financial calculators' },
     { icon: BarChart3, label: 'Analytics', href: '/analytics', color: 'bg-pink-100 text-pink-600', desc: 'Insights & trends' },
     { icon: Map, label: 'Spending Map', href: '/map', color: 'bg-red-100 text-red-600', desc: 'Merchant locations & patterns' },
+    { icon: Heart, label: 'Health Coach', href: '/health-coach', color: 'bg-green-100 text-green-600', desc: 'AI financial health assessment' },
+    { icon: ShoppingCart, label: 'Shopping', href: '/shopping', color: 'bg-purple-100 text-purple-600', desc: 'Track prices & wishlist' },
+    { icon: Mail, label: 'Gmail Sync', href: '/gmail', color: 'bg-orange-100 text-orange-600', desc: 'Auto-import from email' },
     { icon: Sparkles, label: 'AI Advisor', href: '/advisor', color: 'bg-cyan-100 text-cyan-600', desc: 'AI-powered financial advice' },
     { icon: User, label: 'Profile', href: '/profile', color: 'bg-indigo-100 text-indigo-600', desc: 'Account settings' },
     { icon: Bell, label: 'Notifications', href: '/notifications', color: 'bg-yellow-100 text-yellow-600', desc: 'Alerts & reminders' },
