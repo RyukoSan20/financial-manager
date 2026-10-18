@@ -1,9 +1,10 @@
 // Smart Add Transaction Page - Quick, intuitive, professional
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { parseQuickEntry } from "../../features/transactions/nlp/parseQuickEntry.js";
+import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
@@ -87,27 +88,48 @@ const AddTransactionPage = () => {
   const loadData = async () => {
     try {
       setLoadError(null);
-      const [catRes, accRes] = await Promise.all([
-        api.categories.list(),
-        api.accounts.list(),
-      ]);
       
-      if (!catRes.ok) throw new Error("Gagal memuat kategori");
-      if (!accRes.ok) throw new Error("Gagal memuat akun");
-      
-      setCategories(catRes.value || []);
-      setAccounts(accRes.value || []);
-      
-      // Smart default: select first account
-      if (accRes.value?.length > 0) {
-        setAccountId(accRes.value[0].id);
+      // Try to load bootstrap data (categories + hints + recent combos)
+      let bootstrapData = null;
+      try {
+        bootstrapData = await fetchBootstrap();
+      } catch (e) {
+        console.log('Bootstrap not available, using legacy load');
       }
       
-      // Load recent combos from localStorage
-      const combos = JSON.parse(localStorage.getItem("recentCombos") || "[]");
-      setRecentCombos(combos.slice(0, 4));
+      if (bootstrapData?.ok && bootstrapData.value) {
+        const { categories: cats, hints, recent_combos } = bootstrapData.value;
+        setCategories(cats || []);
+        setRecentCombos((recent_combos || []).slice(0, 4));
+        
+        // Set user hints in localStorage for offline use
+        if (hints) {
+          localStorage.setItem('categoryHints', JSON.stringify(hints));
+        }
+      } else {
+        // Legacy load
+        const [catRes, accRes] = await Promise.all([
+          api.categories.list(),
+          api.accounts.list(),
+        ]);
+        
+        if (!catRes.ok) throw new Error("Gagal memuat kategori");
+        
+        setCategories(catRes.value || []);
+        const combos = JSON.parse(localStorage.getItem("recentCombos") || "[]");
+        setRecentCombos(combos.slice(0, 4));
+      }
       
-      // Auto-suggest category from localStorage last used
+      // Load accounts
+      const accRes = await api.accounts.list();
+      if (accRes.ok) {
+        setAccounts(accRes.value || []);
+        if (accRes.value?.length > 0) {
+          setAccountId(accRes.value[0].id);
+        }
+      }
+      
+      // Smart default: last used category
       const lastCatId = localStorage.getItem("lastCategoryId");
       if (lastCatId) setCategoryId(parseInt(lastCatId));
       
@@ -278,6 +300,14 @@ const AddTransactionPage = () => {
         );
         localStorage.setItem("recentCombos", JSON.stringify([newCombo, ...filtered].slice(0, 10)));
         localStorage.setItem("lastCategoryId", categoryId);
+        
+        // Record tokens for user learning
+        if (description) {
+          const tokens = extractTokens(description);
+          if (tokens.length > 0) {
+            recordTokens(tokens, categoryId).catch(() => {});
+          }
+        }
       }
       
       if (addAnother) {
