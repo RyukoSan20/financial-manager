@@ -433,40 +433,43 @@ const ShoppingTracker = () => {
                 </div>
               ) : searchResults ? (
                 <div className="space-y-4">
-                  <p className="text-sm text-gray-500 mb-4">
-                    {searchResults.note || "Klik untuk membuka marketplace"}
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-700">
+                      {searchResults.normalized_query || selectedItem}
+                    </p>
+                    {searchResults.cached && (
+                      <span className="text-xs text-green-500">✓ Cached</span>
+                    )}
+                  </div>
+                  
+                  <p className="text-xs text-gray-500 mb-4">
+                    {searchResults.note}
                   </p>
                   
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-3">
                     {searchResults.searches?.map((market) => (
                       <a
-                        key={market.id}
+                        key={market.marketplace}
                         href={market.search_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between"
+                        className="block rounded-xl p-4 text-center transition-transform hover:scale-102"
+                        style={{ backgroundColor: market.color + '15' }}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">
-                            {market.marketplace === 'shopee' ? '🛒' :
-                             market.marketplace === 'tokopedia' ? '🏪' :
-                             market.marketplace === 'lazada' ? '📦' :
-                             market.marketplace === 'blibli' ? '🎁' :
-                             market.marketplace === 'tiktok' ? '🎵' : '🔗'}
-                          </span>
-                          <div>
-                            <p className="font-medium capitalize">{market.marketplace}</p>
-                            <p className="text-xs text-gray-500">Cek harga terbaru</p>
-                          </div>
-                        </div>
-                        <span className="text-blue-500">→</span>
+                        <span className="text-4xl mb-2 block">{market.icon}</span>
+                        <p className="font-medium capitalize" style={{ color: market.color }}>
+                          {market.name}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">Cek harga</p>
                       </a>
                     ))}
                   </div>
                   
-                  <p className="text-xs text-gray-400 text-center mt-4">
-                    * Harga adalah perkiraan dari hasil pencarian. Selalu cek harga final di toko.
-                  </p>
+                  <div className="bg-amber-50 rounded-xl p-3 mt-4">
+                    <p className="text-xs text-amber-800">
+                      💡 Tips: Bandingkan harga di beberapa marketplace sebelum membeli untuk mendapatkan harga terbaik!
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
