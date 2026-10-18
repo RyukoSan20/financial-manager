@@ -70,8 +70,21 @@ export const AuthProvider = ({ children }) => {
     try {
       const supabase = getSupabase();
       
-      // Get initial session
-      const { data: { session } } = await supabase.auth.getSession();
+      // Timeout wrapper
+      const withTimeout = (promise, ms) => {
+        return Promise.race([
+          promise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Supabase timeout')), ms)
+          )
+        ]);
+      };
+      
+      // Get initial session with timeout
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        5000 // 5 second timeout
+      );
       
       if (session) {
         setUser(session.user);
