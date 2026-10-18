@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { parseQuickEntry } from "../../features/transactions/nlp/parseQuickEntry.js";
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
@@ -63,6 +64,10 @@ const AddTransactionPage = () => {
   
   // Quick amount presets
   const quickAmounts = [5000, 10000, 15000, 25000, 50000, 100000, 200000, 500000, 1000000];
+  
+  // NLP State
+  const [quickEntry, setQuickEntry] = useState("");
+  const [nlpPreview, setNlpPreview] = useState(null);
   
   // Date shortcuts
   const dateShortcuts = [
@@ -128,6 +133,33 @@ const AddTransactionPage = () => {
       }
     }
   }, [description, categories]);
+
+  // NLP Quick Entry parsing
+  useEffect(() => {
+    if (!quickEntry.trim() || categories.length === 0) {
+      setNlpPreview(null);
+      return;
+    }
+    
+    const parsed = parseQuickEntry(quickEntry, {
+      categories,
+      userHints: {}, // TODO: Load from localStorage
+      accounts
+    });
+    
+    setNlpPreview(parsed);
+    
+    // Auto-fill high confidence results
+    if (parsed.categoryConfidence === 'high' && !categoryId) {
+      setCategoryId(parsed.categoryId);
+    }
+    if (parsed.amount && !amount) {
+      setAmount(String(parsed.amount));
+    }
+    if (parsed.type && parsed.type !== type) {
+      setType(parsed.type);
+    }
+  }, [quickEntry, categories, accounts]);
 
   // Format number with dots
   const formatNumber = (num) => {
@@ -355,6 +387,38 @@ const AddTransactionPage = () => {
               {t === "expense" ? "💸 Pengeluaran" : t === "income" ? "💰 Pemasukan" : "🔄 Transfer"}
             </button>
           ))}
+        </div>
+
+        {/* Quick Entry NLP Input */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-lg">⚡</span>
+            <span className="text-sm font-medium text-gray-600">Ketik cepat</span>
+          </div>
+          <input
+            type="text"
+            value={quickEntry}
+            onChange={(e) => setQuickEntry(e.target.value)}
+            placeholder="Contoh: kopi 45rb gopay"
+            className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none text-base"
+          />
+          {nlpPreview && nlpPreview.suggestions.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {nlpPreview.suggestions.map((s, i) => (
+                <span
+                  key={i}
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    s.confidence === 'high' ? 'bg-green-100 text-green-700' :
+                    s.confidence === 'medium' ? 'bg-blue-100 text-blue-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {s.label}
+                  {s.confidence && <span className="ml-1 text-xs opacity-60">({s.confidence})</span>}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Recent Combos */}
