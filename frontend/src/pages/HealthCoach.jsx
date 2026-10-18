@@ -6,227 +6,257 @@ const HealthCoach = () => {
   const [healthData, setHealthData] = useState(null);
   const [auditData, setAuditData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("score");
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadHealthScore();
+    loadHealthData();
   }, []);
 
-  const loadHealthScore = async () => {
+  const loadHealthData = async () => {
     try {
       setLoading(true);
-      const data = await api.healthCoach.score();
-      setHealthData(data);
-    } catch (error) {
-      console.error("Failed to load health score:", error);
+      const [scoreRes, auditRes] = await Promise.all([
+        api.healthCoach.score().catch(() => null),
+        api.healthCoach.audit().catch(() => null)
+      ]);
+      
+      if (scoreRes?.ok) {
+        const scoreData = await scoreRes.json();
+        setHealthData(scoreData);
+      }
+      
+      if (auditRes?.ok) {
+        const auditResult = await auditRes.json();
+        setAuditData(auditResult);
+      }
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadAudit = async () => {
-    try {
-      setLoading(true);
-      const data = await api.healthCoach.audit();
-      setAuditData(data);
-    } catch (error) {
-      console.error("Failed to load audit:", error);
-    } finally {
-      setLoading(false);
-    }
+  const formatCurrency = (value) => {
+    if (value === null || value === undefined) return "Rp 0";
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
   };
 
   const getGradeColor = (grade) => {
     const colors = {
-      A: "text-green-600 bg-green-100",
-      B: "text-blue-600 bg-blue-100",
-      C: "text-yellow-600 bg-yellow-100",
-      D: "text-orange-600 bg-orange-100",
-      E: "text-red-600 bg-red-100",
+      A: "bg-green-100 text-green-700",
+      B: "bg-blue-100 text-blue-700",
+      C: "bg-yellow-100 text-yellow-700",
+      D: "bg-orange-100 text-orange-700",
+      E: "bg-red-100 text-red-700",
     };
-    return colors[grade] || "text-gray-600 bg-gray-100";
+    return colors[grade] || colors.C;
   };
 
   const getStatusColor = (status) => {
     const colors = {
-      excellent: "text-green-600 bg-green-50 border-green-200",
-      good: "text-blue-600 bg-blue-50 border-blue-200",
-      warning: "text-yellow-600 bg-yellow-50 border-yellow-200",
-      danger: "text-red-600 bg-red-50 border-red-200",
+      excellent: "text-green-600",
+      good: "text-blue-600",
+      warning: "text-yellow-600",
+      danger: "text-red-600",
     };
-    return colors[status] || "text-gray-600 bg-gray-50 border-gray-200";
+    return colors[status] || "text-gray-600";
   };
 
-  if (loading && !healthData) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white">
-        <h1 className="text-2xl font-bold mb-2">AI Health Coach</h1>
-        <p className="opacity-90">Analisis kesehatan finansial dengan AI</p>
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 text-red-700 rounded-lg">
+        Error: {error}
       </div>
+    );
+  }
 
+  const summary = healthData?.summary || {};
+  const savingsRatio = healthData?.savings_ratio?.value || 0;
+  const emergencyMonths = healthData?.emergency_fund_months?.value || 0;
+  const dsr = healthData?.dsr_ratio?.value || 0;
+
+  return (
+    <div className="p-4 max-w-lg mx-auto pb-20">
+      <h1 className="text-2xl font-bold mb-4">Health Coach</h1>
+      
       {/* Score Card */}
-      {healthData && (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm">Skor Kesehatan Finansial</p>
-              <div className="flex items-baseline gap-3">
-                <span className="text-5xl font-bold">{healthData.score}</span>
-                <span className="text-2xl text-gray-400">/100</span>
-              </div>
-            </div>
-            <div className={`px-6 py-3 rounded-xl font-bold text-2xl ${getGradeColor(healthData.grade)}`}>
-              Grade {healthData.grade}
+      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-6 text-white mb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm opacity-80">Skor Kesehatan</p>
+            <p className="text-4xl font-bold">{healthData?.score || 0}</p>
+            <p className="text-sm opacity-80 mt-1">
+              Grade: <span className="font-bold">{healthData?.grade || "-"}</span>
+            </p>
+          </div>
+          <div className="text-center">
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${healthData?.grade ? 'bg-white/20' : 'bg-gray-400'}`}>
+              {healthData?.grade || "?"}
             </div>
           </div>
+        </div>
+        
+        {/* Summary Stats */}
+        <div className="mt-4 pt-4 border-t border-white/20 grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs opacity-70">Penghasilan Bulanan</p>
+            <p className="font-semibold">{formatCurrency(summary.monthly_income)}</p>
+          </div>
+          <div>
+            <p className="text-xs opacity-70">Pengeluaran Bulanan</p>
+            <p className="font-semibold">{formatCurrency(summary.monthly_expense)}</p>
+          </div>
+          <div>
+            <p className="text-xs opacity-70">Total Cash</p>
+            <p className="font-semibold">{formatCurrency(summary.total_cash)}</p>
+          </div>
+          <div>
+            <p className="text-xs opacity-70">Total Utang</p>
+            <p className="font-semibold">{formatCurrency(summary.total_debt)}</p>
+          </div>
+        </div>
+      </div>
 
-          {/* Summary */}
-          {healthData.summary && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t">
-              <div>
-                <p className="text-gray-500 text-xs">Pendapatan Bulanan</p>
-                <p className="font-semibold">Rp {healthData.summary.monthly_income?.toLocaleString() || 0}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs">Pengeluaran Bulanan</p>
-                <p className="font-semibold">Rp {healthData.summary.monthly_expense?.toLocaleString() || 0}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs">Total Cash</p>
-                <p className="font-semibold">Rp {healthData.summary.total_cash?.toLocaleString() || 0}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs">Total Utang</p>
-                <p className="font-semibold">Rp {healthData.summary.total_debt?.toLocaleString() || 0}</p>
-              </div>
+      {/* Key Ratios */}
+      <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
+        <h2 className="font-semibold mb-3">Rasio Keuangan</h2>
+        
+        <div className="space-y-3">
+          {/* Savings Ratio */}
+          <div>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-600">Rasio Tabungan</span>
+              <span className={getStatusColor(healthData?.savings_ratio?.status)}>
+                {savingsRatio.toFixed(1)}%
+              </span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-blue-500 rounded-full transition-all"
+                style={{ width: `${Math.min(savingsRatio, 100)}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {healthData?.savings_ratio?.description || "Tabungan dari penghasilan"}
+            </p>
+          </div>
+
+          {/* Emergency Fund */}
+          <div>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-600">Dana Darurat</span>
+              <span className={getStatusColor(healthData?.emergency_fund_months?.status)}>
+                {emergencyMonths.toFixed(1)} bulan
+              </span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-green-500 rounded-full transition-all"
+                style={{ width: `${Math.min((emergencyMonths / 6) * 100, 100)}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Target: 6 bulan pengeluaran
+            </p>
+          </div>
+
+          {/* DSR */}
+          <div>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-600">Rasio Cicilan (DSR)</span>
+              <span className={getStatusColor(healthData?.dsr_ratio?.status)}>
+                {dsr.toFixed(1)}%
+              </span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all ${dsr > 30 ? 'bg-red-500' : dsr > 15 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                style={{ width: `${Math.min(dsr, 100)}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Maksimum ideal: 30% dari penghasilan
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Audit Report */}
+      {auditData && (
+        <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
+          <h2 className="font-semibold mb-3">Audit AI</h2>
+          
+          {/* Highlights */}
+          {auditData.highlights?.length > 0 && (
+            <div className="mb-3">
+              {auditData.highlights.map((highlight, idx) => (
+                <div key={idx} className="text-sm text-green-600 flex items-start gap-2 mb-1">
+                  <span>✅</span>
+                  <span>{highlight.replace(/^[✅❌🌟]\s*/, '')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Findings */}
+          {auditData.findings?.length > 0 && (
+            <div className="space-y-2">
+              {auditData.findings.slice(0, 3).map((finding, idx) => (
+                <div key={idx} className="bg-yellow-50 p-3 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-600">⚠️</span>
+                    <span className="font-medium text-sm">{finding.title}</span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">{finding.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {auditData.recommendations?.length > 0 && (
+            <div className="mt-3 pt-3 border-t">
+              <h3 className="text-sm font-medium mb-2">Tips Perbaikan:</h3>
+              {auditData.recommendations.map((rec, idx) => (
+                <div key={idx} className="text-sm flex items-start gap-2 mb-1">
+                  <span>💡</span>
+                  <span>{rec}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Narrative */}
+          {auditData.narrative && (
+            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+              <pre className="text-xs text-gray-600 whitespace-pre-wrap font-sans">
+                {auditData.narrative}
+              </pre>
             </div>
           )}
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="bg-white rounded-xl shadow-sm">
-        <div className="flex border-b">
-          <button
-            onClick={() => setActiveTab("score")}
-            className={`px-6 py-3 font-medium ${activeTab === "score" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500"}`}
-          >
-            Rasio Keuangan
-          </button>
-          <button
-            onClick={() => { setActiveTab("audit"); loadAudit(); }}
-            className={`px-6 py-3 font-medium ${activeTab === "audit" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500"}`}
-          >
-            Audit AI
-          </button>
-          <button
-            onClick={() => setActiveTab("tips")}
-            className={`px-6 py-3 font-medium ${activeTab === "tips" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500"}`}
-          >
-            Tips Perbaikan
-          </button>
-        </div>
-
-        <div className="p-6">
-          {activeTab === "score" && healthData && (
-            <div className="space-y-4">
-              {/* Liquidity Ratio */}
-              {healthData.liquidity_ratio && (
-                <div className={`p-4 rounded-lg border ${getStatusColor(healthData.liquidity_ratio.status)}`}>
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-semibold">Rasio Likuiditas</h3>
-                    <span className="font-bold">{healthData.liquidity_ratio.value?.toFixed(1)} bulan</span>
-                  </div>
-                  <p className="text-sm mt-1 opacity-80">{healthData.liquidity_ratio.description}</p>
-                </div>
-              )}
-
-              {/* Savings Ratio */}
-              {healthData.savings_ratio && (
-                <div className={`p-4 rounded-lg border ${getStatusColor(healthData.savings_ratio.status)}`}>
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-semibold">Rasio Tabungan</h3>
-                    <span className="font-bold">{(healthData.savings_ratio.value * 100).toFixed(1)}%</span>
-                  </div>
-                  <p className="text-sm mt-1 opacity-80">{healthData.savings_ratio.description}</p>
-                </div>
-              )}
-
-              {/* DSR Ratio */}
-              {healthData.dsr_ratio && (
-                <div className={`p-4 rounded-lg border ${getStatusColor(healthData.dsr_ratio.status)}`}>
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-semibold">Debt Service Ratio</h3>
-                    <span className="font-bold">{(healthData.dsr_ratio.value * 100).toFixed(1)}%</span>
-                  </div>
-                  <p className="text-sm mt-1 opacity-80">{healthData.dsr_ratio.description}</p>
-                </div>
-              )}
-
-              {/* Emergency Fund */}
-              {healthData.emergency_fund_months && (
-                <div className={`p-4 rounded-lg border ${getStatusColor(healthData.emergency_fund_months.status)}`}>
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-semibold">Dana Darurat</h3>
-                    <span className="font-bold">{healthData.emergency_fund_months.value?.toFixed(1)} bulan</span>
-                  </div>
-                  <p className="text-sm mt-1 opacity-80">{healthData.emergency_fund_months.description}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === "audit" && (
-            <div className="text-center py-8 text-gray-500">
-              {loading ? (
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              ) : auditData ? (
-                <pre className="text-left whitespace-pre-wrap text-sm">{JSON.stringify(auditData, null, 2)}</pre>
-              ) : (
-                <p>Klik untuk memuat audit AI</p>
-              )}
-            </div>
-          )}
-
-          {activeTab === "tips" && (
-            <div className="space-y-4">
-              {healthData?.liquidity_ratio?.status === "danger" && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <h4 className="font-semibold text-yellow-800">💡 Tips: Perkuat Dana Darurat</h4>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    Targetkan dana darurat 3-6 bulan pengeluaran. Mulai dengan menyimpan 10% dari penghasilan setiap bulan.
-                  </p>
-                </div>
-              )}
-              {healthData?.savings_ratio?.value < 0.2 && (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="font-semibold text-blue-800">💡 Tips: Tingkatkan Tabungan</h4>
-                  <p className="text-sm text-blue-700 mt-1">
-                    Taburkan minimal 20% dari penghasilan. Gunakan metode 50/30/20 untuk alokasi dana.
-                  </p>
-                </div>
-              )}
-              {(!healthData?.liquidity_ratio || healthData.liquidity_ratio.status !== "danger") && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="font-semibold text-green-800">🎉 Keuangan Sehat!</h4>
-                  <p className="text-sm text-green-700 mt-1">
-                    Dana darurat Anda sudah mencukupi. Lanjutkan kebiasaan baik ini!
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Refresh Button */}
+      <button
+        onClick={loadHealthData}
+        className="w-full py-3 bg-blue-500 text-white rounded-xl font-medium mt-4"
+      >
+        🔄 Refresh Data
+      </button>
     </div>
   );
 };
