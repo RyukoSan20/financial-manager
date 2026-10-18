@@ -234,10 +234,10 @@ try:
 except ImportError as e:
     print(f"[WARN] Health Coach router not available: {e}")
 
-# Location Analytics module
+# Location module (API routes)
 try:
-    from app.modules.ledger.location.router import router as location_router
-    app.include_router(location_router, tags=["Location Analytics"])
+    from app.api.routes.location import router as location_router
+    app.include_router(location_router, prefix="/api/location", tags=["Location"])
 except ImportError as e:
     print(f"[WARN] Location router not available: {e}")
 
