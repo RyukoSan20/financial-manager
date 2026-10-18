@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
       }
     } else if (backendToken) {
       // Token exists but no user - verify with backend
-      fetch(`${API_URL}/api/me`, {
+      fetch(`${API_URL}/me`, {
         headers: { 'Authorization': `Bearer ${backendToken}` }
       }).then(res => {
         if (res.ok) return res.json();
@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const res = await fetch(`${API_URL}/api/me`, {
+        const res = await fetch(`${API_URL}/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -187,7 +187,7 @@ export const AuthProvider = ({ children }) => {
       
       // Exchange for backend JWT
       try {
-        const res = await fetch(`${API_URL}/api/supabase-exchange`, {
+        const res = await fetch(`${API_URL}/supabase-exchange`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -236,7 +236,7 @@ export const AuthProvider = ({ children }) => {
 
   const supabaseGuestLogin = async () => {
     // Use backend guest login, not Supabase anonymous
-    const res = await fetch(`${API_URL}/api/guest`, {
+    const res = await fetch(`${API_URL}/guest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ device_id: crypto.randomUUID() }),
@@ -260,7 +260,7 @@ export const AuthProvider = ({ children }) => {
 
   // Backend Auth Functions
   const backendLogin = async (email, password) => {
-    const res = await fetch(`${API_URL}/api/login`, {
+    const res = await fetch(`${API_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -277,7 +277,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const backendRegister = async (email, password) => {
-    const res = await fetch(`${API_URL}/api/register`, {
+    const res = await fetch(`${API_URL}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -304,7 +304,7 @@ export const AuthProvider = ({ children }) => {
       return userData.user;
     } else {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/profile`, {
+      const res = await fetch(`${API_URL}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
