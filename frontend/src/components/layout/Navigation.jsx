@@ -37,6 +37,7 @@ import { useTranslation } from '../../i18n';
 import { ThemeProvider, useTheme } from '../../contexts/ThemeContext';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { showNotification } from '../notifications/NotificationHelper';
+import AddTransactionPage from './AddTransactionPage';
 
 const navItems = (t) => [
   { name: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
@@ -71,7 +72,7 @@ const bottomNavItems = (t) => [
 import api from '../../services/api';
 
 // Desktop Sidebar
-export const Sidebar = () => {
+const Sidebar = () => {
   const location = useLocation();
   const { t } = useTranslation();
   const items = navItems(t);
@@ -134,7 +135,7 @@ export const Sidebar = () => {
 };
 
 // Mobile Header
-export const MobileHeader = ({ title, showBack = false, onBack }) => {
+const MobileHeader = ({ title, showBack = false, onBack }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const { isDarkMode, toggleTheme } = useTheme();
@@ -271,7 +272,7 @@ export const MobileHeader = ({ title, showBack = false, onBack }) => {
 };
 
 // Bottom Navigation (Mobile)
-export const BottomNav = ({ pendingScanResult }) => {
+const BottomNav = ({ pendingScanResult }) => {
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
@@ -406,10 +407,9 @@ export const BottomNav = ({ pendingScanResult }) => {
   );
 };
 
-export { default as AddTransactionPage } from './AddTransactionPage';
 
 // More Page
-export const MorePage = () => {
+const MorePage = () => {
   const menuItems = [
     { icon: ShoppingBag, label: 'Toko / Merchant', href: '/merchant', color: 'bg-indigo-100 text-indigo-600', desc: 'POS & Kasir Cepat' },
     { icon: PieChart, label: 'Category Expenses', href: '/category-expenses', color: 'bg-teal-100 text-teal-600', desc: 'View spending by category' },
@@ -455,4 +455,4 @@ export const MorePage = () => {
   );
 };
 
-export default { Sidebar, MobileHeader, BottomNav, AddTransactionPage, MorePage };
+export { Sidebar, MobileHeader, BottomNav, AddTransactionPage, MorePage };
