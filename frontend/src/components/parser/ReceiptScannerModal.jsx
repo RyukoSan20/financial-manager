@@ -173,7 +173,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       const formData = new FormData();
       formData.append('file', imageFile);
 
-      const uploadResponse = await fetch(`${apiUrl}/api/parser/receipt`, {
+      const uploadResponse = await fetch(`${apiUrl}/api/parse-receipt`, {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,

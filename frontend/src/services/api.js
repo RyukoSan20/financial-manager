@@ -1,5 +1,6 @@
 // VPS backend - self-hosted production
-export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'https://my-financial-manager.online') + '/api';
+// VITE_API_URL already includes /api (e.g. https://my-financial-manager.online/api)
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://my-financial-manager.online/api';
 
 // Support both backend JWT (token) and Supabase (sb_token)
 const TOKEN_KEYS = ['token', 'sb_token'];
@@ -118,7 +119,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-    me: () => api.request('/api/me'),
+    me: () => api.request('/me'),
   },
 
   // Accounts

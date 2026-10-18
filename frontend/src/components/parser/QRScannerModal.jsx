@@ -18,10 +18,14 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
   useEffect(() => {
     if (isOpen) {
       loadScanner();
-      return () => {
-        stopScanner();
-      };
     }
+    return () => {
+      // Cleanup on unmount
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current = null;
+      }
+    };
   }, [isOpen]);
   
   const loadScanner = async () => {
@@ -85,19 +89,30 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
-        scannerRef.current = null;
       } catch (err) {
-        console.error('Failed to stop scanner:', err);
+        // Ignore errors - scanner might already be stopped
+        console.warn('Scanner stop warning:', err.message);
       }
+      scannerRef.current = null;
     }
     setScanning(false);
+  };
+  
+  // Guard to prevent double-stop
+  let isStopping = false;
+  
+  const safeStop = async () => {
+    if (isStopping) return;
+    isStopping = true;
+    await stopScanner();
+    isStopping = false;
   };
   
   const onScanSuccess = (decodedText, decodedResult) => {
     console.log('QR Scanned:', decodedText);
     
-    // Stop scanner first
-    stopScanner();
+    // Stop scanner first (use safeStop to prevent double-stop)
+    safeStop();
     
     // Send scanned data to parent
     onScan(decodedText);
@@ -109,8 +124,7 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
   };
   
   const handleClose = () => {
-    stopScanner();
-    setScanning(false);
+    safeStop();
     setError('');
     onClose();
   };
@@ -134,7 +148,7 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
   const switchCamera = async () => {
     if (cameras.length < 2) return;
     
-    await stopScanner();
+    await safeStop();
     
     const currentIndex = cameras.findIndex(c => c.id === selectedCamera);
     const nextIndex = (currentIndex + 1) % cameras.length;
