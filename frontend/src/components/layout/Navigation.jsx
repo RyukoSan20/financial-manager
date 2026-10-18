@@ -455,4 +455,4 @@ export const MorePage = () => {
   );
 };
 
-export default { Sidebar, MobileHeader, BottomNav, BottomSheet, AddTransactionPage, MorePage };
+export default { Sidebar, MobileHeader, BottomNav, AddTransactionPage, MorePage };
