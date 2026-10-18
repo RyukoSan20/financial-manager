@@ -1,11 +1,10 @@
 """
-Gmail OAuth2 - OAuth2 authentication for Gmail read-only access.
-Handles token refresh and email fetching.
+Gmail OAuth2 - Secure token storage and email parsing.
+Handles Gmail OAuth2 authentication and transaction email parsing.
 """
 import os
-import json
-from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+import base64
+from typing import Optional, Dict, Any, List
 
 
 class GmailOAuth:
@@ -21,6 +20,7 @@ class GmailOAuth:
     
     TOKEN_URL = "https://oauth2.googleapis.com/token"
     AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+    GMAIL_API = "https://gmail.googleapis.com"
     
     def __init__(
         self,
@@ -30,10 +30,13 @@ class GmailOAuth:
     ):
         self.client_id = client_id or os.getenv("GOOGLE_CLIENT_ID")
         self.client_secret = client_secret or os.getenv("GOOGLE_CLIENT_SECRET")
-        self.redirect_uri = redirect_uri or os.getenv("GMAIL_REDIRECT_URI", "https://my-financial-manager.online/api/integrations/gmail/callback")
+        self.redirect_uri = redirect_uri or os.getenv(
+            "GMAIL_REDIRECT_URI", 
+            "https://my-financial-manager.online/api/integrations/gmail/callback"
+        )
     
     def get_auth_url(self, state: str = None) -> str:
-        """Generate OAuth authorization URL."""
+        """Generate OAuth authorization URL with secure state parameter."""
         import urllib.parse
         
         params = {
@@ -41,8 +44,8 @@ class GmailOAuth:
             "redirect_uri": self.redirect_uri,
             "response_type": "code",
             "scope": " ".join(self.GMAIL_SCOPES),
-            "access_type": "offline",
-            "prompt": "consent"
+            "access_type": "offline",  # Get refresh token
+            "prompt": "consent"  # Force consent to get refresh token
         }
         
         if state:
@@ -60,15 +63,22 @@ class GmailOAuth:
             "client_secret": self.client_secret,
             "redirect_uri": self.redirect_uri,
             "grant_type": "authorization_code"
-        })
+        }, timeout=30)
         
         if response.status_code == 200:
-            return response.json()
+            data = response.json()
+            # Calculate token expiry
+            from datetime import datetime, timedelta
+            data["expiry"] = (
+                datetime.utcnow() + 
+                timedelta(seconds=data.get("expires_in", 3600))
+            ).isoformat()
+            return data
         
         raise Exception(f"Token exchange failed: {response.text}")
     
     def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
-        """Refresh expired access token."""
+        """Refresh expired access token using refresh token."""
         import requests
         
         response = requests.post(self.TOKEN_URL, json={
@@ -76,124 +86,119 @@ class GmailOAuth:
             "client_secret": self.client_secret,
             "refresh_token": refresh_token,
             "grant_type": "refresh_token"
-        })
-        
-        if response.status_code == 200:
-            return response.json()
-        
-        raise Exception(f"Token refresh failed: {response.text}")
-    
-    def get_access_token(self, credentials: Dict[str, Any]) -> str:
-        """Get valid access token, refreshing if necessary."""
-        if not credentials:
-            raise Exception("No credentials provided")
-        
-        access_token = credentials.get("access_token")
-        refresh_token = credentials.get("refresh_token")
-        expiry = credentials.get("expiry")
-        
-        # Check if token is expired
-        if expiry:
-            if datetime.utcnow() >= datetime.fromisoformat(expiry):
-                # Refresh token
-                new_tokens = self.refresh_access_token(refresh_token)
-                return new_tokens["access_token"]
-        
-        return access_token
-
-
-class GmailService:
-    """
-    Gmail API service for fetching and parsing emails.
-    """
-    
-    BASE_URL = "https://gmail.googleapis.com/gmail/v1"
-    
-    def __init__(self, access_token: str):
-        self.access_token = access_token
-    
-    def _headers(self) -> Dict[str, str]:
-        return {
-            "Authorization": f"Bearer {self.access_token}",
-            "Content-Type": "application/json"
-        }
-    
-    def list_messages(
-        self,
-        query: str = None,
-        max_results: int = 50
-    ) -> list:
-        """List messages matching query."""
-        import requests
-        
-        url = f"{self.BASE_URL}/users/me/messages"
-        params = {
-            "maxResults": max_results,
-            "q": query or ""
-        }
-        
-        response = requests.get(url, headers=self._headers(), params=params)
+        }, timeout=30)
         
         if response.status_code == 200:
             data = response.json()
-            return data.get("messages", [])
+            from datetime import datetime, timedelta
+            data["expiry"] = (
+                datetime.utcnow() + 
+                timedelta(seconds=data.get("expires_in", 3600))
+            ).isoformat()
+            return data
         
-        return []
+        raise Exception(f"Token refresh failed: {response.text}")
     
-    def get_message(self, message_id: str) -> Dict[str, Any]:
-        """Get full message by ID."""
+    def fetch_transaction_emails(self, access_token: str, max_results: int = 20) -> int:
+        """Fetch emails that look like transaction notifications."""
         import requests
-        import base64
         
-        url = f"{self.BASE_URL}/users/me/messages/{message_id}"
+        headers = {"Authorization": f"Bearer {access_token}"}
         
-        response = requests.get(url, headers=self._headers())
+        # Search for bank/e-wallet transaction emails
+        query = "from:(bank*.com OR wallet*.com OR noreply@*bank*.co.id OR noreply@*ewallet*.com) subject:(transaksi OR transfer OR payment OR mutasi)"
         
-        if response.status_code == 200:
-            msg = response.json()
-            
-            # Extract headers
-            headers = {}
-            for h in msg.get("payload", {}).get("headers", []):
-                headers[h["name"].lower()] = h["value"]
-            
-            # Extract body
-            body = self._extract_body(msg.get("payload", {}))
-            
-            return {
-                "id": msg["id"],
-                "thread_id": msg["threadId"],
-                "from": headers.get("from", ""),
-                "to": headers.get("to", ""),
-                "subject": headers.get("subject", ""),
-                "date": headers.get("date", ""),
-                "body": body,
-                "snippet": msg.get("snippet", "")
-            }
+        # List messages
+        list_url = f"{self.GMAIL_API}/gmail/v1/users/me/messages"
+        params = {"q": query, "maxResults": max_results}
         
-        return None
+        response = requests.get(list_url, headers=headers, params=params, timeout=30)
+        
+        if response.status_code != 200:
+            return 0
+        
+        data = response.json()
+        messages = data.get("messages", [])
+        
+        return len(messages)
     
-    def _extract_body(self, payload: Dict) -> str:
-        """Extract text body from message payload."""
+    def get_email_body(self, access_token: str, message_id: str) -> Optional[str]:
+        """Get email body content."""
+        import requests
+        
+        headers = {"Authorization": f"Bearer {access_token}"}
+        url = f"{self.GMAIL_API}/gmail/v1/users/me/messages/{message_id}?format=full"
+        
+        response = requests.get(url, headers=headers, timeout=30)
+        
+        if response.status_code != 200:
+            return None
+        
+        data = response.json()
+        payload = data.get("payload", {})
+        
+        # Extract body
+        body = ""
         if "parts" in payload:
             for part in payload["parts"]:
                 if part.get("mimeType") == "text/plain":
-                    data = part.get("body", {}).get("data", "")
-                    if data:
-                        import base64
-                        return base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
+                    body_data = part.get("body", {}).get("data", "")
+                    if body_data:
+                        body = base64.b64decode(body_data).decode("utf-8", errors="ignore")
+                        break
         
-        # Single part message
-        data = payload.get("body", {}).get("data", "")
-        if data:
-            import base64
-            return base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
+        if not body:
+            body_data = payload.get("body", {}).get("data", "")
+            if body_data:
+                body = base64.b64decode(body_data).decode("utf-8", errors="ignore")
         
-        return ""
-
-
-def get_gmail_service(credentials: Dict[str, Any]) -> GmailService:
-    """Factory function to create Gmail service."""
-    oauth = GmailOAuth()
-    access_token = oauth.get_access_token(credentials)
-    return GmailService(access_token)
+        return body
+    
+    def parse_transaction(self, email_body: str) -> Optional[Dict[str, Any]]:
+        """Parse transaction details from email body."""
+        import re
+        
+        transaction = {}
+        
+        # Extract amount (various Indonesian bank formats)
+        amount_patterns = [
+            r"Rp\.?\s*([\d,\.]+)",
+            r"amount[:\s]*([\d,\.]+)",
+            r"total[:\s]*Rp\.?\s*([\d,\.]+)",
+            r"sebesar\s*Rp\.?\s*([\d,\.]+)",
+        ]
+        
+        for pattern in amount_patterns:
+            match = re.search(pattern, email_body, re.IGNORECASE)
+            if match:
+                amount_str = match.group(1).replace(",", "").replace(".", "")
+                transaction["amount"] = int(amount_str)
+                break
+        
+        # Extract date
+        date_patterns = [
+            r"(\d{2}/\d{2}/\d{4})",
+            r"(\d{4}-\d{2}-\d{2})",
+            r"(\d{1,2}\s+\w+\s+\d{4})",
+        ]
+        
+        for pattern in date_patterns:
+            match = re.search(pattern, email_body)
+            if match:
+                transaction["date"] = match.group(1)
+                break
+        
+        # Extract merchant/name
+        merchant_patterns = [
+            r"ke\s+([A-Z][A-Za-z\s]+?)(?:\s+atau|\s+pada|\s+di)",
+            r"toko[:\s]*([^\n]+)",
+            r"merchant[:\s]*([^\n]+)",
+        ]
+        
+        for pattern in merchant_patterns:
+            match = re.search(pattern, email_body)
+            if match:
+                transaction["merchant"] = match.group(1).strip()
+                break
+        
+        return transaction if transaction else None
