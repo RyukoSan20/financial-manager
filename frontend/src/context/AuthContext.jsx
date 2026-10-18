@@ -5,10 +5,11 @@ import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
 // Use VITE_API_URL from environment, fallback to localhost for local dev
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+    // VITE_API_URL already includes /api
+    return import.meta.env.VITE_API_URL;
   }
   // Default to localhost for local development
-  return 'https://my-financial-manager.online';
+  return 'https://my-financial-manager.online/api';
 };
 const API_URL = getApiUrl();
 
@@ -146,7 +147,7 @@ export const AuthProvider = ({ children }) => {
   const googleLogin = async () => {
     // Always use backend Google OAuth
     try {
-      const res = await fetch(`${API_URL}/api/google/url`);
+      const res = await fetch(`${API_URL}/google/url`);
       if (!res.ok) throw new Error('Google OAuth not available');
       const data = await res.json();
       // Redirect to Google
