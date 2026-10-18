@@ -16,7 +16,7 @@ const AddTransactionPage = () => {
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState(null);
   const [accountId, setAccountId] = useState(null);
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(getWIBDate());
   
   // Transfer specific
   const [toAccountId, setToAccountId] = useState(null);
@@ -26,6 +26,7 @@ const AddTransactionPage = () => {
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [recentCombos, setRecentCombos] = useState([]);
+  const [loadError, setLoadError] = useState(null);
   
   // UI state
   const [loading, setLoading] = useState(true);
@@ -36,29 +37,37 @@ const AddTransactionPage = () => {
   
   const amountInputRef = useRef(null);
   
-  // Category keyword mapping
-  const categoryKeywords = {
-    "makan|food|cafe|coff|ristor|kopi|tea|sarapan|lunch|dinner|makanan|ayam|burger|pizza|sushi": "Makanan & Minuman",
-    "transport|grab|gojek|taxi|bensin|parkir|tol|ojek|bis|kereta|mrt|trans": "Transportasi",
-    "shop|beli|market|indomaret|alfamart|carrefour|minimarket|toko|belanja": "Belanja",
-    " pulsa|data|internet|wifi|telkom|axis|three|im3|telkomsel": "Pulsa & Data",
-    "listrik|pln|air|pdam|bill|token": "Tagihan",
-    "gym|fitness|olahraga|gym|renang|yoga": "Kesehatan",
-    "film|netflix|spotify|disney|gaming|steam|playstation": "Hiburan",
-    "obat|pharmacy|apotek|dokter|rumah sakit|klinik": "Kesehatan",
-    "baju|pakaian|clothes|zara|uniqlo|shopee|lazada|blibli": "Fashion",
-    "kado|hadi|gift|ulang tahun": "Hadiah",
-    "kos|sewa|rumah|apart|kontrakan": "Tempat Tinggal",
-    "gaji|slip|payroll|thr|bouns|income|pendapatan": "Pendapatan",
+  // Helper: Get date in WIB timezone (YYYY-MM-DD)
+  const getWIBDate = (offsetDays = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(d);
   };
   
+  // Category keyword mapping with word boundaries
+  const categoryKeywords = [
+    { pattern: /\b(makan|food|cafe|coff|ristor|kopi|teh|makan|ayam|burger|pizza|sushi|nasgor|nasi)\b/i, category: "Makanan & Minuman" },
+    { pattern: /\b(grab|gojek|taxi|bensin|parkir|tol|ojek|bis|kereta|mrt|trans|transport|ride|hely)\b/i, category: "Transportasi" },
+    { pattern: /\b(indomaret|alfamart|carrefour|minimarket|toko|belanja|market)\b/i, category: "Belanja" },
+    { pattern: /\b(pulsa|data|internet|wifi|telkom|axis|three|im3|telkomsel)\b/i, category: "Pulsa & Data" },
+    { pattern: /\b(listrik|pln|pdam|bill|token|air\s*(?:listrik|pdam|token))\b/i, category: "Tagihan" },
+    { pattern: /\b(gym|fitness|olahraga|renang|yoga|workout)\b/i, category: "Kesehatan" },
+    { pattern: /\b(film|netflix|spotify|disney|gaming|steam|playstation|hiburan|music|spotify)\b/i, category: "Hiburan" },
+    { pattern: /\b(obat|apotek|dokter|rumah\s*sakit|klinik|vaksin|health)\b/i, category: "Kesehatan" },
+    { pattern: /\b(baju|pakaian|clothes|zara|uniqlo|fashion|pakaian)\b/i, category: "Fashion" },
+    { pattern: /\b(shopee|lazada|blibli|tokopedia)\b/i, category: "Fashion" },
+    { pattern: /\b(kado|hadi|gift|ulang\s*tahun)\b/i, category: "Hadiah" },
+    { pattern: /\b(kos|sewa|rumah|apart|kontrakan|rent)\b/i, category: "Tempat Tinggal" },
+    { pattern: /\b(gaji|slip|gaji|thr|bouns|bonus|pendapatan)\b/i, category: "Pendapatan" },
+  ];
+  
   // Quick amount presets
-  const quickAmounts = [10000, 15000, 25000, 50000, 100000, 200000];
+  const quickAmounts = [5000, 10000, 15000, 25000, 50000, 100000, 200000, 500000, 1000000];
   
   // Date shortcuts
   const dateShortcuts = [
-    { label: "Hari ini", value: new Date().toISOString().split("T")[0] },
-    { label: "Kemarin", value: new Date(Date.now() - 86400000).toISOString().split("T")[0] },
+    { label: "Hari ini", getValue: () => getWIBDate() },
+    { label: "Kemarin", getValue: () => getWIBDate(-1) },
   ];
 
   useEffect(() => {
@@ -72,18 +81,21 @@ const AddTransactionPage = () => {
 
   const loadData = async () => {
     try {
+      setLoadError(null);
       const [catRes, accRes] = await Promise.all([
-        api.categories.list().catch(() => ({ ok: false, value: [] })),
-        api.accounts.list().catch(() => ({ ok: false, value: [] })),
+        api.categories.list(),
+        api.accounts.list(),
       ]);
       
-      if (catRes.ok) setCategories(catRes.value || []);
-      if (accRes.ok) {
-        setAccounts(accRes.value || []);
-        // Smart default: select first account
-        if (accRes.value?.length > 0) {
-          setAccountId(accRes.value[0].id);
-        }
+      if (!catRes.ok) throw new Error("Gagal memuat kategori");
+      if (!accRes.ok) throw new Error("Gagal memuat akun");
+      
+      setCategories(catRes.value || []);
+      setAccounts(accRes.value || []);
+      
+      // Smart default: select first account
+      if (accRes.value?.length > 0) {
+        setAccountId(accRes.value[0].id);
       }
       
       // Load recent combos from localStorage
@@ -96,6 +108,7 @@ const AddTransactionPage = () => {
       
     } catch (err) {
       console.error("Load error:", err);
+      setLoadError(err.message || "Gagal memuat data");
     } finally {
       setLoading(false);
     }
@@ -105,10 +118,9 @@ const AddTransactionPage = () => {
   useEffect(() => {
     if (!description || categories.length === 0) return;
     
-    const descLower = description.toLowerCase();
-    for (const [keywords, catName] of Object.entries(categoryKeywords)) {
-      if (new RegExp(keywords).test(descLower)) {
-        const matched = categories.find(c => c.name === catName);
+    for (const { pattern, category } of categoryKeywords) {
+      if (pattern.test(description)) {
+        const matched = categories.find(c => c.name === category);
         if (matched && !categoryId) {
           setCategoryId(matched.id);
           break;
@@ -298,6 +310,24 @@ const AddTransactionPage = () => {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-6 shadow-sm text-center max-w-sm">
+          <div className="text-4xl mb-4">⚠️</div>
+          <h2 className="font-semibold text-lg mb-2">Gagal Memuat Data</h2>
+          <p className="text-gray-600 mb-4">{loadError}</p>
+          <button
+            onClick={loadData}
+            className="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium"
+          >
+            🔄 Coba Lagi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
       {/* Header */}
@@ -453,19 +483,28 @@ const AddTransactionPage = () => {
 
         {/* Quick Date Chips */}
         <div className="flex gap-2">
-          {dateShortcuts.map((shortcut) => (
-            <button
-              key={shortcut.value}
-              onClick={() => setDate(shortcut.value)}
-              className={`px-4 py-2 rounded-full text-sm font-medium ${
-                date === shortcut.value 
-                  ? "bg-blue-500 text-white" 
-                  : "bg-white text-gray-600"
-              }`}
-            >
-              {shortcut.label}
-            </button>
-          ))}
+          {dateShortcuts.map((shortcut) => {
+            const value = shortcut.getValue();
+            return (
+              <button
+                key={shortcut.label}
+                onClick={() => setDate(value)}
+                className={`px-4 py-2 rounded-full text-sm font-medium ${
+                  date === value 
+                    ? "bg-blue-500 text-white" 
+                    : "bg-white text-gray-600"
+                }`}
+              >
+                {shortcut.label}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setShowDateSheet(true)}
+            className="px-4 py-2 rounded-full text-sm font-medium bg-white text-gray-600"
+          >
+            📅 Pilih
+          </button>
         </div>
       </div>
 
