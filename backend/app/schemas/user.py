@@ -1,7 +1,7 @@
 """User and auth schemas with enhanced security."""
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 import re
 
@@ -74,7 +74,7 @@ class UserResponse(UserBase):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    user: Optional[dict] = None
+    user: Optional[Dict[str, Any]] = None
 
 
 class LoginRequest(BaseModel):

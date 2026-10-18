@@ -8,7 +8,7 @@ const getApiUrl = () => {
     return import.meta.env.VITE_API_URL.replace(/\/api$/, '');
   }
   // Default to localhost for local development
-  return 'http://localhost:8000';
+  return 'https://my-financial-manager.online';
 };
 const API_URL = getApiUrl();
 
@@ -28,18 +28,34 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check localStorage first (for OAuth callback)
-    const storedUser = localStorage.getItem('sb_user');
-    const storedToken = localStorage.getItem('sb_token');
-    if (storedUser && storedToken) {
+    // Check localStorage for backend OAuth token first
+    const backendToken = localStorage.getItem('token');
+    const backendUser = localStorage.getItem('user');
+    
+    if (backendToken && backendUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        setUser(JSON.parse(backendUser));
       } catch (e) {
-        localStorage.removeItem('sb_user');
-        localStorage.removeItem('sb_token');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
+    } else if (backendToken) {
+      // Token exists but no user - verify with backend
+      fetch(`${API_URL}/api/me`, {
+        headers: { 'Authorization': `Bearer ${backendToken}` }
+      }).then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Invalid token');
+      }).then(userData => {
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+      }).catch(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      });
     }
     
+    // Also check Supabase
     if (isSupabaseConfigured()) {
       initSupabaseAuth();
     } else {
@@ -128,10 +144,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const googleLogin = async () => {
-    if (isSupabaseConfigured()) {
-      return supabaseGoogleLogin();
-    } else {
-      throw new Error('Google login belum tersedia. Gunakan login email.');
+    // Always use backend Google OAuth
+    try {
+      const res = await fetch(`${API_URL}/api/google/url`);
+      if (!res.ok) throw new Error('Google OAuth not available');
+      const data = await res.json();
+      // Redirect to Google
+      window.location.href = data.url;
+    } catch (err) {
+      throw err;
     }
   };
 

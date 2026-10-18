@@ -3,15 +3,15 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase } from '../lib/supabase';
 
-// Use VITE_API_URL env var, fallback to Railway
+// Use VITE_API_URL env var, fallback to VPS
 const getApiUrl = () => {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  // Default to Railway for production
-  return 'https://fin-manager-production.up.railway.app';
+  // Default to VPS for production
+  return 'https://my-financial-manager.online';
 };
-const API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || 'https://fin-manager-production.up.railway.app';
+const API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || 'https://my-financial-manager.online';
 
 export const AuthCallback = () => {
   const [error, setError] = useState('');
@@ -23,9 +23,41 @@ export const AuthCallback = () => {
 
   const handleCallback = async () => {
     try {
-      const sb = getSupabase();
+      // Check for JWT token from backend OAuth callback (direct Google OAuth)
+      const urlParams = new URLSearchParams(window.location.search);
+      const backendToken = urlParams.get('token');
+      const errorParam = urlParams.get('error');
       
-      // Get session from URL
+      if (errorParam) {
+        console.error('OAuth error:', errorParam);
+        setError('Authentication failed: ' + errorParam);
+        setTimeout(() => navigate('/login'), 3000);
+        return;
+      }
+      
+      if (backendToken) {
+        // Direct JWT from backend OAuth - store and redirect
+        localStorage.setItem('token', backendToken);
+        
+        // Fetch user info
+        try {
+          const userRes = await fetch(`${getApiUrl()}/api/me`, {
+            headers: { 'Authorization': `Bearer ${backendToken}` }
+          });
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
+        } catch (e) {
+          console.error('Failed to fetch user:', e);
+        }
+        
+        navigate('/dashboard');
+        return;
+      }
+      
+      // Fall back to Supabase flow
+      const sb = getSupabase();
       const { data, error: sbError } = await sb.auth.getSession();
       
       if (sbError) {
@@ -36,11 +68,8 @@ export const AuthCallback = () => {
       }
 
       if (data.session) {
-        // Get user info from Supabase
         const user = data.session.user;
-        
-        // Exchange Supabase token for backend JWT
-        const response = await fetch(`${API_URL}/api/supabase-exchange`, {
+        const response = await fetch(`${getApiUrl()}/api/supabase-exchange`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -51,21 +80,14 @@ export const AuthCallback = () => {
         });
         
         if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error('Token exchange failed: ' + (errData.detail || response.statusText));
+          throw new Error('Token exchange failed');
         }
         
         const tokenData = await response.json();
-        // Store backend token (this is what API uses)
         localStorage.setItem('token', tokenData.access_token);
         localStorage.setItem('user', JSON.stringify(tokenData.user));
-        
-        
-        // Store Supabase session too
         localStorage.setItem('sb_token', data.session.access_token);
         localStorage.setItem('sb_user', JSON.stringify(user));
-        
-        // Redirect to dashboard
         navigate('/dashboard');
       } else {
         navigate('/login');

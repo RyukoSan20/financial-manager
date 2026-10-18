@@ -339,7 +339,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // Fetch market data from realtime API
   const fetchMarketData = useCallback(async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:8000'}/realtime/summary`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://my-financial-manager.online'}/realtime/summary`);
       const data = await response.json();
       setMarketData(data);
       setRealtimeUpdate(new Date());
@@ -352,12 +352,22 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const fetchCashFlow = useCallback(async () => {
     setChartLoading(true);
     try {
+      const token = localStorage.getItem('token');
       const params = new URLSearchParams({ timeframe });
       if (selectedAccount !== 'all') {
         params.append('account_id', selectedAccount);
       }
       
-      const response = await fetch(`${API_BASE_URL}/dashboard/cash-flow?${params}`);
+      const response = await fetch(`${API_BASE_URL}/dashboard/cash-flow?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (!response.ok) {
+        console.error('Cash flow API error:', response.status);
+        setCashFlowSeries([]);
+        return;
+      }
+      
       const data = await response.json();
       
       if (data.status === 'success') {
@@ -452,8 +462,15 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     
     import('lightweight-charts').then(({ 
       createChart, ColorType, CrosshairMode, LineStyle, 
-      LineSeries, AreaSeries, HistogramSeries 
+      LineSeries, AreaSeries, HistogramSeries
     }) => {
+      // Pure JS IDR currency formatter
+      const idrFormatter = (price) => {
+        if (price >= 1000000000) return `Rp ${(price / 1000000000).toFixed(1)}M`;
+        if (price >= 1000000) return `Rp ${(price / 1000000).toFixed(1)}jt`;
+        if (price >= 1000) return `Rp ${(price / 1000).toFixed(0)}rb`;
+        return `Rp ${price}`;
+      };
       if (chartInstanceRef.current) {
         try { chartInstanceRef.current.remove(); } catch (e) {}
       }
@@ -478,26 +495,51 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           vertLine: { color: CHART_COLORS.crosshair, labelBackgroundColor: isDark ? '#4b5563' : '#374151' },
           horzLine: { color: CHART_COLORS.crosshair, labelBackgroundColor: isDark ? '#4b5563' : '#374151' },
         },
-        rightPriceScale: { borderColor: gridColor },
+        rightPriceScale: { 
+          borderColor: gridColor,
+          scaleMargins: { top: 0.1, bottom: 0.2 },
+          mode: 1,
+        },
+        localization: {
+          priceFormatter: idrFormatter,
+        },
+        handleScroll: { mouseWheel: true, pressedMouseMove: true },
+        handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
         timeScale: { 
           borderColor: gridColor, 
           timeVisible: true,
           tickMarkFormatter: (time) => {
-            const idx = cashFlowSeries.findIndex(s => s._idx === time);
-            if (idx >= 0) return cashFlowSeries[idx].labelX || '';
+            // Find matching data point by time
+            const idx = data.findIndex(d => d.time === time);
+            if (idx >= 0) return data[idx]._labelX || '';
+            // Try matching by _idx
+            const idx2 = cashFlowSeries.findIndex(s => s._idx === time);
+            if (idx2 >= 0) return cashFlowSeries[idx2].labelX || '';
             return '';
           }
         },
       });
 
-      // Prepare data
-      const data = cashFlowSeries.map((item, i) => ({
-        time: i + 1,
-        _idx: i + 1,
-        income: item.totalIncome || item.income || 0,
-        expense: item.totalExpense || item.expense || 0,
-        savings: item.netSavings || item.net || 0,
-      }));
+      // Prepare data - convert dates to Unix timestamps for TradingView
+      const data = cashFlowSeries.map((item, i) => {
+        // Parse date string to Unix timestamp
+        let timeVal;
+        if (item.timestamp) {
+          // Convert "2026-09-17" to Unix timestamp
+          const date = new Date(item.timestamp);
+          timeVal = Math.floor(date.getTime() / 1000);
+        } else {
+          timeVal = i + 1;
+        }
+        return {
+          time: timeVal,
+          _idx: i + 1,
+          _labelX: item.labelX || item.labelXShort || '',
+          income: item.totalIncome || item.income || 0,
+          expense: item.totalExpense || item.expense || 0,
+          savings: item.netSavings || item.net || (item.totalIncome - item.totalExpense) || 0,
+        };
+      });
 
       // Add series based on chart type and display mode
       if (displayMode === 'advanced') {

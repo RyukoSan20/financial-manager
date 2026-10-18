@@ -168,7 +168,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
       // Try backend OCR endpoint
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:8000';
+      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://my-financial-manager.online';
       
       const formData = new FormData();
       formData.append('file', imageFile);

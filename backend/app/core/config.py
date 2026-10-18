@@ -26,16 +26,10 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
-        "https://financial-manager-flax.vercel.app",
-        "https://financial-manager-nu.vercel.app",
-        "https://financial-manager-inky.vercel.app",
-        "https://frontend-virid-alpha-24.vercel.app",
-        "https://frontend-6d6f9rilf-fin-pro2.vercel.app",
-        "https://frontend-cebozu5p0-fin-pro2.vercel.app",
         "https://*.vercel.app",
-        "https://financial-manager-production-a042.up.railway.app",
+        "https://*.ngrok-free.dev",
+        "https://*.ngrok.io",
         "https://fin-manager-production.up.railway.app",
-        "https://nowhere-douglas-cold-somerset.trycloudflare.com",
         "https://*.trycloudflare.com",
     ]
     

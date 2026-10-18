@@ -25,6 +25,59 @@ class ParsedTransaction:
     raw_text: str = ""
 
 
+def normalize_amount(text: str) -> Optional[Decimal]:
+    """Convert text with Indonesian/English number words to Decimal.
+    
+    Handles:
+    - juta/jt -> million (1,000,000)
+    - ribu/rb/k -> thousand (1,000)
+    - miliar/m/b -> billion (1,000,000,000)
+    - million/M -> million
+    - thousand/K -> thousand
+    """
+    if not text:
+        return None
+    
+    text = str(text).strip().lower()
+    
+    # Check for number words
+    multipliers = {
+        r'\bmiliar\b|\bb\b|\bm\b': Decimal('1000000000'),  # billion
+        r'\bjuta\b|\bjt\b|\bmillion\b|\bM\b': Decimal('1000000'),  # million
+        r'\bribu\b|\brb\b|\bthousand\b|\bK\b': Decimal('1000'),  # thousand
+    }
+    
+    for pattern, multiplier in multipliers.items():
+        if re.search(pattern, text):
+            # Extract the number before the word
+            match = re.search(r'([\d.,]+)\s*' + pattern.split('|')[0], text, re.IGNORECASE)
+            if not match:
+                # Try to find any number in the text
+                num_match = re.search(r'([\d.,]+)', text)
+                if num_match:
+                    match = num_match
+            if match:
+                num_str = match.group(1)
+                # Parse the number part
+                num_str = num_str.replace('.', '').replace(',', '.')
+                try:
+                    num = Decimal(num_str)
+                    return num * multiplier
+                except:
+                    pass
+    
+    # If no number word found, try to parse as regular number
+    cleaned = text.replace('.', '').replace(',', '.')
+    cleaned = re.sub(r'[^\d.]', '', cleaned)
+    if cleaned:
+        try:
+            return Decimal(cleaned)
+        except:
+            pass
+    
+    return None
+
+
 class TextParserService:
     """Parse transaction data from SMS, QRIS text, and other text sources."""
     
@@ -129,9 +182,15 @@ class TextParserService:
     }
     
     def parse_amount(self, amount_str: str) -> Optional[Decimal]:
-        """Convert amount string to Decimal, handling Indonesian format."""
+        """Convert amount string to Decimal, handling Indonesian format and number words."""
         if not amount_str:
             return None
+        
+        # First check for Indonesian/English number words (juta, jt, ribu, rb, k, million, etc.)
+        normalized = normalize_amount(amount_str)
+        if normalized is not None:
+            return normalized
+        
         # Remove spaces
         cleaned = amount_str.strip()
         # Check if it contains Rp

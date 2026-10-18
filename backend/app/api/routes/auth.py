@@ -139,9 +139,14 @@ def check_password_strength(password: str) -> tuple[int, List[str]]:
 @router.post("/register", response_model=Token, status_code=201)
 def register(request: RegisterRequest, db: Session = Depends(get_db)):
     """Register new user with email and password."""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Register attempt for: {request.email}")
+    
     # Check if email exists
     existing = db.query(User).filter(User.email == request.email.lower()).first()
     if existing:
+        logger.info(f"Email already exists: {request.email}")
         raise HTTPException(
             status_code=400,
             detail="Email already registered"
@@ -153,13 +158,16 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
             User.username == request.username.lower()
         ).first()
         if existing_username:
+            logger.info(f"Username already taken: {request.username}")
             raise HTTPException(
                 status_code=400,
                 detail="Username already taken"
             )
     
     # Create user with hashed password
+    logger.info("Hashing password...")
     hashed_password = get_password_hash(request.password)
+    logger.info("Creating user...")
     user = User(
         email=request.email.lower(),
         username=request.username.lower() if request.username else None,
@@ -171,10 +179,13 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+    logger.info(f"User created: {user.id}")
     
     # Create token
+    logger.info("Creating token...")
     access_token = create_access_token(user.id)
     
+    logger.info(f"Register SUCCESS for: {request.email}")
     return Token(
         access_token=access_token,
         user={
@@ -314,6 +325,105 @@ def google_auth_url():
     auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
     
     return {"url": auth_url}
+
+
+@router.get("/auth/google/callback")
+async def google_auth_callback(
+    code: str = None,
+    state: str = None,
+    error: str = None,
+    db: Session = Depends(get_db)
+):
+    """Handle Google OAuth callback - receives code, exchanges for token, creates user, redirects to frontend."""
+    from fastapi.responses import RedirectResponse
+    import requests
+    
+    # Handle error from Google
+    if error:
+        return RedirectResponse(url=f"https://my-financial-manager.online/auth/callback?error={error}", status_code=302)
+    
+    if not code:
+        return RedirectResponse(url="https://my-financial-manager.online/auth/callback?error=no_code", status_code=302)
+    
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        return RedirectResponse(url="https://my-financial-manager.online/auth/callback?error=oauth_not_configured", status_code=302)
+    
+    try:
+        # Exchange code for tokens
+        import urllib.parse
+        token_data = {
+            "code": code,
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "redirect_uri": GOOGLE_REDIRECT_URI,
+            "grant_type": "authorization_code",
+        }
+        
+        token_response = requests.post(
+            "https://oauth2.googleapis.com/token",
+            data=token_data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"}
+        )
+        
+        if token_response.status_code != 200:
+            return RedirectResponse(url=f"https://my-financial-manager.online/auth/callback?error=token_exchange_failed", status_code=302)
+        
+        token_json = token_response.json()
+        access_token = token_json.get("access_token")
+        id_token = token_json.get("id_token")
+        
+        if not access_token:
+            return RedirectResponse(url="https://my-financial-manager.online/auth/callback?error=no_access_token", status_code=302)
+        
+        # Get user info from Google
+        user_response = requests.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        
+        if user_response.status_code != 200:
+            return RedirectResponse(url="https://my-financial-manager.online/auth/callback?error=user_info_failed", status_code=302)
+        
+        google_user = user_response.json()
+        google_email = google_user.get("email", "").lower()
+        google_name = google_user.get("name", "")
+        google_picture = google_user.get("picture", "")
+        
+        if not google_email:
+            return RedirectResponse(url="https://my-financial-manager.online/auth/callback?error=no_email", status_code=302)
+        
+        # Find or create user
+        user = db.query(User).filter(User.email == google_email).first()
+        
+        if not user:
+            user = User(
+                email=google_email,
+                full_name=google_name,
+                hashed_password=None,
+                is_active=True,
+                is_guest=False,
+                google_picture=google_picture,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        
+        # Update last login and picture
+        user.last_login = datetime.utcnow()
+        user.google_picture = user.google_picture or google_picture
+        db.commit()
+        
+        # Create JWT token
+        jwt_token = create_access_token(user.id)
+        
+        # Redirect to frontend callback with token
+        return RedirectResponse(
+            url=f"https://my-financial-manager.online/auth/callback?token={jwt_token}",
+            status_code=302
+        )
+        
+    except Exception as e:
+        return RedirectResponse(url=f"https://my-financial-manager.online/auth/callback?error=server_error", status_code=302)
 
 
 @router.post("/google/callback", response_model=Token)

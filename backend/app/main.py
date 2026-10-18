@@ -38,15 +38,11 @@ app.add_middleware(LoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://my-financial-manager.online",
         "http://localhost:3000",
         "http://localhost:5173",
-        "https://financial-manager-inky.vercel.app",
-        "https://financial-manager-opal.vercel.app",
-        "https://frontend-virid-alpha-24.vercel.app",
-        "https://frontend-6d6f9rilf-fin-pro2.vercel.app",
-        "https://fin-manager-production.up.railway.app",
     ],
-    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.trycloudflare\.com",
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.trycloudflare\.com|financial-manager\.id",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -202,6 +198,47 @@ app.include_router(realtime_market.router, prefix="", tags=["realtime-market"])
 app.include_router(logs.router, prefix="/api", tags=["Logs"])
 app.include_router(merchant.router, prefix="/api", tags=["Merchant"])
 app.include_router(webhooks.router, prefix="/api", tags=["Webhooks"])
+
+# Enterprise modules
+try:
+    from app.modules.ledger.analytics_router import router as analytics_router
+    app.include_router(analytics_router, prefix="/api", tags=["Analytics"])
+except ImportError:
+    print("[WARN] Analytics router not available")
+
+try:
+    from app.modules.ai_advisor.router import router as ai_advisor_router
+    app.include_router(ai_advisor_router, tags=["AI Advisor"])
+except ImportError:
+    print("[WARN] AI Advisor router not available")
+
+# Error monitoring module
+try:
+    from app.modules.ai_monitor.client_error_router import router as error_router
+    app.include_router(error_router, tags=["Error Monitoring"])
+except ImportError:
+    print("[WARN] Error monitoring router not available")
+
+# Health Coach module
+try:
+    from app.modules.ai_advisor.health_coach.router import router as health_coach_router
+    app.include_router(health_coach_router, tags=["AI Health Coach"])
+except ImportError as e:
+    print(f"[WARN] Health Coach router not available: {e}")
+
+# Location Analytics module
+try:
+    from app.modules.ledger.location.router import router as location_router
+    app.include_router(location_router, tags=["Location Analytics"])
+except ImportError as e:
+    print(f"[WARN] Location router not available: {e}")
+
+# Shopping Tracker module
+try:
+    from app.modules.ledger.shopping.router import router as shopping_router
+    app.include_router(shopping_router, tags=["Shopping Tracker"])
+except ImportError as e:
+    print(f"[WARN] Shopping router not available: {e}")
 
 
 # Recurring auto-generator cron endpoint (for Railway cron)

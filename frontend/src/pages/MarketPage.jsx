@@ -87,7 +87,7 @@ export const MarketPage = () => {
   const fetchMarketData = useCallback(async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`${import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:8000'}/realtime/summary`);
+      const resp = await fetch(`${import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://my-financial-manager.online'}/realtime/summary`);
       const data = await resp.json();
       setMarketData(data);
     } catch (err) {

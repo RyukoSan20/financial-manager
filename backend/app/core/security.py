@@ -12,8 +12,8 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing - using sha256_crypt to avoid bcrypt/passlib bug in Docker
+pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 # JWT
 ALGORITHM = "HS256"
