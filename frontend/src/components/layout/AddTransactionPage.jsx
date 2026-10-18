@@ -10,6 +10,13 @@ const AddTransactionPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   
+  // Helper: Get date in WIB timezone (YYYY-MM-DD) - defined first
+  const getWIBDate = (offsetDays = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(d);
+  };
+  
   // Transaction type
   const [type, setType] = useState("expense"); // expense, income, transfer
   
@@ -38,13 +45,6 @@ const AddTransactionPage = () => {
   const [showDateSheet, setShowDateSheet] = useState(false);
   
   const amountInputRef = useRef(null);
-  
-  // Helper: Get date in WIB timezone (YYYY-MM-DD)
-  const getWIBDate = (offsetDays = 0) => {
-    const d = new Date();
-    d.setDate(d.getDate() + offsetDays);
-    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(d);
-  };
   
   // Category keyword mapping with word boundaries
   const categoryKeywords = [
