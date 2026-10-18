@@ -249,6 +249,8 @@ try:
 except ImportError as e:
     print(f"[WARN] Shopping router not available: {e}")
 
+# Category Hints - User Learning
+app.include_router(category_hints.router, tags=["Category Hints"])
 
 # Recurring auto-generator cron endpoint (for Railway cron)
 from app.services.recurring_generator import process_due_recurring_rules

@@ -89,33 +89,36 @@ const AddTransactionPage = () => {
     try {
       setLoadError(null);
       
-      // Try to load bootstrap data (categories + hints + recent combos)
-      let bootstrapData = null;
+      // Try bootstrap first (categories + hints + recent combos)
+      let bootstrapFailed = false;
       try {
-        bootstrapData = await fetchBootstrap();
+        const res = await fetch(`${API_URL}/category-hints/bootstrap`, {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          if (data.categories) {
+            setCategories(data.categories || []);
+            setRecentCombos((data.recent_combos || []).slice(0, 4));
+            if (data.hints) {
+              localStorage.setItem('categoryHints', JSON.stringify(data.hints));
+            }
+          }
+        } else {
+          bootstrapFailed = true;
+        }
       } catch (e) {
-        console.log('Bootstrap not available, using legacy load');
+        console.log('Bootstrap failed, using legacy load:', e.message);
+        bootstrapFailed = true;
       }
       
-      if (bootstrapData?.ok && bootstrapData.value) {
-        const { categories: cats, hints, recent_combos } = bootstrapData.value;
-        setCategories(cats || []);
-        setRecentCombos((recent_combos || []).slice(0, 4));
-        
-        // Set user hints in localStorage for offline use
-        if (hints) {
-          localStorage.setItem('categoryHints', JSON.stringify(hints));
-        }
-      } else {
+      if (bootstrapFailed) {
         // Legacy load
-        const [catRes, accRes] = await Promise.all([
-          api.categories.list(),
-          api.accounts.list(),
-        ]);
-        
-        if (!catRes.ok) throw new Error("Gagal memuat kategori");
-        
-        setCategories(catRes.value || []);
+        const catRes = await api.categories.list();
+        if (catRes.ok) {
+          setCategories(catRes.value || []);
+        }
         const combos = JSON.parse(localStorage.getItem("recentCombos") || "[]");
         setRecentCombos(combos.slice(0, 4));
       }
