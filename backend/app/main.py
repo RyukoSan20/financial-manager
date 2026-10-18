@@ -219,6 +219,13 @@ try:
 except ImportError:
     print("[WARN] Error monitoring router not available")
 
+# Email Parser module
+try:
+    from app.modules.integrations.email_parser.gmail_router import router as gmail_router
+    app.include_router(gmail_router, tags=["Gmail Integration"])
+except ImportError as e:
+    print(f"[WARN] Gmail router not available: {e}")
+
 # Health Coach module
 try:
     from app.modules.ai_advisor.health_coach.router import router as health_coach_router
