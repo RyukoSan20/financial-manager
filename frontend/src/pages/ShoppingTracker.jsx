@@ -37,8 +37,14 @@ const ShoppingTracker = () => {
         })
       ]);
       
-      if (itemsRes.ok) setItems(await itemsRes.json());
-      if (wishlistRes.ok) setWishlist(await wishlistRes.json());
+      if (itemsRes.ok) {
+        const data = await itemsRes.json();
+        setItems(Array.isArray(data) ? data : (data.items || []));
+      }
+      if (wishlistRes.ok) {
+        const data = await wishlistRes.json();
+        setWishlist(Array.isArray(data) ? data : (data.wishlist || []));
+      }
     } catch (e) {
       console.error("Load error:", e);
     } finally {
@@ -62,7 +68,7 @@ const ShoppingTracker = () => {
       
       if (res.ok) {
         const item = await res.json();
-        setItems([...items, item]);
+        setItems(prev => [...(Array.isArray(prev) ? prev : []), item]);
         setNewItem("");
       }
     } catch (e) {
