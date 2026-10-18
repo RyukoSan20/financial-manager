@@ -123,6 +123,7 @@ function App() {
               <Route path="health-coach" element={<HealthCoach />} />
               <Route path="shopping" element={<ShoppingTracker />} />
               <Route path="gmail" element={<GmailIntegration />} />
+              <Route path="gmail/callback" element={<GmailCallback />} />
               <Route path="feed" element={<FeedPage />} />
               <Route path="market" element={<MarketPage />} />
               <Route path="settings" element={<Settings />} />

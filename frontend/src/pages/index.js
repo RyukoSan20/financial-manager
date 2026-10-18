@@ -18,5 +18,6 @@ export { default as MerchantMap } from './MerchantMap';
 export { default as HealthCoach } from './HealthCoach';
 export { default as ShoppingTracker } from './ShoppingTracker';
 export { default as GmailIntegration } from './GmailIntegration';
+export { default as GmailCallback } from './GmailCallback';
 export { default as AIAdvisor } from './AIAdvisor';
 export { default as FeedPage } from './Feed/FeedPage';

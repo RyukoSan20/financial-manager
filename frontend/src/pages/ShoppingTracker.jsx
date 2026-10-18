@@ -1,170 +1,157 @@
-// Shopping Tracker Page - Enhanced with Budget & Wishlist Planning
+// Shopping Tracker Page - Interactive with Budget & Wishlist
 import { useState, useEffect } from "react";
-import { api } from "../services/api";
 
 const ShoppingTracker = () => {
   const [items, setItems] = useState([]);
   const [wishlist, setWishlist] = useState([]);
-  const [budget, setBudget] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [budget, setBudget] = useState(parseFloat(localStorage.getItem("shopping_budget")) || 0);
+  const [activeTab, setActiveTab] = useState("tracked");
   
   // Form states
   const [newItem, setNewItem] = useState("");
-  const [wishlistItem, setWishlistItem] = useState("");
+  const [wishlistName, setWishlistName] = useState("");
   const [wishlistPrice, setWishlistPrice] = useState("");
+  const [wishlistPriority, setWishlistPriority] = useState("medium");
+  const [budgetInput, setBudgetInput] = useState(budget.toString());
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [monthlyBudget, setMonthlyBudget] = useState("");
-  const [activeTab, setActiveTab] = useState("tracked"); // tracked, wishlist, budget
 
   useEffect(() => {
     loadData();
   }, []);
 
+  const getToken = () => localStorage.getItem("token");
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const loadData = async () => {
+    const token = getToken();
+    if (!token) return;
+    
     try {
-      setLoading(true);
       const [itemsRes, wishlistRes] = await Promise.all([
-        api.shopping.items().catch(() => ({ ok: false })),
-        api.shopping.wishlist().catch(() => ({ ok: false }))
+        fetch(`${API_URL}/shopping/items`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${API_URL}/shopping/wishlist`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
       ]);
       
-      if (itemsRes?.ok) {
-        const data = await itemsRes.json();
-        setItems(data.items || []);
-      }
-      
-      if (wishlistRes?.ok) {
-        const data = await wishlistRes.json();
-        setWishlist(data.items || []);
-      }
-    } catch (err) {
-      setError(err.message);
+      if (itemsRes.ok) setItems(await itemsRes.json());
+      if (wishlistRes.ok) setWishlist(await wishlistRes.json());
+    } catch (e) {
+      console.error("Load error:", e);
     } finally {
       setLoading(false);
     }
   };
 
-  // Search product prices via Google Shopping / Places API
-  const searchProduct = async () => {
-    if (!searchQuery.trim()) return;
-    
-    setSearching(true);
-    try {
-      // Use Google Places API for store search
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/location/search-places?query=${encodeURIComponent(searchQuery + " Indonesia")}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setSearchResults(data.slice(0, 5));
-      }
-    } catch (err) {
-      console.error("Search error:", err);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const addToTracked = async () => {
+  const addItem = async () => {
     if (!newItem.trim()) return;
+    const token = getToken();
     
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/shopping/items`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("token")}`
-          },
-          body: JSON.stringify({
-            name: newItem,
-            current_price: 0,
-            category: "general"
-          })
-        }
-      );
+      const res = await fetch(`${API_URL}/shopping/items`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newItem, current_price: 0 })
+      });
       
-      if (response.ok) {
-        const data = await response.json();
-        setItems([...items, data]);
+      if (res.ok) {
+        const item = await res.json();
+        setItems([...items, item]);
         setNewItem("");
       }
-    } catch (err) {
-      setError(err.message);
+    } catch (e) {
+      console.error("Add error:", e);
     }
   };
 
   const addToWishlist = async () => {
-    if (!wishlistItem.trim()) return;
+    if (!wishlistName.trim()) return;
+    const token = getToken();
     
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/shopping/wishlist`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("token")}`
-          },
-          body: JSON.stringify({
-            name: wishlistItem,
-            target_price: parseFloat(wishlistPrice) || 0,
-            priority: "medium",
-            notes: ""
-          })
-        }
-      );
+      const res = await fetch(`${API_URL}/shopping/wishlist`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: wishlistName,
+          target_price: parseFloat(wishlistPrice) || 0,
+          priority: wishlistPriority
+        })
+      });
       
-      if (response.ok) {
-        const data = await response.json();
-        setWishlist([...wishlist, data]);
-        setWishlistItem("");
+      if (res.ok) {
+        const item = await res.json();
+        setWishlist([...wishlist, item]);
+        setWishlistName("");
         setWishlistPrice("");
       }
-    } catch (err) {
-      setError(err.message);
+    } catch (e) {
+      console.error("Add wishlist error:", e);
     }
   };
 
-  const setBudgetAmount = async () => {
-    if (!monthlyBudget || monthlyBudget <= 0) return;
+  const saveBudget = () => {
+    const amount = parseFloat(budgetInput);
+    if (amount > 0) {
+      setBudget(amount);
+      localStorage.setItem("shopping_budget", amount);
+      alert(`Budget ditetapkan: Rp ${amount.toLocaleString("id-ID")}`);
+    }
+  };
+
+  const deleteItem = async (id) => {
+    if (!confirm("Hapus item ini?")) return;
+    const token = getToken();
     
     try {
-      // Store budget in localStorage (simplified)
-      localStorage.setItem("shopping_budget", monthlyBudget);
-      setBudget(parseFloat(monthlyBudget));
-      alert(`Budget belanja bulanan ditetapkan: Rp ${parseInt(monthlyBudget).toLocaleString("id-ID")}`);
-    } catch (err) {
-      setError(err.message);
+      const res = await fetch(`${API_URL}/shopping/items/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        setItems(items.filter(i => i.id !== id));
+      }
+    } catch (e) {
+      console.error("Delete error:", e);
     }
   };
 
-  const formatCurrency = (value) => {
-    if (!value && value !== 0) return "Rp 0";
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
+  const deleteWishlist = async (id) => {
+    if (!confirm("Hapus dari wishlist?")) return;
+    const token = getToken();
+    
+    try {
+      const res = await fetch(`${API_URL}/shopping/wishlist/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        setWishlist(wishlist.filter(i => i.id !== id));
+      }
+    } catch (e) {
+      console.error("Delete wishlist error:", e);
+    }
   };
 
-  const getSpentAmount = () => {
-    return items.reduce((sum, item) => sum + (item.current_price || 0), 0);
+  const formatCurrency = (v) => {
+    if (!v && v !== 0) return "Rp 0";
+    return `Rp ${parseFloat(v).toLocaleString("id-ID")}`;
   };
 
-  const getWishlistTotal = () => {
-    return wishlist.reduce((sum, item) => sum + (item.target_price || 0), 0);
-  };
-
-  const getBudgetUsed = () => {
-    if (!budget) return 0;
-    return (getSpentAmount() / budget) * 100;
-  };
+  const getSpent = () => items.reduce((s, i) => s + (i.current_price || 0), 0);
+  const getWishlistTotal = () => wishlist.reduce((s, i) => s + (i.target_price || 0), 0);
+  const budgetPercent = budget > 0 ? (getSpent() / budget * 100).toFixed(0) : 0;
 
   if (loading) {
     return (
@@ -178,157 +165,79 @@ const ShoppingTracker = () => {
     <div className="p-4 max-w-lg mx-auto pb-20">
       <h1 className="text-2xl font-bold mb-4">Shopping Tracker</h1>
       
-      {/* Budget Overview Card */}
+      {/* Budget Card */}
       <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-5 text-white mb-4">
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="font-semibold">Budget Belanja Bulanan</h2>
-          <span className="text-sm opacity-80">
-            {getBudgetUsed().toFixed(0)}% terpakai
-          </span>
+        <div className="flex justify-between items-center mb-2">
+          <span className="font-semibold">Budget Belanja</span>
+          <span className="text-sm opacity-80">{budgetPercent}% terpakai</span>
         </div>
-        
-        <div className="text-3xl font-bold mb-1">
-          {budget ? formatCurrency(budget) : "Belum diatur"}
+        <div className="text-2xl font-bold mb-1">
+          {budget > 0 ? formatCurrency(budget) : "Belum diatur"}
         </div>
-        
         <div className="text-sm opacity-80 mb-3">
-          Terpakai: {formatCurrency(getSpentAmount())} dari {budget ? formatCurrency(budget) : "Rp 0"}
+          Terpakai: {formatCurrency(getSpent())} dari {formatCurrency(budget)}
         </div>
-        
         <div className="h-2 bg-white/30 rounded-full overflow-hidden">
           <div 
-            className={`h-full rounded-full transition-all ${
-              getBudgetUsed() > 90 ? "bg-red-500" : 
-              getBudgetUsed() > 70 ? "bg-yellow-500" : "bg-white"
-            }`}
-            style={{ width: `${Math.min(getBudgetUsed(), 100)}%` }}
+            className={`h-full rounded-full ${budgetPercent > 90 ? "bg-red-400" : budgetPercent > 70 ? "bg-yellow-400" : "bg-white"}`}
+            style={{ width: `${Math.min(budgetPercent, 100)}%` }}
           />
         </div>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tabs */}
       <div className="flex border-b mb-4">
-        <button
-          onClick={() => setActiveTab("tracked")}
-          className={`flex-1 py-2 text-center font-medium ${
-            activeTab === "tracked" 
-              ? "border-b-2 border-blue-500 text-blue-500" 
-              : "text-gray-500"
-          }`}
-        >
-          Item Dilacak ({items.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("wishlist")}
-          className={`flex-1 py-2 text-center font-medium ${
-            activeTab === "wishlist" 
-              ? "border-b-2 border-blue-500 text-blue-500" 
-              : "text-gray-500"
-          }`}
-        >
-          Wishlist ({wishlist.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("budget")}
-          className={`flex-1 py-2 text-center font-medium ${
-            activeTab === "budget" 
-              ? "border-b-2 border-blue-500 text-blue-500" 
-              : "text-gray-500"
-          }`}
-        >
-          Budget
-        </button>
+        {["tracked", "wishlist", "budget"].map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-2 text-center font-medium capitalize ${
+              activeTab === tab ? "border-b-2 border-blue-500 text-blue-500" : "text-gray-500"
+            }`}
+          >
+            {tab === "tracked" ? `Item Dilacak (${items.length})` : 
+             tab === "wishlist" ? `Wishlist (${wishlist.length})` : "Budget"}
+          </button>
+        ))}
       </div>
 
       {/* Tracked Items Tab */}
       {activeTab === "tracked" && (
         <>
-          {/* Search Product */}
           <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
-            <h3 className="font-semibold mb-3">🔍 Cek Harga</h3>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari produk (contoh: beras 5kg)"
-                className="flex-1 px-3 py-2 border rounded-lg"
-              />
-              <button
-                onClick={searchProduct}
-                disabled={searching}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg disabled:opacity-50"
-              >
-                {searching ? "..." : "Cek"}
-              </button>
-            </div>
-            
-            {/* Search Results */}
-            {searchResults.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {searchResults.map((place, idx) => (
-                  <div key={idx} className="p-3 bg-gray-50 rounded-lg">
-                    <p className="font-medium">{place.name}</p>
-                    <p className="text-sm text-gray-600">{place.address}</p>
-                    <button
-                      onClick={() => {
-                        setNewItem(place.name);
-                        setActiveTab("tracked");
-                      }}
-                      className="mt-2 text-sm text-blue-500"
-                    >
-                      + Tambahkan ke Item Dilacak
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Add New Item */}
-          <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
-            <h3 className="font-semibold mb-3">Tambah Item Baru</h3>
+            <h3 className="font-semibold mb-3">Tambah Item</h3>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={newItem}
-                onChange={(e) => setNewItem(e.target.value)}
-                placeholder="Nama item (contoh: Beras)"
+                onChange={e => setNewItem(e.target.value)}
+                placeholder="Nama item (contoh: Beras 5kg)"
                 className="flex-1 px-3 py-2 border rounded-lg"
+                onKeyDown={e => e.key === "Enter" && addItem()}
               />
-              <button
-                onClick={addToTracked}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg"
-              >
+              <button onClick={addItem} className="px-4 py-2 bg-green-500 text-white rounded-lg">
                 +
               </button>
             </div>
           </div>
 
-          {/* Tracked Items List */}
-          <div className="bg-white rounded-xl shadow-sm divide-y">
+          <div className="bg-white rounded-xl shadow-sm">
             {items.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">
+              <div className="p-8 text-center text-gray-500">
                 <p className="text-4xl mb-2">🛒</p>
                 <p>Belum ada item yang dilacak</p>
                 <p className="text-sm">Tambahkan item untuk melacak harga</p>
               </div>
             ) : (
-              items.map((item, idx) => (
-                <div key={idx} className="p-4 flex items-center justify-between">
+              items.map(item => (
+                <div key={item.id} className="p-4 flex items-center justify-between border-b last:border-0">
                   <div>
                     <p className="font-medium">{item.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {item.category || "Umum"}
-                    </p>
+                    <p className="text-sm text-gray-500">{item.category || "Umum"}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(item.current_price)}</p>
-                    {item.last_price && (
-                      <p className="text-xs text-gray-500">
-                        {item.current_price < item.last_price ? "📉" : item.current_price > item.last_price ? "📈" : "➡️"}
-                      </p>
-                    )}
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold">{formatCurrency(item.current_price)}</span>
+                    <button onClick={() => deleteItem(item.id)} className="text-red-500 p-1">🗑️</button>
                   </div>
                 </div>
               ))
@@ -340,36 +249,38 @@ const ShoppingTracker = () => {
       {/* Wishlist Tab */}
       {activeTab === "wishlist" && (
         <>
-          {/* Add to Wishlist */}
           <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
             <h3 className="font-semibold mb-3">Tambah ke Wishlist</h3>
-            <div className="space-y-2">
+            <input
+              type="text"
+              value={wishlistName}
+              onChange={e => setWishlistName(e.target.value)}
+              placeholder="Nama barang"
+              className="w-full px-3 py-2 border rounded-lg mb-2"
+            />
+            <div className="flex gap-2">
               <input
-                type="text"
-                value={wishlistItem}
-                onChange={(e) => setWishlistItem(e.target.value)}
-                placeholder="Nama barang (contoh: Sepeda baru)"
-                className="w-full px-3 py-2 border rounded-lg"
+                type="number"
+                value={wishlistPrice}
+                onChange={e => setWishlistPrice(e.target.value)}
+                placeholder="Target harga (Rp)"
+                className="flex-1 px-3 py-2 border rounded-lg"
               />
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={wishlistPrice}
-                  onChange={(e) => setWishlistPrice(e.target.value)}
-                  placeholder="Target harga (Rp)"
-                  className="flex-1 px-3 py-2 border rounded-lg"
-                />
-                <button
-                  onClick={addToWishlist}
-                  className="px-4 py-2 bg-purple-500 text-white rounded-lg"
-                >
-                  + Wishlist
-                </button>
-              </div>
+              <select
+                value={wishlistPriority}
+                onChange={e => setWishlistPriority(e.target.value)}
+                className="px-3 py-2 border rounded-lg"
+              >
+                <option value="low">Rendah</option>
+                <option value="medium">Sedang</option>
+                <option value="high">Tinggi</option>
+              </select>
+              <button onClick={addToWishlist} className="px-4 py-2 bg-purple-500 text-white rounded-lg">
+                +
+              </button>
             </div>
           </div>
 
-          {/* Wishlist Stats */}
           <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
             <div className="flex justify-between text-center">
               <div>
@@ -377,30 +288,24 @@ const ShoppingTracker = () => {
                 <p className="text-xs text-gray-500">Total Item</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-purple-600">
-                  {formatCurrency(getWishlistTotal())}
-                </p>
+                <p className="text-2xl font-bold text-purple-600">{formatCurrency(getWishlistTotal())}</p>
                 <p className="text-xs text-gray-500">Target Total</p>
               </div>
             </div>
           </div>
 
-          {/* Wishlist Items */}
-          <div className="bg-white rounded-xl shadow-sm divide-y">
+          <div className="bg-white rounded-xl shadow-sm">
             {wishlist.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">
+              <div className="p-8 text-center text-gray-500">
                 <p className="text-4xl mb-2">❤️</p>
                 <p>Wishlist kosong</p>
-                <p className="text-sm">Tambahkan barang yang ingin dibeli</p>
               </div>
             ) : (
-              wishlist.map((item, idx) => (
-                <div key={idx} className="p-4 flex items-center justify-between">
+              wishlist.map(item => (
+                <div key={item.id} className="p-4 flex items-center justify-between border-b last:border-0">
                   <div>
                     <p className="font-medium">{item.name}</p>
-                    <p className="text-sm text-gray-500">
-                      Target: {formatCurrency(item.target_price)}
-                    </p>
+                    <p className="text-sm text-gray-500">Target: {formatCurrency(item.target_price)}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-1 text-xs rounded-full ${
@@ -408,8 +313,9 @@ const ShoppingTracker = () => {
                       item.priority === "medium" ? "bg-yellow-100 text-yellow-600" :
                       "bg-gray-100 text-gray-600"
                     }`}>
-                      {item.priority || "medium"}
+                      {item.priority === "high" ? "🔴" : item.priority === "medium" ? "🟡" : "⚪"} {item.priority}
                     </span>
+                    <button onClick={() => deleteWishlist(item.id)} className="text-red-500 p-1">🗑️</button>
                   </div>
                 </div>
               ))
@@ -429,21 +335,17 @@ const ShoppingTracker = () => {
             <div className="flex gap-2">
               <input
                 type="number"
-                value={monthlyBudget}
-                onChange={(e) => setMonthlyBudget(e.target.value)}
+                value={budgetInput}
+                onChange={e => setBudgetInput(e.target.value)}
                 placeholder="Contoh: 2000000"
                 className="flex-1 px-3 py-2 border rounded-lg"
               />
-              <button
-                onClick={setBudgetAmount}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg"
-              >
+              <button onClick={saveBudget} className="px-6 py-2 bg-green-500 text-white rounded-lg">
                 Set
               </button>
             </div>
           </div>
 
-          {/* Budget Info */}
           <div className="bg-blue-50 rounded-xl p-4">
             <h4 className="font-semibold mb-2">💡 Tips Budgeting</h4>
             <ul className="text-sm space-y-1 text-gray-600">
@@ -456,18 +358,7 @@ const ShoppingTracker = () => {
         </div>
       )}
 
-      {/* Error Display */}
-      {error && (
-        <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-
-      {/* Refresh */}
-      <button
-        onClick={loadData}
-        className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium mt-4"
-      >
+      <button onClick={loadData} className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium mt-4">
         🔄 Refresh
       </button>
     </div>
