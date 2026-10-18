@@ -28,4 +28,5 @@ from . import (
     logs,
     merchant,
     webhooks,
+    location,
 )

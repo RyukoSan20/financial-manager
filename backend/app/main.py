@@ -12,7 +12,7 @@ from app.api.routes import (
     auth, data, parser, ai_advisor, feed,
     # scan_jobs disabled (OCR)
     exchange, market, finnhub, ninjas, market_intel, zap_ink,
-    realtime_market, logs, merchant, webhooks
+    realtime_market, logs, merchant, webhooks, location
 )
 
 # Import models to register with SQLAlchemy
@@ -197,6 +197,7 @@ app.include_router(zap_ink.router, prefix="")
 app.include_router(realtime_market.router, prefix="", tags=["realtime-market"])
 app.include_router(logs.router, prefix="/api", tags=["Logs"])
 app.include_router(merchant.router, prefix="/api", tags=["Merchant"])
+app.include_router(location.router, prefix="/api/location", tags=["Location"])
 app.include_router(webhooks.router, prefix="/api", tags=["Webhooks"])
 
 # Enterprise modules

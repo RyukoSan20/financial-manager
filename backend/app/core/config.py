@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # For production, you can use PostgreSQL:
     # DATABASE_URL: str = os.getenv(
     #     "DATABASE_URL",
-    #     "postgresql://user:password@localhost:5432/finmanager"
+    #     "postgresql://user:***@localhost:5432/finmanager"
     # )
     
     # CORS - configure for production
@@ -31,6 +31,7 @@ class Settings(BaseSettings):
         "https://*.ngrok.io",
         "https://fin-manager-production.up.railway.app",
         "https://*.trycloudflare.com",
+        "https://my-financial-manager.online",
     ]
     
     # Currency
@@ -40,6 +41,18 @@ class Settings(BaseSettings):
     # Gemini API for Vision OCR fallback
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_VISION_MODEL: str = "gemini-1.5-flash"
+    
+    # Google OAuth (for Supabase auth)
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI", "https://my-financial-manager.online/api/auth/google/callback")
+    
+    # Google Maps API Keys
+    GOOGLE_MAPS_API_KEY: str = os.getenv("GOOGLE_MAPS_API_KEY", "")
+    GOOGLE_PLACES_API_KEY: str = os.getenv("GOOGLE_PLACES_API_KEY", "")
+    
+    # Gmail Integration
+    GMAIL_REDIRECT_URI: str = os.getenv("GMAIL_REDIRECT_URI", "https://my-financial-manager.online/api/integrations/gmail/callback")
     
     # Calculation defaults
     DAYS_IN_MONTH: int = 30

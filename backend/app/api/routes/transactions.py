@@ -242,6 +242,9 @@ def create_transaction(
         recurring_rule_id=transaction.recurring_rule_id,
         detection_type=transaction.detection_type,
         receipt_scan_id=transaction.receipt_scan_id,  # Explicitly set
+        # Location fields
+        latitude=transaction.latitude,
+        longitude=transaction.longitude,
     )
     
     # Update account balance

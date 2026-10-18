@@ -18,6 +18,10 @@ class TransactionBase(BaseModel):
     recurring_rule_id: Optional[int] = None
     detection_type: str = Field(default="MANUAL")  # MANUAL, OCR_RECEIPT, QRIS_TEXT, SMS_BANK
     receipt_scan_id: Optional[int] = None  # Link to receipt scan
+    # Location fields
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    location_name: Optional[str] = None
 
 
 class TransactionCreate(TransactionBase):
@@ -55,6 +59,10 @@ class TransactionResponse(BaseModel):
     raw_source_text: Optional[str]
     confidence_score: Optional[float]
     receipt_scan_id: Optional[int] = None
+    # Location fields
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    location_name: Optional[str] = None
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
