@@ -126,7 +126,6 @@ function App() {
               <Route path="feed" element={<FeedPage />} />
               <Route path="market" element={<MarketPage />} />
               <Route path="settings" element={<Settings />} />
-              <Route path="more" element={<MorePage />} />
             </Route>
             
             {/* Full screen pages - also protected */}
