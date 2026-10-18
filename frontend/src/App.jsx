@@ -24,6 +24,7 @@ import {
   HealthCoach,
   ShoppingTracker,
   GmailIntegration,
+  GmailCallback,
   AIAdvisor,
   CategoryExpenses,
   FeedPage,
