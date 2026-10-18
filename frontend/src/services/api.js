@@ -5,7 +5,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://my-financia
 // Support both backend JWT (token) and Supabase (sb_token)
 const TOKEN_KEYS = ['token', 'sb_token'];
 
-const getToken = () => {
+export const getToken = () => {
   for (const key of TOKEN_KEYS) {
     const token = localStorage.getItem(key);
     if (token) return token;

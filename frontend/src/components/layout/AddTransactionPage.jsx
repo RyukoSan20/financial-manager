@@ -1,7 +1,7 @@
 // Smart Add Transaction Page - Quick, intuitive, professional
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../../services/api";
+import { api, getToken } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { parseQuickEntry } from "../../features/transactions/nlp/parseQuickEntry.js";
 import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
@@ -114,10 +114,14 @@ const AddTransactionPage = () => {
       }
       
       if (bootstrapFailed) {
-        // Legacy load
+        // Legacy load - categories first
         const catRes = await api.categories.list();
-        if (catRes.ok) {
-          setCategories(catRes.value || []);
+        if (catRes.ok && catRes.value) {
+          setCategories(catRes.value);
+        } else if (catRes.error?.includes('401') || catRes.error?.includes('Unauthorized')) {
+          // User not authenticated
+          setLoadError('Sesi habis. Silakan login ulang.');
+          return;
         }
         const combos = JSON.parse(localStorage.getItem("recentCombos") || "[]");
         setRecentCombos(combos.slice(0, 4));
