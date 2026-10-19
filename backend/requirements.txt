@@ -75,7 +75,6 @@ sentry-sdk==1.42.0
 
 # Utils
 python-magic==0.4.27
-python-magic-bin==0.4.14
 charset-normalizer==3.3.2
 urllib3==2.2.1
 certifi==2024.2.2
