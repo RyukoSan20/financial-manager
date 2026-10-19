@@ -646,8 +646,8 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     
     // Surplus: Tabungan > 50% income
     if (summaryData) {
-      const income = summaryData.total_income || 0;
-      const expense = summaryData.total_expense || 0;
+      const income = summaryData.totalIncome || summaryData.total_income || 0;
+      const expense = summaryData.totalExpense || summaryData.total_expense || 0;
       const savings = income - expense;
       if (income > 0 && (savings / income) * 100 >= 50) earned.push('surplus');
     }
@@ -678,10 +678,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     if (!summary) return { amount: 0, percent: 0, status: 'safe' };
     const totalBudget = budgets.length > 0 
       ? budgets.reduce((sum, b) => sum + (b.amount || 0), 0) 
-      : (summary.total_budget || 0);
-    const totalSpent = budgets.length > 0 
-      ? budgets.reduce((sum, b) => sum + (b.spent || 0), 0) 
       : (summary.total_spent || 0);
+    const totalSpent = budgets.length > 0
+      ? budgets.reduce((sum, b) => sum + (b.spent || 0), 0)
+      : (summary.totalExpense || summary.total_spent || 0);
     const remaining = totalBudget - totalSpent;
     const percent = totalBudget > 0 ? (remaining / totalBudget) * 100 : 100;
     
@@ -696,8 +696,8 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // Calculate spending ratio
   const calculateSpendingRatio = () => {
     if (!summary) return { percent: 0, status: 'safe' };
-    const income = summary.total_income || 0;
-    const expense = summary.total_expense || 0;
+    const income = summary.totalIncome || summary.total_income || 0;
+    const expense = summary.totalExpense || summary.total_expense || 0;
     if (income === 0) return { percent: 0, status: 'neutral' };
     
     const percent = (expense / income) * 100;
@@ -851,9 +851,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Saldo', value: summary?.total_balance, icon: Wallet, color: 'green', gradient: 'from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30' },
-          { label: 'Pemasukan', value: summary?.total_income, icon: TrendingUp, color: 'blue', gradient: 'from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30' },
-          { label: 'Pengeluaran', value: summary?.total_expense, icon: TrendingDown, color: 'red', gradient: 'from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30' },
-          { label: 'Arus Kas', value: summary?.net_cash_flow, icon: Activity, color: 'purple', gradient: 'from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30' },
+          { label: 'Pemasukan', value: summary?.totalIncome || summary?.total_income, icon: TrendingUp, color: 'blue', gradient: 'from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30' },
+          { label: 'Pengeluaran', value: summary?.totalExpense || summary?.total_expense, icon: TrendingDown, color: 'red', gradient: 'from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30' },
+          { label: 'Arus Kas', value: summary?.netSavings || summary?.net_cash_flow, icon: Activity, color: 'purple', gradient: 'from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30' },
         ].map((card, i) => {
           const Icon = card.icon;
           return (
