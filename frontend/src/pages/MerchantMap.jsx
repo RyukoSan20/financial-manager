@@ -176,18 +176,21 @@ const MerchantMap = () => {
                     const markerSize = 25 + Math.min(25, merchant.visit_count * 2);
                     return (
                       <Marker
-                        key={merchant.merchant_name}
+                        key={merchant.name || index}
                         position={[merchant.latitude, merchant.longitude]}
                         icon={createMerchantIcon(markerSize)}
                       >
                         <Popup>
                           <div className="min-w-[200px]">
-                            <h4 className="font-bold text-lg mb-2">{merchant.merchant_name}</h4>
+                            <h4 className="font-bold text-lg mb-2">{merchant.name || 'Lokasi'}</h4>
                             <div className="space-y-1 text-sm">
                               <p>📍 Kunjungan: <strong>{merchant.visit_count}x</strong></p>
                               <p>💰 Total: <strong>{formatCurrency(merchant.total_spent)}</strong></p>
                               {merchant.avg_transaction && (
                                 <p>📊 Rata-rata: <strong>{formatCurrency(merchant.avg_transaction)}</strong></p>
+                              )}
+                              {merchant.source && (
+                                <p className="text-xs text-gray-400">Source: {merchant.source}</p>
                               )}
                             </div>
                           </div>
@@ -242,7 +245,7 @@ const MerchantMap = () => {
               {topMerchants.length > 0 ? (
                 topMerchants.map((merchant, index) => (
                   <div
-                    key={merchant.merchant_name}
+                    key={merchant.name || index}
                     className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => {
                       if (merchant.latitude && merchant.longitude) {
@@ -261,7 +264,7 @@ const MerchantMap = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-gray-900 truncate">
-                          {merchant.merchant_name}
+                          {merchant.name}
                         </h4>
                         <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                           <span>📍 {merchant.visit_count}x</span>
@@ -297,11 +300,11 @@ const MerchantMap = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">📈 Statistik</h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Total Merchant</span>
+                <span className="text-gray-600">Total Lokasi</span>
                 <span className="font-semibold">{merchants.length}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Dengan Lokasi</span>
+                <span className="text-gray-600">Dengan Koordinat</span>
                 <span className="font-semibold text-green-600">{merchantsWithLocation.length}</span>
               </div>
               <div className="flex justify-between items-center">
@@ -323,8 +326,8 @@ const MerchantMap = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {merchants.map((merchant) => (
-              <div key={merchant.merchant_name} className="border rounded-lg p-4">
-                <h4 className="font-medium">{merchant.merchant_name}</h4>
+              <div key={merchant.name} className="border rounded-lg p-4">
+                <h4 className="font-medium">{merchant.name}</h4>
                 <p className="text-sm text-gray-500 mt-1">
                   {merchant.visit_count} kunjungan • {formatCurrency(merchant.total_spent)}
                 </p>

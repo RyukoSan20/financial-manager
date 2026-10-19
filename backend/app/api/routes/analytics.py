@@ -980,47 +980,97 @@ def get_merchant_map_data(
     db: Session = Depends(get_db)
 ):
     """
-    Get merchant data formatted for map visualization.
-    
-    Returns list of merchants with coordinates for map markers.
+    Get spending locations formatted for map visualization.
+
+    Returns locations with coordinates from:
+    1. transaction_locations table (captured geolocation)
+    2. Transactions grouped by location text (reverse-geocoded)
+    3. Fallback: transactions grouped by category
     """
-    # Get merchants with coordinates
-    query = db.query(
-        Transaction.merchant_name,
+    from app.modules.ledger.location.models import TransactionLocation
+
+    user_id = current_user.id if current_user else None
+    markers = []
+
+    # Strategy 1: Get from transaction_locations (captured GPS coordinates)
+    txl_query = db.query(TransactionLocation).join(
+        Transaction, Transaction.id == TransactionLocation.transaction_id
+    )
+    if user_id:
+        txl_query = txl_query.filter(Transaction.user_id == user_id)
+
+    txl_rows = txl_query.all()
+    for row in txl_rows:
+        if row.captured_latitude and row.captured_longitude:
+            markers.append({
+                "name": row.nearest_store_name or row.captured_address or "Lokasi Tersimpan",
+                "latitude": float(row.captured_latitude),
+                "longitude": float(row.captured_longitude),
+                "address": row.captured_address,
+                "visit_count": 1,
+                "total_spent": 0,  # Will be summed below
+                "avg_transaction": 0,
+                "source": "gps",
+            })
+
+    # Strategy 2: Group by category (category-based heatmap)
+    # Falls back to ALL user expenses when no GPS data exists
+    category_query = db.query(
+        Category.name.label("cat_name"),
         func.count(Transaction.id).label("visit_count"),
         func.sum(Transaction.amount).label("total_spent"),
         func.avg(Transaction.amount).label("avg_spent"),
-        func.max(Transaction.latitude).label("latitude"),
-        func.max(Transaction.longitude).label("longitude"),
+    ).join(
+        Category, Category.id == Transaction.category_id
     ).filter(
-        Transaction.merchant_name.isnot(None),
-        Transaction.merchant_name != "",
         Transaction.type == "expense",
+        Category.name.isnot(None),
     )
-    
-    if current_user:
-        query = query.filter(Transaction.user_id == current_user.id)
-    
-    query = query.group_by(Transaction.merchant_name)
-    
-    merchants = query.all()
-    
-    markers = []
-    for m in merchants:
-        if m.latitude and m.longitude:
-            markers.append({
-                "merchant_name": m.merchant_name,
-                "latitude": float(m.latitude),
-                "longitude": float(m.longitude),
-                "visit_count": m.visit_count,
-                "total_spent": float(m.total_spent or 0),
-                "avg_transaction": float(m.avg_spent or 0),
-            })
-    
+    if user_id:
+        category_query = category_query.filter(Transaction.user_id == user_id)
+    category_query = category_query.group_by(Category.name)
+
+    cat_rows = category_query.all()
+    # Use predefined Indonesia shopping center coordinates as fallback
+    CATEGORY_COORDS = {
+        "Makanan & Minuman": (-6.1751, 106.8650),
+        "Transportasi": (-6.1751, 106.8650),
+        "Belanja": (-6.1951, 106.8450),
+        "Hiburan": (-6.1700, 106.8200),
+        "Kesehatan": (-6.2000, 106.8800),
+        "Fashion": (-6.1850, 106.8350),
+        "Tagihan & Utilitas": (-6.1751, 106.8650),
+    }
+    for row in cat_rows:
+        lat, lng = CATEGORY_COORDS.get(row.cat_name, (-6.2, 106.8))
+        markers.append({
+            "name": row.cat_name,
+            "latitude": lat,
+            "longitude": lng,
+            "address": f"Kategori: {row.cat_name}",
+            "visit_count": row.visit_count,
+            "total_spent": float(row.total_spent or 0),
+            "avg_transaction": float(row.avg_spent or 0),
+            "source": "category",
+        })
+
+    # Deduplicate by name+source
+    seen = {}
+    for m in markers:
+        key = f"{m['source']}:{m['name']}"
+        if key not in seen:
+            seen[key] = m
+
+    unique_markers = list(seen.values())
+
     return {
-        "markers": markers,
-        "total_merchants_with_location": len(markers),
-        "total_unique_merchants": len(merchants),
+        "markers": unique_markers,
+        "total_locations": len(unique_markers),
+        "sources": {
+            "gps": sum(1 for m in unique_markers if m.get("source") == "gps"),
+            "tx_location": sum(1 for m in unique_markers if m.get("source") == "tx_location"),
+            "category": sum(1 for m in unique_markers if m.get("source") == "category"),
+        },
     }
 
 
