@@ -215,7 +215,22 @@ def create_transaction(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create new transaction. Requires authentication."""
+    """Create new transaction. Requires authentication.
+    
+    Idempotency: If client_request_id is provided and a transaction with
+    the same user_id and client_request_id exists, return that transaction
+    instead of creating a duplicate.
+    """
+    # === IDEMPOTENCY CHECK ===
+    if transaction.client_request_id:
+        existing = db.query(Transaction).filter(
+            Transaction.user_id == current_user.id,
+            Transaction.client_request_id == transaction.client_request_id
+        ).first()
+        if existing:
+            logger.info(f"Returning existing transaction {existing.id} for idempotency key {transaction.client_request_id}")
+            return existing
+    
     # Verify account exists and belongs to user
     account = db.query(Account).filter(Account.id == transaction.account_id).first()
     if not account:
@@ -225,10 +240,23 @@ def create_transaction(
     if account.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Cannot add transaction to another user's account")
     
-    transaction_data = transaction.model_dump()
-    transaction_data["user_id"] = current_user.id
+    # === ATOMIC BALANCE UPDATE ===
+    # Use database-level atomic operation to prevent race conditions
+    from sqlalchemy import text
+    delta = transaction.amount if transaction.type == "income" else -transaction.amount
     
-    # Explicitly set receipt_scan_id (may be stripped by model_dump if None)
+    # Atomic update: balance = balance + delta
+    db.execute(
+        text("""
+            UPDATE accounts 
+            SET balance = balance + :delta,
+                updated_at = NOW()
+            WHERE id = :account_id
+        """),
+        {"delta": delta, "account_id": transaction.account_id}
+    )
+    
+    # Create transaction record
     db_transaction = Transaction(
         user_id=current_user.id,
         amount=transaction.amount,
@@ -241,17 +269,11 @@ def create_transaction(
         category_id=transaction.category_id,
         recurring_rule_id=transaction.recurring_rule_id,
         detection_type=transaction.detection_type,
-        receipt_scan_id=transaction.receipt_scan_id,  # Explicitly set
-        # Location fields
+        receipt_scan_id=transaction.receipt_scan_id,
         latitude=transaction.latitude,
         longitude=transaction.longitude,
+        client_request_id=transaction.client_request_id,
     )
-    
-    # Update account balance
-    if transaction.type == "income":
-        account.balance += transaction.amount
-    else:
-        account.balance -= transaction.amount
     
     db.add(db_transaction)
     db.commit()
@@ -286,16 +308,23 @@ def update_transaction(
     
     # Update account balance if amount changed
     if "amount" in update_data or "type" in update_data:
-        account = db.query(Account).filter(Account.id == db_transaction.account_id).first()
-        if old_type == "income":
-            account.balance -= old_amount
-        else:
-            account.balance += old_amount
+        from sqlalchemy import text
         
-        if db_transaction.type == "income":
-            account.balance += db_transaction.amount
-        else:
-            account.balance -= db_transaction.amount
+        # Determine if old transaction was income
+        old_is_income = str(old_type) == "income"
+        old_delta = old_amount if old_is_income else -old_amount
+        db.execute(
+            text("UPDATE accounts SET balance = balance + :delta, updated_at = NOW() WHERE id = :account_id"),
+            {"delta": old_delta, "account_id": db_transaction.account_id}
+        )
+        
+        # Apply new transaction
+        new_type = str(db_transaction.type)
+        new_delta = db_transaction.amount if new_type == "income" else -db_transaction.amount
+        db.execute(
+            text("UPDATE accounts SET balance = balance + :delta, updated_at = NOW() WHERE id = :account_id"),
+            {"delta": new_delta, "account_id": db_transaction.account_id}
+        )
     
     db.commit()
     db.refresh(db_transaction)
@@ -317,12 +346,20 @@ def delete_transaction(
     if db_transaction.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    # Reverse the balance change
-    account = db.query(Account).filter(Account.id == db_transaction.account_id).first()
-    if db_transaction.type == "income":
-        account.balance -= db_transaction.amount
-    else:
-        account.balance += db_transaction.amount
+    # === ATOMIC BALANCE UPDATE ===
+    # Reverse the balance change atomically
+    from sqlalchemy import text
+    delta = db_transaction.amount if db_transaction.type == "income" else -db_transaction.amount
+    
+    db.execute(
+        text("""
+            UPDATE accounts 
+            SET balance = balance + :delta,
+                updated_at = NOW()
+            WHERE id = :account_id
+        """),
+        {"delta": delta, "account_id": db_transaction.account_id}
+    )
     
     db.delete(db_transaction)
     db.commit()

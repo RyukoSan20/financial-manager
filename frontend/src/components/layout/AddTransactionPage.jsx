@@ -75,6 +75,9 @@ const AddTransactionPage = () => {
   const [quickEntry, setQuickEntry] = useState("");
   const [nlpPreview, setNlpPreview] = useState(null);
   
+  // Idempotency key - prevents duplicate transactions from double-tap
+  const [transactionRequestId] = useState(() => crypto.randomUUID());
+  
   // Date shortcuts
   const dateShortcuts = [
     { label: "Hari ini", getValue: () => getWIBDate() },
@@ -261,6 +264,7 @@ const AddTransactionPage = () => {
           account_id: accountId,
           date,
           category_id: getTransferCategory(),
+          client_request_id: `${transactionRequestId}-expense`,
         });
         
         // Create income to destination account
@@ -271,6 +275,7 @@ const AddTransactionPage = () => {
           account_id: toAccountId,
           date,
           category_id: getTransferCategory(),
+          client_request_id: `${transactionRequestId}-income`,
         });
         
         // Create fee as expense if any
@@ -282,6 +287,7 @@ const AddTransactionPage = () => {
             account_id: accountId,
             date,
             category_id: getFeeCategory(),
+            client_request_id: `${transactionRequestId}-fee`,
           });
         }
       } else {
@@ -292,6 +298,7 @@ const AddTransactionPage = () => {
           account_id: accountId,
           category_id: categoryId,
           date,
+          client_request_id: transactionRequestId,
         });
         
         // Save as recent combo
@@ -323,6 +330,8 @@ const AddTransactionPage = () => {
         setDescription("");
         setCategoryId(null);
         setDate(new Date().toISOString().split("T")[0]);
+        // Generate new idempotency key for next transaction
+        setTransactionRequestId(crypto.randomUUID());
         amountInputRef.current?.focus();
       } else {
         navigate(-1);

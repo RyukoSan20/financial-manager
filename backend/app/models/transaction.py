@@ -63,6 +63,9 @@ class Transaction(Base):
     payment_method = Column(String(20), nullable=True)  # QRIS, CASH, EDC, TRANSFER
     reference_number = Column(String(100), nullable=True)  # QRIS ref, receipt number, etc
     
+    # Idempotency key - prevents duplicate transactions from double-tap/retry
+    client_request_id = Column(String(64), nullable=True, index=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

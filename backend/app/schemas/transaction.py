@@ -1,4 +1,4 @@
-"""Transaction schemas - Updated with transfer types."""
+"""Transaction schemas - Updated with transfer types and idempotency."""
 
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
@@ -25,7 +25,12 @@ class TransactionBase(BaseModel):
 
 
 class TransactionCreate(TransactionBase):
-    pass
+    # Idempotency key - prevents duplicate transactions from double-tap or retry
+    client_request_id: Optional[str] = Field(
+        None,
+        description="Client-generated UUID for idempotency. Same ID returns existing transaction.",
+        max_length=64
+    )
 
 
 class TransactionUpdate(BaseModel):
@@ -63,6 +68,8 @@ class TransactionResponse(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     location_name: Optional[str] = None
+    # Idempotency
+    client_request_id: Optional[str] = None
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
