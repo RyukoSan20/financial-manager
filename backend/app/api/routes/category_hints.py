@@ -51,7 +51,7 @@ async def get_bootstrap(current_user: User = Depends(get_current_user)):
         # Get user's categories
         from app.models.category import Category
         categories = db.query(Category).filter(
-            Category.user_id == current_user.id
+            (Category.user_id == current_user.id) | (Category.user_id == None)
         ).all()
         
         # Get user's hints
