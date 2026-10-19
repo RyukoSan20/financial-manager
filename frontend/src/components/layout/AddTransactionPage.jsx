@@ -43,6 +43,11 @@ const AddTransactionPage = () => {
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [showAccountSheet, setShowAccountSheet] = useState(false);
   const [showDateSheet, setShowDateSheet] = useState(false);
+  const [showLocationSheet, setShowLocationSheet] = useState(false);
+  
+  // Location state
+  const [location, setLocation] = useState("");
+  const [locationCoords, setLocationCoords] = useState(null);
   
   const amountInputRef = useRef(null);
   
@@ -607,6 +612,23 @@ const AddTransactionPage = () => {
             📅 Pilih
           </button>
         </div>
+
+        {/* Location Selector */}
+        <button
+          onClick={() => setShowLocationSheet(true)}
+          className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
+        >
+          <div className="text-left">
+            <p className="text-sm text-gray-500">Lokasi</p>
+            <p className={`font-medium ${location ? "text-gray-800" : "text-gray-400"}`}>
+              {location || "Tambah lokasi"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {locationCoords && <span className="text-green-500 text-sm">✓</span>}
+            <span className="text-gray-400">›</span>
+          </div>
+        </button>
       </div>
 
       {/* Bottom Action */}
@@ -719,6 +741,80 @@ const AddTransactionPage = () => {
                 onChange={(e) => { setDate(e.target.value); setShowDateSheet(false); }}
                 className="w-full p-4 border rounded-xl"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Location Bottom Sheet */}
+      {showLocationSheet && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowLocationSheet(false)}></div>
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[80vh] overflow-y-auto">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h2 className="font-semibold text-lg">Lokasi</h2>
+              <button onClick={() => setShowLocationSheet(false)} className="text-gray-500">✕</button>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Current Location Button */}
+              <button
+                onClick={() => {
+                  if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                      async (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        setLocationCoords({ lat: latitude, lng: longitude });
+                        // Reverse geocode
+                        try {
+                          const res = await fetch(`${API_URL}/location/reverse-geocode?lat=${latitude}&lng=${longitude}`);
+                          if (res.ok) {
+                            const data = await res.json();
+                            setLocation(data.address || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                          } else {
+                            setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                          }
+                        } catch {
+                          setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                        }
+                        setShowLocationSheet(false);
+                      },
+                      (err) => alert("Tidak bisa mendapat lokasi: " + err.message)
+                    );
+                  } else {
+                    alert("Geolocation tidak tersedia di browser ini");
+                  }
+                }}
+                className="w-full py-4 bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-2"
+              >
+                📍 Gunakan Lokasi Saat Ini
+              </button>
+              
+              {/* Manual Input */}
+              <div>
+                <label className="block text-sm text-gray-600 mb-2">Atau ketik nama tempat</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Alfamart Harmoni"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full p-4 border rounded-xl"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && location) {
+                      setShowLocationSheet(false);
+                    }
+                  }}
+                />
+              </div>
+              
+              {/* Clear Location */}
+              {location && (
+                <button
+                  onClick={() => { setLocation(""); setLocationCoords(null); setShowLocationSheet(false); }}
+                  className="w-full py-3 text-red-500 border border-red-200 rounded-xl"
+                >
+                  🗑️ Hapus Lokasi
+                </button>
+              )}
             </div>
           </div>
         </div>
