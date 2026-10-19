@@ -1,7 +1,7 @@
 // Smart Add Transaction Page - Quick, intuitive, professional
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, getToken } from "../../services/api";
+import { api, API_BASE_URL as API_URL, getToken } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { parseQuickEntry } from "../../features/transactions/nlp/parseQuickEntry.js";
 import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
@@ -95,20 +95,16 @@ const AddTransactionPage = () => {
       setLoadError(null);
       
       // Try bootstrap first (categories + hints + recent combos)
+      // Uses api.js for consistent token handling
       let bootstrapFailed = false;
       try {
-        const res = await fetch(`${API_URL}/category-hints/bootstrap`, {
-          headers: { Authorization: `Bearer ${getToken()}` }
-        });
+        const bootstrapData = await api.get('/category-hints/bootstrap');
         
-        if (res.ok) {
-          const data = await res.json();
-          if (data.categories) {
-            setCategories(data.categories || []);
-            setRecentCombos((data.recent_combos || []).slice(0, 4));
-            if (data.hints) {
-              localStorage.setItem('categoryHints', JSON.stringify(data.hints));
-            }
+        if (bootstrapData?.categories) {
+          setCategories(bootstrapData.categories || []);
+          setRecentCombos((bootstrapData.recent_combos || []).slice(0, 4));
+          if (bootstrapData.hints) {
+            localStorage.setItem('categoryHints', JSON.stringify(bootstrapData.hints));
           }
         } else {
           bootstrapFailed = true;
@@ -119,25 +115,24 @@ const AddTransactionPage = () => {
       }
       
       if (bootstrapFailed) {
-        // Legacy load - categories first
-        const catRes = await api.categories.list();
-        if (catRes.ok && catRes.value) {
-          setCategories(catRes.value);
-        } else if (catRes.error?.includes('401') || catRes.error?.includes('Unauthorized')) {
-          // User not authenticated
-          setLoadError('Sesi habis. Silakan login ulang.');
-          return;
+        // Legacy load - independent from NLP
+        const catRes = await api.get('/categories/');
+        if (catRes?.length > 0) {
+          setCategories(catRes);
+        }
+        const accRes = await api.get('/accounts/');
+        if (accRes?.length > 0) {
+          setAccounts(accRes);
+          if (accRes[0]?.id) setAccountId(accRes[0].id);
         }
         const combos = JSON.parse(localStorage.getItem("recentCombos") || "[]");
         setRecentCombos(combos.slice(0, 4));
-      }
-      
-      // Load accounts
-      const accRes = await api.accounts.list();
-      if (accRes.ok) {
-        setAccounts(accRes.value || []);
-        if (accRes.value?.length > 0) {
-          setAccountId(accRes.value[0].id);
+      } else {
+        // Bootstrap succeeded but may not include accounts — load them separately
+        const accRes = await api.get('/accounts/');
+        if (accRes?.length > 0) {
+          setAccounts(accRes);
+          if (accRes[0]?.id && !accountId) setAccountId(accRes[0].id);
         }
       }
       
