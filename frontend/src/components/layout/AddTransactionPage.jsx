@@ -652,15 +652,18 @@ const AddTransactionPage = () => {
       </div>
 
       {/* Category Bottom Sheet */}
+      {/* Category Bottom Sheet */}
       {showCategorySheet && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50 flex items-end">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCategorySheet(false)}></div>
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[70vh] overflow-auto">
-            <div className="sticky top-0 bg-white p-4 border-b">
+          <div className="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
+            <div className="shrink-0 p-4 border-b">
               <h2 className="font-semibold text-lg">Pilih Kategori</h2>
             </div>
-            <div className="p-4 space-y-2">
-              {categories.map((cat) => (
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {categories
+                .filter(c => !type || type === 'expense' ? c.type !== 'income' : c.type !== 'expense')
+                .map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => { setCategoryId(cat.id); setShowCategorySheet(false); }}
@@ -678,16 +681,17 @@ const AddTransactionPage = () => {
       )}
 
       {/* Account Bottom Sheet */}
+      {/* Account Bottom Sheet */}
       {showAccountSheet && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50 flex items-end">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowAccountSheet(false)}></div>
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[70vh] overflow-auto">
-            <div className="sticky top-0 bg-white p-4 border-b">
+          <div className="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
+            <div className="shrink-0 p-4 border-b">
               <h2 className="font-semibold text-lg">
                 {type === "transfer" && !toAccountId ? "Pilih Akun Asal" : "Pilih Akun"}
               </h2>
             </div>
-            <div className="p-4 space-y-2">
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {accounts.map((acc) => {
                 const isDisabled = type === "transfer" && toAccountId && acc.id === toAccountId;
                 return (
@@ -727,14 +731,15 @@ const AddTransactionPage = () => {
       )}
 
       {/* Date Bottom Sheet */}
+      {/* Date Bottom Sheet */}
       {showDateSheet && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50 flex items-end">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowDateSheet(false)}></div>
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl">
-            <div className="p-4 border-b">
+          <div className="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
+            <div className="shrink-0 p-4 border-b">
               <h2 className="font-semibold text-lg">Pilih Tanggal</h2>
             </div>
-            <div className="p-4">
+            <div className="flex-1 overflow-y-auto p-4">
               <input
                 type="date"
                 value={date}
@@ -748,14 +753,14 @@ const AddTransactionPage = () => {
 
       {/* Location Bottom Sheet */}
       {showLocationSheet && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50 flex items-end">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowLocationSheet(false)}></div>
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[80vh] overflow-y-auto">
-            <div className="p-4 border-b flex justify-between items-center">
+          <div className="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
+            <div className="shrink-0 p-4 border-b flex justify-between items-center">
               <h2 className="font-semibold text-lg">Lokasi</h2>
               <button onClick={() => setShowLocationSheet(false)} className="text-gray-500">✕</button>
             </div>
-            <div className="p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {/* Current Location Button */}
               <button
                 onClick={() => {
