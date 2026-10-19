@@ -46,7 +46,7 @@ const FeedPage = () => {
   const handleApprove = async (transactionId) => {
     setProcessingIds(prev => new Set([...prev, transactionId]));
     try {
-      await api.post(`/feed/approve/${transactionId}`);
+      await api.request(`/feed/approve/${transactionId}`, { method: 'POST' });
       setTransactions(prev => 
         prev.map(t => t.id === transactionId ? {...t, status: 'approved'} : t)
       );
@@ -65,7 +65,7 @@ const FeedPage = () => {
   const handleReject = async (transactionId) => {
     setProcessingIds(prev => new Set([...prev, transactionId]));
     try {
-      await api.post(`/feed/reject/${transactionId}`);
+      await api.request(`/feed/reject/${transactionId}`, { method: 'POST' });
       setTransactions(prev => 
         prev.map(t => t.id === transactionId ? {...t, status: 'rejected'} : t)
       );

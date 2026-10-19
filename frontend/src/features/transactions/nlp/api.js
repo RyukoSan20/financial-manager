@@ -11,21 +11,27 @@ export async function fetchBootstrap() {
 
 // Record tokens when user saves a transaction
 export async function recordTokens(tokens, categoryId) {
-  return api.post('/category-hints/record-batch', { tokens, category_id: categoryId });
+  return api.request('/category-hints/record-batch', {
+    method: 'POST',
+    body: JSON.stringify({ tokens, category_id: categoryId }),
+  });
 }
 
 // Record user correction (more valuable)
 export async function recordCorrection(token, correctCategoryId, wrongCategoryId = null) {
-  return api.post('/category-hints/correct', { 
-    token, 
-    correct_category_id: correctCategoryId,
-    wrong_category_id: wrongCategoryId 
+  return api.request('/category-hints/correct', {
+    method: 'POST',
+    body: JSON.stringify({
+      token,
+      correct_category_id: correctCategoryId,
+      wrong_category_id: wrongCategoryId
+    }),
   });
 }
 
 // Reset learning data
 export async function resetHints() {
-  return api.delete('/category-hints/reset');
+  return api.request('/category-hints/reset', { method: 'DELETE' });
 }
 
 // Extract tokens from description
