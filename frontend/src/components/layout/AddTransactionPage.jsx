@@ -657,7 +657,14 @@ const AddTransactionPage = () => {
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {categories
-                .filter(c => !type || type === 'expense' ? c.type !== 'income' : c.type !== 'expense')
+                .filter(c => {
+                  // Categories with no type are system-wide — show them
+                  if (!c.type) return true;
+                  // Filter by type match
+                  if (type === 'expense') return c.type !== 'income';
+                  if (type === 'income') return c.type !== 'expense';
+                  return true;
+                })
                 .map((cat) => (
                 <button
                   key={cat.id}
