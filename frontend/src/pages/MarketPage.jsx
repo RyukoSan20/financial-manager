@@ -87,9 +87,56 @@ export const MarketPage = () => {
   const fetchMarketData = useCallback(async () => {
     setLoading(true);
     try {
-      const apiBase = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'https://financial-manager-production-a042.up.railway.app';
-      const resp = await fetch(`${apiBase}/realtime/summary`);
-      const data = await resp.json();
+      // Strip /api from VITE_API_URL then call /api/market/summary
+      const apiBase = (import.meta.env.VITE_API_URL || 'https://my-financial-manager.online/api').replace(/\/api$/, '');
+      const resp = await fetch(`${apiBase}/api/market/summary`);
+      const raw = await resp.json();
+
+      // Transform backend response to match frontend expected structure
+      const data = {
+        updated: raw.updated,
+        idx_stocks: {
+          total: raw.stocks?.stocks?.length || 0,
+          quotes: (raw.stocks?.stocks || []).map(s => ({
+            symbol: s.symbol,
+            name: s.name,
+            price: s.price,
+            change_percent: s.change,
+            volume: s.volume,
+          })),
+        },
+        us_stocks: { total: 0, quotes: [] },
+        crypto: {
+          total: raw.crypto?.prices?.length || 0,
+          quotes: (raw.crypto?.prices || []).map(c => ({
+            symbol: c.symbol,
+            name: c.name,
+            price: c.price,
+            change_percent_24h: c.change_24h,
+            volume_24h: c.volume_24h,
+            image: c.image,
+          })),
+        },
+        forex: {
+          total: Object.keys(raw.forex?.rates || {}).length,
+          quotes: Object.entries(raw.forex?.rates || {}).map(([pair, rate]) => ({
+            pair,
+            price: rate,
+            change_percent: 0,
+          })),
+        },
+        commodities: {
+          total: raw.commodities?.prices?.length || 0,
+          quotes: (raw.commodities?.prices || []).map(c => ({
+            symbol: c.symbol,
+            name: c.name,
+            price: c.price,
+            change_percent: c.change_24h,
+            unit: c.unit,
+            type: c.type,
+          })),
+        },
+      };
       setMarketData(data);
     } catch (err) {
       console.error('Failed to fetch market data:', err);
