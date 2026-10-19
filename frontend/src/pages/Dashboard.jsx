@@ -1253,15 +1253,15 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className={`font-semibold ${textPrimary}`}>📝 Review Transaksi</h3>
-            {feedStats?.pending > 0 && <Badge variant="warning">{feedStats.pending} tertunda</Badge>}
+            {feedStats?.pending_count > 0 && <Badge variant="warning">{feedStats.pending_count} tertunda</Badge>}
           </div>
-          {feedStats?.pending > 0 ? (
+          {feedStats?.pending_count > 0 ? (
             <div className="space-y-3">
               <div className={`p-3 rounded-lg ${isDark ? 'bg-yellow-900/20 border border-yellow-800' : 'bg-yellow-50 border border-yellow-200'}`}>
                 <div className="flex items-center gap-3">
                   <Bell className="w-5 h-5 text-yellow-600" />
                   <div>
-                    <p className={`font-medium ${isDark ? 'text-yellow-200' : 'text-yellow-800'}`}>{feedStats.pending} transaksi menunggu review</p>
+                    <p className={`font-medium ${isDark ? 'text-yellow-200' : 'text-yellow-800'}`}>{feedStats.pending_count} transaksi menunggu review</p>
                   </div>
                 </div>
               </div>
@@ -1278,15 +1278,15 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           {feedStats && (
             <div className={`mt-4 pt-4 border-t ${borderColor} grid grid-cols-3 gap-2 text-center`}>
               <div>
-                <p className="text-2xl font-bold text-green-600">{feedStats.approved || 0}</p>
+                <p className="text-2xl font-bold text-green-600">{feedStats.approved_today || 0}</p>
                 <p className={`text-xs ${textSecondary}`}>Disetujui</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-red-600">{feedStats.rejected || 0}</p>
+                <p className="text-2xl font-bold text-red-600">{feedStats.rejected_today || 0}</p>
                 <p className={`text-xs ${textSecondary}`}>Ditolak</p>
               </div>
               <div>
-                <p className={`text-2xl font-bold ${textPrimary}`}>{feedStats.pending || 0}</p>
+                <p className={`text-2xl font-bold ${textPrimary}`}>{feedStats.pending_count || 0}</p>
                 <p className={`text-xs ${textSecondary}`}>Tertunda</p>
               </div>
             </div>
