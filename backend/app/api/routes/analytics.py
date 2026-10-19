@@ -980,98 +980,146 @@ def get_merchant_map_data(
     db: Session = Depends(get_db)
 ):
     """
-    Get spending locations formatted for map visualization.
-
-    Returns locations with coordinates from:
-    1. transaction_locations table (captured geolocation)
-    2. Transactions grouped by location text (reverse-geocoded)
-    3. Fallback: transactions grouped by category
+    Get ALL spending locations for interactive map.
+    Returns from 3 strategies, sorted by total_spent:
+    1. GPS data from transaction_locations table
+    2. Transactions with stored lat/lng
+    3. Category-based with Jakarta area coordinates
     """
     from app.modules.ledger.location.models import TransactionLocation
 
     user_id = current_user.id if current_user else None
-    markers = []
+    all_locations = []
 
-    # Strategy 1: Get from transaction_locations (captured GPS coordinates)
-    txl_query = db.query(TransactionLocation).join(
+    # Strategy 1: From transaction_locations (captured GPS)
+    txl_q = db.query(TransactionLocation).join(
         Transaction, Transaction.id == TransactionLocation.transaction_id
     )
     if user_id:
-        txl_query = txl_query.filter(Transaction.user_id == user_id)
-
-    txl_rows = txl_query.all()
-    for row in txl_rows:
+        txl_q = txl_q.filter(Transaction.user_id == user_id)
+    for row in txl_q.all():
         if row.captured_latitude and row.captured_longitude:
-            markers.append({
-                "name": row.nearest_store_name or row.captured_address or "Lokasi Tersimpan",
+            tx_sp = db.query(func.sum(Transaction.amount)).filter(
+                Transaction.id == row.transaction_id
+            ).scalar() or 0
+            all_locations.append({
+                "id": f"gps_{row.id}",
+                "name": row.nearest_store_name or row.captured_address or "Lokasi GPS",
                 "latitude": float(row.captured_latitude),
                 "longitude": float(row.captured_longitude),
-                "address": row.captured_address,
+                "address": row.captured_address or "",
                 "visit_count": 1,
-                "total_spent": 0,  # Will be summed below
-                "avg_transaction": 0,
+                "total_spent": float(tx_sp),
+                "avg_transaction": float(tx_sp),
                 "source": "gps",
+                "category": "GPS",
             })
 
-    # Strategy 2: Group by category (category-based heatmap)
-    # Falls back to ALL user expenses when no GPS data exists
-    category_query = db.query(
+    # Strategy 2: Transactions with stored lat/lng
+    tx_q = db.query(
+        Transaction.latitude,
+        Transaction.longitude,
+        Transaction.description,
+        Transaction.merchant_address,
+        func.count(Transaction.id).label("visit_count"),
+        func.sum(Transaction.amount).label("total_spent"),
+        func.avg(Transaction.amount).label("avg_spent"),
+    ).filter(
+        Transaction.type == "expense",
+        Transaction.latitude.isnot(None),
+        Transaction.longitude.isnot(None),
+    )
+    if user_id:
+        tx_q = tx_q.filter(Transaction.user_id == user_id)
+    tx_q = tx_q.group_by(
+        Transaction.latitude, Transaction.longitude,
+        Transaction.description, Transaction.merchant_address
+    )
+    for row in tx_q.all():
+        lat_f = float(row.latitude)
+        lng_f = float(row.longitude)
+        name = row.merchant_address or row.description or f"Lokasi ({lat_f:.4f}, {lng_f:.4f})"
+        all_locations.append({
+            "id": f"gps_tx_{lat_f}_{lng_f}",
+            "name": name,
+            "latitude": lat_f,
+            "longitude": lng_f,
+            "address": row.merchant_address or "",
+            "visit_count": row.visit_count,
+            "total_spent": float(row.total_spent or 0),
+            "avg_transaction": float(row.avg_spent or 0),
+            "source": "gps_tx",
+            "category": "GPS Transaction",
+        })
+
+    # Strategy 3: Category-based (Jakarta area clusters)
+    cat_q = db.query(
         Category.name.label("cat_name"),
+        Category.icon.label("cat_icon"),
         func.count(Transaction.id).label("visit_count"),
         func.sum(Transaction.amount).label("total_spent"),
         func.avg(Transaction.amount).label("avg_spent"),
     ).join(
         Category, Category.id == Transaction.category_id
-    ).filter(
-        Transaction.type == "expense",
-        Category.name.isnot(None),
-    )
+    ).filter(Transaction.type == "expense")
     if user_id:
-        category_query = category_query.filter(Transaction.user_id == user_id)
-    category_query = category_query.group_by(Category.name)
+        cat_q = cat_q.filter(Transaction.user_id == user_id)
+    cat_q = cat_q.group_by(Category.name, Category.icon)
 
-    cat_rows = category_query.all()
-    # Use predefined Indonesia shopping center coordinates as fallback
-    CATEGORY_COORDS = {
-        "Makanan & Minuman": (-6.1751, 106.8650),
-        "Transportasi": (-6.1751, 106.8650),
-        "Belanja": (-6.1951, 106.8450),
-        "Hiburan": (-6.1700, 106.8200),
-        "Kesehatan": (-6.2000, 106.8800),
-        "Fashion": (-6.1850, 106.8350),
-        "Tagihan & Utilitas": (-6.1751, 106.8650),
+    CATEGORY_CLUSTERS = {
+        "Makanan & Minuman": (-6.1751, 106.8650, "🍔"),
+        "Transportasi": (-6.1580, 106.8450, "🚗"),
+        "Belanja": (-6.1951, 106.8450, "🛒"),
+        "Hiburan": (-6.1700, 106.8200, "🎬"),
+        "Kesehatan": (-6.2000, 106.8800, "💊"),
+        "Fashion": (-6.1850, 106.8350, "👕"),
+        "Tagihan & Utilitas": (-6.1650, 106.8900, "💡"),
+        "Pendidikan": (-6.1880, 106.8550, "📚"),
+        "Investasi & Tabungan": (-6.1751, 106.8750, "💰"),
+        "Investasi": (-6.1751, 106.8750, "💰"),
+        "Lainnya (Expense)": (-6.2000, 106.8000, "📍"),
+        "Lainnya (Income)": (-6.2000, 106.8000, "📍"),
     }
-    for row in cat_rows:
-        lat, lng = CATEGORY_COORDS.get(row.cat_name, (-6.2, 106.8))
-        markers.append({
-            "name": row.cat_name,
+
+    for row in cat_q.all():
+        name_key = str(row.cat_name)
+        default_lat = -6.2 + (hash(name_key) % 100) / 500
+        default_lng = 106.8 + (hash(name_key) % 100) / 500
+        lat, lng, icon = CATEGORY_CLUSTERS.get(name_key, (default_lat, default_lng, "📍"))
+        all_locations.append({
+            "id": f"cat_{name_key}",
+            "name": f"{icon} {name_key}",
             "latitude": lat,
             "longitude": lng,
-            "address": f"Kategori: {row.cat_name}",
+            "address": f"Area Jakarta — {name_key}",
             "visit_count": row.visit_count,
             "total_spent": float(row.total_spent or 0),
             "avg_transaction": float(row.avg_spent or 0),
             "source": "category",
+            "category": name_key,
         })
 
-    # Deduplicate by name+source
+    # Deduplicate by id
     seen = {}
-    for m in markers:
-        key = f"{m['source']}:{m['name']}"
-        if key not in seen:
-            seen[key] = m
-
-    unique_markers = list(seen.values())
+    for loc in all_locations:
+        if loc["id"] not in seen:
+            seen[loc["id"]] = loc
+    unique = list(seen.values())
+    unique.sort(key=lambda x: x["total_spent"], reverse=True)
 
     return {
-        "markers": unique_markers,
-        "total_locations": len(unique_markers),
+        "markers": unique,
+        "total_locations": len(unique),
+        "total_spent": sum(m["total_spent"] for m in unique),
+        "total_visits": sum(m["visit_count"] for m in unique),
         "sources": {
-            "gps": sum(1 for m in unique_markers if m.get("source") == "gps"),
-            "tx_location": sum(1 for m in unique_markers if m.get("source") == "tx_location"),
-            "category": sum(1 for m in unique_markers if m.get("source") == "category"),
+            "gps": sum(1 for m in unique if m["source"] == "gps"),
+            "gps_tx": sum(1 for m in unique if m["source"] == "gps_tx"),
+            "category": sum(1 for m in unique if m["source"] == "category"),
         },
     }
+
+
 
 
 @router.get("/merchants/top")

@@ -1,14 +1,14 @@
-// Merchant Map with Leaflet + OpenStreetMap
-// Shows spending patterns on interactive map
+// Interactive Spending Map with Real-time Data
+// Shows all expense locations with click-to-explore functionality
 
-import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from "react-leaflet";
 import { api } from "../services/api";
 import { formatCurrency } from "../utils/format";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-// Fix for default marker icon
+// Fix marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -16,326 +16,510 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Custom icon for merchants
-const createMerchantIcon = (size = 30) => {
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `<div style="
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      border: 2px solid white;
-      border-radius: 50%;
-      width: ${size}px;
-      height: ${size}px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: bold;
-      font-size: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    ">💰</div>`,
-    iconSize: [size, size],
-    iconAnchor: [size/2, size/2],
-  });
+// Category colors
+const CATEGORY_COLORS = {
+  "Makanan & Minuman": "#ef4444",
+  "Transportasi": "#3b82f6",
+  "Belanja": "#ec4899",
+  "Hiburan": "#8b5cf6",
+  "Kesehatan": "#06b6d4",
+  "Fashion": "#f59e0b",
+  "Tagihan & Utilitas": "#6b7280",
+  "Pendidikan": "#10b981",
+  "Investasi & Tabungan": "#22c55e",
+  "Investasi": "#22c55e",
+  "GPS": "#06b6d4",
+  "GPS Transaction": "#0ea5e9",
+  "default": "#6b7280",
+};
+
+// Get marker size based on spending
+const getMarkerSize = (totalSpent, maxSpent) => {
+  if (!totalSpent || !maxSpent) return 20;
+  const ratio = totalSpent / maxSpent;
+  return Math.max(15, Math.min(50, 15 + ratio * 35));
+};
+
+// Get color for category
+const getCategoryColor = (category) => {
+  return CATEGORY_COLORS[category] || CATEGORY_COLORS.default;
+};
+
+// FlyTo component
+const FlyTo = ({ center, zoom }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.flyTo(center, zoom || 14, { duration: 1 });
+    }
+  }, [center, zoom, map]);
+  return null;
 };
 
 const MerchantMap = () => {
-  const [merchants, setMerchants] = useState([]);
-  const [topMerchants, setTopMerchants] = useState([]);
-  const [selectedMetric, setSelectedMetric] = useState("spending");
+  // Data states
+  const [markers, setMarkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [mapCenter, setMapCenter] = useState([-6.2, 106.8]); // Jakarta default
+  const [stats, setStats] = useState(null);
 
-  useEffect(() => {
-    fetchMerchantData();
-    fetchTopMerchants();
-  }, [selectedMetric]);
+  // UI states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [mapCenter, setMapCenter] = useState([-6.2, 106.8]);
+  const [mapZoom, setMapZoom] = useState(12);
+  const [viewMode, setViewMode] = useState("markers"); // markers | heatmap
 
-  const fetchMerchantData = async () => {
+  // Categories for filter
+  const categories = useMemo(() => {
+    const cats = [...new Set(markers.map(m => m.category).filter(Boolean))];
+    return ["all", ...cats.sort()];
+  }, [markers]);
+
+  // Max spent for size calculation
+  const maxSpent = useMemo(() => {
+    return Math.max(...markers.map(m => m.total_spent || 0), 1);
+  }, [markers]);
+
+  // Filter markers
+  const filteredMarkers = useMemo(() => {
+    let result = markers;
+
+    // Filter by category
+    if (selectedCategory !== "all") {
+      result = result.filter(m => m.category === selectedCategory);
+    }
+
+    // Filter by search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(m =>
+        (m.name || "").toLowerCase().includes(q) ||
+        (m.address || "").toLowerCase().includes(q) ||
+        (m.category || "").toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [markers, selectedCategory, searchQuery]);
+
+  // Fetch data
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await api.request("/analytics/merchants/map");
-      const markers = response.markers || [];
-      setMerchants(markers);
-      
-      // Center map on first merchant with location
-      if (markers.length > 0) {
-        const withLocation = markers.find(m => m.latitude && m.longitude);
-        if (withLocation) {
-          setMapCenter([withLocation.latitude, withLocation.longitude]);
-        }
+      const data = response || {};
+      setMarkers(data.markers || []);
+      setStats({
+        total_locations: data.total_locations || 0,
+        total_spent: data.total_spent || 0,
+        total_visits: data.total_visits || 0,
+        sources: data.sources || {},
+      });
+
+      // Center on first GPS marker if available
+      const gpsMarkers = (data.markers || []).filter(m => m.source === "gps" || m.source === "gps_tx");
+      if (gpsMarkers.length > 0) {
+        setMapCenter([gpsMarkers[0].latitude, gpsMarkers[0].longitude]);
       }
     } catch (err) {
-      console.error("Error fetching merchant data:", err);
-      setError("Gagal memuat data merchant");
+      console.error("Map fetch error:", err);
+      setError("Gagal memuat data peta");
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Handle marker click
+  const handleMarkerClick = (marker) => {
+    setSelectedLocation(marker);
+    setMapCenter([marker.latitude, marker.longitude]);
+    setMapZoom(15);
   };
 
-  const fetchTopMerchants = async () => {
-    try {
-      const response = await api.request(
-        `/analytics/merchants/top?metric=${selectedMetric}&limit=10`
-      );
-      setTopMerchants(response.merchants || []);
-    } catch (err) {
-      console.error("Error fetching top merchants:", err);
-    }
+  // Clear selection
+  const clearSelection = () => {
+    setSelectedLocation(null);
   };
 
-  // Component to fly to selected merchant
-  const FlyToMerchant = ({ merchant }) => {
-    const map = useMap();
-    if (merchant?.latitude && merchant?.longitude) {
-      map.flyTo([merchant.latitude, merchant.longitude], 15, {
-        duration: 1
-      });
-    }
-    return null;
-  };
-
-  if (loading && merchants.length === 0) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Memuat data peta...</p>
+        </div>
       </div>
     );
   }
 
-  // Count merchants with valid locations
-  const merchantsWithLocation = merchants.filter(m => m.latitude && m.longitude);
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center p-8">
+          <div className="text-4xl mb-4">⚠️</div>
+          <p className="text-red-500 mb-4">{error}</p>
+          <button onClick={fetchData} className="px-4 py-2 bg-primary-500 text-white rounded-lg">
+            🔄 Coba Lagi
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Metric Selector */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setSelectedMetric("spending")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              selectedMetric === "spending"
-                ? "bg-primary-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            💸 Pengeluaran Tertinggi
-          </button>
-          <button
-            onClick={() => setSelectedMetric("frequency")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              selectedMetric === "frequency"
-                ? "bg-primary-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            📍 Kunjungan Terbanyak
-          </button>
-          <button
-            onClick={() => setSelectedMetric("recent")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              selectedMetric === "recent"
-                ? "bg-primary-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            🕐 Terbaru
-          </button>
-        </div>
-      </div>
-
-      {/* Map and Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Map */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">
-                🗺️ Peta Pengeluaran
-              </h3>
-              <p className="text-sm text-gray-500">
-                {merchantsWithLocation.length} lokasi terdeteksi
-              </p>
-            </div>
-            
-            <div className="h-[500px] relative">
-              {merchantsWithLocation.length > 0 ? (
-                <MapContainer
-                  center={mapCenter}
-                  zoom={12}
-                  style={{ height: "100%", width: "100%" }}
-                  className="z-0"
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  
-                  {merchantsWithLocation.map((merchant, index) => {
-                    const markerSize = 25 + Math.min(25, merchant.visit_count * 2);
-                    return (
-                      <Marker
-                        key={merchant.name || index}
-                        position={[merchant.latitude, merchant.longitude]}
-                        icon={createMerchantIcon(markerSize)}
-                      >
-                        <Popup>
-                          <div className="min-w-[200px]">
-                            <h4 className="font-bold text-lg mb-2">{merchant.name || 'Lokasi'}</h4>
-                            <div className="space-y-1 text-sm">
-                              <p>📍 Kunjungan: <strong>{merchant.visit_count}x</strong></p>
-                              <p>💰 Total: <strong>{formatCurrency(merchant.total_spent)}</strong></p>
-                              {merchant.avg_transaction && (
-                                <p>📊 Rata-rata: <strong>{formatCurrency(merchant.avg_transaction)}</strong></p>
-                              )}
-                              {merchant.source && (
-                                <p className="text-xs text-gray-400">Source: {merchant.source}</p>
-                              )}
-                            </div>
-                          </div>
-                        </Popup>
-                      </Marker>
-                    );
-                  })}
-                </MapContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center bg-gray-100">
-                  <div className="text-center p-8">
-                    <div className="text-6xl mb-4">📍</div>
-                    <h4 className="font-semibold text-gray-700 mb-2">Belum Ada Data Lokasi</h4>
-                    <p className="text-gray-500 text-sm">
-                      Scan struk dengan aktifkan lokasi untuk melihat di peta
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* Map Legend */}
-            <div className="p-4 bg-gray-50 border-t">
-              <div className="flex items-center gap-6 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-                  <span>Marker merchant</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span>📍</span>
-                  <span>Ukuran = Frekuensi kunjungan</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span>🗺️</span>
-                  <span>Data dari OpenStreetMap</span>
-                </div>
-              </div>
-            </div>
+    <div className="space-y-4">
+      {/* Header Stats */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">Total Lokasi</p>
+            <p className="text-xl font-bold text-gray-900">{stats.total_locations}</p>
           </div>
-        </div>
-
-        {/* Sidebar - Top Merchants */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">
-                🏆 Top 10 Merchant
-              </h3>
-            </div>
-            
-            <div className="divide-y max-h-[500px] overflow-y-auto">
-              {topMerchants.length > 0 ? (
-                topMerchants.map((merchant, index) => (
-                  <div
-                    key={merchant.name || index}
-                    className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                    onClick={() => {
-                      if (merchant.latitude && merchant.longitude) {
-                        setMapCenter([merchant.latitude, merchant.longitude]);
-                      }
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${
-                        index === 0 ? 'bg-yellow-500' :
-                        index === 1 ? 'bg-gray-400' :
-                        index === 2 ? 'bg-amber-600' :
-                        'bg-primary-600'
-                      }`}>
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 truncate">
-                          {merchant.name}
-                        </h4>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                          <span>📍 {merchant.visit_count}x</span>
-                          <span>•</span>
-                          <span className="font-medium text-red-600">
-                            {formatCurrency(merchant.total_spent)}
-                          </span>
-                        </div>
-                        {/* Progress bar */}
-                        <div className="mt-2 bg-gray-200 rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-primary-600 h-full rounded-full transition-all"
-                            style={{
-                              width: `${Math.min(100, (merchant.total_spent / (topMerchants[0]?.total_spent || 1)) * 100)}%`
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-8 text-center text-gray-500">
-                  <div className="text-4xl mb-2">📊</div>
-                  <p>Belum ada data merchant</p>
-                </div>
-              )}
-            </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">Total Pengeluaran</p>
+            <p className="text-xl font-bold text-red-500">{formatCurrency(stats.total_spent)}</p>
           </div>
-
-          {/* Quick Stats */}
-          <div className="bg-white rounded-xl shadow-sm p-4 mt-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">📈 Statistik</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Total Lokasi</span>
-                <span className="font-semibold">{merchants.length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Dengan Koordinat</span>
-                <span className="font-semibold text-green-600">{merchantsWithLocation.length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Total Pengeluaran</span>
-                <span className="font-semibold text-red-600">
-                  {formatCurrency(topMerchants.reduce((sum, m) => sum + (m.total_spent || 0), 0))}
-                </span>
-              </div>
-            </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">Total Kunjungan</p>
+            <p className="text-xl font-bold text-blue-500">{stats.total_visits}x</p>
           </div>
-        </div>
-      </div>
-
-      {/* Merchant List (if no map data) */}
-      {merchantsWithLocation.length === 0 && merchants.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            📋 Daftar Merchant
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {merchants.map((merchant) => (
-              <div key={merchant.name} className="border rounded-lg p-4">
-                <h4 className="font-medium">{merchant.name}</h4>
-                <p className="text-sm text-gray-500 mt-1">
-                  {merchant.visit_count} kunjungan • {formatCurrency(merchant.total_spent)}
-                </p>
-              </div>
-            ))}
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">GPS Data</p>
+            <p className="text-xl font-bold text-green-500">
+              {(stats.sources?.gps || 0) + (stats.sources?.gps_tx || 0)} lokasi
+            </p>
           </div>
         </div>
       )}
+
+      {/* Search & Filters */}
+      <div className="bg-white rounded-xl p-4 shadow-sm space-y-3">
+        {/* Search */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="🔍 Cari lokasi, kategori, atau address..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-3 pl-10 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Category Pills */}
+        <div className="flex flex-wrap gap-2">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                selectedCategory === cat
+                  ? "bg-primary-500 text-white shadow-sm"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {cat === "all" ? "🌐 Semua" : cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Results count */}
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <span>Menampilkan {filteredMarkers.length} dari {markers.length} lokasi</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode("markers")}
+              className={`px-3 py-1 rounded-lg ${viewMode === "markers" ? "bg-primary-100 text-primary-600" : "bg-gray-50"}`}
+            >
+              📍 Markers
+            </button>
+            <button
+              onClick={() => setViewMode("heatmap")}
+              className={`px-3 py-1 rounded-lg ${viewMode === "heatmap" ? "bg-primary-100 text-primary-600" : "bg-gray-50"}`}
+            >
+              🌡️ Heatmap
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Map */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="h-[500px] relative">
+          <MapContainer
+            center={mapCenter}
+            zoom={mapZoom}
+            style={{ height: "100%", width: "100%" }}
+            className="z-0"
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <FlyTo center={mapCenter} zoom={mapZoom} />
+
+            {/* Markers */}
+            {viewMode === "markers" && filteredMarkers.map((marker, idx) => {
+              const size = getMarkerSize(marker.total_spent, maxSpent);
+              const color = getCategoryColor(marker.category);
+              const isSelected = selectedLocation?.id === marker.id;
+
+              return (
+                <Marker
+                  key={marker.id || idx}
+                  position={[marker.latitude, marker.longitude]}
+                  eventHandlers={{
+                    click: () => handleMarkerClick(marker),
+                  }}
+                  icon={L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `
+                      <div style="
+                        width: ${size}px;
+                        height: ${size}px;
+                        background: ${color};
+                        border: ${isSelected ? '3px solid #1e40af' : '2px solid white'};
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 2px 8px rgba(0,0,0,${isSelected ? '0.5' : '0.3'});
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        transform: ${isSelected ? 'scale(1.2)' : 'scale(1)'};
+                      ">
+                        <span style="color: white; font-size: ${Math.max(10, size / 3)}px; font-weight: bold;">
+                          ${marker.source === 'category' ? '📍' : '💰'}
+                        </span>
+                      </div>
+                    `,
+                    iconSize: [size, size],
+                    iconAnchor: [size / 2, size / 2],
+                  })}
+                >
+                  <Popup>
+                    <div className="min-w-[220px]">
+                      <h4 className="font-bold text-base mb-2">{marker.name}</h4>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">💰 Total:</span>
+                          <span className="font-semibold text-red-600">{formatCurrency(marker.total_spent)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">📍 Kunjungan:</span>
+                          <span className="font-semibold">{marker.visit_count}x</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">📊 Rata-rata:</span>
+                          <span className="font-semibold">{formatCurrency(marker.avg_transaction)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">🏷️ Kategori:</span>
+                          <span className="font-semibold">{marker.category}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">📌 Source:</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            marker.source === 'gps' || marker.source === 'gps_tx'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {marker.source === 'gps' ? 'GPS' : marker.source === 'gps_tx' ? 'GPS Tx' : 'Category'}
+                          </span>
+                        </div>
+                        {marker.address && (
+                          <p className="text-xs text-gray-400 mt-2 border-t pt-2">
+                            📍 {marker.address}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
+
+            {/* Heatmap mode: CircleMarkers */}
+            {viewMode === "heatmap" && filteredMarkers.map((marker, idx) => {
+              const radius = getMarkerSize(marker.total_spent, maxSpent);
+              const color = getCategoryColor(marker.category);
+
+              return (
+                <CircleMarker
+                  key={marker.id || idx}
+                  center={[marker.latitude, marker.longitude]}
+                  radius={radius / 2}
+                  pathOptions={{
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.4,
+                    weight: 2,
+                  }}
+                  eventHandlers={{
+                    click: () => handleMarkerClick(marker),
+                  }}
+                >
+                  <Popup>
+                    <div className="min-w-[200px]">
+                      <h4 className="font-bold">{marker.name}</h4>
+                      <p className="text-sm">💰 {formatCurrency(marker.total_spent)}</p>
+                      <p className="text-xs text-gray-500">{marker.visit_count}x kunjungan</p>
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              );
+            })}
+          </MapContainer>
+
+          {/* Legend */}
+          <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 backdrop-blur rounded-xl p-3 shadow-lg text-xs max-w-[180px]">
+            <p className="font-semibold mb-2">🗺️ Legend</p>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <span>Makanan & Minuman</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                <span>Transportasi</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-pink-500"></div>
+                <span>Belanja</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <span>GPS/Real Location</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
+                <span>GPS Transaction</span>
+              </div>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-2">Ukuran = Total pengeluaran</p>
+          </div>
+
+          {/* Refresh Button */}
+          <button
+            onClick={fetchData}
+            className="absolute top-4 right-4 z-[1000] bg-white p-2 rounded-full shadow-lg hover:bg-gray-50"
+            title="Refresh data"
+          >
+            🔄
+          </button>
+        </div>
+      </div>
+
+      {/* Selected Location Detail Panel */}
+      {selectedLocation && (
+        <div className="bg-white rounded-xl p-4 shadow-sm border-2 border-primary-500">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-lg">📍 Detail Lokasi</h3>
+            <button onClick={clearSelection} className="text-gray-400 hover:text-gray-600">✕</button>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Nama</p>
+              <p className="font-semibold">{selectedLocation.name}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Kategori</p>
+              <p className="font-semibold">{selectedLocation.category}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Total Pengeluaran</p>
+              <p className="font-bold text-red-500 text-lg">{formatCurrency(selectedLocation.total_spent)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Frekuensi</p>
+              <p className="font-semibold">{selectedLocation.visit_count}x kunjungan</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-sm text-gray-500">Koordinat</p>
+              <p className="font-mono text-sm">{selectedLocation.latitude.toFixed(6)}, {selectedLocation.longitude.toFixed(6)}</p>
+            </div>
+            {selectedLocation.address && (
+              <div className="col-span-2">
+                <p className="text-sm text-gray-500">Address</p>
+                <p className="text-sm">{selectedLocation.address}</p>
+              </div>
+            )}
+            <div className="col-span-2">
+              <p className="text-sm text-gray-500">Data Source</p>
+              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                selectedLocation.source === 'category' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+              }`}>
+                {selectedLocation.source === 'category' ? '📊 Category (Jakarta Area)' : '📍 GPS / Real Location'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Location List */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="p-4 border-b">
+          <h3 className="font-semibold">📋 Semua Lokasi ({filteredMarkers.length})</h3>
+        </div>
+        <div className="divide-y max-h-[400px] overflow-y-auto">
+          {filteredMarkers.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              Tidak ada lokasi yang cocok dengan filter
+            </div>
+          ) : (
+            filteredMarkers.slice(0, 50).map((marker, idx) => (
+              <div
+                key={marker.id || idx}
+                onClick={() => handleMarkerClick(marker)}
+                className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                  selectedLocation?.id === marker.id ? 'bg-primary-50 border-l-4 border-primary-500' : ''
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getCategoryColor(marker.category) }}
+                      ></div>
+                      <p className="font-medium truncate">{marker.name}</p>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {marker.visit_count}x · {marker.category}
+                    </p>
+                  </div>
+                  <div className="text-right ml-4">
+                    <p className="font-bold text-red-500">{formatCurrency(marker.total_spent)}</p>
+                    <p className="text-xs text-gray-400">
+                      {marker.latitude.toFixed(4)}, {marker.longitude.toFixed(4)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        {filteredMarkers.length > 50 && (
+          <div className="p-3 text-center text-sm text-gray-500 bg-gray-50">
+            Menampilkan 50 dari {filteredMarkers.length} lokasi
+          </div>
+        )}
+      </div>
     </div>
   );
 };
