@@ -1,4 +1,4 @@
-// Shopping Tracker v2 - Improved with AI Search and Budget Priority
+// Shopping Tracker v3 - AI Search + Wishlist + Budget Integration
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { api } from "../services/api";
 
@@ -6,32 +6,28 @@ const ShoppingTracker = () => {
   const [items, setItems] = useState([]);
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("tracked"); // tracked | wishlist | ai
+  const [activeTab, setActiveTab] = useState("tracked");
   
-  // Budget state (PRIORITY)
+  // Budget state - PRORITY!
   const [budget, setBudget] = useState(() => {
     const saved = localStorage.getItem("shopping_budget");
     return saved ? parseFloat(saved) : 0;
   });
   const [budgetInput, setBudgetInput] = useState(budget.toString());
+  const [fetchingBudget, setFetchingBudget] = useState(false);
   
   // AI Search state
   const [aiQuery, setAiQuery] = useState("");
   const [aiResults, setAiResults] = useState(null);
   const [aiSearching, setAiSearching] = useState(false);
   
-  // Debounced search
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState(null);
-  const [searching, setSearching] = useState(false);
-  
   // Load data
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [itemsData, wishlistData] = await Promise.all([
-        api.request("/shopping/items"),
-        api.request("/shopping/wishlist")
+        api.request("/shopping/items").catch(() => []),
+        api.request("/shopping/wishlist").catch(() => [])
       ]);
       
       if (Array.isArray(itemsData)) setItems(itemsData);
@@ -45,11 +41,30 @@ const ShoppingTracker = () => {
   
   useEffect(() => { loadData(); }, [loadData]);
   
+  // Fetch budget from account
+  const fetchBudgetFromAccount = async () => {
+    setFetchingBudget(true);
+    try {
+      const accounts = await api.request("/accounts/");
+      if (Array.isArray(accounts) && accounts.length > 0) {
+        // Use first account's balance as budget
+        const accBalance = accounts[0].balance || 0;
+        setBudget(accBalance);
+        setBudgetInput(accBalance.toString());
+        localStorage.setItem("shopping_budget", accBalance.toString());
+      }
+    } catch (e) {
+      console.error("Fetch budget error:", e);
+    } finally {
+      setFetchingBudget(false);
+    }
+  };
+  
   // Calculate totals
   const stats = useMemo(() => {
     const totalSpent = items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
     const budgetRemaining = budget - totalSpent;
-    const percentUsed = budget > 0 ? (totalSpent / budget * 100).toFixed(0) : 0;
+    const percentUsed = budget > 0 ? Math.min((totalSpent / budget * 100), 100) : 0;
     return { totalSpent, budgetRemaining, percentUsed };
   }, [items, budget]);
   
@@ -60,29 +75,68 @@ const ShoppingTracker = () => {
     localStorage.setItem("shopping_budget", num.toString());
   };
   
-  // AI Price Search using marketplace links
+  // AI Price Search
   const searchWithAI = async () => {
     if (!aiQuery.trim()) return;
     setAiSearching(true);
     setAiResults(null);
     
     try {
-      // Use search API to get marketplace prices
       const results = await api.request(`/search/price?q=${encodeURIComponent(aiQuery)}&country=ID`);
-      
-      if (results && results.marketplaces) {
+      if (results && results.searches) {
         setAiResults({
           query: aiQuery,
-          marketplaces: results.marketplaces,
+          marketplaces: results.searches,
           cached: results.cached,
-          timestamp: results.timestamp
+          timestamp: results.timestamp,
+          currency: results.currency_symbol || 'Rp'
         });
       }
     } catch (e) {
       console.error("AI search error:", e);
-      setAiResults({ error: "Gagal mencari harga" });
+      setAiResults({ error: "Gagal mencari harga. Coba lagi." });
     } finally {
       setAiSearching(false);
+    }
+  };
+  
+  // Add to Wishlist
+  const addToWishlist = async (marketplace) => {
+    try {
+      const wishlistItem = {
+        name: aiQuery,
+        target_price: 0,
+        marketplace: marketplace.marketplace,
+        search_url: marketplace.search_url,
+        priority: "medium"
+      };
+      
+      const result = await api.request("/shopping/wishlist", {
+        method: "POST",
+        body: JSON.stringify(wishlistItem)
+      });
+      
+      if (result) {
+        // Refresh wishlist
+        const newWishlist = await api.request("/shopping/wishlist");
+        if (Array.isArray(newWishlist)) setWishlist(newWishlist);
+        
+        // Show success
+        alert(`${marketplace.name} ditambahkan ke wishlist!`);
+      }
+    } catch (e) {
+      console.error("Add to wishlist error:", e);
+      alert("Gagal menambahkan ke wishlist");
+    }
+  };
+  
+  // Remove from Wishlist
+  const removeFromWishlist = async (id) => {
+    try {
+      await api.request(`/shopping/wishlist/${id}`, { method: "DELETE" });
+      setWishlist(prev => prev.filter(item => item.id !== id));
+    } catch (e) {
+      console.error("Remove error:", e);
     }
   };
   
@@ -97,80 +151,97 @@ const ShoppingTracker = () => {
   };
   
   // Get marketplace color
-  const getMarketplaceColor = (name) => {
-    const colors = {
-      shopee: "text-orange-500",
-      tokopedia: "text-green-500",
-      lazada: "text-blue-500",
-      blibli: "text-purple-500",
-      tiktok: "text-pink-500"
+  const getMarketplaceStyle = (name) => {
+    const styles = {
+      shopee: { bg: "bg-orange-50", text: "text-orange-600", border: "border-orange-200" },
+      tokopedia: { bg: "bg-green-50", text: "text-green-600", border: "border-green-200" },
+      lazada: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
+      blibli: { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
+      tiktok: { bg: "bg-pink-50", text: "text-pink-600", border: "border-pink-200" }
     };
-    return colors[name?.toLowerCase()] || "text-gray-500";
+    return styles[name?.toLowerCase()] || { bg: "bg-gray-50", text: "text-gray-600", border: "border-gray-200" };
   };
   
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
-      <div className="bg-blue-500 text-white p-4 sticky top-0 z-10">
+      <div className="bg-blue-500 text-white p-4 sticky top-0 z-10 shadow-md">
         <h1 className="text-xl font-bold">🛒 Belanja</h1>
       </div>
       
-      {/* Budget Card - PRIORITY */}
-      <div className="p-4">
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-gray-600">Budget Bulanan</span>
-            <span className="font-bold text-lg">{formatCurrency(budget)}</span>
-          </div>
-          
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-            <div 
-              className={`h-2 rounded-full transition-all ${
-                stats.percentUsed > 90 ? "bg-red-500" : 
-                stats.percentUsed > 70 ? "bg-yellow-500" : "bg-green-500"
-              }`}
-              style={{ width: `${Math.min(stats.percentUsed, 100)}%` }}
-            />
-          </div>
-          
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Terpakai: {formatCurrency(stats.totalSpent)}</span>
-            <span className={stats.budgetRemaining < 0 ? "text-red-500 font-medium" : "text-green-500 font-medium"}>
-              {stats.budgetRemaining >= 0 ? "Sisa: " : "Over: "}{formatCurrency(Math.abs(stats.budgetRemaining))}
-            </span>
-          </div>
-          
-          <div className="mt-3 flex gap-2">
-            <input
-              type="number"
-              value={budgetInput}
-              onChange={(e) => setBudgetInput(e.target.value)}
-              placeholder="Budget..."
-              className="flex-1 p-2 border rounded-lg text-sm"
-            />
-            <button
-              onClick={() => saveBudget(budgetInput)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium"
-            >
-              Set
-            </button>
-          </div>
+      {/* Budget Card - PRIORITY FIRST! */}
+      <div className="p-4 bg-white m-4 rounded-xl shadow-sm border border-blue-100">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-gray-600 font-medium">Budget Bulanan</span>
+          <span className="font-bold text-lg text-blue-600">{formatCurrency(budget)}</span>
+        </div>
+        
+        <div className="w-full bg-gray-100 rounded-full h-3 mb-2 overflow-hidden">
+          <div 
+            className={`h-3 rounded-full transition-all duration-500 ${
+              stats.percentUsed > 90 ? "bg-red-500" : 
+              stats.percentUsed > 70 ? "bg-yellow-500" : "bg-green-500"
+            }`}
+            style={{ width: `${stats.percentUsed}%` }}
+          />
+        </div>
+        
+        <div className="flex justify-between text-sm mb-3">
+          <span className="text-gray-500">Terpakai: {formatCurrency(stats.totalSpent)}</span>
+          <span className={stats.budgetRemaining < 0 ? "text-red-500 font-medium" : "text-green-500 font-medium"}>
+            {stats.budgetRemaining >= 0 ? "Sisa: " : "Over: "}{formatCurrency(Math.abs(stats.budgetRemaining))}
+          </span>
+        </div>
+        
+        <div className="flex gap-2">
+          <input
+            type="number"
+            value={budgetInput}
+            onChange={(e) => setBudgetInput(e.target.value)}
+            placeholder="Set budget..."
+            className="flex-1 p-2 border rounded-lg text-sm"
+          />
+          <button
+            onClick={() => saveBudget(budgetInput)}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium"
+          >
+            Set
+          </button>
+          <button
+            onClick={fetchBudgetFromAccount}
+            disabled={fetchingBudget}
+            className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm"
+            title="Ambil dari saldo akun"
+          >
+            {fetchingBudget ? "..." : "📥"}
+          </button>
         </div>
       </div>
       
       {/* Tabs */}
       <div className="px-4 flex gap-2 mb-4">
-        {["tracked", "wishlist", "ai"].map(tab => (
+        {[
+          { id: "tracked", label: "📝 Tracked", count: items.length },
+          { id: "wishlist", label: "❤️ Wishlist", count: wishlist.length },
+          { id: "ai", label: "🤖 AI Search", count: null }
+        ].map(tab => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-full text-sm font-medium ${
-              activeTab === tab 
-                ? "bg-blue-500 text-white" 
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 ${
+              activeTab === tab.id 
+                ? "bg-blue-500 text-white shadow-md" 
                 : "bg-white text-gray-600"
             }`}
           >
-            {tab === "tracked" ? "📝 Tracked" : tab === "wishlist" ? "❤️ Wishlist" : "🤖 AI Search"}
+            {tab.label}
+            {tab.count !== null && (
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                activeTab === tab.id ? "bg-blue-400" : "bg-gray-200"
+              }`}>
+                {tab.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -179,32 +250,41 @@ const ShoppingTracker = () => {
       {activeTab === "tracked" && (
         <div className="px-4">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Memuat...</div>
+            <div className="text-center py-12 text-gray-400">
+              <div className="animate-spin text-4xl mb-4">⏳</div>
+              <p>Memuat...</p>
+            </div>
           ) : items.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <p>Belum ada item</p>
-              <p className="text-sm mt-2">Tambah item baru di bawah</p>
+            <div className="text-center py-12 text-gray-400">
+              <p className="text-4xl mb-4">🛒</p>
+              <p>Belum ada item yang di-track</p>
+              <p className="text-sm mt-2">Gunakan AI Search untuk cari produk</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {items.map(item => (
-                <div key={item.id} className="bg-white rounded-lg p-3 flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">{item.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {item.quantity}x {formatCurrency(item.price || 0)}
-                    </p>
+              {items.map(item => {
+                const style = getMarketplaceStyle(item.marketplace);
+                return (
+                  <div key={item.id} className={`bg-white rounded-lg p-4 border ${style.border}`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-sm text-gray-500">
+                          {item.quantity}x {formatCurrency(item.price || 0)}
+                        </p>
+                        {item.marketplace && (
+                          <span className={`text-xs px-2 py-0.5 rounded ${style.bg} ${style.text}`}>
+                            {item.marketplace}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold">{formatCurrency((item.price || 0) * (item.quantity || 1))}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold">{formatCurrency((item.price || 0) * (item.quantity || 1))}</p>
-                    {item.marketplace && (
-                      <span className={`text-xs ${getMarketplaceColor(item.marketplace)}`}>
-                        {item.marketplace}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -214,30 +294,51 @@ const ShoppingTracker = () => {
       {activeTab === "wishlist" && (
         <div className="px-4">
           {wishlist.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
+            <div className="text-center py-12 text-gray-400">
+              <p className="text-4xl mb-4">❤️</p>
               <p>Wishlist kosong</p>
+              <p className="text-sm mt-2">Cari produk dan tambahkan ke wishlist</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {wishlist.map(item => (
-                <div key={item.id} className="bg-white rounded-lg p-3">
-                  <div className="flex justify-between">
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-500">
-                        Target: {formatCurrency(item.target_price || 0)}
-                      </p>
+              {wishlist.map(item => {
+                const style = getMarketplaceStyle(item.marketplace);
+                return (
+                  <div key={item.id} className={`bg-white rounded-lg p-4 border ${style.border}`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-sm text-gray-500">
+                          Target: {formatCurrency(item.target_price || 0)}
+                        </p>
+                        {item.marketplace && (
+                          <span className={`text-xs px-2 py-0.5 rounded ${style.bg} ${style.text}`}>
+                            {item.marketplace}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        {item.search_url && (
+                          <a
+                            href={item.search_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1 bg-blue-500 text-white rounded text-sm"
+                          >
+                            Cek
+                          </a>
+                        )}
+                        <button
+                          onClick={() => removeFromWishlist(item.id)}
+                          className="px-3 py-1 bg-red-100 text-red-600 rounded text-sm"
+                        >
+                          Hapus
+                        </button>
+                      </div>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      item.priority === "high" ? "bg-red-100 text-red-600" :
-                      item.priority === "medium" ? "bg-yellow-100 text-yellow-600" :
-                      "bg-gray-100 text-gray-600"
-                    }`}>
-                      {item.priority || "medium"}
-                    </span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -246,10 +347,10 @@ const ShoppingTracker = () => {
       {/* Tab: AI Search */}
       {activeTab === "ai" && (
         <div className="px-4">
-          <div className="bg-white rounded-xl p-4">
-            <h3 className="font-bold mb-3">🔍 Cari Harga dengan AI</h3>
-            <p className="text-sm text-gray-500 mb-3">
-              Tanyakan tentang produk, contoh: "harga beras 5kg terbaru" atau "iPhone 15 pro max"
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+            <h3 className="font-bold text-lg mb-2">🔍 AI Price Search</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Cari harga produk di marketplace. Hasil akan langsung bisa ditambahkan ke wishlist!
             </p>
             
             <div className="flex gap-2">
@@ -257,16 +358,16 @@ const ShoppingTracker = () => {
                 type="text"
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
-                placeholder="Contoh: Harga laptop gaming ASUS..."
+                placeholder="Contoh: iPhone 15 Pro Max, Gaming ASUS ROG..."
                 className="flex-1 p-3 border rounded-xl"
                 onKeyDown={(e) => e.key === "Enter" && searchWithAI()}
               />
               <button
                 onClick={searchWithAI}
                 disabled={aiSearching || !aiQuery.trim()}
-                className="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium disabled:opacity-50"
+                className="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium disabled:opacity-50 shadow-md"
               >
-                {aiSearching ? "..." : "Cari"}
+                {aiSearching ? "⏳" : "🔍"}
               </button>
             </div>
           </div>
@@ -275,36 +376,58 @@ const ShoppingTracker = () => {
           {aiResults && (
             <div className="mt-4">
               {aiResults.error ? (
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl">
+                <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200">
                   {aiResults.error}
                 </div>
               ) : (
                 <div>
                   <div className="flex justify-between items-center mb-3">
-                    <p className="text-sm text-gray-500">
-                      Hasil untuk: <strong>{aiResults.query}</strong>
-                      {aiResults.cached && <span className="ml-2 text-xs">📦 Cache</span>}
+                    <p className="text-sm text-gray-600">
+                      <strong>"{aiResults.query}"</strong> - {aiResults.marketplaces?.length} marketplace
+                      {aiResults.cached && <span className="ml-2 text-xs bg-yellow-100 px-2 py-0.5 rounded">📦 Cache</span>}
                     </p>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3">
-                    {aiResults.marketplaces?.map((mp, idx) => (
-                      <a
-                        key={idx}
-                        href={mp.search_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-2xl">{mp.icon || "🛒"}</span>
-                          <span className={`font-bold ${getMarketplaceColor(mp.name)}`}>
-                            {mp.name}
-                          </span>
+                  <div className="grid grid-cols-1 gap-3">
+                    {aiResults.marketplaces?.map((mp, idx) => {
+                      const style = getMarketplaceStyle(mp.marketplace);
+                      return (
+                        <div 
+                          key={idx}
+                          className={`bg-white rounded-xl p-4 shadow-sm border ${style.border}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-3xl">{mp.icon || "🛒"}</span>
+                              <div>
+                                <p className={`font-bold text-lg ${style.text}`}>{mp.name}</p>
+                                <p className="text-xs text-gray-500">Klik untuk cari di {mp.name}</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <a
+                                href={mp.search_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium"
+                              >
+                                Buka
+                              </a>
+                              <button
+                                onClick={() => addToWishlist(mp)}
+                                className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium"
+                              >
+                                + Wishlist
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-xs text-gray-500">Klik untuk melihat di {mp.name}</p>
-                      </a>
-                    ))}
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-sm text-yellow-800">
+                    💡 {aiResults.note || "Harga adalah perkiraan. Selalu cek harga final di toko."}
                   </div>
                 </div>
               )}
@@ -313,22 +436,12 @@ const ShoppingTracker = () => {
         </div>
       )}
       
-      {/* Quick Add */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
-        <div className="max-w-lg mx-auto flex gap-2">
-          <input
-            type="text"
-            placeholder="Tambah item..."
-            className="flex-1 p-3 border rounded-xl"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && e.target.value.trim()) {
-                // Quick add
-                const name = e.target.value.trim();
-                setItems(prev => [...prev, { id: Date.now(), name, price: 0, quantity: 1 }]);
-                e.target.value = "";
-              }
-            }}
-          />
+      {/* Quick Add Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg">
+        <div className="max-w-lg mx-auto">
+          <p className="text-xs text-gray-400 text-center mb-2">
+            Budget: {formatCurrency(budget)} | Terpakai: {formatCurrency(stats.totalSpent)} | Sisa: {formatCurrency(stats.budgetRemaining)}
+          </p>
         </div>
       </div>
     </div>

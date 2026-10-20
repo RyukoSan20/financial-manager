@@ -165,8 +165,7 @@ class SearchResponse(BaseModel):
 @router.get("/price", response_model=SearchResponse)
 async def search_prices(
     q: str = Query(..., description="Search query"),
-    country: str = Query("ID", description="Country code"),
-    current_user: User = Depends(get_current_user)
+    country: str = Query("ID", description="Country code")
 ):
     """
     Get price comparison links for a product.
@@ -180,10 +179,9 @@ async def search_prices(
     # Normalize query
     normalized = normalize_query(q)
     
-    # Get user's country
-    user_country = get_user_country(current_user)
+    # Default to Indonesia, can be overridden by query param
     if country not in MARKETPLACES:
-        country = user_country
+        country = "ID"
     
     # Check cache
     cache_key = generate_cache_key(normalized, country)
@@ -227,8 +225,7 @@ async def search_prices(
 
 @router.get("/go/{search_id}")
 async def redirect_to_store(
-    search_id: str,
-    current_user: User = Depends(get_current_user)
+    search_id: str
 ):
     """
     Redirect to marketplace and log click.
@@ -241,13 +238,11 @@ async def redirect_to_store(
     
     marketplace = parts[0]
     
-    # Log click
-    log_click(current_user.id, marketplace, "", search_id)
+    # Log click (optional for public endpoint)
+    log_click(None, marketplace, "", search_id)
     
-    # Get user's country
-    country = get_user_country(current_user)
-    if country not in MARKETPLACES:
-        country = 'ID'
+    # Default to Indonesia
+    country = 'ID'
     
     # Generate redirect URL
     config = MARKETPLACES[country]
@@ -265,8 +260,7 @@ async def redirect_to_store(
 
 @router.get("/marketplaces")
 async def get_marketplaces(
-    country: str = Query("ID", description="Country code"),
-    current_user: User = Depends(get_current_user)
+    country: str = Query("ID", description="Country code")
 ):
     """Get available marketplaces for a country."""
     if country not in MARKETPLACES:
