@@ -3,9 +3,12 @@ Shopping Item Model - Kanban Board Pipeline
 
 NEW model for the shopping board pipeline.
 Fields needed for: wishlist -> mau dibeli -> dipesan -> dikirim -> diterima flow.
+
+Note: All FK constraints removed from model to avoid SQLAlchemy metadata circular dependency.
+Validation of FK references is done in the API layer.
 """
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index, Numeric
+from sqlalchemy import Column, Integer, String, DateTime, Index
 from sqlalchemy.sql import func
 
 try:
@@ -21,11 +24,14 @@ class ShoppingItem(Base):
     
     Pipeline stages: wishlist -> to_buy -> ordered -> shipped -> received -> cancelled
     Each item tracks: name, price, quantity, marketplace, tracking, rating, notes.
+    
+    Note: No FK constraints at model level to avoid SQLAlchemy metadata issues.
+    API layer validates foreign key references.
     """
     __tablename__ = "shopping_items_new"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    user_id = Column(Integer, nullable=False, index=True)  # FK to users.id (validated in API)
     
     # Basic info
     name = Column(String(255), nullable=False)
@@ -40,7 +46,7 @@ class ShoppingItem(Base):
     marketplace = Column(String(50), nullable=True)  # shopee, tokopedia, dll
     product_url = Column(String(500), nullable=True)  # https only
     
-    # Category (nullable, no FK constraint to avoid SQLAlchemy metadata issues)
+    # Category (FK to categories.id, validated in API)
     category_id = Column(Integer, nullable=True)
     
     # Tracking (for shipped stage)
@@ -55,9 +61,7 @@ class ShoppingItem(Base):
     purchased_at = Column(DateTime, nullable=True)  # when marked as ordered
     received_at = Column(DateTime, nullable=True)  # when marked as received
     
-    # Link to expense transaction (nullable FK - will be set when item is converted)
-    # Note: transaction_id FK is nullable and not enforced at model level
-    # to avoid SQLAlchemy metadata issues
+    # Link to expense transaction (FK to transactions.id, validated in API)
     transaction_id = Column(Integer, nullable=True)
     
     # Timestamps
@@ -76,11 +80,12 @@ class ShoppingItem(Base):
 class WishlistItem(Base):
     """
     Simple wishlist item - legacy support.
+    Note: No FK constraints to avoid SQLAlchemy metadata issues.
     """
     __tablename__ = "wishlist_items"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    user_id = Column(Integer, nullable=False, index=True)  # FK to users.id (validated in API)
     
     name = Column(String(255), nullable=False)
     target_price = Column(Integer, nullable=True)
@@ -89,8 +94,8 @@ class WishlistItem(Base):
     priority = Column(String(20), default='medium')  # high, medium, low
     notes = Column(String(500), nullable=True)
     
-    # Link to shopping item
-    shopping_item_id = Column(Integer, ForeignKey('shopping_items_new.id'), nullable=True)
+    # Link to shopping item (FK to shopping_items_new.id, validated in API)
+    shopping_item_id = Column(Integer, nullable=True)
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
