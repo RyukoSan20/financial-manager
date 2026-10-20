@@ -24,7 +24,7 @@ class LocationInfo(BaseModel):
 class PlaceResult(BaseModel):
     name: str
     address: str
-    place_id: str
+    place_id: Optional[str] = None
     latitude: float
     longitude: float
 
