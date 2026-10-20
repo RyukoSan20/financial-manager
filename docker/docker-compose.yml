@@ -5,6 +5,8 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: finmanager-db
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: finmanager
       POSTGRES_PASSWORD: ${DB_PASSWORD:-finmanager_secret_2024}
@@ -28,14 +30,19 @@ services:
       context: ../backend
       dockerfile: ../docker/Dockerfile
     container_name: finmanager-api
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://finmanager:${DB_PASSWORD:-finmanager_secret_2024}@postgres:5432/finmanager
+      DATABASE_URL: postgresql://finmanager:finmanager_secret_2024@postgres:5432/finmanager
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SECRET_KEY: ${SECRET_KEY:-your-super-secret-key-change-this-in-production}
+      SECRET_KEY: ${SECRET_KEY:-fin-manager-super-secret-key-production-2024}
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 1440
       DEBUG: "true"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
     ports:
       - "8000:8000"
     depends_on:
@@ -53,6 +60,8 @@ services:
   nginx:
     image: nginx:alpine
     container_name: finmanager-proxy
+    env_file:
+      - .env
     ports:
       - "80:80"
       - "443:443"
