@@ -20,7 +20,7 @@ from app.schemas.kanban_board import (
 )
 from app.services import shopping_pipeline as svc
 
-router = APIRouter(prefix="/api/kanban", tags=["kanban-board"])
+router = APIRouter(prefix="", tags=["kanban-board"])
 
 
 @contextmanager
