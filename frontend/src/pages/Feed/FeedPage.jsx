@@ -33,7 +33,7 @@ const FeedPage = () => {
       }
       // 'all' tab: just /feed/all (no filter)
       
-      const response = await api.get(endpoint);
+      const response = await api.request(endpoint);
       
       // API returns direct array or object with data
       const data = response?.data || response || [];
@@ -53,7 +53,7 @@ const FeedPage = () => {
   const fetchStats = useCallback(async () => {
     setLoadingStats(true);
     try {
-      const response = await api.get('/feed/stats');
+      const response = await api.request('/feed/stats');
       
       // API returns direct object or object with data
       const data = response?.data || response || {};
