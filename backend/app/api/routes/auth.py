@@ -137,28 +137,28 @@ def check_password_strength(password: str) -> tuple[int, List[str]]:
 # === Email/Password Auth ===
 
 @router.post("/register", response_model=Token, status_code=201)
-def register(request: RegisterRequest, db: Session = Depends(get_db)):
+def register(register_data: RegisterRequest, db: Session = Depends(get_db)):
     """Register new user with email and password."""
     import logging
     logger = logging.getLogger(__name__)
-    logger.info(f"Register attempt for: {request.email}")
+    logger.info(f"Register attempt for: {register_data.email}")
     
     # Check if email exists
-    existing = db.query(User).filter(User.email == request.email.lower()).first()
+    existing = db.query(User).filter(User.email == register_data.email.lower()).first()
     if existing:
-        logger.info(f"Email already exists: {request.email}")
+        logger.info(f"Email already exists: {register_data.email}")
         raise HTTPException(
             status_code=400,
             detail="Email already registered"
         )
     
     # Check username if provided
-    if request.username:
+    if register_data.username:
         existing_username = db.query(User).filter(
-            User.username == request.username.lower()
+            User.username == register_data.username.lower()
         ).first()
         if existing_username:
-            logger.info(f"Username already taken: {request.username}")
+            logger.info(f"Username already taken: {register_data.username}")
             raise HTTPException(
                 status_code=400,
                 detail="Username already taken"
@@ -166,12 +166,12 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     
     # Create user with hashed password
     logger.info("Hashing password...")
-    hashed_password = get_password_hash(request.password)
+    hashed_password = get_password_hash(register_data.password)
     logger.info("Creating user...")
     user = User(
-        email=request.email.lower(),
-        username=request.username.lower() if request.username else None,
-        full_name=request.full_name,
+        email=register_data.email.lower(),
+        username=register_data.username.lower() if register_data.username else None,
+        full_name=register_data.full_name,
         hashed_password=hashed_password,
         is_active=True,
         email_verified=False,  # Can implement email verification later
@@ -185,7 +185,7 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     logger.info("Creating token...")
     access_token = create_access_token(user.id)
     
-    logger.info(f"Register SUCCESS for: {request.email}")
+    logger.info(f"Register SUCCESS for: {register_data.email}")
     return Token(
         access_token=access_token,
         user={
@@ -199,9 +199,9 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(request: LoginRequest, db: Session = Depends(get_db)):
+def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     """Login with email and password."""
-    user = db.query(User).filter(User.email == request.email.lower()).first()
+    user = db.query(User).filter(User.email == login_data.email.lower()).first()
     
     if not user:
         raise HTTPException(
@@ -216,7 +216,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
             detail="This account uses Google sign-in. Please use 'Sign in with Google'."
         )
     
-    if not verify_password(request.password, user.hashed_password):
+    if not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -249,10 +249,10 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 # === Guest Login ===
 
 @router.post("/guest", response_model=Token)
-def guest_login(request: GuestLoginRequest, db: Session = Depends(get_db)):
+def guest_login(guest_data: GuestLoginRequest, db: Session = Depends(get_db)):
     """Login as guest with unique device ID. Creates temporary account."""
     # Check if guest with this device already exists
-    guest_email = f"guest_{request.device_id}@finmanager.local"
+    guest_email = f"guest_{guest_data.device_id}@finmanager.local"
     existing = db.query(User).filter(User.email == guest_email).first()
     
     if existing:
@@ -275,7 +275,7 @@ def guest_login(request: GuestLoginRequest, db: Session = Depends(get_db)):
     hashed_password = get_password_hash(secrets.token_urlsafe(32))
     guest_user = User(
         email=guest_email,
-        username=f"guest_{request.device_id[:8]}",
+        username=f"guest_{guest_data.device_id[:8]}",
         full_name="Guest User",
         hashed_password=hashed_password,
         is_active=True,
