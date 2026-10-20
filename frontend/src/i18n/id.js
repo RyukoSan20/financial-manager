@@ -55,6 +55,7 @@ export default {
     map: "Peta Pengeluaran",
     healthCoach: "Health Coach",
     shopping: "Belanja",
+    kanban: "Kanban Belanja",
     gmail: "Gmail Sync",
     merchant: "Toko / Merchant",
     categoryExpenses: "Kategori Pengeluaran",

@@ -29,7 +29,8 @@ import {
   AIAdvisor,
   CategoryExpenses,
   FeedPage,
-  MerchantManager
+  MerchantManager,
+  ShoppingPage
 } from './pages';
 import { AuthCallback } from './pages/AuthCallback';
 
@@ -128,6 +129,7 @@ function App() {
               <Route path="gmail" element={<GmailIntegration />} />
               <Route path="gmail/callback" element={<GmailCallback />} />
               <Route path="feed" element={<FeedPage />} />
+              <Route path="kanban" element={<ShoppingPage />} />
               <Route path="market" element={<MarketPage />} />
               <Route path="settings" element={<Settings />} />
               <Route path="more" element={<MorePage />} />

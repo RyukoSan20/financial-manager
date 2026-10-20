@@ -22,3 +22,4 @@ export { default as GmailIntegration } from './GmailIntegration';
 export { default as GmailCallback } from './GmailCallback';
 export { default as AIAdvisor } from './AIAdvisor';
 export { default as FeedPage } from './Feed/FeedPage';
+export { default as ShoppingPage } from './Shopping/ShoppingPage';

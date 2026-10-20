@@ -29,6 +29,7 @@ import {
   ShoppingBag,
   Heart,
   ShoppingCart,
+  Kanban,
   Mail
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -55,6 +56,7 @@ const navItems = (t) => [
   { name: t('nav.map'), href: '/map', icon: Map },
   { name: t('nav.healthCoach'), href: '/health-coach', icon: Heart },
   { name: t('nav.shopping'), href: '/shopping', icon: ShoppingCart },
+  { name: t('nav.kanban'), href: '/kanban', icon: Kanban },
   { name: t('nav.gmail'), href: '/gmail', icon: Mail },
   { name: t('nav.merchant'), href: '/merchant', icon: ShoppingBag },
   { name: t('nav.categoryExpenses'), href: '/category-expenses', icon: PieChart },
