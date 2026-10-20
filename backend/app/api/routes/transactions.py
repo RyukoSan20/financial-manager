@@ -240,21 +240,21 @@ def create_transaction(
     if account.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Cannot add transaction to another user's account")
     
-    # === ATOMIC BALANCE UPDATE ===
-    # Use database-level atomic operation to prevent race conditions
+    # === ATOMIC BALANCE UPDATE (only for approved transactions) ===
+    # Pending transactions don't affect balance until approved
     from sqlalchemy import text
-    delta = transaction.amount if transaction.type == "income" else -transaction.amount
-    
-    # Atomic update: balance = balance + delta
-    db.execute(
-        text("""
-            UPDATE accounts 
-            SET balance = balance + :delta,
-                updated_at = NOW()
-            WHERE id = :account_id
-        """),
-        {"delta": delta, "account_id": transaction.account_id}
-    )
+    if transaction.status == "approved":
+        delta = transaction.amount if transaction.type == "income" else -transaction.amount
+        # Atomic update: balance = balance + delta
+        db.execute(
+            text("""
+                UPDATE accounts 
+                SET balance = balance + :delta,
+                    updated_at = NOW()
+                WHERE id = :account_id
+            """),
+            {"delta": delta, "account_id": transaction.account_id}
+        )
     
     # Create transaction record
     db_transaction = Transaction(
@@ -272,7 +272,12 @@ def create_transaction(
         receipt_scan_id=transaction.receipt_scan_id,
         latitude=transaction.latitude,
         longitude=transaction.longitude,
+        location_name=transaction.location_name,
         client_request_id=transaction.client_request_id,
+        # Feed/Review Workflow fields
+        status=transaction.status,
+        source=transaction.source,
+        merchant_name=transaction.merchant_name,
     )
     
     db.add(db_transaction)

@@ -18,6 +18,10 @@ class TransactionBase(BaseModel):
     recurring_rule_id: Optional[int] = None
     detection_type: str = Field(default="MANUAL")  # MANUAL, OCR_RECEIPT, QRIS_TEXT, SMS_BANK
     receipt_scan_id: Optional[int] = None  # Link to receipt scan
+    # Feed/Review Workflow fields
+    status: str = Field(default="pending")  # pending, approved, rejected
+    source: str = Field(default="manual")  # camera_scan, email_forward, whatsapp, manual, ocr, api
+    merchant_name: Optional[str] = Field(None, max_length=100)
     # Location fields
     latitude: Optional[float] = None
     longitude: Optional[float] = None
