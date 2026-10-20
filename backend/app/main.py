@@ -186,7 +186,7 @@ def _run_schema_migrations():
                             position INTEGER DEFAULT 0,
                             marketplace VARCHAR(50),
                             product_url VARCHAR(500),
-                            category_id INTEGER REFERENCES categories(id),
+                            category_id INTEGER,  -- No FK constraint
                             tracking_number VARCHAR(64),
                             courier VARCHAR(32),
                             rating INTEGER,

@@ -40,8 +40,8 @@ class ShoppingItem(Base):
     marketplace = Column(String(50), nullable=True)  # shopee, tokopedia, dll
     product_url = Column(String(500), nullable=True)  # https only
     
-    # Category
-    category_id = Column(Integer, ForeignKey('categories.id'), nullable=True)
+    # Category (nullable, no FK constraint to avoid SQLAlchemy metadata issues)
+    category_id = Column(Integer, nullable=True)
     
     # Tracking (for shipped stage)
     tracking_number = Column(String(64), nullable=True)
