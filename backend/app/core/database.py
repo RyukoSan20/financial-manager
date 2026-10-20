@@ -11,12 +11,18 @@ connect_args = {}
 if settings.DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
+# Connection pool settings optimized for 1-4 workers
+# Calculation: workers × (pool_size + max_overflow) < max_connections (default 100)
+# For 2 workers: 2 × (10 + 15) = 50 < 100 ✅
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args=connect_args,
-    pool_pre_ping=True,  # Enable connection health checks
-    pool_size=5,
-    max_overflow=10,
+    pool_pre_ping=True,      # Check connection health before use
+    pool_size=10,            # Persistent connections
+    max_overflow=15,        # Additional connections when needed
+    pool_recycle=3600,      # Recycle connections every hour
+    pool_timeout=30,       # Wait max 30s for connection
+    echo=False,              # Set True for SQL debugging
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

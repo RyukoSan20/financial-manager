@@ -1,8 +1,10 @@
 """FastAPI main application."""
 
+from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from app.core.database import init_db, seed_categories
 from app.core.config import get_settings
 from app.api.routes import (
@@ -319,6 +321,37 @@ async def global_exception_handler(request, exc):
             "path": str(request.url),
         }
     )
+
+
+# Health check endpoints
+@app.get("/health")
+async def health_check():
+    """Liveness check - is the service running?"""
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+
+@app.get("/ready")
+async def readiness_check():
+    """Readiness check - is the service ready to accept traffic?"""
+    from app.core.database import engine
+    try:
+        # Check database connectivity
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {
+            "status": "ready",
+            "database": "connected",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not ready",
+                "database": "disconnected",
+                "error": str(e),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
 
 
 # Product Search - Price comparison via marketplace search

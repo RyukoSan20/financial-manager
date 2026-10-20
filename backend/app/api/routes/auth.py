@@ -327,7 +327,7 @@ def google_auth_url():
     return {"url": auth_url}
 
 
-@router.get("/auth/google/callback")
+@router.get("/google/callback")
 async def google_auth_callback(
     code: str = None,
     state: str = None,
