@@ -1,7 +1,7 @@
 """Category Hints API - User learning endpoints"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -191,7 +191,7 @@ async def record_batch(
 async def record_correction(
     token: str,
     correct_category_id: int,
-    wrong_category_id: int | None = None,
+    wrong_category_id: Optional[int] = None,
     current_user: User = Depends(get_current_user)
 ):
     """Record user correction (more valuable)."""

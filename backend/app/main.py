@@ -13,6 +13,8 @@ from app.api.routes import (
     transfers, recurring, goals, debts, analytics,
     auth, data, parser, ai_advisor, feed, shopping,
     category_hints, search,
+    shopping,
+    kanban_board,
     # scan_jobs disabled (OCR)
     exchange, market, finnhub, ninjas, market_intel, zap_ink,
     realtime_market, logs, merchant, webhooks, location
@@ -170,6 +172,61 @@ def _run_schema_migrations():
             except Exception as e:
                 print(f"[MIGRATION] budgets period_type: {e}")
 
+            # Migration: shopping_items_new table for Kanban Board
+            try:
+                if 'shopping_items_new' not in existing_tables:
+                    conn.execute(text("""
+                        CREATE TABLE shopping_items_new (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id INTEGER NOT NULL REFERENCES users(id),
+                            name VARCHAR(255) NOT NULL,
+                            quantity INTEGER DEFAULT 1,
+                            price INTEGER,
+                            stage VARCHAR(20) DEFAULT 'wishlist',
+                            position INTEGER DEFAULT 0,
+                            marketplace VARCHAR(50),
+                            product_url VARCHAR(500),
+                            category_id INTEGER REFERENCES categories(id),
+                            tracking_number VARCHAR(64),
+                            courier VARCHAR(32),
+                            rating INTEGER,
+                            notes VARCHAR(500),
+                            purchased_at TIMESTAMP,
+                            received_at TIMESTAMP,
+                            transaction_id INTEGER REFERENCES transactions(id),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """))
+                    conn.execute(text("CREATE INDEX ix_shopping_user_stage ON shopping_items_new(user_id, stage)"))
+                    conn.execute(text("CREATE INDEX ix_shopping_user_position ON shopping_items_new(user_id, position)"))
+                    conn.execute(text("CREATE INDEX ix_shopping_transaction ON shopping_items_new(transaction_id)"))
+                    conn.commit()
+                    print("[MIGRATION] Created shopping_items_new table")
+
+                # wishlist_items table
+                if 'wishlist_items' not in existing_tables:
+                    conn.execute(text("""
+                        CREATE TABLE wishlist_items (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id INTEGER NOT NULL REFERENCES users(id),
+                            name VARCHAR(255) NOT NULL,
+                            target_price INTEGER,
+                            marketplace VARCHAR(50),
+                            search_url VARCHAR(500),
+                            priority VARCHAR(20) DEFAULT 'medium',
+                            notes VARCHAR(500),
+                            shopping_item_id INTEGER,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """))
+                    conn.execute(text("CREATE INDEX ix_wishlist_user ON wishlist_items(user_id)"))
+                    conn.commit()
+                    print("[MIGRATION] Created wishlist_items table")
+            except Exception as e:
+                print(f"[MIGRATION] shopping_items: {e}")
+
     except Exception as e:
         print(f"[MIGRATION] Warning: {e}")
 
@@ -191,6 +248,8 @@ app.include_router(parser.router, prefix="/api/parser", tags=["Parser"])
 # app.include_router(scan_jobs.router, prefix="/api/scan-jobs", tags=["Scan Jobs"])  # OCR DISABLED
 app.include_router(ai_advisor.router, prefix="/api/ai", tags=["AI Advisor"])
 app.include_router(feed.router, prefix="/api/feed", tags=["Feed & Review"])
+app.include_router(shopping.router, prefix="/api/shopping", tags=["Shopping Board"])
+app.include_router(kanban_board.router, prefix="/api/kanban", tags=["Kanban Board"])
 app.include_router(exchange.router, prefix="/api/exchange")
 app.include_router(market.router, prefix="/api/market")
 app.include_router(finnhub.router, prefix="/api/finnhub")

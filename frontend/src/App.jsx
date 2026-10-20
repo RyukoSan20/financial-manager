@@ -23,6 +23,7 @@ import {
   MerchantMap,
   HealthCoach,
   ShoppingTracker,
+  ShoppingBoard,
   GmailIntegration,
   GmailCallback,
   AIAdvisor,
@@ -123,6 +124,7 @@ function App() {
               <Route path="advisor" element={<AIAdvisor />} />
               <Route path="health-coach" element={<HealthCoach />} />
               <Route path="shopping" element={<ShoppingTracker />} />
+              <Route path="shopping/board" element={<ShoppingBoard />} />
               <Route path="gmail" element={<GmailIntegration />} />
               <Route path="gmail/callback" element={<GmailCallback />} />
               <Route path="feed" element={<FeedPage />} />

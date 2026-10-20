@@ -17,6 +17,8 @@ from . import (
     parser,
     ai_advisor,
     feed,
+    shopping,
+    kanban_board,
     # scan_jobs disabled (OCR - too heavy)
     exchange,
     market,

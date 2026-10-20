@@ -1,0 +1,110 @@
+/* Gaya papan belanja. Semua warna lewat variabel --sb-*; petakan ke token tema aplikasimu. */
+.sb-page {
+  --sb-bg: #ffffff;
+  --sb-surface: #f6f7f9;
+  --sb-card: #ffffff;
+  --sb-border: #dfe3e8;
+  --sb-text: #1c2330;
+  --sb-muted: #5d6877;
+  --sb-accent: #1f6feb;
+  --sb-accent-ink: #ffffff;
+  --sb-danger: #b42318;
+  --sb-warn: #9a5b00;
+  --sb-drop: #e8f1ff;
+
+  color: var(--sb-text);
+  padding: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sb-page {
+    --sb-bg: #12161d;
+    --sb-surface: #1a2029;
+    --sb-card: #222a35;
+    --sb-border: #343e4c;
+    --sb-text: #e8ecf2;
+    --sb-muted: #a2adbb;
+    --sb-accent: #5b9dff;
+    --sb-accent-ink: #0b1220;
+    --sb-danger: #ff8a80;
+    --sb-warn: #f0b95a;
+    --sb-drop: #1e2f49;
+  }
+}
+
+.sb-page h1 { font-size: 1.5rem; margin: 0; }
+.sb-page h2 { font-size: 1.125rem; margin: 0 0 12px; }
+.sb-page h3 { font-size: 0.95rem; margin: 0; }
+
+.sb-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.sb-tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--sb-surface); border-radius: 10px; }
+.sb-tabs button { border: 0; background: transparent; color: var(--sb-muted); padding: 6px 14px; border-radius: 7px; cursor: pointer; font: inherit; }
+.sb-tabs button.is-active { background: var(--sb-card); color: var(--sb-text); box-shadow: 0 0 0 1px var(--sb-border); }
+
+.sb-page :focus-visible { outline: 2px solid var(--sb-accent); outline-offset: 2px; }
+
+.sb-filters { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.sb-inline { display: flex; gap: 8px; align-items: center; }
+
+.sb-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; font-size: 0.9rem; }
+.sb-filters .sb-field { margin-bottom: 0; }
+.sb-field > span { color: var(--sb-muted); }
+.sb-field small { color: var(--sb-muted); }
+.sb-page input, .sb-page select, .sb-page textarea {
+  font: inherit; color: var(--sb-text); background: var(--sb-card);
+  border: 1px solid var(--sb-border); border-radius: 8px; padding: 8px 10px; min-height: 40px;
+}
+.sb-check { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.sb-check input { min-height: 0; }
+
+.sb-btn { font: inherit; padding: 8px 14px; min-height: 40px; border-radius: 8px; border: 1px solid var(--sb-border); background: var(--sb-card); color: var(--sb-text); cursor: pointer; }
+.sb-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.sb-btn-primary { background: var(--sb-accent); border-color: var(--sb-accent); color: var(--sb-accent-ink); }
+
+/* Papan: kolom bisa digeser horizontal; di layar sempit tiap kolom "menempel" saat digeser. */
+.sb-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(250px, 1fr); gap: 12px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 8px; }
+.sb-col { scroll-snap-align: start; background: var(--sb-surface); border-radius: 14px; padding: 12px; min-height: 160px; border: 2px solid transparent; transition: background 0.12s, border-color 0.12s; }
+.sb-col.is-over { background: var(--sb-drop); border-color: var(--sb-accent); }
+.sb-col.is-blocked { opacity: 0.5; }
+.sb-col-head { display: flex; align-items: center; justify-content: space-between; }
+.sb-count { font-size: 0.8rem; color: var(--sb-muted); background: var(--sb-card); border-radius: 999px; padding: 1px 9px; }
+.sb-col-total { margin: 2px 0 10px; font-size: 0.85rem; color: var(--sb-muted); }
+.sb-col-body { display: flex; flex-direction: column; gap: 8px; }
+
+.sb-card { background: var(--sb-card); border: 1px solid var(--sb-border); border-radius: 9px; padding: 10px; cursor: grab; }
+.sb-card:active { cursor: grabbing; }
+.sb-card-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.sb-card-name { margin: 0; font-size: 0.95rem; font-weight: 500; overflow-wrap: anywhere; }
+.sb-card-amount { font-size: 0.9rem; white-space: nowrap; }
+.sb-card-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 6px 0; font-size: 0.8rem; color: var(--sb-muted); }
+.sb-card-meta a { color: var(--sb-accent); }
+.sb-chip { background: var(--sb-surface); border-radius: 999px; padding: 0 8px; }
+.sb-stars { color: var(--sb-warn); letter-spacing: 1px; }
+.sb-move { width: 100%; font-size: 0.85rem; min-height: 36px; }
+
+.sb-empty { color: var(--sb-muted); font-size: 0.9rem; margin: 8px 0; }
+.sb-error { color: var(--sb-danger); }
+.sb-warn { color: var(--sb-warn); }
+
+.sb-overlay { position: fixed; inset: 0; background: rgba(8, 12, 20, 0.55); display: flex; align-items: flex-end; justify-content: center; z-index: 50; }
+.sb-sheet { background: var(--sb-bg); color: var(--sb-text); width: min(480px, 100%); max-height: 92vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 20px; }
+@media (min-width: 640px) { .sb-overlay { align-items: center; } .sb-sheet { border-radius: 16px; } }
+.sb-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.sb-rating { display: flex; gap: 4px; }
+.sb-rating button { font-size: 1.5rem; line-height: 1; background: none; border: 0; color: var(--sb-border); cursor: pointer; padding: 4px; }
+.sb-rating button.is-on { color: var(--sb-warn); }
+
+.sb-report-range { display: flex; flex-wrap: wrap; gap: 12px; }
+.sb-total { font-size: 2rem; font-weight: 500; margin: 12px 0 0; }
+.sb-total-sub { color: var(--sb-muted); margin: 0 0 16px; }
+.sb-breakdown { margin-bottom: 20px; }
+.sb-breakdown ul { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 10px; }
+.sb-breakdown-row { display: flex; justify-content: space-between; gap: 12px; font-size: 0.9rem; }
+.sb-bar { height: 6px; border-radius: 3px; background: var(--sb-surface); margin-top: 4px; }
+.sb-bar > div { height: 100%; border-radius: 3px; background: var(--sb-accent); }
+
+.sb-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--sb-text); color: var(--sb-bg); padding: 10px 16px; border-radius: 10px; z-index: 60; }
+
+@media (prefers-reduced-motion: reduce) { .sb-col { transition: none; } }
