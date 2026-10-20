@@ -103,7 +103,7 @@ async def search_places(query: str, location: tuple = None, radius: int = 1000) 
                     results.append({
                         "name": place.get("display_name", "").split(",")[0],
                         "address": place.get("display_name", ""),
-                        "place_id": place.get("place_id"),
+                        "place_id": str(place.get("place_id", "")),
                         "location": {
                             "lat": float(place.get("lat", 0)),
                             "lng": float(place.get("lon", 0))
