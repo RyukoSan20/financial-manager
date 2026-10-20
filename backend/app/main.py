@@ -177,7 +177,7 @@ def _run_schema_migrations():
                 if 'shopping_items_new' not in existing_tables:
                     conn.execute(text("""
                         CREATE TABLE shopping_items_new (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            id SERIAL PRIMARY KEY,
                             user_id INTEGER NOT NULL REFERENCES users(id),
                             name VARCHAR(255) NOT NULL,
                             quantity INTEGER DEFAULT 1,
@@ -208,7 +208,7 @@ def _run_schema_migrations():
                 if 'wishlist_items' not in existing_tables:
                     conn.execute(text("""
                         CREATE TABLE wishlist_items (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            id SERIAL PRIMARY KEY,
                             user_id INTEGER NOT NULL REFERENCES users(id),
                             name VARCHAR(255) NOT NULL,
                             target_price INTEGER,
