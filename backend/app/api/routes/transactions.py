@@ -272,7 +272,6 @@ def create_transaction(
         receipt_scan_id=transaction.receipt_scan_id,
         latitude=transaction.latitude,
         longitude=transaction.longitude,
-        location_name=transaction.location_name,
         client_request_id=transaction.client_request_id,
         # Feed/Review Workflow fields
         status=transaction.status,

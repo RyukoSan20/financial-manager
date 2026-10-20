@@ -25,7 +25,6 @@ class TransactionBase(BaseModel):
     # Location fields
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    location_name: Optional[str] = None
 
 
 class TransactionCreate(TransactionBase):
