@@ -55,8 +55,10 @@ class ShoppingItem(Base):
     purchased_at = Column(DateTime, nullable=True)  # when marked as ordered
     received_at = Column(DateTime, nullable=True)  # when marked as received
     
-    # Link to expense transaction
-    transaction_id = Column(Integer, ForeignKey('transactions.id'), nullable=True)
+    # Link to expense transaction (nullable FK - will be set when item is converted)
+    # Note: transaction_id FK is nullable and not enforced at model level
+    # to avoid SQLAlchemy metadata issues
+    transaction_id = Column(Integer, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=func.now())
@@ -65,7 +67,6 @@ class ShoppingItem(Base):
     __table_args__ = (
         Index('ix_shopping_user_stage', 'user_id', 'stage'),
         Index('ix_shopping_user_position', 'user_id', 'position'),
-        Index('ix_shopping_transaction', 'transaction_id'),
     )
     
     def __repr__(self):

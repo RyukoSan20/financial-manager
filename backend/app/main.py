@@ -193,14 +193,13 @@ def _run_schema_migrations():
                             notes VARCHAR(500),
                             purchased_at TIMESTAMP,
                             received_at TIMESTAMP,
-                            transaction_id INTEGER REFERENCES transactions(id),
+                            transaction_id INTEGER,  -- No FK constraint to avoid circular dependency
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         )
                     """))
                     conn.execute(text("CREATE INDEX ix_shopping_user_stage ON shopping_items_new(user_id, stage)"))
                     conn.execute(text("CREATE INDEX ix_shopping_user_position ON shopping_items_new(user_id, position)"))
-                    conn.execute(text("CREATE INDEX ix_shopping_transaction ON shopping_items_new(transaction_id)"))
                     conn.commit()
                     print("[MIGRATION] Created shopping_items_new table")
 
