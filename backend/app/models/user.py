@@ -14,6 +14,8 @@ class User(Base):
     username = Column(String(100), unique=True, index=True, nullable=True)
     hashed_password = Column(String(255), nullable=True)  # Nullable for OAuth accounts
     full_name = Column(String(100), nullable=True)
+    phone = Column(String(30), nullable=True)
+    avatar_url = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
     is_guest = Column(Boolean, default=False)  # Guest user flag

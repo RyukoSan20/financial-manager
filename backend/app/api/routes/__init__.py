@@ -31,4 +31,6 @@ from . import (
     merchant,
     webhooks,
     location,
+    unified_market,
+    user_settings,
 )

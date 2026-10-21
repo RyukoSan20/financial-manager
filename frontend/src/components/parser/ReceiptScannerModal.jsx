@@ -12,6 +12,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
 import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles, X, RotateCcw, ZoomIn, FileImage, Smartphone, Monitor } from 'lucide-react';
 import api from '../../services/api';
+import { apiUrl as buildApiUrl } from '../../config/url';
 import { formatCurrency } from '../../utils/format';
 
 export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
@@ -168,12 +169,12 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
       // Try backend OCR endpoint
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://my-financial-manager.online';
+      const apiUrl = buildApiUrl('parser/parse-receipt');
       
       const formData = new FormData();
       formData.append('file', imageFile);
 
-      const uploadResponse = await fetch(`${apiUrl}/api/parse-receipt`, {
+      const uploadResponse = await fetch(apiUrl, {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,

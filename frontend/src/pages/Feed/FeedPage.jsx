@@ -203,7 +203,7 @@ const FeedPage = () => {
       red: isActive ? 'bg-red-500 text-white' : 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40',
       gray: isActive ? 'bg-gray-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
     };
-    return colors[tab.color] || colors.gray;
+    return colors[tabId.color] || colors.gray;
   };
 
   return (

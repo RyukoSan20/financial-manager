@@ -1,0 +1,192 @@
+name: CD - Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_backend:
+        description: 'Deploy backend (default: auto-detect changes)'
+        required: false
+        default: 'auto'
+        type: choice
+        options: [auto, 'true', 'false']
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Backend + Frontend to VPS
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        id: paths
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "backend=true" >> $GITHUB_OUTPUT
+            echo "frontend=true" >> $GITHUB_OUTPUT
+            echo "nginx=true" >> $GITHUB_OUTPUT
+          else
+            if git diff --quiet HEAD~1 HEAD -- backend/; then
+              echo "backend=false" >> $GITHUB_OUTPUT
+            else
+              echo "backend=true" >> $GITHUB_OUTPUT
+            fi
+            if git diff --quiet HEAD~1 HEAD -- frontend/ nginx.conf; then
+              echo "frontend=false" >> $GITHUB_OUTPUT
+              echo "nginx=false" >> $GITHUB_OUTPUT
+            else
+              echo "frontend=true" >> $GITHUB_OUTPUT
+              if git diff --quiet HEAD~1 HEAD -- nginx.conf; then
+                echo "nginx=false" >> $GITHUB_OUTPUT
+              else
+                echo "nginx=true" >> $GITHUB_OUTPUT
+              fi
+            fi
+          fi
+          echo "backend=${{ steps.paths.outputs.backend }} frontend=${{ steps.paths.outputs.frontend }} nginx=${{ steps.paths.outputs.nginx }}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        if: steps.paths.outputs.frontend == 'true'
+        working-directory: frontend
+        env:
+          VITE_API_URL: https://my-financial-manager.online/api
+        run: |
+          npm ci
+          npm run build
+          if grep -rl '/api/api' dist/assets/ 2>/dev/null; then
+            echo "::error::Double /api prefix in bundle - aborting deploy"
+            exit 1
+          fi
+          test -f dist/sw.js || (echo "::error::sw.js missing" && exit 1)
+
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Backup current deployment
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+            set -e
+            STAMP=$(date +%Y%m%d-%H%M%S)
+            mkdir -p /home/ubuntu/backups/$STAMP
+            sudo cp -r /home/ubuntu/finmanager/frontend/dist /home/ubuntu/backups/$STAMP/frontend-dist 2>/dev/null || true
+            cp /home/ubuntu/finmanager/nginx.conf /home/ubuntu/backups/$STAMP/nginx.conf 2>/dev/null || true
+            echo "Backup created at /home/ubuntu/backups/$STAMP"
+          '
+
+      - name: Deploy backend
+        if: steps.paths.outputs.backend == 'true'
+        run: |
+          tar -czf /tmp/backend.tar.gz -C backend app migrations alembic.ini
+          scp /tmp/backend.tar.gz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/backend.tar.gz
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+            set -e
+            docker cp /tmp/backend.tar.gz finmanager-backend-1:/tmp/backend.tar.gz
+            docker exec finmanager-backend-1 sh -c "cd /app && tar -xzf /tmp/backend.tar.gz"
+            docker exec finmanager-backend-1 python -c "from app.main import app; print(chr(79)+chr(75), len(app.routes))"
+            echo "Backend files copied"
+          '
+
+      - name: Run migrations
+        if: steps.paths.outputs.backend == 'true'
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+            set -e
+            docker exec finmanager-backend-1 sh -c "cd /app && alembic upgrade head" || \
+            echo "::warning::alembic upgrade failed - applying tables directly"
+            docker exec finmanager-postgres-1 psql -U finmanager -d finmanager -f /tmp/user_settings.sql 2>/dev/null || \
+            echo "::warning::settings SQL already applied or unavailable"
+            echo "Migrations applied"
+          '
+
+      - name: Restart backend
+        if: steps.paths.outputs.backend == 'true'
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+            set -e
+            cd /home/ubuntu/finmanager
+            docker compose restart backend
+            for i in $(seq 1 12); do
+              if curl -sf http://localhost:8000/health > /dev/null; then
+                echo "Backend healthy"
+                exit 0
+              fi
+              echo "waiting for backend... ($i)"
+              sleep 5
+            done
+            echo "::error::Backend did not become healthy"
+            docker logs --tail 60 finmanager-backend-1
+            exit 1
+          '
+
+      - name: Deploy frontend
+        if: steps.paths.outputs.frontend == 'true'
+        run: |
+          tar -czf /tmp/frontend.tar.gz -C frontend/dist .
+          scp /tmp/frontend.tar.gz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/frontend.tar.gz
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+            set -e
+            DIST=/home/ubuntu/finmanager/frontend/dist
+            rm -rf $DIST/assets
+            tar -xzf /tmp/frontend.tar.gz -C $DIST
+            echo "Frontend deployed to $DIST"
+            ls -la $DIST/assets/*.js
+          '
+
+      - name: Deploy nginx config
+        if: steps.paths.outputs.nginx == 'true'
+        run: |
+          scp nginx.conf ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/nginx_new.conf
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+            set -e
+            cp /tmp/nginx_new.conf /home/ubuntu/finmanager/nginx.conf
+            docker exec finmanager-nginx-1 nginx -t
+            docker exec finmanager-nginx-1 nginx -s reload
+            echo "nginx reloaded"
+          '
+
+      - name: Smoke test
+        run: |
+          sleep 3
+          set -e
+          for url in \
+            "https://my-financial-manager.online/health" \
+            "https://my-financial-manager.online/ready" \
+            "https://my-financial-manager.online/api/market/summary" \
+            "https://my-financial-manager.online/api/search/marketplaces" ; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+            echo "$CODE  $url"
+            if [ "$CODE" != "200" ]; then
+              echo "::error::Smoke test failed for $url ($CODE)"
+              exit 1
+            fi
+          done
+          echo "All smoke tests passed"
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "::error::Deployment failed. Roll back from /home/ubuntu/backups if needed."

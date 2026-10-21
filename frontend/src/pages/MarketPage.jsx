@@ -7,6 +7,7 @@ import {
   Sun, Moon, ChevronUp, ChevronDown, Play, ExternalLink
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
+import { apiUrl } from '../config/url';
 
 // Dark Mode Toggle Component
 const ThemeToggle = ({ isDark, onToggle }) => (
@@ -83,59 +84,24 @@ export const MarketPage = () => {
   // Toggle dark mode
   const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
 
-  // Fetch all real-time market data
+  // Fetch all real-time market data from unified API
   const fetchMarketData = useCallback(async () => {
     setLoading(true);
     try {
-      // Strip /api from VITE_API_URL then call /api/market/summary
-      const apiBase = (import.meta.env.VITE_API_URL || 'https://my-financial-manager.online/api').replace(/\/api$/, '');
-      const resp = await fetch(`${apiBase}/api/market/summary`);
+      // Use unified real-time API (Yahoo Finance - no cache)
+      const resp = await fetch(apiUrl('market/summary'));
       const raw = await resp.json();
 
       // Transform backend response to match frontend expected structure
       const data = {
         updated: raw.updated,
-        idx_stocks: {
-          total: raw.stocks?.stocks?.length || 0,
-          quotes: (raw.stocks?.stocks || []).map(s => ({
-            symbol: s.symbol,
-            name: s.name,
-            price: s.price,
-            change_percent: s.change,
-            volume: s.volume,
-          })),
-        },
-        us_stocks: { total: 0, quotes: [] },
-        crypto: {
-          total: raw.crypto?.prices?.length || 0,
-          quotes: (raw.crypto?.prices || []).map(c => ({
-            symbol: c.symbol,
-            name: c.name,
-            price: c.price,
-            change_percent_24h: c.change_24h,
-            volume_24h: c.volume_24h,
-            image: c.image,
-          })),
-        },
-        forex: {
-          total: Object.keys(raw.forex?.rates || {}).length,
-          quotes: Object.entries(raw.forex?.rates || {}).map(([pair, rate]) => ({
-            pair,
-            price: rate,
-            change_percent: 0,
-          })),
-        },
-        commodities: {
-          total: raw.commodities?.prices?.length || 0,
-          quotes: (raw.commodities?.prices || []).map(c => ({
-            symbol: c.symbol,
-            name: c.name,
-            price: c.price,
-            change_percent: c.change_24h,
-            unit: c.unit,
-            type: c.type,
-          })),
-        },
+        source: raw.source,
+        indices: raw.indices || [],
+        idx_stocks: raw.idx_stocks || { total: 0, quotes: [] },
+        us_stocks: raw.us_stocks || { total: 0, quotes: [] },
+        crypto: raw.crypto || { total: 0, quotes: [] },
+        forex: raw.forex || { total: 0, quotes: [] },
+        commodities: raw.commodities || { total: 0, quotes: [] },
       };
       setMarketData(data);
     } catch (err) {
@@ -350,8 +316,8 @@ export const MarketPage = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {/* Stats Cards with Global Indices */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
         <Card className={`${bgCard} border ${borderColor} p-4`}>
           <div className="flex items-center gap-3">
             <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100'}`}>
@@ -396,7 +362,36 @@ export const MarketPage = () => {
             </div>
           </div>
         </Card>
+        <Card className={`${bgCard} border ${borderColor} p-4`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-orange-900/50' : 'bg-orange-100'}`}>
+              <Globe className={`w-6 h-6 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />
+            </div>
+            <div>
+              <p className={`text-sm ${textSecondary}`}>Indices</p>
+              <p className={`text-2xl font-bold ${textPrimary}`}>{marketData?.indices?.length || 0}</p>
+            </div>
+          </div>
+        </Card>
       </div>
+
+      {/* Global Indices Header */}
+      {viewMode === 'realtime' && marketData?.indices && marketData.indices.length > 0 && (
+        <Card className={`${bgCard} border ${borderColor} p-4 mb-6`}>
+          <h3 className={`font-semibold mb-3 ${textPrimary}`}>🌏 Global Indices</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+            {marketData.indices.map((idx) => (
+              <div key={idx.symbol} className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                <p className={`text-xs ${textSecondary} font-medium`}>{idx.name}</p>
+                <p className={`text-lg font-bold ${textPrimary}`}>{idx.price?.toLocaleString()}</p>
+                <p className={`text-xs font-medium ${idx.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {idx.change_percent >= 0 ? '+' : ''}{idx.change_percent?.toFixed(2)}%
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Realtime Chart View */}
       {viewMode === 'realtime' && (
@@ -435,6 +430,32 @@ export const MarketPage = () => {
 
           {/* Quick Market Overview */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {/* IHSG Main Card */}
+            {(() => {
+              const ihsg = marketData?.indices?.find(i => i.name === 'IHSG');
+              return ihsg ? (
+                <div className={`col-span-2 p-4 rounded-xl border transition-all hover:shadow-lg ${isDarkMode ? 'bg-gradient-to-br from-blue-900/80 to-indigo-900/80 border-blue-700' : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className={`text-sm font-medium ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>🇮🇩 IHSG</p>
+                      <p className={`text-3xl font-bold ${textPrimary}`}>{ihsg.price?.toLocaleString()}</p>
+                      <p className={`text-sm font-semibold ${ihsg.change_percent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {ihsg.change >= 0 ? '+' : ''}{ihsg.change?.toFixed(2)} ({ihsg.change_percent >= 0 ? '+' : ''}{ihsg.change_percent?.toFixed(2)}%)
+                      </p>
+                    </div>
+                    <div className={`text-4xl ${ihsg.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {ihsg.change_percent >= 0 ? '📈' : '📉'}
+                    </div>
+                  </div>
+                  <div className={`mt-2 flex gap-4 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <span>Open: {ihsg.open?.toLocaleString()}</span>
+                    <span>High: {ihsg.high?.toLocaleString()}</span>
+                    <span>Low: {ihsg.low?.toLocaleString()}</span>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+            
             {[
               { name: 'USD/IDR', value: marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.price?.toFixed(0) || '-', change: marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.change_percent?.toFixed(2) + '%' || '-', positive: (marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.change_percent || 0) >= 0 },
               { name: 'BTC/USD', value: '$' + (marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.price?.toLocaleString() || '-'), change: (marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.change_percent_24h?.toFixed(2) || '-') + '%', positive: (marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.change_percent_24h || 0) >= 0 },
@@ -553,9 +574,11 @@ export const MarketPage = () => {
                     <tr>
                       <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>Saham</th>
                       <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Harga</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Open</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>High</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Low</th>
                       <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Change</th>
                       <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Volume</th>
-                      <th className={`px-4 py-3 text-center text-sm font-semibold ${textSecondary}`}>Sektor</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -566,11 +589,13 @@ export const MarketPage = () => {
                           <div className={`text-xs ${textMuted}`}>{stock.name}</div>
                         </td>
                         <td className={`px-4 py-3 text-right font-mono font-semibold ${textPrimary}`}>{formatPrice(stock.price)}</td>
+                        <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>{stock.open > 0 ? formatPrice(stock.open) : '-'}</td>
+                        <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>{stock.high > 0 ? formatPrice(stock.high) : '-'}</td>
+                        <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>{stock.low > 0 ? formatPrice(stock.low) : '-'}</td>
                         <td className={`px-4 py-3 text-right font-mono font-semibold ${stock.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                           {stock.change_percent >= 0 ? '+' : ''}{stock.change_percent?.toFixed(2)}%
                         </td>
                         <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>{formatVolume(stock.volume)}</td>
-                        <td className={`px-4 py-3 text-center`}><Badge variant="outline">{stock.sector}</Badge></td>
                       </tr>
                     ))}
                   </tbody>

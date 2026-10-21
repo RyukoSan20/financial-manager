@@ -1,28 +1,71 @@
-// Notifications Settings Page
-import { useState, useEffect } from 'react';
+// Notifications Settings Page - backed by GET/PUT /api/settings/notifications
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '../../services/api';
+
+const DEFAULTS = {
+  email_notifications: true,
+  push_notifications: true,
+  transaction_alerts: true,
+  budget_alerts: true,
+  weekly_summary: true,
+  monthly_summary: false,
+  reminder_frequency: 'weekly',
+  reminder_days_before: 3
+};
 
 const NotificationSettings = () => {
-  const [settings, setSettings] = useState({
-    email_notifications: true,
-    push_notifications: true,
-    transaction_alerts: true,
-    budget_alerts: true,
-    weekly_summary: true,
-    monthly_summary: false,
-    reminder_frequency: 'weekly'
-  });
+  const [settings, setSettings] = useState(DEFAULTS);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const data = await api.request('/settings/notifications');
+      setSettings({ ...DEFAULTS, ...(data || {}) });
+    } catch (e) {
+      console.error('Load notification settings error:', e);
+      setError(e.message || 'Gagal memuat pengaturan notifikasi');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleToggle = (key) => {
-    setSettings({ ...settings, [key]: !settings[key] });
+    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleSave = async () => {
     setSaving(true);
-    // Save to backend
-    await new Promise(r => setTimeout(r, 500));
-    setSaving(false);
+    setError('');
+    setMessage('');
+    try {
+      await api.request('/settings/notifications', {
+        method: 'PUT',
+        body: JSON.stringify(settings)
+      });
+      setMessage('Pengaturan notifikasi disimpan!');
+      await load();
+      setTimeout(() => setMessage(''), 3000);
+    } catch (e) {
+      setError(e.message || 'Gagal menyimpan pengaturan notifikasi');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">Memuat...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -31,9 +74,16 @@ const NotificationSettings = () => {
       </div>
 
       <div className="p-4 max-w-lg mx-auto space-y-4">
+        {message && (
+          <div className="p-3 bg-green-100 text-green-700 rounded-lg">{message}</div>
+        )}
+        {error && (
+          <div className="p-3 bg-red-100 text-red-700 rounded-lg">{error}</div>
+        )}
+
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <h2 className="font-bold text-lg mb-4">Pengaturan Notifikasi</h2>
-          
+
           <div className="space-y-4">
             <ToggleItem
               title="Notifikasi Email"
@@ -41,7 +91,7 @@ const NotificationSettings = () => {
               checked={settings.email_notifications}
               onChange={() => handleToggle('email_notifications')}
             />
-            
+
             <ToggleItem
               title="Push Notification"
               description="Terima notifikasi di browser"
@@ -53,7 +103,7 @@ const NotificationSettings = () => {
 
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <h2 className="font-bold text-lg mb-4">Alert & Reminder</h2>
-          
+
           <div className="space-y-4">
             <ToggleItem
               title="Alert Transaksi"
@@ -61,21 +111,21 @@ const NotificationSettings = () => {
               checked={settings.transaction_alerts}
               onChange={() => handleToggle('transaction_alerts')}
             />
-            
+
             <ToggleItem
               title="Alert Budget"
               description="Peringatan saat budget hampir habis"
               checked={settings.budget_alerts}
               onChange={() => handleToggle('budget_alerts')}
             />
-            
+
             <div className="pt-4 border-t">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Frekuensi Reminder
               </label>
               <select
                 value={settings.reminder_frequency}
-                onChange={(e) => setSettings({...settings, reminder_frequency: e.target.value})}
+                onChange={(e) => setSettings({ ...settings, reminder_frequency: e.target.value })}
                 className="w-full p-3 border rounded-lg"
               >
                 <option value="daily">Harian</option>
@@ -83,12 +133,28 @@ const NotificationSettings = () => {
                 <option value="monthly">Bulanan</option>
               </select>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ingatkan berapa hari sebelumnya
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="30"
+                value={settings.reminder_days_before}
+                onChange={(e) =>
+                  setSettings({ ...settings, reminder_days_before: Number(e.target.value) || 0 })
+                }
+                className="w-full p-3 border rounded-lg"
+              />
+            </div>
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <h2 className="font-bold text-lg mb-4">Laporan</h2>
-          
+
           <div className="space-y-4">
             <ToggleItem
               title="Ringkasan Mingguan"
@@ -96,7 +162,7 @@ const NotificationSettings = () => {
               checked={settings.weekly_summary}
               onChange={() => handleToggle('weekly_summary')}
             />
-            
+
             <ToggleItem
               title="Ringkasan Bulanan"
               description="Kirim ringkasan setiap bulan"
@@ -126,6 +192,7 @@ const ToggleItem = ({ title, description, checked, onChange }) => (
     </div>
     <button
       onClick={onChange}
+      aria-pressed={checked}
       className={`w-12 h-7 rounded-full transition-colors ${
         checked ? 'bg-blue-500' : 'bg-gray-300'
       }`}

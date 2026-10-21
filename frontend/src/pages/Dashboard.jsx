@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatNumber, formatPercent } from '../utils/format';
 import api, { API_BASE_URL } from '../services/api';
+import { siteUrl } from '../config/url';
 import { useTranslation } from '../i18n';
 import AIAssistant from '../components/common/AIAssistant';
 
@@ -339,7 +340,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // Fetch market data from realtime API
   const fetchMarketData = useCallback(async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://my-financial-manager.online'}/realtime/summary`);
+      const response = await fetch(siteUrl('/realtime/summary'));
       const data = await response.json();
       setMarketData(data);
       setRealtimeUpdate(new Date());

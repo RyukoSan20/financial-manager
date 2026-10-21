@@ -84,6 +84,8 @@ class GoogleAuthRequest(BaseModel):
 class UpdateProfileRequest(BaseModel):
     username: Optional[str] = None
     full_name: Optional[str] = None
+    phone: Optional[str] = None
+    avatar_url: Optional[str] = None
     default_currency: Optional[str] = None
     timezone: Optional[str] = None
 
@@ -502,6 +504,8 @@ def get_me(current_user: User = Depends(get_current_user)):
         "email": current_user.email,
         "username": current_user.username,
         "full_name": current_user.full_name,
+        "phone": getattr(current_user, 'phone', None),
+        "avatar_url": getattr(current_user, 'avatar_url', None) or getattr(current_user, 'google_picture', None),
         "is_active": current_user.is_active,
         "is_guest": getattr(current_user, 'is_guest', False),
         "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
@@ -527,19 +531,25 @@ def update_profile(
     
     if request.full_name is not None:
         current_user.full_name = request.full_name
+    if request.phone is not None:
+        current_user.phone = request.phone
+    if request.avatar_url is not None:
+        current_user.avatar_url = request.avatar_url
     if request.default_currency is not None:
         current_user.default_currency = request.default_currency
     if request.timezone is not None:
         current_user.timezone = request.timezone
-    
+
     db.commit()
     db.refresh(current_user)
-    
+
     return {
         "id": current_user.id,
         "email": current_user.email,
         "username": current_user.username,
         "full_name": current_user.full_name,
+        "phone": current_user.phone,
+        "avatar_url": current_user.avatar_url,
     }
 
 
@@ -661,7 +671,7 @@ class UserSettingsResponse(BaseModel):
     timezone: str = "Asia/Jakarta"
 
 
-@router.get("/settings", response_model=UserSettingsResponse)
+@router.get("/settings/preferences", response_model=UserSettingsResponse)
 def get_user_settings(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

@@ -2,16 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase } from '../lib/supabase';
-
-// Use VITE_API_URL env var, fallback to VPS
-const getApiUrl = () => {
-  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-  // Default to VPS for production
-  return 'https://my-financial-manager.online';
-};
-const API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || 'https://my-financial-manager.online';
+import { apiUrl } from '../config/url';
 
 export const AuthCallback = () => {
   const [error, setError] = useState('');
@@ -41,7 +32,7 @@ export const AuthCallback = () => {
         
         // Fetch user info
         try {
-          const userRes = await fetch(`${getApiUrl()}/api/me`, {
+          const userRes = await fetch(apiUrl('me'), {
             headers: { 'Authorization': `Bearer ${backendToken}` }
           });
           if (userRes.ok) {
@@ -69,7 +60,7 @@ export const AuthCallback = () => {
 
       if (data.session) {
         const user = data.session.user;
-        const response = await fetch(`${getApiUrl()}/api/supabase-exchange`, {
+        const response = await fetch(apiUrl('supabase-exchange'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

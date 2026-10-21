@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner } from '../components/ui';
 import api from '../services/api';
+import { apiUrl as buildApiUrl } from '../config/url';
 import { Plus, Repeat, RefreshCw, Trash2, Edit2, Calendar, Clock, Play, Pause } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import { showNotification } from '../components/notifications/NotificationHelper';
@@ -53,9 +54,9 @@ export const Recurring = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
-      const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://my-financial-manager.online';
-      
-      const response = await fetch(`${apiUrl}/api/cron/process-recurring`, { 
+      const apiUrl = buildApiUrl('cron/process-recurring');
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : { 'Content-Type': 'application/json' },
       });

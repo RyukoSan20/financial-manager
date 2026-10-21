@@ -17,7 +17,8 @@ from app.api.routes import (
     kanban_board,
     # scan_jobs disabled (OCR)
     exchange, market, finnhub, ninjas, market_intel, zap_ink,
-    realtime_market, logs, merchant, webhooks, location
+    realtime_market, logs, merchant, webhooks, location,
+    unified_market, user_settings
 )
 
 # Import models to register with SQLAlchemy
@@ -251,6 +252,7 @@ app.include_router(shopping.router, prefix="/api/shopping", tags=["Shopping Boar
 app.include_router(kanban_board.router, prefix="/api/kanban", tags=["Kanban Board"])
 app.include_router(exchange.router, prefix="/api/exchange")
 app.include_router(market.router, prefix="/api/market")
+app.include_router(unified_market.router, prefix="/api/market")  # Unified real-time market API
 app.include_router(finnhub.router, prefix="/api/finnhub")
 app.include_router(ninjas.router, prefix="")
 app.include_router(market_intel.router, prefix="")
@@ -311,6 +313,9 @@ except ImportError as e:
 
 # Category Hints - User Learning
 app.include_router(category_hints.router, tags=["Category Hints"])
+
+# User Settings - App prefs, notifications, support requests
+app.include_router(user_settings.router, tags=["Settings"])
 
 # Recurring auto-generator cron endpoint (for Railway cron)
 from app.services.recurring_generator import process_due_recurring_rules
