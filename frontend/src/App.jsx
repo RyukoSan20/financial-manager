@@ -32,6 +32,10 @@ import {
   MerchantManager,
   ShoppingPage
 } from './pages';
+import ProfileSettings from './pages/Settings/ProfileSettings';
+import NotificationSettings from './pages/Settings/NotificationSettings';
+import AppSettings from './pages/Settings/AppSettings';
+import HelpSupport from './pages/Settings/HelpSupport';
 import { AuthCallback } from './pages/AuthCallback';
 
 // Auth Guard Component
@@ -132,6 +136,10 @@ function App() {
               <Route path="kanban" element={<ShoppingPage />} />
               <Route path="market" element={<MarketPage />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="settings/profile" element={<ProfileSettings />} />
+              <Route path="settings/notifications" element={<NotificationSettings />} />
+              <Route path="settings/app" element={<AppSettings />} />
+              <Route path="help" element={<HelpSupport />} />
               <Route path="more" element={<MorePage />} />
             </Route>
             

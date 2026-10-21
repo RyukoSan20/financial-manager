@@ -425,9 +425,9 @@ const MorePage = () => {
     { icon: ShoppingCart, label: 'Shopping', href: '/shopping', color: 'bg-purple-100 text-purple-600', desc: 'Track prices & wishlist' },
     { icon: Mail, label: 'Gmail Sync', href: '/gmail', color: 'bg-orange-100 text-orange-600', desc: 'Auto-import from email' },
     { icon: Sparkles, label: 'AI Advisor', href: '/advisor', color: 'bg-cyan-100 text-cyan-600', desc: 'AI-powered financial advice' },
-    { icon: User, label: 'Profile', href: '/profile', color: 'bg-indigo-100 text-indigo-600', desc: 'Account settings' },
-    { icon: Bell, label: 'Notifications', href: '/notifications', color: 'bg-yellow-100 text-yellow-600', desc: 'Alerts & reminders' },
-    { icon: Settings, label: 'Settings', href: '/settings', color: 'bg-gray-100 text-gray-600', desc: 'App configuration' },
+    { icon: User, label: 'Profile', href: '/settings/profile', color: 'bg-indigo-100 text-indigo-600', desc: 'Account settings' },
+    { icon: Bell, label: 'Notifications', href: '/settings/notifications', color: 'bg-yellow-100 text-yellow-600', desc: 'Alerts & reminders' },
+    { icon: Settings, label: 'Settings', href: '/settings/app', color: 'bg-gray-100 text-gray-600', desc: 'App configuration' },
     { icon: HelpCircle, label: 'Help & Support', href: '/help', color: 'bg-teal-100 text-teal-600', desc: 'FAQs & contact' },
   ];
 

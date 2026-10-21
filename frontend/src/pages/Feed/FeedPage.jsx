@@ -275,22 +275,27 @@ const FeedPage = () => {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 flex-wrap">
-        {tabs.map(tab => {
+        {['pending', 'approved', 'rejected', 'all'].map(tabId => {
+          const tab = tabs.find(t => t.id === tabId);
+          if (!tab) return null;
           const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          const count = getTabCount(tab.id);
+          const isActive = activeTab === tabId;
+          const count = getTabCount(tabId);
           
           return (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${getTabColorClasses(tab.id, isActive)}`}
+              key={tabId}
+              onClick={() => setActiveTab(tabId)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${getTabColorClasses(tabId, isActive)}`}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
               {count !== null && count > 0 && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                  tab.color === 'yellow' ? 'bg-yellow-200 text-yellow-800' : ''
+                  tab.color === 'yellow' ? 'bg-yellow-200 text-yellow-800' :
+                  tab.color === 'green' ? 'bg-green-200 text-green-800' :
+                  tab.color === 'red' ? 'bg-red-200 text-red-800' :
+                  'bg-gray-200 text-gray-800'
                 }`}>
                   {count}
                 </span>
