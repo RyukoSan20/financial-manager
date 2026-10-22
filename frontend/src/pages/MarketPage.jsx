@@ -4,7 +4,7 @@ import {
   TrendingUp, TrendingDown, RefreshCw, BarChart3,
   Search, BookOpen, PieChart, Activity, DollarSign,
   ArrowUpRight, ArrowDownRight, Globe, Bitcoin, Gem, Landmark,
-  Sun, Moon, ChevronUp, ChevronDown, Play, ExternalLink
+  Sun, Moon, ChevronUp, ChevronDown, Play, ExternalLink, AlertTriangle
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
 import { apiUrl } from '../config/url';
@@ -65,6 +65,7 @@ export const MarketPage = () => {
 
   const [loading, setLoading] = useState(true);
   const [marketData, setMarketData] = useState(null);
+  const [marketError, setMarketError] = useState(null);
   const [selectedSymbol, setSelectedSymbol] = useState('FX_IDC:USDIDR');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('realtime'); // realtime, table, learn
@@ -88,14 +89,30 @@ export const MarketPage = () => {
   const fetchMarketData = useCallback(async () => {
     setLoading(true);
     try {
-      // Use unified real-time API (Yahoo Finance - no cache)
-      const resp = await fetch(apiUrl('market/summary'));
+      // Use unified real-time API (TradingView - no cache)
+      const resp = await fetch(apiUrl('market/summary'), {
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store',
+      });
+
+      // The server may answer with an HTML error page (nginx 502/504) instead
+      // of JSON. Parsing that throws "Unexpected token '<'" and blanks the
+      // page, so guard the content type first and surface a real error.
+      const contentType = resp.headers.get('content-type') || '';
+      if (!resp.ok) {
+        throw new Error(`Market API ${resp.status} ${resp.statusText}`);
+      }
+      if (!contentType.includes('application/json')) {
+        throw new Error(`Market API returned ${contentType || 'unknown content type'}`);
+      }
+
       const raw = await resp.json();
 
       // Transform backend response to match frontend expected structure
       const data = {
         updated: raw.updated,
         source: raw.source,
+        error: raw.error || null,
         indices: raw.indices || [],
         idx_stocks: raw.idx_stocks || { total: 0, quotes: [] },
         us_stocks: raw.us_stocks || { total: 0, quotes: [] },
@@ -104,8 +121,10 @@ export const MarketPage = () => {
         commodities: raw.commodities || { total: 0, quotes: [] },
       };
       setMarketData(data);
+      setMarketError(null);
     } catch (err) {
       console.error('Failed to fetch market data:', err);
+      setMarketError(err?.message || 'Gagal memuat data pasar');
     } finally {
       setLoading(false);
     }
@@ -271,6 +290,23 @@ export const MarketPage = () => {
 
   return (
     <div className={`min-h-screen ${bgPrimary} ${textPrimary} p-4 md:p-6`}>
+      {/* Market data error banner */}
+      {marketError && (
+        <div className="mb-4 px-4 py-3 rounded-lg border border-red-500/40 bg-red-500/10 text-red-300 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span className="text-sm">
+              Gagal memuat data pasar: {marketError}. Menampilkan data terakhir yang tersedia.
+            </span>
+          </div>
+          <button
+            onClick={fetchMarketData}
+            className="text-sm underline hover:no-underline shrink-0"
+          >
+            Coba lagi
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className={`flex flex-wrap justify-between items-center gap-4 mb-6`}>
         <div>
@@ -279,7 +315,7 @@ export const MarketPage = () => {
             {marketData?.updated ? `Updated: ${new Date(marketData.updated).toLocaleTimeString()}` : ''}
             <span className="ml-2 text-green-500 flex items-center gap-1">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              Real-Time
+              {marketData?.source || 'Real-Time'}
             </span>
           </p>
         </div>

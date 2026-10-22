@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatNumber, formatPercent } from '../utils/format';
 import api, { API_BASE_URL } from '../services/api';
-import { siteUrl } from '../config/url';
+import { apiUrl } from '../config/url';
 import { useTranslation } from '../i18n';
 import AIAssistant from '../components/common/AIAssistant';
 
@@ -337,10 +337,24 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // DATA FETCHING FUNCTIONS
   // ==========================================================================
   
-  // Fetch market data from realtime API
+  // Fetch market data from the unified market API.
+  // Previously this called /realtime/summary, which is backed by Yahoo Finance.
+  // Yahoo returns HTTP 429 for datacenter IPs, so that endpoint served empty
+  // quote lists (and fell through to the SPA fallback returning HTML).
+  // The unified endpoint uses TradingView, which is reachable and live.
   const fetchMarketData = useCallback(async () => {
     try {
-      const response = await fetch(siteUrl('/realtime/summary'));
+      const response = await fetch(apiUrl('market/summary'), {
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store',
+      });
+      const contentType = response.headers.get('content-type') || '';
+      if (!response.ok) {
+        throw new Error(`Market API ${response.status}`);
+      }
+      if (!contentType.includes('application/json')) {
+        throw new Error(`Market API returned ${contentType || 'unknown content type'}`);
+      }
       const data = await response.json();
       setMarketData(data);
       setRealtimeUpdate(new Date());

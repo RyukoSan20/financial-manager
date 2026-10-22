@@ -251,8 +251,12 @@ app.include_router(feed.router, prefix="/api/feed", tags=["Feed & Review"])
 app.include_router(shopping.router, prefix="/api/shopping", tags=["Shopping Board"])
 app.include_router(kanban_board.router, prefix="/api/kanban", tags=["Kanban Board"])
 app.include_router(exchange.router, prefix="/api/exchange")
+# unified_market MUST be registered before market so its real-time handlers win
+# on the shared paths (/summary, /crypto, /commodities). FastAPI matches the
+# first registered route, and market.py only serves the legacy Yahoo-based
+# implementation which returns HTTP 429 from datacenter IPs.
+app.include_router(unified_market.router, prefix="/api/market")
 app.include_router(market.router, prefix="/api/market")
-app.include_router(unified_market.router, prefix="/api/market")  # Unified real-time market API
 app.include_router(finnhub.router, prefix="/api/finnhub")
 app.include_router(ninjas.router, prefix="")
 app.include_router(market_intel.router, prefix="")
