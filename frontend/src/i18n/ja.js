@@ -314,4 +314,28 @@ export default {
     delete_account: "アカウントを削除",
     logout: "ログアウト",
   },
+
+  // Profile Summary
+  profile: {
+    summary_title: "プロフィール概要",
+    summary_subtitle: "身分情報とアクティビティ履歴",
+    identity: "プロフィール情報",
+    history: "アクティビティ履歴",
+    member_since: "登録日",
+    last_login: "最終ログイン",
+    login_history: "ログイン履歴",
+    recent_transactions: "最近の取引",
+    total_income: "総収入",
+    total_expense: "総支出",
+    account_balance: "口座残高",
+    total_transactions: "取引件数",
+    active_streak: "連続アクティブ",
+    active_days: "アクティブ日数",
+    no_activity: "過去30日間の取引アクティビティはありません。",
+    open_profile: "プロフィール概要を開く",
+    edit_profile: "プロフィールとアカウント情報を編集",
+    transactions: "取引",
+    days_active: "アクティブ日",
+    day_streak: "日",
+  },
 };

@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Modal, Button } from '../ui';
-import { Camera, X, Flashlight, SwitchCamera, Loader2 } from 'lucide-react';
+import { Camera, X, Flashlight, SwitchCamera, Loader2, AlertTriangle } from 'lucide-react';
 
 export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
   const [scanning, setScanning] = useState(false);
@@ -10,128 +10,170 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
   const [cameras, setCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [Html5Qrcode, setHtml5Qrcode] = useState(null);
-  
+  const [loading, setLoading] = useState(false);
+
   const scannerRef = useRef(null);
+  // Guards against calling stop() on a scanner that is not running.
+  // html5-qrcode throws "Cannot stop, scanner is not running or paused."
+  // when stop() is called twice, and that unhandled rejection blanked the
+  // whole page.
+  const isScanningRef = useRef(false);
+  const stoppingRef = useRef(false);
   const videoRef = useRef(null);
-  
+
   // Load html5-qrcode dynamically
   useEffect(() => {
     if (isOpen) {
       loadScanner();
     }
     return () => {
-      // Cleanup on unmount
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        scannerRef.current = null;
-      }
+      stopScanner();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-  
+
   const loadScanner = async () => {
     try {
+      setLoading(true);
       const module = await import('html5-qrcode');
       setHtml5Qrcode(() => module.Html5Qrcode);
-      
+
       // Get available cameras
       const devices = await module.Html5Qrcode.getCameras();
       if (devices && devices.length > 0) {
         setCameras(devices);
         // Prefer back camera
-        const backCamera = devices.find(d => 
-          d.label.toLowerCase().includes('back') || 
-          d.label.toLowerCase().includes('rear') ||
-          d.label.toLowerCase().includes('utama')
+        const backCamera = devices.find(d =>
+          (d.label || '').toLowerCase().includes('back') ||
+          (d.label || '').toLowerCase().includes('rear') ||
+          (d.label || '').toLowerCase().includes('utama')
         );
         setSelectedCamera(backCamera ? backCamera.id : devices[0].id);
         setHasCamera(true);
+        setError('');
       } else {
         setHasCamera(false);
         setError('Tidak ada kamera yang ditemukan');
       }
     } catch (err) {
       console.error('Failed to load QR scanner:', err);
-      setError('Gagal memuat scanner QR');
+      setHasCamera(false);
+      setError('Gagal memuat scanner QR: ' + (err?.message || err));
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const startScanner = async () => {
-    if (!Html5Qrcode || !selectedCamera) return;
-    
-    setError('');
-    setScanning(true);
-    
+
+  // Stop the scanner defensively. Never lets an error escape: a rejected
+  // stop() used to bubble up and blank the page.
+  const stopScanner = useCallback(async () => {
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
+
+    if (!scanner) {
+      isScanningRef.current = false;
+      setScanning(false);
+      return;
+    }
+    if (stoppingRef.current) {
+      return;
+    }
+    stoppingRef.current = true;
+
     try {
+      // Only stop when actually running, otherwise html5-qrcode throws
+      // "Cannot stop, scanner is not running or paused."
+      if (isScanningRef.current) {
+        await scanner.stop();
+      }
+    } catch (err) {
+      // Already stopped / no stream - harmless.
+      console.warn('Scanner stop warning:', err?.message || err);
+    } finally {
+      isScanningRef.current = false;
+      stoppingRef.current = false;
+      setScanning(false);
+      // Release the camera so the browser indicator turns off.
+      try {
+        scanner.clear?.();
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  const startScanner = useCallback(async () => {
+    if (!Html5Qrcode || !selectedCamera) return;
+
+    setError('');
+    setLoading(true);
+
+    try {
+      // Clear any previous instance before creating a new one.
+      if (scannerRef.current) {
+        try { await scannerRef.current.clear?.(); } catch (_) { /* ignore */ }
+        scannerRef.current = null;
+      }
+
       const scanner = new Html5Qrcode('qr-reader');
       scannerRef.current = scanner;
-      
+
       const config = {
         fps: 10,
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
         disableFlip: false,
       };
-      
+
       await scanner.start(
         selectedCamera,
         config,
         onScanSuccess,
         onScanFailure
       );
+      isScanningRef.current = true;
+      setScanning(true);
     } catch (err) {
       console.error('Failed to start scanner:', err);
-      setError('Gagal memulai kamera: ' + err.message);
+      isScanningRef.current = false;
       setScanning(false);
-    }
-  };
-  
-  const stopScanner = async () => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-      } catch (err) {
-        // Ignore errors - scanner might already be stopped
-        console.warn('Scanner stop warning:', err.message);
+      const msg = String(err?.message || err);
+      if (msg.includes('Permission') || msg.includes('permission')) {
+        setError('Izin kamera ditolak. Izinkan akses kamera di pengaturan browser lalu coba lagi.');
+      } else if (msg.includes('NotFoundError') || msg.includes('no camera')) {
+        setHasCamera(false);
+        setError('Kamera tidak ditemukan pada perangkat ini.');
+      } else {
+        setError('Gagal memulai kamera: ' + msg);
       }
-      scannerRef.current = null;
+    } finally {
+      setLoading(false);
     }
-    setScanning(false);
-  };
-  
-  // Guard to prevent double-stop
-  let isStopping = false;
-  
-  const safeStop = async () => {
-    if (isStopping) return;
-    isStopping = true;
-    await stopScanner();
-    isStopping = false;
-  };
-  
-  const onScanSuccess = (decodedText, decodedResult) => {
+  }, [Html5Qrcode, selectedCamera]);
+
+  const onScanSuccess = useCallback((decodedText) => {
     console.log('QR Scanned:', decodedText);
-    
-    // Stop scanner first (use safeStop to prevent double-stop)
-    safeStop();
-    
-    // Send scanned data to parent
+
+    // Stop first so the camera light turns off, then report. The stop is
+    // fire-and-forget but fully guarded internally.
+    stopScanner();
     onScan(decodedText);
-    handleClose();
-  };
-  
-  const onScanFailure = (error) => {
+    onClose();
+  }, [onScan, onClose, stopScanner]);
+
+  const onScanFailure = () => {
     // Silently ignore scan failures (normal when no QR in frame)
   };
-  
+
   const handleClose = () => {
-    safeStop();
+    stopScanner();
     setError('');
     onClose();
   };
-  
+
   const toggleTorch = async () => {
     if (!scannerRef.current) return;
-    
+
     try {
       const track = scannerRef.current.getRunningTrackCameraCapabilities();
       if (track.torchFeature().isSupported()) {
@@ -144,27 +186,28 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
       console.error('Torch error:', err);
     }
   };
-  
+
   const switchCamera = async () => {
     if (cameras.length < 2) return;
-    
-    await safeStop();
-    
+
+    await stopScanner();
+
     const currentIndex = cameras.findIndex(c => c.id === selectedCamera);
     const nextIndex = (currentIndex + 1) % cameras.length;
     setSelectedCamera(cameras[nextIndex].id);
-    
-    // Start with new camera
-    setTimeout(() => startScanner(), 500);
   };
-  
-  // Start scanner when camera is selected
+
+  // Start scanner when camera is selected. The effect depends on
+  // selectedCamera only; startScanner is invoked explicitly after the
+  // camera switch so the previous instance is fully stopped first.
   useEffect(() => {
-    if (Html5Qrcode && selectedCamera && isOpen) {
+    if (!isOpen) return;
+    if (Html5Qrcode && selectedCamera && !isScanningRef.current) {
       startScanner();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [Html5Qrcode, selectedCamera, isOpen]);
-  
+
   return (
     <Modal
       isOpen={isOpen}
@@ -197,16 +240,16 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
             </Button>
           </div>
         )}
-        
+
         {/* QR Scanner container */}
         <div className="relative bg-black rounded-xl overflow-hidden">
           {/* Scanner view */}
-          <div 
-            id="qr-reader" 
+          <div
+            id="qr-reader"
             className="w-full"
             style={{ minHeight: '300px' }}
           />
-          
+
           {/* Scanning overlay */}
           {scanning && (
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
@@ -216,7 +259,7 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
                 <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-blue-500 rounded-tr-lg" />
                 <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-blue-500 rounded-bl-lg" />
                 <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-blue-500 rounded-br-lg" />
-                
+
                 {/* Scanning line animation */}
                 <div className="absolute left-4 right-4 h-0.5 bg-blue-500 animate-pulse top-0"
                   style={{
@@ -226,15 +269,15 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
               </div>
             </div>
           )}
-          
+
           {/* Loading state */}
-          {!scanning && !error && (
+          {!scanning && !error && loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white">
               <Loader2 className="w-10 h-10 animate-spin mb-2" />
               <p>Memuat kamera...</p>
             </div>
           )}
-          
+
           {/* Torch button */}
           {scanning && (
             <button
@@ -247,14 +290,15 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
             </button>
           )}
         </div>
-        
+
         {/* Status message */}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-            {error}
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
           </div>
         )}
-        
+
         {!error && !hasCamera && (
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-yellow-800 text-sm">
@@ -262,22 +306,28 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
             </p>
           </div>
         )}
-        
+
         {/* Instructions */}
         {scanning && (
           <div className="text-center text-sm text-gray-500">
             <p>Arahkan QR Code ke kotak pemindaian</p>
           </div>
         )}
-        
+
         {/* Close button */}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          {scanning && (
+            <Button variant="outline" onClick={() => stopScanner()}>
+              <X className="w-4 h-4 mr-2" />
+              Hentikan Kamera
+            </Button>
+          )}
           <Button variant="secondary" onClick={handleClose}>
             Batal
           </Button>
         </div>
       </div>
-      
+
       {/* Scan line animation */}
       <style>{`
         @keyframes scanline {
@@ -285,16 +335,16 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
           50% { top: calc(100% - 4px); }
           100% { top: 0; }
         }
-        
+
         #qr-reader video {
           width: 100% !important;
           border-radius: 12px;
         }
-        
+
         #qr-reader img[alt="Info icon"] {
           display: none !important;
         }
-        
+
         #qr-reader > div:last-child {
           display: none !important;
         }

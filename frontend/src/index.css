@@ -690,3 +690,193 @@ input:focus, select:focus, textarea:focus {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* ==========================================================================
+   THEME HARDENING
+   Neutralises browser "force dark mode" / OS-level darkening and third-party
+   extensions that otherwise repaint our colors and break text contrast.
+
+   1. `color-scheme` declares what the UI is authored for, so the browser
+      stops guessing and stops auto-inverting.
+   2. Explicit background/text colors on html and body leave nothing for the
+      force-dark heuristics to invert.
+   3. `forced-color-adjust: none` opts our chrome out of Windows High
+      Contrast forced-color inversion.
+   4. `forced-colors` media query still restores full accessibility support
+      for users who genuinely rely on it.
+   ========================================================================== */
+
+html {
+  /* Declares our palette. Overridden per-theme by applyTheme(). */
+  color-scheme: light;
+  background-color: #f9fafb;
+  color: #111827;
+  /* Stop the browser from auto-inverting our colors. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html.dark {
+  color-scheme: dark;
+  background-color: #111827;
+  color: #f3f4f6;
+}
+
+body {
+  background-color: #f9fafb;
+  color: #111827;
+  /* Opt out of forced-colors inversion for our own chrome. */
+  forced-color-adjust: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+html.dark body {
+  background-color: #111827;
+  color: #f3f4f6;
+}
+
+/*
+ * Elements that draw their own surfaces (cards, modals, inputs) are the
+ * usual victims of force-dark: the browser darkens the background but
+ * leaves our light-mode text color, producing unreadable text.
+ * Giving them an explicit `color` alongside the background prevents the
+ * half-inverted look.
+ */
+.card,
+.modal,
+input,
+select,
+textarea,
+button {
+  forced-color-adjust: none;
+}
+
+/*
+ * Windows High Contrast / forced-colors mode: re-enable the accessibility
+ * feature rather than fighting it. The system palette wins here.
+ */
+@media (forced-colors: active) {
+  html,
+  body {
+    forced-color-adjust: auto;
+    background-color: Canvas;
+    color: CanvasText;
+  }
+
+  .card,
+  .modal,
+  input,
+  select,
+  textarea,
+  button {
+    forced-color-adjust: auto;
+  }
+}
+
+/*
+ * Dark-mode surface tokens. Tailwind's `dark:` variants cover most of the
+ * app, but a handful of hand-written surfaces use these variables.
+ */
+html.dark {
+  --surface: #1f2937;
+  --surface-raised: #374151;
+  --border-subtle: #374151;
+  --text-primary: #f3f4f6;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+}
+
+html:not(.dark) {
+  --surface: #ffffff;
+  --surface-raised: #f9fafb;
+  --border-subtle: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+}
+
+/*
+ * Prevent iOS Safari from applying its own "auto dark" tint to form controls
+ * and scrollbars when the user has explicitly picked light mode.
+ */
+html[data-theme="light"] {
+  -webkit-appearance: none;
+}
+
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+select {
+  color-scheme: inherit;
+}
+
+/*
+ * Images and media should not be inverted by force-dark heuristics.
+ */
+img,
+video,
+canvas,
+svg,
+picture {
+  forced-color-adjust: none;
+}
+
+/*
+ * Prevent the double-tap zoom / text inflation that makes mobile layouts
+ * jump around, while keeping the viewport width honest.
+ */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+   CONTRAST SAFETY NET
+
+   Tailwind's `text-gray-400` (#9ca3af) on white is only 2.54:1, which is
+   below the WCAG AA minimum of 4.5:1 for body text. Muted/secondary text is
+   exactly the text that breaks first when a browser force-dark pass or a
+   third-party extension repaints the background, because the light-theme
+   foreground is left sitting on a dark background.
+
+   These rules raise the muted tones to a readable level without changing
+   the visual hierarchy, and they are scoped per theme so dark mode keeps
+   its own (already readable) values.
+*/
+[data-theme='light'] .text-gray-400 {
+  color: #6b7280 !important; /* gray-500 - 4.83:1 on white */
+}
+
+[data-theme='light'] .text-gray-300 {
+  color: #4b5563 !important; /* gray-600 */
+}
+
+[data-theme='light'] .placeholder-gray-400::placeholder {
+  color: #6b7280 !important;
+}
+
+[data-theme='light'] .text-gray-500 {
+  color: #4b5563 !important; /* gray-600 - 7.0:1 on white */
+}
+
+/*
+   Force-dark guard.
+
+   Some browsers/extensions inject their own dark background behind the
+   page. Declaring our own opaque background on html and body - and making
+   sure the body paints before the content - stops that from bleeding
+   through and leaving light text on a dark field.
+*/
+html[data-theme='light'],
+html[data-theme='light'] body {
+  background-color: #f9fafb !important;
+  color: #111827 !important;
+}
+
+html[data-theme='dark'],
+html[data-theme='dark'] body {
+  background-color: #111827 !important;
+  color: #f3f4f6 !important;
+}

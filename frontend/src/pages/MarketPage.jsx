@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
 import { apiUrl } from '../config/url';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Dark Mode Toggle Component
 const ThemeToggle = ({ isDark, onToggle }) => (
@@ -55,13 +56,9 @@ const MarketCard = ({ name, value, change, changeValue, positive, unit = '', isD
 };
 
 export const MarketPage = () => {
-  // Dark mode state
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return true;
-  });
+  // Dark mode comes from the global ThemeContext so the page always matches
+  // the toggle in the navigation and the user's saved preference.
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [marketData, setMarketData] = useState(null);
@@ -73,17 +70,8 @@ export const MarketPage = () => {
   const [activeMarketTab, setActiveMarketTab] = useState('forex');
   const tvContainerRef = useRef(null);
 
-  // Apply dark mode
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
-
-  // Toggle dark mode
-  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
+  // Toggle dark mode - delegates to the global theme controller.
+  const toggleDarkMode = toggleTheme;
 
   // Fetch all real-time market data from unified API
   const fetchMarketData = useCallback(async () => {

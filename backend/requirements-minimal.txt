@@ -15,3 +15,13 @@ requests==2.32.0
 Pillow>=10.0.0
 pytesseract>=0.3.10
 rapidfuzz>=3.0.0
+
+# --- OCR / image restoration stack ---------------------------------------
+# The receipt scanner relies on these. Without them the container falls back
+# to a bare Tesseract install and the scanner silently returns empty results.
+# rapidocr-onnxruntime bundles the ONNX models, so no model download is
+# needed at runtime.
+numpy>=1.26.0
+opencv-python-headless>=4.8.0
+onnxruntime>=1.16.0
+rapidocr-onnxruntime>=1.3.0

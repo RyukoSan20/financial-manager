@@ -205,7 +205,10 @@ def _process_receipt_cpu_bound(image_bytes: bytes) -> dict:
             "merchant_address": merchant_address,
             "enriched_items": enriched_items,
             "raw_lines": receipt_result.raw_lines,
-            "receipt_result": receipt_result
+            "receipt_result": receipt_result,
+            "ocr_diagnostics": getattr(receipt_result, "ocr_diagnostics", None),
+            "dynamic_parse": getattr(receipt_result, "dynamic_parse", None),
+            "parser_engine": receipt_result.parse_method,
         }
         
     except Exception as e:
@@ -375,6 +378,11 @@ async def parse_receipt_image_endpoint(
             "longitude": result["longitude"],
             "merchant_address": result["merchant_address"],
             "receipt_scan_id": receipt_scan_id,
+            # Diagnostics: which restored image variant won, how good the
+            # source photo was, and which parser produced the result.
+            "ocr_diagnostics": result.get("ocr_diagnostics") or {},
+            "dynamic_parse": result.get("dynamic_parse"),
+            "parser_engine": result.get("parser_engine", "rules"),
         }
         
     except Exception as e:

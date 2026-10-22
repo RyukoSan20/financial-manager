@@ -25,6 +25,10 @@ class ParsedItem:
     total_price: float = 0.0
     category: Optional[str] = None
     match_confidence: float = 0.0
+    # CRITICAL: without this flag the discount marker is lost when the
+    # pipeline result is converted into ParsedItem, and discount lines are
+    # persisted as regular items with a negative price.
+    is_discount: bool = False
 
 @dataclass
 class ParsedReceipt:
@@ -42,6 +46,10 @@ class ParsedReceipt:
     parse_method: str = "unknown"  # regex, gemini_fallback, gemini_enrichment
     raw_text: Optional[str] = None
     raw_lines: List[str] = field(default_factory=list)
+    # Diagnostics from the OCR stage: which restored image variant won, how
+    # good the source photo was, and whether the dynamic parser was used.
+    ocr_diagnostics: Optional[Dict[str, Any]] = None
+    dynamic_parse: Optional[Dict[str, Any]] = None
     
     def items_total(self) -> float:
         """Calculate sum of all item totals."""
@@ -517,7 +525,7 @@ def enrich_with_gemini(receipt: ParsedReceipt, image_bytes: bytes = None) -> Par
             
             receipt.total_amount = float(gemini_result.get('total_amount', receipt.total_amount))
             receipt.parse_method = "gemini_fallback"
-            
+
     except Exception as e:
         logger.error(f"Gemini Vision fallback failed: {e}")
         # DO NOT return empty receipt - try to salvage what we have
@@ -535,12 +543,17 @@ def enrich_with_gemini(receipt: ParsedReceipt, image_bytes: bytes = None) -> Par
                     receipt.merchant_type = sig_result.get("merchant_type", receipt.merchant_type)
             except Exception as sig_e:
                 logger.error(f"Signature matching failed: {sig_e}")
-        
+
         # If still no merchant, use generic
         if not receipt.merchant_name or receipt.merchant_name in ["Unknown", "Merchant", ""]:
             receipt.merchant_name = "Minimarket/Retail"
-        
+
         return receipt
+
+    # CRITICAL: this return was missing, so the success path returned None and
+    # the caller crashed with "AttributeError: 'NoneType' object has no
+    # attribute 'items'" whenever Gemini actually worked.
+    return receipt
 
 
 def build_enrichment_prompt(receipt: ParsedReceipt) -> str:
@@ -676,6 +689,7 @@ def process_receipt_hybrid(
     gatekeeper = IntegrityGatekeeper()
     
     # Step 1: Get lines to parse
+    ocr_result = None
     if lines is None:
         if raw_text:
             lines = raw_text.split('\n')
@@ -701,12 +715,19 @@ def process_receipt_hybrid(
     receipt.discount = result.discount
     receipt.confidence = result.confidence
     
-    for item in result.items:
+    # Carry the OCR diagnostics (image restoration + parser engine) through
+    # so the API can explain how the receipt was read.
+    if ocr_result is not None:
+        receipt.ocr_diagnostics = getattr(ocr_result, "ocr_diagnostics", None)
+        receipt.dynamic_parse = getattr(ocr_result, "dynamic_parse", None)
+    
+    for item in (result.items or []):
         receipt.items.append(ParsedItem(
             name=item.name,
             quantity=item.quantity,
             price_per_unit=item.price_per_unit,
-            total_price=item.total_price
+            total_price=item.total_price,
+            is_discount=item.is_discount,
         ))
     
     receipt.raw_lines = lines
@@ -721,7 +742,7 @@ def process_receipt_hybrid(
             quantity=i.quantity,
             price_per_unit=i.price_per_unit,
             total_price=i.total_price,
-            is_discount=False  # ParsedItem doesn't track this
+            is_discount=i.is_discount,
         )
         for i in receipt.items
     ]
@@ -819,7 +840,10 @@ def receipt_to_dict(receipt: ParsedReceipt) -> Dict[str, Any]:
                 "price_per_unit": item.price_per_unit,
                 "total_price": item.total_price,
                 "category": item.category,
-                "match_confidence": item.match_confidence
+                "match_confidence": item.match_confidence,
+                # CRITICAL: the API and the database both key off this flag to
+                # render discount rows and to compute the net total.
+                "is_discount": item.is_discount,
             }
             for item in receipt.items
         ],
@@ -830,5 +854,7 @@ def receipt_to_dict(receipt: ParsedReceipt) -> Dict[str, Any]:
         "confidence": receipt.confidence,
         "parse_method": receipt.parse_method,
         "raw_text": receipt.raw_text,
-        "items_count": len(receipt.items)
+        "items_count": len(receipt.items),
+        "ocr_diagnostics": receipt.ocr_diagnostics,
+        "dynamic_parse": receipt.dynamic_parse,
     }

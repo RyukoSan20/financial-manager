@@ -1,17 +1,26 @@
 """
 Gemini Vision AI Service - Fallback OCR when local OCR fails.
-Uses Gemini 1.5 Flash multimodal model to extract receipt data.
+Uses a Gemini multimodal model to extract receipt data.
 """
 
 import json
 import base64
 import logging
+import os
 from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-# Gemini API endpoint
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent"
+# Gemini API endpoint.
+# The model and API version MUST come from the environment: hardcoding a model
+# name here silently breaks the whole fallback chain when that model is
+# retired (gemini-1.5-flash returned HTTP 404, which made every receipt scan
+# crash with "AttributeError: 'NoneType' object has no attribute 'items'").
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_API_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    f"{GEMINI_MODEL}:generateContent"
+)
 
 # Full parse prompt
 FULL_PARSE_PROMPT = """You are an expert receipt parsing AI. Extract ALL information from this receipt image.
@@ -134,7 +143,18 @@ def extract_receipt_with_gemini(
 
     except json.JSONDecodeError as e:
         logger.error(f"Gemini returned invalid JSON: {e}")
-        return None
+        # Never return None: the caller dereferences the result directly and a
+        # None here aborts the whole scan.
+        return {
+            "merchant": {"name": "Minimarket", "type": "Retail", "location": None},
+            "transaction_date": None,
+            "items": [],
+            "subtotal": 0.0,
+            "discount": 0.0,
+            "total_amount": 0.0,
+            "payment_method": "Cash",
+            "confidence": 0.0,
+        }
     except Exception as e:
         logger.error(f"Gemini Vision failed: {e}")
         # Return structured fallback with merchant inferred from INDOMARET logo description

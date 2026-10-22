@@ -281,8 +281,8 @@ class ItemParser:
         else:
             # CRITICAL: ANY line with a valid price IS an item
             item = self._parse_item_line(line, amounts, category)
-            if item and item.total_price < 100:
-                # Price too low - skip
+            if item and item.total_price < 1:
+                # Price is zero or negative - not a real item
                 return None
             return item
     
@@ -413,6 +413,11 @@ class ItemParser:
         - [qty, total] -> qty=qty, unit=total/qty
         - [price, qty, total] -> qty=qty, unit=price
         - [qty, price, total] -> qty=qty, unit=price
+        
+        NOTE on the unit price: in the [qty, price, total] layout the unit
+        price is the middle number ALREADY, so it must NOT be divided by the
+        quantity. Dividing it produced "4 x 4500 = 18000" being reported as
+        unit=1125.
         """
         quantity, price_per_unit = 1, total_price
         
@@ -424,14 +429,25 @@ class ItemParser:
             
             # Try to identify qty (small integer <= 20)
             if second_last <= 20 and second_last == int(second_last):
+                # Layout: [price, qty, total] -> unit price is the first number
                 quantity = int(second_last)
-                price_per_unit = third_last / quantity if quantity > 0 else third_last
+                price_per_unit = third_last
             elif third_last <= 20 and third_last == int(third_last):
+                # Layout: [qty, price, total] -> unit price is the middle number
                 quantity = int(third_last)
-                price_per_unit = second_last / quantity if quantity > 0 else second_last
+                price_per_unit = second_last
             else:
                 quantity = 1
                 price_per_unit = total_price
+            
+            # Sanity check: qty * unit should reproduce the line total.
+            # If it does not, the "unit" we picked is really the total.
+            if quantity > 1 and price_per_unit > 0:
+                if abs(quantity * price_per_unit - last) > 1:
+                    # Fall back to deriving the unit from the total
+                    derived = last / quantity
+                    if abs(derived - price_per_unit) < abs(price_per_unit - total_price):
+                        price_per_unit = derived
         elif len(amounts) == 2:
             second = amounts[-2]
             if second <= 20 and second == int(second):
@@ -569,14 +585,14 @@ class AnchorEngine:
         return None
     
     def find_date(self, lines: List[str]) -> Optional[str]:
-        """Extract date."""
+        """Extract date. Accepts dd/mm/yyyy, dd.mm.yyyy and dd-mm-yyyy."""
         for line in lines:
-            match = re.search(r"(\d{2})[\.\-](\d{2})[\.\-](\d{2,4})", line)
+            match = re.search(r"(\d{1,2})[\.\-\/](\d{1,2})[\.\-\/](\d{2,4})", line)
             if match:
                 d, m, y = match.groups()
                 if len(y) == 2:
                     y = "20" + y
-                return f"{y}-{m}-{d}"
+                return f"{y}-{m.zfill(2)}-{d.zfill(2)}"
         return None
     
     def parse_with_state_machine(self, lines: List[str]) -> Dict[str, Any]:
@@ -605,7 +621,11 @@ class AnchorEngine:
         }
         
         # Regex patterns
-        DATE_PATTERN = re.compile(r'\d{2}[\.\-]\d{2}[\.\-]\d{2,4}')
+        # DATE_PATTERN must accept slashes as well as dots/hyphens. Indonesian
+        # receipts commonly print "14/09/2016-06:46" and OCR keeps the slashes;
+        # with a dot/hyphen-only pattern the date anchor was never found, so the
+        # state machine stayed in HEADER and collected ZERO items.
+        DATE_PATTERN = re.compile(r'\d{1,2}[\.\-\/]\d{1,2}[\.\-\/]\d{2,4}')
         TIME_PATTERN = re.compile(r'\d{2}:\d{2}')
         SEPARATOR_PATTERN = re.compile(r'^[\-\=\_]{5,}$')
         FOOTER_ANCHORS = ["TOTAL", "GRAND TOTAL", "HARGA JUAL", "SUBTOTAL", "JUMLAH"]
@@ -745,9 +765,39 @@ class AnchorEngine:
             
             return True
         
-        for i, line in enumerate(lines):
+        def is_price_only(line: str) -> bool:
+            """True when the line contains only digits/spaces/separators."""
+            return bool(re.match(r'^[\d\s,\.]+$', line.strip())) and bool(
+                re.search(r'\d', line)
+            )
+
+        def is_product_name_line(line: str) -> bool:
+            """True when the line looks like a product name (text, no price)."""
+            stripped = line.strip()
+            if not stripped or is_price_only(stripped):
+                return False
+            if SEPARATOR_PATTERN.match(stripped):
+                return False
+            # Reject meta/garbage lines
+            for pattern in (r'NPWP', r'JL\.', r'TELP\.?', r'PT\s', r'KODE\s',
+                            r'^PURCHASE AT', r'DOWNLOAD', r'HTTP'):
+                if re.search(pattern, stripped.upper()):
+                    return False
+            alpha_count = sum(1 for c in stripped if c.isalpha())
+            if alpha_count < 2:
+                return False
+            # A name line must not end with a price-like number
+            if has_valid_price(stripped):
+                return False
+            return True
+
+        i = 0
+        total_lines = len(lines)
+        while i < total_lines:
+            line = lines[i]
             line_stripped = line.strip()
             if not line_stripped:
+                i += 1
                 continue
             
             result["all_lines_searched"].append(line_stripped)
@@ -755,6 +805,7 @@ class AnchorEngine:
             
             # ========== FOOTER STATE ==========
             if result["state"] == "FOOTER":
+                i += 1
                 continue
             
             # ========== HEADER STATE ==========
@@ -780,15 +831,21 @@ class AnchorEngine:
                 # Check for DATE/TIME anchor - THIS is what triggers ITEMS
                 if DATE_PATTERN.match(line_stripped) or (TIME_PATTERN.search(line_stripped) and DATE_PATTERN.search(line_stripped)):
                     result["date_found"] = True
+                    i += 1
                     continue
                 
                 # TRANSITION to ITEMS if:
                 # 1. Date found AND separator found, OR
                 # 2. Date found AND next line looks like an item (no explicit separator)
+                # 3. Date found AND this line is a product name whose NEXT line
+                #    holds the price. OCR frequently drops the separator rule
+                #    between the date and the first product, so requiring a
+                #    separator skipped every real item on the receipt.
                 if result["date_found"]:
                     if SEPARATOR_PATTERN.match(line_stripped):
                         result["state"] = "ITEMS"
                         result["index_start"] = i + 1
+                        i += 1
                         continue
                     # Also transition if this line looks like an item (no separator between date and items)
                     if looks_like_item(line_stripped):
@@ -799,10 +856,25 @@ class AnchorEngine:
                             "line_index": i,
                             "line": line_stripped
                         })
+                        i += 1
                         continue
+                    # Product-name line followed by a price-only line
+                    if is_product_name_line(line_stripped):
+                        nxt = lines[i + 1].strip() if i + 1 < len(lines) else ""
+                        if is_price_only(nxt):
+                            result["state"] = "ITEMS"
+                            result["index_start"] = i
+                            # Group the name with its price line
+                            result["items"].append({
+                                "line_index": i,
+                                "line": f"{line_stripped} {nxt}"
+                            })
+                            i += 2
+                            continue
                 
                 # If no date/time yet, consume separators silently
                 if SEPARATOR_PATTERN.match(line_stripped):
+                    i += 1
                     continue
             
             # ========== ITEMS STATE ==========
@@ -816,8 +888,11 @@ class AnchorEngine:
                 
                 # CRITICAL: MULTI-LINE GROUPING
                 # For receipts where item name and price are on separate lines,
-                # we need to collect consecutive lines and merge them
+                # we need to collect consecutive lines and merge them.
+                # The name line itself has no price, so it is skipped by
+                # looks_like_item(); only the merged group carries the numbers.
                 item_group = [line_stripped]
+                consumed_to = i
                 
                 # Look ahead for consecutive number lines (likely prices)
                 for j in range(i + 1, min(i + 5, len(lines))):
@@ -827,8 +902,9 @@ class AnchorEngine:
                     # If next line is pure numbers, include it in the group
                     if re.match(r'^[\d\s,\.]+$', next_line):
                         item_group.append(next_line)
-                        # Update i to skip processed lines
-                        i = j
+                        # Remember the last consumed line so the outer loop
+                        # does not re-process it as a separate item.
+                        consumed_to = j
                     else:
                         break
                 
@@ -838,10 +914,15 @@ class AnchorEngine:
                 # CRITICAL: Only add lines that look like items OR have number groups
                 if looks_like_item(line_stripped) or (len(item_group) > 1 and re.search(r'\d', combined_line)):
                     result["items"].append({
-                        "line_index": i,
+                        "line_index": consumed_to,
                         "line": combined_line  # Use combined line
                     })
-                # Else silently skip (not a valid item line)
+                # Advance past every line consumed by this group
+                i = consumed_to + 1
+                continue
+            
+            # Any other state: move on
+            i += 1
         
         # ========== FULL DOCUMENT FALLBACK SCAN ==========
         # If no valid merchant found in header, search ENTIRE document

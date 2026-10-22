@@ -14,6 +14,7 @@ import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles, X, RotateCcw, Zo
 import api from '../../services/api';
 import { apiUrl as buildApiUrl } from '../../config/url';
 import { formatCurrency } from '../../utils/format';
+import { ScanDiagnostics, LearnFromScan } from './ScanDiagnostics';
 
 export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
@@ -183,7 +184,15 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       if (uploadResponse.ok) {
         const data = await uploadResponse.json();
         setParsedData(data);
-        setConfidence(data.confidence_score || 0.8);
+        // The backend reports confidence either as 0-1 or as a 0-100
+        // percentage depending on the parser that produced it. Normalise to
+        // a 0-1 fraction so the UI and the stored value are consistent.
+        const rawConfidence = data.confidence_score;
+        setConfidence(
+          typeof rawConfidence === 'number' && rawConfidence > 1
+            ? rawConfidence / 100
+            : rawConfidence || 0.8
+        );
         populateFields(data);
         setStep('edit');
       } else {
@@ -535,6 +544,24 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               {confInfo.text} ({Math.round(confidence * 100)}%)
             </span>
           </div>
+
+          {/* Scan diagnostics: how the image was restored and which parser ran.
+              Shown so a poor scan can be explained instead of looking broken. */}
+          {parsedData?.ocr_diagnostics && (
+            <ScanDiagnostics diagnostics={parsedData.ocr_diagnostics} />
+          )}
+
+          {/* Self-learning: let the user confirm an item name so the
+              recogniser learns the vocabulary that appears on their receipts. */}
+          {(parsedData?.items?.length > 0) && (
+            <LearnFromScan
+              items={parsedData.items}
+              onLearned={() => {
+                // Nothing to refresh in the UI; the catalogue is updated in
+                // the background so later scans recognise the term.
+              }}
+            />
+          )}
 
           {/* Form */}
           <div className="space-y-3">

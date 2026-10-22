@@ -39,6 +39,7 @@ import { ThemeProvider, useTheme } from '../../contexts/ThemeContext';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { showNotification } from '../notifications/NotificationHelper';
 import AddTransactionPage from './AddTransactionPage';
+import { UserProfileSection } from './UserProfileSection';
 
 const navItems = (t) => [
   { name: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
@@ -120,6 +121,10 @@ const Sidebar = () => {
 
       {/* Bottom Section */}
       <div className="p-3 border-t border-gray-100 space-y-1 dark:border-gray-700">
+        {/* Interactive profile section - routes to the Profile Summary page */}
+        <div className="mb-1">
+          <UserProfileSection variant="sidebar" />
+        </div>
         <Link
           to="/settings"
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
@@ -212,17 +217,12 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
                 </button>
               </div>
               
-              {/* Profile */}
+              {/* Profile - interactive section that routes to Profile Summary */}
               <div className="p-4 border-b border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
-                    <User className="w-6 h-6 text-primary-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">User</p>
-                    <p className="text-sm text-gray-500">user@example.com</p>
-                  </div>
-                </div>
+                <UserProfileSection
+                  variant="menu"
+                  onNavigate={() => setMenuOpen(false)}
+                />
               </div>
               
               {/* Menu Items */}

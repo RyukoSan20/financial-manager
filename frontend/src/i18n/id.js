@@ -321,4 +321,28 @@ export default {
     delete_account: "Hapus Akun",
     logout: "Keluar",
   },
+
+  // Profile Summary
+  profile: {
+    summary_title: "Ringkasan Profil",
+    summary_subtitle: "Identitas & riwayat aktivitas",
+    identity: "Identitas Profil",
+    history: "Riwayat Aktivitas",
+    member_since: "Bergabung sejak",
+    last_login: "Login terakhir",
+    login_history: "Riwayat Login",
+    recent_transactions: "Transaksi Terbaru",
+    total_income: "Total Pemasukan",
+    total_expense: "Total Pengeluaran",
+    account_balance: "Saldo Akun",
+    total_transactions: "Total Transaksi",
+    active_streak: "Aktif Berturut",
+    active_days: "Hari Aktif",
+    no_activity: "Belum ada aktivitas transaksi dalam 30 hari terakhir.",
+    open_profile: "Buka ringkasan profil",
+    edit_profile: "Edit profil & informasi akun",
+    transactions: "transaksi",
+    days_active: "hari aktif",
+    day_streak: "hari",
+  },
 };

@@ -26,12 +26,72 @@
     
     <title>FinManager - Personal Finance</title>
     
+    <!-- Theme bootstrap: applied BEFORE first paint so there is never a flash
+         of the wrong theme, and so the browser's own auto-darkening never
+         gets a chance to repaint the page. -->
+    <script>
+      (function () {
+        var KEY = 'finmanager-theme';
+        var LEGACY = 'theme';
+        var stored = null;
+        try {
+          stored = localStorage.getItem(KEY) || localStorage.getItem(LEGACY);
+        } catch (e) { /* storage blocked */ }
+
+        // Normalise: older builds stored a JSON blob, newer ones a plain string.
+        if (stored && typeof stored === 'string' && stored.trim().charAt(0) === '{') {
+          try {
+            var parsed = JSON.parse(stored);
+            stored = parsed && (parsed.preference || parsed.theme || parsed.value);
+          } catch (e) { stored = null; }
+        }
+
+        var mode = (stored === 'light' || stored === 'dark' || stored === 'system') ? stored : 'system';
+
+        var theme;
+        if (mode === 'light' || mode === 'dark') {
+          // An explicit user choice always wins over the OS preference.
+          theme = mode;
+        } else {
+          // 'system' (or no choice yet): follow the OS.
+          theme = (window.matchMedia &&
+                   window.matchMedia('(prefers-color-scheme: dark)').matches)
+            ? 'dark' : 'light';
+        }
+
+        var root = document.documentElement;
+        if (theme === 'dark') {
+          root.classList.add('dark');
+          root.style.backgroundColor = '#111827';
+          root.style.color = '#f3f4f6';
+        } else {
+          root.classList.remove('dark');
+          root.style.backgroundColor = '#f9fafb';
+          root.style.color = '#111827';
+        }
+        root.setAttribute('data-theme', theme);
+        root.setAttribute('data-theme-mode', mode);
+        // Declares the palette to the UA so it stops auto-inverting colors.
+        root.style.colorScheme = theme;
+
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+          meta.setAttribute('content', theme === 'dark' ? '#111827' : '#3b82f6');
+        }
+      })();
+    </script>
+
     <style>
       /* Critical CSS for fast first paint */
       body {
         margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         background: #f9fafb;
+        color: #111827;
+      }
+      html.dark body {
+        background: #111827;
+        color: #f3f4f6;
       }
       .app-loading {
         display: flex;

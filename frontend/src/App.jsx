@@ -36,6 +36,7 @@ import ProfileSettings from './pages/Settings/ProfileSettings';
 import NotificationSettings from './pages/Settings/NotificationSettings';
 import AppSettings from './pages/Settings/AppSettings';
 import HelpSupport from './pages/Settings/HelpSupport';
+import ProfileSummary from './pages/ProfileSummary';
 import { AuthCallback } from './pages/AuthCallback';
 
 // Auth Guard Component
@@ -137,6 +138,7 @@ function App() {
               <Route path="market" element={<MarketPage />} />
               <Route path="settings" element={<Settings />} />
               <Route path="settings/profile" element={<ProfileSettings />} />
+              <Route path="profile/summary" element={<ProfileSummary />} />
               <Route path="settings/notifications" element={<NotificationSettings />} />
               <Route path="settings/app" element={<AppSettings />} />
               <Route path="help" element={<HelpSupport />} />

@@ -2,9 +2,11 @@
 // Backed by GET/PUT /api/settings/app, with localStorage as an offline mirror.
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
+import { useTheme } from '../../contexts/ThemeContext';
+import { THEME_DARK, THEME_LIGHT, THEME_SYSTEM } from '../../utils/theme';
 
 const DEFAULTS = {
-  theme: 'light',
+  theme: 'system',
   language: 'id',
   currency: 'IDR',
   date_format: 'DD/MM/YYYY',
@@ -15,6 +17,7 @@ const DEFAULTS = {
 };
 
 const AppSettings = () => {
+  const { theme: activeTheme, setTheme } = useTheme();
   const [settings, setSettings] = useState(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,6 +49,25 @@ const AppSettings = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  /**
+   * Apply the stored theme preference to the document.
+   *
+   * 'system' resolves to the OS preference and keeps following it.
+   * 'light' and 'dark' are persisted as an explicit user choice and
+   * permanently override the OS preference and force-dark heuristics.
+   */
+  useEffect(() => {
+    if (loading) return;
+    if (
+      settings.theme === THEME_SYSTEM ||
+      settings.theme === THEME_DARK ||
+      settings.theme === THEME_LIGHT
+    ) {
+      setTheme(settings.theme);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.theme, loading]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -110,6 +132,14 @@ const AppSettings = () => {
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Pilihan <strong>Light</strong> atau <strong>Dark</strong> menimpa setelan
+                sistem dan mode gelap paksa browser, sehingga kontras teks selalu
+                terjaga. <strong>System</strong> mengikuti tema perangkat.
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Tema aktif: <strong>{activeTheme === THEME_DARK ? 'Dark' : 'Light'}</strong>
+              </p>
             </div>
 
             <div>

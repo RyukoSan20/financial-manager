@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, Spinner, Badge } from '../components/ui';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing, Mic } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import { TextParserModal } from '../components/parser/TextParserModal';
 import { QRScannerModal } from '../components/parser/QRScannerModal';
 import { ReceiptScannerModal } from '../components/parser/ReceiptScannerModal';
+import { VoiceTransactionModal } from '../components/parser/VoiceTransactionModal';
 import { notifyTransactionAdded, notifyTransactionDeleted, notifyTransactionUpdated, notifyError } from '../components/notifications/NotificationHelper';
 import api from '../services/api';
 
@@ -42,6 +43,7 @@ export const Transactions = () => {
   const [showTextParser, setShowTextParser] = useState(false);
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [prefillQRText, setPreFillQRText] = useState('');
   const [expandedTxId, setExpandedTxId] = useState(null);
   const [pendingCount, setPendingCount] = useState(0);
@@ -87,6 +89,54 @@ export const Transactions = () => {
       console.error('Failed to delete transaction:', err);
       alert('Failed to delete: ' + (err.message || 'Unknown error'));
     }
+  };
+
+  /**
+   * Save a transaction created from a spoken phrase.
+   *
+   * The account is required by the API, so the first available account is
+   * used when the user did not pick one. The category is matched by name
+   * against the user's own category list - if the suggested category does
+   * not exist, the transaction is saved without one rather than failing.
+   */
+  const handleVoiceSave = async (voice) => {
+    const accountId = accounts[0]?.id;
+    if (!accountId) {
+      throw new Error('Belum ada akun. Tambahkan akun terlebih dahulu.');
+    }
+
+    let categoryId = null;
+    if (voice.category && categories.length > 0) {
+      const match = categories.find(
+        (c) => c.name?.toLowerCase() === String(voice.category).toLowerCase()
+      );
+      categoryId = match?.id || null;
+    }
+
+    await api.transactions.create({
+      amount: Number(voice.amount),
+      type: voice.transaction_type === 'income' ? 'income' : 'expense',
+      description: voice.description || voice.merchant_name || 'Voice Transaction',
+      date: new Date().toISOString().split('T')[0],
+      account_id: parseInt(accountId),
+      category_id: categoryId,
+      merchant_name: voice.merchant_name || null,
+      detection_type: 'VOICE',
+      source: 'voice',
+      // Idempotency key so a double-tap cannot create two transactions.
+      client_request_id:
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `voice-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    });
+
+    notifyTransactionAdded?.({
+      amount: Number(voice.amount),
+      description: voice.merchant_name || voice.description,
+    });
+
+    fetchData();
+    window.dispatchEvent(new Event('transactionUpdated'));
   };
 
   // Edit functions
@@ -200,6 +250,13 @@ export const Transactions = () => {
         >
           <Camera className="w-5 h-5" />
           <span className="font-medium">Struk</span>
+        </button>
+        <button
+          onClick={() => setShowVoiceModal(true)}
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-50 text-orange-600 rounded-xl border border-orange-200 active:bg-orange-100"
+        >
+          <Mic className="w-5 h-5" />
+          <span className="font-medium">Suara</span>
         </button>
       </div>
 
@@ -500,6 +557,11 @@ export const Transactions = () => {
           setPreFillQRText(qrData);
           setShowTextParser(true);
         }}
+      />
+      <VoiceTransactionModal
+        isOpen={showVoiceModal}
+        onClose={() => setShowVoiceModal(false)}
+        onSave={handleVoiceSave}
       />
     </div>
   );

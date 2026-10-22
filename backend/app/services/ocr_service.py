@@ -139,6 +139,7 @@ def _extract_with_rapidocr(image_bytes: bytes) -> Tuple[List[str], float]:
         # Run RapidOCR
         result, elapse = ocr_engine(preprocessed_bytes)
         
+
         if not result:
             return [], 0.0
         
@@ -210,6 +211,105 @@ def _extract_with_rapidocr(image_bytes: bytes) -> Tuple[List[str], float]:
     except Exception as e:
         logger.error(f"RapidOCR extraction failed: {e}")
         return _extract_with_tesseract_fallback(image_bytes)
+
+
+def _extract_with_multivariant_ocr(image_bytes: bytes) -> Tuple[List[str], float, Dict[str, Any]]:
+    """
+    Run the OCR engine over several restored versions of the same receipt and
+    keep the best result.
+
+    This is what makes crumpled / torn / folded / blurred receipts work.
+    A single OCR pass over the original photo reliably misses half the text
+    when the paper is damaged; running the engine over an illumination-
+    flattened, deskewed, contrast-enhanced and binarised set of variants and
+    picking the highest-scoring extraction recovers most of it.
+
+    Returns (lines, confidence, diagnostics).
+    """
+    diagnostics: Dict[str, Any] = {
+        "variants_tried": [],
+        "quality": None,
+        "restoration": [],
+    }
+
+    try:
+        from app.services.image_preprocessor import image_preprocessor
+    except Exception as e:
+        logger.warning(f"Image preprocessor unavailable: {e}")
+        lines, conf = _extract_with_rapidocr(image_bytes)
+        return lines, conf, diagnostics
+
+    try:
+        variants, report = image_preprocessor.process(image_bytes)
+        diagnostics["quality"] = {
+            "severity": report.severity,
+            "issues": report.issues,
+            "brightness": round(report.brightness, 1),
+            "contrast": round(report.contrast, 1),
+            "sharpness": round(report.sharpness, 1),
+            "skew_deg": round(report.estimated_skew_deg, 2),
+            "is_blurry": report.is_blurry,
+            "has_shadows": report.has_shadows,
+            "width": report.width,
+            "height": report.height,
+        }
+        if variants and variants[0].notes:
+            diagnostics["restoration"] = list(variants[0].notes)
+    except Exception as e:
+        logger.warning(f"Preprocessing failed, using original image: {e}")
+        lines, conf = _extract_with_rapidocr(image_bytes)
+        return lines, conf, diagnostics
+
+    best_lines: List[str] = []
+    best_score = -1.0
+    best_conf = 0.0
+    best_variant = None
+
+    for variant in variants:
+        try:
+            if variant.image is None:
+                continue
+            import cv2
+            ok, encoded = cv2.imencode(".png", variant.image)
+            if not ok:
+                continue
+            variant_bytes = encoded.tobytes()
+
+            lines, conf = _extract_with_rapidocr(variant_bytes)
+            diagnostics["variants_tried"].append({
+                "name": variant.name,
+                "lines": len(lines),
+                "confidence": round(conf, 1),
+            })
+
+            # Score by how much text we recovered, weighted by the OCR's own
+            # confidence. More characters at a similar confidence is better.
+            char_count = sum(len(line) for line in lines)
+            score = char_count * (conf / 100.0)
+            if score > best_score:
+                best_score = score
+                best_lines = lines
+                best_conf = conf
+                best_variant = variant.name
+        except Exception as e:
+            logger.warning(f"OCR variant {variant.name} failed: {e}")
+            continue
+    if not best_lines:
+        diagnostics["variants_tried"].append({
+            "name": "tesseract_fallback",
+            "lines": 0,
+            "confidence": 0,
+        })
+        lines, conf = _extract_with_tesseract_fallback(image_bytes)
+        diagnostics["best_variant"] = "tesseract_fallback"
+        return lines, conf, diagnostics
+
+    diagnostics["best_variant"] = best_variant
+    logger.info(
+        "Multi-variant OCR picked %s (score %.1f, %d lines)",
+        best_variant, best_score, len(best_lines),
+    )
+    return best_lines, best_conf, diagnostics
 
 
 def _extract_with_tesseract_fallback(image_bytes: bytes) -> Tuple[List[str], float]:
@@ -322,6 +422,13 @@ class OCRResult:
     longitude: Optional[float] = None
     address: Optional[str] = None
     receipt_scan_id: Optional[int] = None  # ID of saved receipt scan
+    # Diagnostics about how the image was restored and which OCR variant won.
+    # Surfaced to the UI so a poor scan can be explained instead of silently
+    # returning a wrong total.
+    ocr_diagnostics: Optional[Dict[str, Any]] = None
+    # The dynamic (LLM / statistical) parse of the raw OCR lines, used when
+    # the rule-based parser cannot resolve the receipt.
+    dynamic_parse: Optional[Dict[str, Any]] = None
     
     def __post_init__(self):
         if self.raw_lines is None:
@@ -362,8 +469,10 @@ class OCRService:
     def process_image(self, image_bytes: bytes) -> OCRResult:
         """Process receipt image and extract structured data."""
         try:
-            # Extract text with spatial clustering
-            lines, confidence = _extract_with_rapidocr(image_bytes)
+            # Extract text with spatial clustering.
+            # Multi-variant mode restores damaged receipts (torn, folded,
+            # crumpled, blurred) before OCR and keeps the best extraction.
+            lines, confidence, ocr_diagnostics = _extract_with_multivariant_ocr(image_bytes)
             text = '\n'.join(lines)
             
             # Log raw OCR output for debugging
@@ -380,13 +489,16 @@ class OCRService:
                     amount="Rp 0",
                     amount_value=0.0,
                     items=[],
-                    address=None
+                    address=None,
+                    ocr_diagnostics=ocr_diagnostics,
                 )
             
             if len(text.strip()) < 10:
-                logger.warning(f"OCR returned too little text ({len(text)} chars) - attempting Gemini Vision fallback")
-                return self._gemini_vision_fallback(image_bytes)
-            
+                logger.warning("OCR returned too little text (%d chars) - attempting Gemini Vision fallback", len(text))
+                result = self._gemini_vision_fallback(image_bytes)
+                result.ocr_diagnostics = ocr_diagnostics
+                return result
+
             # Use Parser v3.1 with single-line item support
             try:
                 from app.services.parser_engine_v31 import parse_receipt_text_v31, should_use_gemini_fallback_v31
@@ -397,8 +509,14 @@ class OCRService:
                 # Check if Gemini fallback is needed (tightened triggers)
                 should_fallback, reason = should_use_gemini_fallback_v31(parsed, len(text))
                 if should_fallback:
-                    logger.warning(f"Parser v3.1 failed ({reason}) - attempting Gemini Vision fallback")
-                    return self._gemini_vision_fallback(image_bytes)
+                    logger.warning(f"Parser v3.1 failed ({reason}) - attempting dynamic parse")
+                    dynamic = self._dynamic_parse_fallback(lines, ocr_diagnostics, confidence)
+                    if dynamic is not None:
+                        return dynamic
+                    logger.warning("Dynamic parse produced nothing - attempting Gemini Vision fallback")
+                    result = self._gemini_vision_fallback(image_bytes)
+                    result.ocr_diagnostics = ocr_diagnostics
+                    return result
                 
                 items = []
                 for item in parsed.get('items', []):
@@ -427,17 +545,112 @@ class OCRService:
                     items=items,
                     latitude=None,
                     longitude=None,
-                    address=parsed.get('address')
+                    address=parsed.get('address'),
+                    ocr_diagnostics=ocr_diagnostics,
                 )
             except Exception as e:
                 logger.exception(f"CRITICAL PARSER ERROR: {e}")
             
+            # Dynamic parse before the generic fallback
+            dynamic = self._dynamic_parse_fallback(lines, ocr_diagnostics, confidence)
+            if dynamic is not None:
+                return dynamic
+            
             # Fallback parsing
-            return self._fallback_parse(text, confidence, lines)
+            result = self._fallback_parse(text, confidence, lines)
+            result.ocr_diagnostics = ocr_diagnostics
+            return result
             
         except Exception as e:
             logger.error(f"OCR processing failed: {e}")
             raise ValueError(f"OCR processing failed: {str(e)}")
+
+    def _dynamic_parse_fallback(
+        self,
+        lines: List[str],
+        ocr_diagnostics: Optional[Dict[str, Any]] = None,
+        confidence: float = 0.0,
+    ) -> Optional[OCRResult]:
+        """Parse the OCR lines with the LLM / statistical dynamic parser.
+
+        This is the path that handles product names we have never seen
+        before. The LLM repairs words broken by torn paper using the
+        surrounding context; without an LLM the statistical classifier
+        groups unseen words by shape similarity instead.
+
+        Returns None when the dynamic parser cannot produce a usable result,
+        so the caller can escalate to Gemini Vision.
+        """
+        try:
+            from app.services.dynamic_text_parser import dynamic_text_parser
+        except Exception as e:
+            logger.warning(f"Dynamic parser unavailable: {e}")
+            return None
+
+        try:
+            parsed = dynamic_text_parser.parse(lines)
+        except Exception as e:
+            logger.warning(f"Dynamic parse failed: {e}")
+            return None
+
+        if not parsed or not parsed.items:
+            logger.info("Dynamic parser found no items")
+            return None
+
+        amount = parsed.total
+        if amount is None:
+            # Derive the total from the items when the receipt did not state it.
+            derived = sum((i.qty or 1) * (i.price or 0) for i in parsed.items)
+            amount = derived if derived > 0 else None
+
+        if amount is None or amount <= 0:
+            logger.info("Dynamic parser found no usable total")
+            return None
+
+        items = [
+            {
+                'name': item.item_name,
+                'price': float(item.price or 0),
+                'quantity': float(item.qty or 1),
+                'total_price': float((item.qty or 1) * (item.price or 0)),
+            }
+            for item in parsed.items
+        ]
+
+        payload = {
+            "engine": parsed.engine,
+            "store_name": parsed.store_name,
+            "total": amount,
+            "subtotal": parsed.subtotal,
+            "tax": parsed.tax,
+            "discount": parsed.discount,
+            "date": parsed.transaction_date,
+            "time": parsed.transaction_time,
+            "confidence": parsed.confidence,
+            "notes": parsed.notes,
+        }
+
+        logger.info(
+            "Dynamic parse succeeded via %s: %d items, total %.0f",
+            parsed.engine, len(items), amount,
+        )
+
+        amount_val = int(float(amount))
+        return OCRResult(
+            text="\n".join(lines)[:500],
+            confidence=confidence,
+            raw_lines=lines,
+            engine_confidence=parsed.confidence * 100,
+            merchant_name=parsed.store_name,
+            amount=f"Rp {amount_val:,}".replace(',', '.'),
+            amount_value=float(amount_val),
+            date=parsed.transaction_date,
+            payment_method=parsed.payment_method,
+            items=items,
+            address=parsed.store_address,
+            ocr_diagnostics=ocr_diagnostics,
+            dynamic_parse=payload,
+        )
 
     def _gemini_vision_fallback(self, image_bytes: bytes) -> OCRResult:
         """Use Gemini Vision AI when local OCR fails."""

@@ -320,4 +320,28 @@ export default {
     delete_account: "Delete Account",
     logout: "Logout",
   },
+
+  // Profile Summary
+  profile: {
+    summary_title: "Profile Summary",
+    summary_subtitle: "Identity & activity history",
+    identity: "Profile Identity",
+    history: "Activity History",
+    member_since: "Member since",
+    last_login: "Last login",
+    login_history: "Login History",
+    recent_transactions: "Recent Transactions",
+    total_income: "Total Income",
+    total_expense: "Total Expense",
+    account_balance: "Account Balance",
+    total_transactions: "Total Transactions",
+    active_streak: "Active Streak",
+    active_days: "Active Days",
+    no_activity: "No transaction activity in the last 30 days.",
+    open_profile: "Open profile summary",
+    edit_profile: "Edit profile & account information",
+    transactions: "transactions",
+    days_active: "active days",
+    day_streak: "days",
+  },
 };

@@ -14,6 +14,7 @@ import api, { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../config/url';
 import { useTranslation } from '../i18n';
 import AIAssistant from '../components/common/AIAssistant';
+import { useTheme } from '../contexts/ThemeContext';
 
 // ============================================================================
 // ACHIEVEMENTS CONFIGURATION - DIPULIHKAN DAN DIENHANCE
@@ -267,13 +268,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // STATE MANAGEMENT - SEMUA STATE DIPULIHKAN
   // ==========================================================================
   
-  // Dark mode state
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return false;
-  });
+  // Dark mode comes from the global ThemeContext so the page always matches
+  // the toggle in the navigation and the user's saved preference.
+  const { isDarkMode, toggleTheme } = useTheme();
   
   // Display mode (basic/advanced)
   const [displayMode, setDisplayMode] = useState('basic');
@@ -313,17 +310,12 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // EFFECTS
   // ==========================================================================
   
-  // Dark mode effect
+  // Re-init the chart when the theme changes so the chart colors follow it.
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    // Re-init chart with new theme
     if (cashFlowSeries.length > 0) {
       initChart();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDarkMode]);
   
   // Display mode change effect
@@ -792,7 +784,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           {/* Dark Mode Toggle */}
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${bgCard} border ${borderColor}`}>
             <Sun className={`w-4 h-4 ${textSecondary}`} />
-            <DarkModeToggle isDark={isDarkMode} onToggle={() => setIsDarkMode(!isDarkMode)} />
+            <DarkModeToggle isDark={isDarkMode} onToggle={toggleTheme} />
             <Moon className={`w-4 h-4 ${textSecondary}`} />
           </div>
           
