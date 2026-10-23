@@ -141,6 +141,11 @@ class AgentPlan:
     reply: str = ""
     # Set when the agent needs the user to confirm before writing.
     needs_confirmation: bool = False
+    # Set when the message held more than one request.
+    is_multi: bool = False
+    # The parts of the message that asked for advice rather than for an
+    # action. They are answered, not carried out.
+    suggestions: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -149,7 +154,11 @@ class AgentPlan:
             "actions": [a.to_dict() for a in self.actions],
             "reply": self.reply,
             "needs_confirmation": self.needs_confirmation,
-            "is_mutating": self.intent in MUTATING_INTENTS,
+            "is_multi": self.is_multi,
+            "suggestions": self.suggestions,
+            "is_mutating": any(
+                a.kind in MUTATING_INTENTS for a in self.actions
+            ) or self.intent in MUTATING_INTENTS,
         }
 
 

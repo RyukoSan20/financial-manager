@@ -40,6 +40,13 @@ from app.services.ai_agent import (
     detect_intent,
     guess_category,
 )
+from app.services.intent_classifier import (
+    INSTRUCTION,
+    QUESTION,
+    STATEMENT,
+    SUGGESTION,
+    analyze,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -806,6 +813,35 @@ class AgentExecutor:
 
     # -- query ------------------------------------------------------------
 
+    def query_advice(self, message: str) -> AgentAction:
+        """
+        Answer a request for advice.
+
+        The tables cannot answer this, so the advisor is asked. A
+        failure here is not fatal: the user still gets whatever the
+        other actions found.
+        """
+        try:
+            from app.services.ai_advisor_service import (
+                ai_advisor,
+                get_financial_summary,
+            )
+
+            summary = get_financial_summary(self.db, self.user_id)
+            result = ai_advisor.chat(message, summary)
+            reply = result.get("response") or ""
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"Advisor advice failed: {exc}")
+            reply = ""
+
+        return AgentAction(
+            kind="query_advice",
+            description=reply or "Maaf, saya belum bisa memberi saran untuk itu.",
+            success=bool(reply),
+            result={"advice": reply} if reply else None,
+            error=None if reply else "advisor tidak mengembalikan saran",
+        )
+
     def query_budgets(self, message: str) -> AgentAction:
         """
         Report the user's budgets.
@@ -1058,14 +1094,130 @@ def _query_subject(message: str) -> str:
             return kind
     return "query_budgets"
 
+# How each action is described to the user.
+_ACTION_DESCRIPTIONS = {
+    "add_transaction": "Menambah satu transaksi",
+    "delete_transaction": "Menghapus satu transaksi",
+    "set_budget": "Membuat atau memperbarui anggaran",
+    "allocate": "Membagi saldo menjadi beberapa anggaran",
+    "set_savings_goal": "Membuat target tabungan",
+    "set_recurring": "Membuat transaksi rutin",
+    "build_plan": "Menyusun rencana anggaran dan target",
+}
+
+# The actions that only read. They can run together with the ones that
+# write, because a read cannot break anything.
+_READ_ACTIONS = {
+    "query_budgets", "query_balance", "query_expenses", "query_goals",
+    "query_transactions", "query_advice",
+}
+
+
+def _build_multi_clause_plan(analysis) -> Optional[AgentPlan]:
+    """
+    Build a plan out of a message that holds several requests.
+
+    The old plan builder could only describe one action, so a message
+    that asked for two things only did one of them. Here every clause
+    is turned into its own action, and the action keeps the text of its
+    clause so the executor can read the amount from the right place.
+
+    Nothing is returned when the message is a single request, because
+    the old builder already handles that case well.
+    """
+    actionable = [
+        c for c in analysis.clauses
+        if c.kind in (INSTRUCTION, QUESTION) and c.intent != "unknown"
+    ]
+    suggestions = [c for c in analysis.clauses if c.kind == SUGGESTION]
+
+    if not actionable:
+        return None
+
+    # A single request is left to the old builder. The new path only
+    # earns its keep when there is more than one thing to do.
+    if len(actionable) == 1 and not suggestions:
+        return None
+
+    writes = [c for c in actionable if c.intent not in _READ_ACTIONS]
+    reads = [c for c in actionable if c.intent in _READ_ACTIONS]
+
+    # A suggestion is not an action. It is answered by the advisor.
+    if not writes and not reads:
+        return None
+
+    plan = AgentPlan(
+        intent=actionable[0].intent,
+        confidence=min(c.confidence for c in actionable),
+    )
+    plan.is_multi = True
+
+    for clause in writes + reads:
+        plan.actions.append(AgentAction(
+            kind=clause.intent,
+            description=_ACTION_DESCRIPTIONS.get(
+                clause.intent, _QUERY_DESCRIPTIONS.get(clause.intent, "")
+            ),
+            params={"clause": clause.text},
+        ))
+
+    # The reply has to mention what was found, not just what was done.
+    if suggestions:
+        plan.suggestions = [c.text for c in suggestions]
+
+    return plan
+
+
 def build_plan(db: Session, user_id: int, message: str) -> AgentPlan:
     """
     Work out what the user wants and what should happen.
 
     The plan is built without touching the database. The executor runs
     it afterwards, and only when the user confirms.
+
+    A message can hold several requests. "berapa saldo saya, tambah
+    50000 kopi, dan budget makan 500000 sebulan" is one question and
+    two instructions, and all three have to happen. Each action keeps
+    the text of the clause it came from, so the executor reads the
+    amount from that clause and not from the whole message.
     """
-    intent, confidence = detect_intent(message)
+    analysis = analyze(message)
+
+    plan = _build_multi_clause_plan(analysis)
+    if plan is not None:
+        return plan
+
+    # A single request for advice. The tables cannot answer it, so it
+    # goes to the advisor.
+    if len(analysis.suggestions) == 1 and not analysis.instructions:
+        clause = analysis.suggestions[0]
+        return AgentPlan(
+            intent="query_advice",
+            confidence=clause.confidence,
+            actions=[AgentAction(
+                kind="query_advice",
+                description="Memberikan saran",
+                params={"clause": clause.text},
+            )],
+        )
+
+    # A single request. The classifier is trusted when it is sure,
+    # because it knows about negations and wishes that the old chain
+    # of rules did not. The old chain is the fallback for anything the
+    # classifier does not recognise.
+    if len(analysis.clauses) == 1:
+        clause = analysis.clauses[0]
+        if clause.kind == STATEMENT and clause.confidence >= 0.5:
+            # "jangan hapus ..." is not an order to delete anything.
+            return AgentPlan(intent="unknown", confidence=clause.confidence)
+        if clause.kind == INSTRUCTION and clause.intent != "unknown":
+            intent, confidence = clause.intent, clause.confidence
+        elif clause.kind == QUESTION and clause.intent != "query_budgets":
+            intent, confidence = "query", clause.confidence
+        else:
+            intent, confidence = detect_intent(message)
+    else:
+        intent, confidence = detect_intent(message)
 
     plan = AgentPlan(intent=intent, confidence=confidence)
 
@@ -1125,30 +1277,37 @@ def execute_plan(
 
     for action in plan.actions:
         try:
+            # Each action reads its own clause. Without this, a message
+            # that mentions two amounts would give both actions the
+            # first amount.
+            text = action.params.get("clause") or message
+
             if action.kind == "add_transaction":
-                result = executor.add_transaction(message)
+                result = executor.add_transaction(text)
             elif action.kind == "delete_transaction":
-                result = executor.delete_transaction(message)
+                result = executor.delete_transaction(text)
             elif action.kind == "set_budget":
-                result = executor.set_budget(message)
+                result = executor.set_budget(text)
             elif action.kind == "allocate":
-                result = executor.allocate(message)
+                result = executor.allocate(text)
             elif action.kind == "set_savings_goal":
-                result = executor.set_savings_goal(message)
+                result = executor.set_savings_goal(text)
             elif action.kind == "set_recurring":
-                result = executor.set_recurring(message)
+                result = executor.set_recurring(text)
             elif action.kind == "build_plan":
-                result = executor.build_plan(message)
+                result = executor.build_plan(text)
             elif action.kind == "query_budgets":
-                result = executor.query_budgets(message)
+                result = executor.query_budgets(text)
             elif action.kind == "query_balance":
-                result = executor.query_balance(message)
+                result = executor.query_balance(text)
             elif action.kind == "query_expenses":
-                result = executor.query_expenses(message)
+                result = executor.query_expenses(text)
             elif action.kind == "query_goals":
-                result = executor.query_goals(message)
+                result = executor.query_goals(text)
             elif action.kind == "query_transactions":
-                result = executor.query_transactions(message)
+                result = executor.query_transactions(text)
+            elif action.kind == "query_advice":
+                result = executor.query_advice(text)
             else:
                 result = AgentAction(
                     kind=action.kind,

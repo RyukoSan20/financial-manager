@@ -379,7 +379,15 @@ def _agent_reply(plan, executed: bool) -> str:
     failed = [a for a in plan.actions if not a.success]
 
     if done:
-        reply = " ".join(a.description for a in done if a.description)
+        if len(done) > 1:
+            # Several requests in one message: list what was done, so
+            # the user can see each one was handled.
+            reply = "\n".join(
+                f"{i}. {a.description}" for i, a in enumerate(done, 1)
+                if a.description
+            )
+        else:
+            reply = " ".join(a.description for a in done if a.description)
     else:
         reply = ""
 
@@ -448,10 +456,43 @@ def ai_agent(
 
     plan = build_plan(db, current_user.id, message)
 
+    # A message can hold several requests. When every one of them is a
+    # read, they all run and the answers are joined. There is nothing
+    # to confirm, because nothing changes.
+    if plan.is_multi and plan.actions and all(
+        a.kind.startswith("query_") for a in plan.actions
+    ):
+        from app.services.ai_agent_executor import AgentExecutor, execute_plan
+
+        plan = execute_plan(db, current_user.id, plan, message)
+        try:
+            db.commit()
+        except Exception as exc:  # noqa: BLE001
+            db.rollback()
+            logger.warning(f"Agent read commit failed: {exc}")
+
+        parts = [
+            a.description for a in plan.actions
+            if a.description and a.success
+        ]
+        reply = "\n\n".join(parts) if parts else "Tidak ada data."
+
+        return AgentResponse(
+            success=True,
+            intent=plan.intent,
+            confidence=plan.confidence,
+            reply=reply,
+            plan=plan.to_dict(),
+            actions=[a.to_dict() for a in plan.actions],
+            needs_confirmation=False,
+            data=[a.result for a in plan.actions if a.result],
+            message=reply,
+        )
+
     # A query only reads. It must never look like a pending write, and its
     # result has to be the answer the user sees - not a "konfirmasi ya"
     # prompt for something that changes nothing.
-    if plan.intent == "query" and plan.actions:
+    if plan.intent in ("query", "query_advice") and plan.actions:
         from app.services.ai_agent_executor import AgentExecutor, execute_plan
 
         plan = execute_plan(db, current_user.id, plan, message)
