@@ -540,11 +540,19 @@ export const Analytics = () => {
                             {formatCurrency(row.net)}
                           </td>
                           <td className="px-5 py-3 text-right">
-                            {i < monthlyComparison.comparisons.length - 1 && (
-                              <Badge variant={parseFloat(row.change_pct) >= 0 ? 'success' : 'danger'} size="sm">
-                                {parseFloat(row.change_pct) >= 0 ? '+' : ''}{parseFloat(row.change_pct).toFixed(1)}%
-                              </Badge>
-                            )}
+                            {i < monthlyComparison.comparisons.length - 1 && (() => {
+                              // A missing or unparsable value must not become
+                              // NaN% in the table.
+                              const pct = parseFloat(row.change_pct);
+                              if (Number.isNaN(pct)) {
+                                return <span className="text-xs text-gray-400">-</span>;
+                              }
+                              return (
+                                <Badge variant={pct >= 0 ? 'success' : 'danger'} size="sm">
+                                  {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
+                                </Badge>
+                              );
+                            })()}
                           </td>
                         </tr>
                       );

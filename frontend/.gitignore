@@ -39,3 +39,8 @@ coverage/
 /playwright/.cache/
 /playwright/.auth/
 .env*
+# The production build reads its variables from this directory instead of
+# the project root, so the local .env.local cannot leak into the shipped
+# bundle. It holds nothing but the public API URL, so it is committed.
+!env-production/
+!env-production/.env

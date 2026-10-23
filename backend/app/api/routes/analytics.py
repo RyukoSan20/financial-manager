@@ -614,6 +614,7 @@ def get_net_worth_history(
     db: Session = Depends(get_db)
 ):
     """Get historical net worth data."""
+    user_id = current_user.id if current_user else None
     today = date.today()
     
     # First, try to get from snapshots
@@ -639,8 +640,14 @@ def get_net_worth_history(
         }
     
     # Calculate from accounts if no snapshots
-    accounts = db.query(Account).filter(Account.is_active == True).all()
-    debts = db.query(Debt).filter(Debt.is_active == True, Debt.is_paid_off == False).all()
+    accounts = db.query(Account).filter(
+        Account.is_active == True, Account.user_id == user_id
+    ).all()
+    debts = db.query(Debt).filter(
+        Debt.user_id == user_id,
+        Debt.is_active == True,
+        Debt.is_paid_off == False,
+    ).all()
     
     total_assets = sum(a.balance for a in accounts if a.balance > 0)
     total_liabilities = sum(a.balance for a in accounts if a.balance < 0)
@@ -662,12 +669,22 @@ def get_net_worth_history(
 
 
 @router.post("/net-worth-snapshot")
-def create_net_worth_snapshot(db: Session = Depends(get_db)):
+def create_net_worth_snapshot(
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """Create a net worth snapshot for today."""
+    user_id = current_user.id if current_user else None
     
     # Get current values
-    accounts = db.query(Account).filter(Account.is_active == True).all()
-    debts = db.query(Debt).filter(Debt.is_active == True, Debt.is_paid_off == False).all()
+    accounts = db.query(Account).filter(
+        Account.is_active == True, Account.user_id == user_id
+    ).all()
+    debts = db.query(Debt).filter(
+        Debt.user_id == user_id,
+        Debt.is_active == True,
+        Debt.is_paid_off == False,
+    ).all()
     
     # Calculate totals by type
     cash = sum(a.balance for a in accounts if a.account_type == "cash")
@@ -784,6 +801,21 @@ def get_monthly_comparison(
     
     comparisons.reverse()  # Oldest first
     
+    # The percentage change against the month before. The frontend reads
+    # change_pct, and without it the table showed "NaN%".
+    for index, row in enumerate(comparisons):
+        if index == 0:
+            row["change_pct"] = 0
+            continue
+        previous = comparisons[index - 1]
+        previous_expense = float(previous["expense"] or 0)
+        if previous_expense > 0:
+            row["change_pct"] = float(
+                (float(row["expense"] or 0) - previous_expense) / previous_expense * 100
+            )
+        else:
+            row["change_pct"] = 0
+    
     return {
         "comparisons": comparisons,
     }
@@ -823,18 +855,25 @@ def get_financial_health(
     ).scalar() or Decimal("0")
     
     # Get accounts
-    accounts = db.query(Account).filter(Account.is_active == True).all()
+    accounts = db.query(Account).filter(
+        Account.is_active == True, Account.user_id == user_id
+    ).all()
     total_balance = sum(a.balance for a in accounts)
     
     # Get debts
     debts = db.query(Debt).filter(
+        Debt.user_id == user_id,
         Debt.is_active == True,
         Debt.is_paid_off == False
     ).all()
     total_debt = sum(d.current_balance for d in debts)
     
     # Get goals
-    goals = db.query(Goal).filter(Goal.is_active == True, Goal.is_completed == False).all()
+    goals = db.query(Goal).filter(
+        Goal.user_id == user_id,
+        Goal.is_active == True,
+        Goal.is_completed == False,
+    ).all()
     
     # Calculate scores
     scores = {}
