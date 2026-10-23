@@ -615,11 +615,34 @@ class AgentExecutor:
                 error="Sebutkan targetnya, misal: target tabungan vpn 2000000 6 bulan",
             )
 
+        # A goal of a few rupiah is never what the user meant. "Rp1" in
+        # "target rumah Rp1 miliar" lost the scale word, and creating a
+        # one rupiah goal would be silently wrong. The agent asks
+        # instead of guessing.
+        if amount < 10000:
+            return AgentAction(
+                kind="set_savings_goal",
+                description="Nominal target terlalu kecil untuk disimpan",
+                requires_confirmation=False,
+                success=False,
+                error=(
+                    f"Nominal yang terbaca Rp{amount:,.0f} - kemungkinan "
+                    "scaling-nya belum ikut terbaca. Tuliskan nominal lengkap, "
+                    "misal: target rumah 300000000 2 tahun"
+                ),
+            )
+
         # A period in the message becomes the target date.
         target_date = date.today() + timedelta(days=365)
         months = re.search(r"(\d+)\s*(bulan|month)", (message or "").lower())
         years = re.search(r"(\d+)\s*(tahun|year)", (message or "").lower())
-        if months:
+
+        # An explicit date wins over a period: "target rumah 500000000
+        # 23 Oktober 2027" means that day, not one year from now.
+        explicit = extract_date(message)
+        if explicit != date.today():
+            target_date = explicit
+        elif months:
             m = int(months.group(1))
             today = date.today()
             target_date = today + timedelta(days=monthrange(
@@ -638,14 +661,40 @@ class AgentExecutor:
             rest,
             flags=re.IGNORECASE,
         )
-        label = re.sub(
-            r"\b(set|atur|bikin|buat|buatkan|target|tujuan|goal|tabungan|untuk|per|"
-            r"bulan|tahun|month|year)\b",
+        # The date is not part of the name either.
+        rest = re.sub(
+            r"\b\d{1,2}\s+"
+            r"(januari|februari|maret|april|mei|juni|juli|agustus|september|"
+            r"oktober|november|desember|january|february|march|april|may|june|"
+            r"july|august|september|october|november|december)"
+            r"\s+\d{4}\b",
             " ",
             rest,
             flags=re.IGNORECASE,
         )
-        label = re.sub(r"\s+", " ", label).strip(" ,.-") or "Tabungan"
+        # The name is the words between the command and the amount. The
+        # command words and the filler are removed, and what is left has
+        # to look like a name and not like a whole sentence.
+        label = re.sub(
+            r"\b(set|atur|aturkan|bikin|bikinlah|buat|buatkan|buatlah|"
+            r"membuat|membikin|menyusun|membagi|bagi|target|tujuan|goal|"
+            r"tabungan|untuk|per|plan|rencana|dan|atau|tolong|bisa|tolong|"
+            r"bisaakah|anda|saya|help|bantu|boleh|silakan|"
+            r"bulan|tahun|month|year|hari|day|minggu|week)\b",
+            " ",
+            rest,
+            flags=re.IGNORECASE,
+        )
+        label = re.sub(r"\s+", " ", label).strip(" ,.-")
+
+        # A name that reads like a sentence is not a name. The subject is
+        # almost always in the first two or three words: "primer sek" or
+        # "rumah". The rest of the sentence is the user talking, not the
+        # name of the goal.
+        words = [w for w in label.split(" ") if w]
+        if len(words) > 3:
+            label = " ".join(words[:3])
+        label = label.strip(" ,.-") or "Tabungan"
 
         goal = Goal(
             user_id=self.user_id,
@@ -671,6 +720,19 @@ class AgentExecutor:
             success=True,
             result={"goal_id": goal.id, "amount": float(amount)},
         )
+
+    # -- plan ------------------------------------------------------------
+
+    def build_plan(self, message: str) -> AgentAction:
+        """
+        Build a yearly budget plan with goals.
+
+        The details live in their own module, because the plan is a
+        bigger piece of work than a single action.
+        """
+        from app.services.ai_plan_builder import build_plan_action
+
+        return build_plan_action(self.db, self.user_id, message)
 
     # -- recurring --------------------------------------------------------
 
@@ -1032,6 +1094,11 @@ def build_plan(db: Session, user_id: int, message: str) -> AgentPlan:
             kind="set_savings_goal",
             description="Membuat target tabungan",
         ))
+    elif intent == "build_plan":
+        plan.actions.append(AgentAction(
+            kind="build_plan",
+            description="Menyusun rencana anggaran dan target",
+        ))
     elif intent == "set_recurring":
         plan.actions.append(AgentAction(
             kind="set_recurring",
@@ -1070,6 +1137,8 @@ def execute_plan(
                 result = executor.set_savings_goal(message)
             elif action.kind == "set_recurring":
                 result = executor.set_recurring(message)
+            elif action.kind == "build_plan":
+                result = executor.build_plan(message)
             elif action.kind == "query_budgets":
                 result = executor.query_budgets(message)
             elif action.kind == "query_balance":

@@ -53,7 +53,11 @@ INTENT_PATTERNS: Dict[str, Tuple[str, ...]] = {
     ),
     "set_savings_goal": (
         "target", "tujuan", "goal", "saving goal", "tabungan",
-        "k 집", "niat", "rencana",
+        "k 집", "niat",
+    ),
+    "build_plan": (
+        "plan", "rencana", "pola", "sistem", "struktur", "primer",
+        "sekunder", "tersier", "kebutuhan", "prioritas", "stratifikasi",
     ),
     "set_recurring": (
         "rutin", "berulang", "recurring", "langsung", "otomatis", "setoran",
@@ -80,6 +84,7 @@ MUTATING_INTENTS = {
     "allocate",
     "set_savings_goal",
     "set_recurring",
+    "build_plan",
 }
 
 # Words that mean the user is asking about budget information, not asking
@@ -192,6 +197,17 @@ def detect_intent(message: str) -> Tuple[str, float]:
         # "budget" on its own: the user is probably asking about it.
         return "query", 0.6
 
+    # --- A whole plan --------------------------------------------------
+    # "bikin plan 1 tahun gaji 6 juta, primer sekunder tersier" asks for
+    # a budget plan, not for one goal. It has to be checked before the
+    # goal rule, because a plan message usually names targets too.
+    if any(cue in tokens for cue in PLAN_CUES) and (
+        "tahun" in tokens or "bulan" in tokens or "gaji" in tokens
+        or "salary" in tokens or "income" in tokens
+        or "penghasilan" in tokens or "pendapatan" in tokens
+    ):
+        return "build_plan", 0.9
+
     # --- Explicit goal -------------------------------------------------
     # "target tabungan 2000000 6 bulan" has no action verb, but the word
     # "target" plus an amount is unambiguous enough.
@@ -253,6 +269,28 @@ def detect_intent(message: str) -> Tuple[str, float]:
 # Amount and text extraction
 # ---------------------------------------------------------------------------
 
+# The words that ask for a whole plan rather than a single goal. The
+# plan builder imports this list, so it lives here and not there.
+PLAN_CUES = (
+    "plan", "rencana", "pola", "sistem", "struktur", "primer",
+    "sekunder", "tersier", "kebutuhan", "prioritas", "stratifikasi",
+)
+
+_MONTH_NAMES = {
+    "januari": 1, "january": 1,
+    "februari": 2, "february": 2,
+    "maret": 3, "march": 3,
+    "april": 4,
+    "mei": 5, "may": 5,
+    "juni": 6, "june": 6,
+    "juli": 7, "july": 7,
+    "agustus": 8, "august": 8,
+    "september": 9,
+    "oktober": 10, "october": 10,
+    "november": 11,
+    "desember": 12, "december": 12,
+}
+
 _NUMBER_RE = re.compile(r"\d[\d.,]*")
 _SCALE_RE = re.compile(r"\b(ribu|rb|juta|jt|miliar|milyar)\b", re.IGNORECASE)
 
@@ -283,8 +321,21 @@ def extract_amount(message: str) -> Tuple[Optional[float], str]:
     """
     text = message or ""
 
+    # A date written out in words is not an amount. "target 23 Oktober
+    # 2027" was read as an amount of 23, so the date is taken out first.
+    working = re.sub(
+        r"\b\d{1,2}\s+"
+        r"(januari|februari|maret|april|mei|juni|juli|agustus|september|"
+        r"oktober|november|desember|january|february|march|april|may|june|"
+        r"july|august|september|october|november|december)"
+        r"\s+\d{4}\b",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+
     # A "Rp 15.000" or "15000" style number.
-    for match in _NUMBER_RE.finditer(text):
+    for match in _NUMBER_RE.finditer(working):
         raw = match.group(0)
         cleaned = raw.replace(".", "").replace(",", ".")
         try:
@@ -295,7 +346,7 @@ def extract_amount(message: str) -> Tuple[Optional[float], str]:
             continue
 
         # A scale word right after the number multiplies it.
-        tail = text[match.end():match.end() + 12].lower()
+        tail = working[match.end():match.end() + 12].lower()
         scale_match = _SCALE_RE.search(tail)
         if scale_match:
             scale = scale_match.group(1).lower()
@@ -306,7 +357,7 @@ def extract_amount(message: str) -> Tuple[Optional[float], str]:
         else:
             end = match.end()
 
-        return value, text[: match.start()] + " " + text[end:]
+        return value, working[: match.start()] + " " + working[end:]
 
     return None, text
 
@@ -424,5 +475,24 @@ def extract_date(message: str) -> date:
             return date(year, month, day)
         except ValueError:
             pass
+
+    # A date written out in words: "23 Oktober 2027" or "23 October 2027".
+    match = re.search(
+        r"\b(\d{1,2})\s+"
+        r"(januari|februari|maret|april|mei|juni|juli|agustus|september|"
+        r"oktober|november|desember|january|february|march|april|may|june|"
+        r"july|august|september|october|november|december)"
+        r"\s+(\d{4})\b",
+        text,
+    )
+    if match:
+        day = int(match.group(1))
+        month = _MONTH_NAMES.get(match.group(2))
+        year = int(match.group(3))
+        if month:
+            try:
+                return date(year, month, day)
+            except ValueError:
+                pass
 
     return today

@@ -887,15 +887,18 @@ def dedupe_items(items: List[ParsedItem]) -> List[ParsedItem]:
 
     def key_of(item: ParsedItem) -> str:
         name = (item.name or "").upper()
-        # The discount marker is not part of the product name.
-        # The discount marker itself is not part of the product name, but
-        # the rest of the line is: "DISKON FRISIAN FLAG : (1, 300)" is one
+        # The discount marker is not part of the product name, but the
+        # rest of the line is: "DISKON FRISIAN FLAG : (1, 300)" is one
         # discount, and dropping everything after the marker left an empty
         # key, which made the row disappear from the breakdown.
         name = re.sub(r"\bDISKON\b", " ", name)
-        # The trailing "1" is the index the receipt prints, not part of
-        # the name.
-        name = re.sub(r"\s*\(\d[\d.,]*\)\s*$", "", name)
+        # The trailing "(1, 300)" is the quantity and the value of the
+        # discount, not part of the name.
+        name = re.sub(r"\s*\(?\d[\d.,]*\s*[,x]?\s*\d*\)?\s*$", "", name)
+        # A receipt prints the line number and the item count after the
+        # name: "PLASTIK SDG 1 1 1" is the same product as "PLASTIK SDG".
+        # Those trailing numbers are dropped so the two lines match.
+        name = re.sub(r"(?:\s+\d+)+\s*$", "", name)
         name = re.sub(r"[^A-Z0-9]+", " ", name).strip()
         return name
 

@@ -383,6 +383,33 @@ def _agent_reply(plan, executed: bool) -> str:
     else:
         reply = ""
 
+    # A plan carries a lot of detail. The description is the short
+    # version, so the breakdown is appended here.
+    for action in done:
+        result = action.result or {}
+        if action.kind != "build_plan" or not isinstance(result, dict):
+            continue
+
+        note = result.get("note")
+        if note:
+            reply = (reply + " " if reply else "") + note
+
+        budgets = result.get("budgets") or []
+        goals = result.get("goals") or []
+        if budgets:
+            lines = [
+                f"  - {b['name']}: Rp{float(b['amount']):,.0f}"
+                for b in budgets
+            ]
+            reply += "\n\nAnggaran bulanan:\n" + "\n".join(lines)
+        if goals:
+            lines = [
+                f"  - {g['name']}: Rp{float(g['amount']):,.0f} "
+                f"target {g.get('target_date', '')}"
+                for g in goals
+            ]
+            reply += "\n\nTarget:\n" + "\n".join(lines)
+
     if failed:
         reason = failed[0].error or "tidak diketahui"
         reply = (reply + " " if reply else "") + f"Ada bagian yang gagal: {reason}."
