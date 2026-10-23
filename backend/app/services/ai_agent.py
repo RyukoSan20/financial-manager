@@ -19,6 +19,8 @@ wording, never to decide the amount.
 
 import logging
 import re
+
+from app.services.duration import strip_durations
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -333,14 +335,11 @@ def extract_amount(message: str) -> Tuple[Optional[float], str]:
     # A duration is not an amount. "buatkan budgeting untuk 2 tahun ke
     # depan" was read as a transaction of 2, so the duration is taken
     # out before any number is looked at.
-    working = re.sub(
-        r"\b(?:untuk|dalam|selama|periode|periode\s+selama|jangka\s+waktu)?"
-        r"\s*\d+\s*(?:tahun|tahunan|year|years|bulan|bulanan|month|months|"
-        r"minggu|mingguan|week|weeks|hari|harian|day|days|quarter|kuartal)\b",
-        " ",
-        text,
-        flags=re.IGNORECASE,
-    )
+    #
+    # The definition of a duration is shared with the intent
+    # classifier, so the two cannot disagree about which numbers are
+    # counts of time.
+    working = strip_durations(text)
 
     # A date written out in words is not an amount. "target 23 Oktober
     # 2027" was read as an amount of 23, so the date is taken out first.

@@ -28,6 +28,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.services.duration import has_duration, strip_durations
+
 logger = logging.getLogger(__name__)
 
 
@@ -388,20 +390,17 @@ def _has_real_amount(clause: str) -> bool:
     "2 tahun" holds a number, but it is two years, not two rupiah. A
     clause that holds nothing but a duration has no figure in it.
     """
-    without_duration = _DURATION_RE.sub(" ", clause or "")
+    without_duration = strip_durations(clause or "")
     return bool(_AMOUNT_RE.search(without_duration))
 
 
 # A duration is a count of time, not a sum of money. "2 tahun ke
 # depan" is two years, and it must never be read as two rupiah.
-_DURATION_RE = re.compile(
-    r"\d+\s*(?:tahun|tahunan|year|years|bulan|bulanan|month|months|"
-    r"minggu|mingguan|week|weeks|hari|harian|day|days|kuartal|quarter)"
-)
-
-
+#
+# The definition lives in app.services.duration, so the classifier and
+# the amount extractor cannot disagree about what a duration is.
 def _has_duration(clause: str) -> bool:
-    return bool(_DURATION_RE.search(clause or ""))
+    return has_duration(clause)
 
 
 def _intent_of_instruction(clause: str) -> Tuple[str, float]:

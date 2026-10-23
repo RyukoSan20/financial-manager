@@ -16,6 +16,7 @@ from typing import Any
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.services.ai_agent import extract_amount  # noqa: E402
+from app.services.duration import duration_months  # noqa: E402
 from app.services.intent_classifier import (  # noqa: E402
     INSTRUCTION,
     QUESTION,
@@ -200,6 +201,23 @@ check("a month count is not a figure",
 
 check("a normal amount is read",
       extract_amount("tambah 25000 kopi")[0] == 25000)
+
+# ---------------------------------------------------------------------------
+# The short ways of writing a duration
+# ---------------------------------------------------------------------------
+
+for written, months in [
+    ("2 tahun", 24), ("2 thn", 24), ("2 th", 24),
+    ("6 bulan", 6), ("3 bln", 3),
+    ("12 bulan", 12), ("4 minggu", 1), ("1 kuartal", 3),
+]:
+    check(f"the duration of '{written}' is read",
+          duration_months(written) == months, duration_months(written))
+    check(f"'{written}' is not read as a figure",
+          extract_amount(f"buatkan budgeting untuk {written}")[0] is None,
+          extract_amount(f"buatkan budgeting untuk {written}")[0])
+    check(f"'{written}' asks for a plan",
+          intent_of(f"buatkan budgeting untuk {written}") == "build_plan")
 
 # ---------------------------------------------------------------------------
 

@@ -36,6 +36,8 @@ from sqlalchemy.orm import Session
 from app.models.budget import Budget
 from app.models.goal import Goal
 
+from app.services.duration import duration_months
+
 from app.services.ai_agent import (
     AgentAction,
     extract_amount,
@@ -201,6 +203,53 @@ def _read_income(message: str) -> Optional[float]:
     )
 
 
+def _average_monthly_income(
+    db: Session,
+    user_id: int,
+    months_back: int = 6,
+) -> Optional[float]:
+    """
+    The average income the user has actually received, per month.
+
+    When the user asks for a plan without saying what they earn, this
+    is what the plan is built on. It comes from the transactions that
+    are already in the app, so it is the user's own money and not a
+    guess.
+
+    Only the last few months are looked at, because a plan is about the
+    present. A salary that stopped two years ago is not income.
+    """
+    from app.models.transaction import Transaction
+
+    today = date.today()
+    start = today - timedelta(days=31 * months_back)
+
+    rows = db.execute(
+        select(Transaction).where(
+            Transaction.user_id == user_id,
+            Transaction.type == "income",
+            Transaction.date >= start,
+        )
+    ).scalars().all()
+
+    if not rows:
+        return None
+
+    total = sum(float(row.amount) for row in rows)
+    if total <= 0:
+        return None
+
+    # The months that actually had income in them, not the months in
+    # the window. A user who was paid three times in six months earned
+    # three times as much as they earned in a month.
+    distinct_months = {
+        (row.date.year, row.date.month) for row in rows
+    }
+    months_with_income = max(1, len(distinct_months))
+
+    return total / months_with_income
+
+
 def _read_expenses(message: str) -> Optional[float]:
     """
     The monthly spending the user stated.
@@ -219,18 +268,16 @@ def _read_expenses(message: str) -> Optional[float]:
 def _read_duration_months(message: str) -> int:
     """
     How long the plan runs. "plan 1 tahun" means twelve months.
+
+    The units are the shared ones, so "2 thn" means the same as
+    "2 tahun". The longest duration in the message wins: "plan 1 tahun
+    dengan target 6 bulan" is a year-long plan with a half-year goal,
+    not a six-month plan.
     """
-    text = (message or "").lower()
-
-    years = re.search(r"(\d+)\s*(tahun|year)", text)
-    if years:
-        return max(1, int(years.group(1)) * 12)
-
-    months = re.search(r"(\d+)\s*(bulan|month)", text)
-    if months:
-        return max(1, int(months.group(1)))
-
-    return 12
+    months = duration_months(message or "")
+    if months is None:
+        return 12
+    return max(1, int(round(months)))
 
 
 def _read_tiers(message: str) -> Dict[str, Optional[float]]:
@@ -410,22 +457,40 @@ def build_plan_action(
 
     months = _read_duration_months(message)
 
+    income_note = ""
+
     if income is None or income <= 0:
-        # The plan is built on what the user earns, so without an
-        # income there is nothing to plan. The question names the
-        # figure that is missing, so the user can answer in one go.
-        return AgentAction(
-            kind="build_plan",
-            description="Rencana butuh jumlah penghasilan bulanan",
-            requires_confirmation=False,
-            success=False,
-            error=(
-                f"Berapa penghasilan bulanan Anda? Rencana {months} bulan "
-                "dibangun dari penghasilan itu, misal: "
-                "'buatkan budgeting untuk 2 tahun ke depan, gaji 6 juta "
-                "per bulan'"
-            ),
-        )
+        # The plan is built on what the user earns. When they did not
+        # say, the transactions already in the app are used, because
+        # that is their own money rather than a guess. If there are
+        # none either, the plan is refused with a question.
+        if db is not None:
+            average = _average_monthly_income(db, user_id)
+        else:
+            average = None
+
+        if average and average > 0:
+            income = average
+            income_note = (
+                f" Penghasilan tidak disebutkan, jadi diambil dari rata-rata "
+                f"pemasukan Rp{income:,.0f}/bulan di transaksi Anda."
+            )
+        else:
+            # The plan is built on what the user earns, so without an
+            # income there is nothing to plan. The question names the
+            # figure that is missing, so the user can answer in one go.
+            return AgentAction(
+                kind="build_plan",
+                description="Rencana butuh jumlah penghasilan bulanan",
+                requires_confirmation=False,
+                success=False,
+                error=(
+                    f"Berapa penghasilan bulanan Anda? Rencana {months} bulan "
+                    "dibangun dari penghasilan itu, misal: "
+                    "'buatkan budgeting untuk 2 tahun ke depan, gaji 6 juta "
+                    "per bulan'"
+                ),
+            )
     stated = _read_tiers(message)
 
     # The stated expenses come out of the income before the tiers are
@@ -565,7 +630,7 @@ def build_plan_action(
             "tiers": tier_totals,
             "budgets": created_budgets,
             "goals": goals_created,
-            "note": (expense_note + note).strip(),
+            "note": (income_note + expense_note + note).strip(),
         },
     )
 
