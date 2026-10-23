@@ -46,7 +46,7 @@ GEMINI_API_URL = (
 GEMINI_FALLBACK_MODELS = [
     m.strip() for m in os.getenv(
         "GEMINI_FALLBACK_MODELS",
-        "gemini-3.6-flash,gemini-2.5-flash,gemini-flash-latest,gemini-pro-latest",
+        "gemini-3.6-flash,gemini-pro-latest",
     ).split(",") if m.strip()
 ]
 
@@ -60,7 +60,11 @@ TEMPERATURE = 0.7
 # the user with the canned keyword answer. That answer is right but it
 # does not answer the question, and it is what made the assistant feel
 # stiff. A real reply is worth waiting for.
-GEMINI_TIMEOUT = 30
+# A question should not keep the user waiting. The timeout is what one
+# attempt is allowed to take, and the budget is what the whole search
+# across the models and the keys is allowed to take.
+GEMINI_TIMEOUT = 20
+GEMINI_TOTAL_BUDGET = 45
 
 # Finance-related keywords for validation
 FINANCE_KEYWORDS = [
@@ -187,12 +191,20 @@ class AIFinancialAdvisor:
         # A model and a key that were both refused are not tried again
         # for the same question.
         failed = set()
+        started = time.monotonic()
 
         for model in models:
             for key in keys:
                 if (model, key) in failed:
                     continue
                 failed.add((model, key))
+
+                # The whole search has a budget. When it is spent the
+                # fallback answer is used, but the user does not wait
+                # for every model in turn.
+                if time.monotonic() - started > GEMINI_TOTAL_BUDGET:
+                    print("Gemini time budget spent, giving up")
+                    return None
 
                 try:
                     url = (
@@ -230,6 +242,13 @@ class AIFinancialAdvisor:
                         )
                         time.sleep(0.3)
                         continue
+
+                    # 404 means the model is gone. Trying it again
+                    # for the other keys only wastes time, so the whole
+                    # model is dropped.
+                    if response.status_code == 404:
+                        print(f"Gemini model {model} is gone, dropping it")
+                        break
 
                     print(
                         f"Gemini API error: {response.status_code} on {model} "

@@ -107,8 +107,16 @@ const AIAdvisor = () => {
       let response = null;
       let agentActions = null;
 
+      // The messages that came before. A follow up such as "kalau untuk
+      // 2 tahun ke depan gimana?" only means something next to the
+      // earlier question, so the conversation travels with it.
+      const history = messages
+        .filter(m => m.content)
+        .slice(-8)
+        .map(m => ({ role: m.role, content: m.content }));
+
       try {
-        const agent = await api.ai.agent(userMsg);
+        const agent = await api.ai.agent(userMsg, false, history);
         if (agent && agent.success && agent.intent !== 'unknown') {
           response = { response: agent.reply || agent.message || '' };
           agentActions = agent.actions || null;
@@ -120,6 +128,7 @@ const AIAdvisor = () => {
       if (!response) {
         response = await api.ai.chat({ 
           message: userMsg, 
+          history,
           context: {
             summary: summary,
             advice: advice,
