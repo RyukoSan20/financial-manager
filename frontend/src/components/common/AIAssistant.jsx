@@ -231,6 +231,15 @@ const AIAssistant = ({ userData = {} }) => {
     if (!userMsg.trim()) return;
 
     setMessage('');
+
+    // The messages that came before are sent with the question, so the
+    // answer can refer to what was already said. Without this every
+    // question is answered as if it were the first one.
+    const history = messages
+      .filter((m) => m.content)
+      .slice(-8)
+      .map((m) => ({ role: m.role, content: m.content.slice(0, 500) }));
+
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setIsTyping(true);
 
@@ -239,7 +248,7 @@ const AIAssistant = ({ userData = {} }) => {
       // transaction, a budget request becomes a budget rule, and a plain
       // question only gets information. Anything else falls through to the
       // advisor below.
-      const agentResult = await api.ai.agent(userMsg);
+      const agentResult = await api.ai.agent(userMsg, false, history);
 
       if (agentResult && agentResult.success && agentResult.intent !== 'unknown') {
         const reply = agentResult.reply || agentResult.message || '';
@@ -267,24 +276,18 @@ const AIAssistant = ({ userData = {} }) => {
         return;
       }
 
-      // Fall back to the old execute path for anything the agent did not
-      // recognise.
-      const actionResult = await api.ai.execute(userMsg);
-      
-      if (actionResult && actionResult.success) {
-        // Action was executed successfully
-        const successMsg = `${actionResult.message}\n\nData keuangan Anda sudah diperbarui!`;
-        setMessages(prev => [...prev, { role: 'assistant', content: successMsg }]);
-        
-        // Trigger dashboard refresh if callback provided
-        if (userData.onRefresh) {
-          setTimeout(() => userData.onRefresh(), 1000);
-        }
-      } else if (actionResult && !actionResult.success && actionResult.message) {
-        // Action failed or couldn't be parsed - fallback to chat
-        const chatResponse = await api.ai.chat({ 
-          message: userMsg, 
+      // The agent did not recognise it as an action. The chat endpoint
+      // is the one that answers a question, and it carries the
+      // conversation, so the answer can refer to what was said before.
+      //
+      // The old code went through the execute endpoint first, which
+      // meant a second request for every unrecognised message and two
+      // different styles of answer depending on which one won.
+      {
+        const response = await api.ai.chat({
+          message: userMsg,
           language,
+          history,
           userData: {
             balance: userData.totalBalance || 0,
             income: userData.totalIncome || 0,
@@ -292,27 +295,7 @@ const AIAssistant = ({ userData = {} }) => {
             currency: 'IDR'
           }
         });
-        
-        if (chatResponse && chatResponse.response) {
-          setMessages(prev => [...prev, { role: 'assistant', content: chatResponse.response }]);
-        } else if (chatResponse && typeof chatResponse === 'string') {
-          setMessages(prev => [...prev, { role: 'assistant', content: chatResponse }]);
-        } else {
-          throw new Error('Invalid response');
-        }
-      } else {
-        // No action result - try chat only
-        const response = await api.ai.chat({ 
-          message: userMsg, 
-          language,
-          userData: {
-            balance: userData.totalBalance || 0,
-            income: userData.totalIncome || 0,
-            expense: userData.totalExpense || 0,
-            currency: 'IDR'
-          }
-        });
-        
+
         if (response && response.response) {
           setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
         } else if (response && typeof response === 'string') {

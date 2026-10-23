@@ -7,6 +7,8 @@ No credit card required.
 import os
 import json
 import random
+import re
+import time
 import requests
 from typing import Optional, Dict, Any, List
 from datetime import datetime, date, timedelta
@@ -22,13 +24,43 @@ GEMINI_API_KEYS = [
 # Filter out empty keys
 GEMINI_API_KEYS = [k for k in GEMINI_API_KEYS if k]
 
-# Model configuration - Updated to latest available
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1/models/{GEMINI_MODEL}:generateContent"
+# Model configuration.
+#
+# The endpoint is v1beta, not v1. On v1 the configured model was
+# refused with 429 and 503 while the same question answered fine on
+# v1beta, so the assistant fell back to the canned reply and felt
+# stiff.
+GEMINI_API_VERSION = os.getenv("GEMINI_API_VERSION", "v1beta")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+GEMINI_API_URL = (
+    f"https://generativelanguage.googleapis.com/{GEMINI_API_VERSION}"
+    f"/models/{GEMINI_MODEL}:generateContent"
+)
+
+# The other models to try when the first one is busy.
+#
+# The provider refuses requests for a while when the free tier is
+# saturated, and every model has its own quota. When one model is
+# refused, the next one often still answers, so the reply is not lost
+# to a rate limit that had nothing to do with the question.
+GEMINI_FALLBACK_MODELS = [
+    m.strip() for m in os.getenv(
+        "GEMINI_FALLBACK_MODELS",
+        "gemini-3.6-flash,gemini-2.5-flash,gemini-flash-latest,gemini-pro-latest",
+    ).split(",") if m.strip()
+]
 
 # Free tier limits
 MAX_TOKENS = 8192
 TEMPERATURE = 0.7
+
+# How long to wait for the provider.
+#
+# It was 12 seconds, which was short enough that a busy provider left
+# the user with the canned keyword answer. That answer is right but it
+# does not answer the question, and it is what made the assistant feel
+# stiff. A real reply is worth waiting for.
+GEMINI_TIMEOUT = 30
 
 # Finance-related keywords for validation
 FINANCE_KEYWORDS = [
@@ -119,120 +151,253 @@ class AIFinancialAdvisor:
         self.session = requests.Session() if not api_key else None
     
     def _call_gemini(self, prompt: str) -> Optional[str]:
-        """Make API call to Gemini with random key selection."""
-        api_key = self.api_key or get_random_api_key()
-        if not api_key:
+        """
+        Ask Gemini, and keep trying until it answers.
+
+        The first attempt used one key and one short timeout, so a
+        moment of high demand on the provider left the user with the
+        canned keyword answer. That answer is correct but it is not a
+        reply to the question, and it is the reason the assistant felt
+        stiff.
+
+        So the call is tried against the keys in turn, with a timeout
+        that leaves room for a real answer. A key that times out or is
+        refused is put aside and the next one is tried. Only when every
+        key has failed does the caller fall back to the canned answer.
+        """
+        keys = [self.api_key] if self.api_key else list(GEMINI_API_KEYS)
+        if not keys:
             return None
-        
-        try:
-            url = f"{GEMINI_API_URL}?key={api_key}"
-            
-            payload = {
-                "contents": [{
-                    "parts": [{"text": prompt}]
-                }],
-                "generationConfig": {
-                    "temperature": TEMPERATURE,
-                    "maxOutputTokens": MAX_TOKENS,
-                }
+
+        # The models to try, the configured one first.
+        models = [GEMINI_MODEL] + [
+            m for m in GEMINI_FALLBACK_MODELS if m != GEMINI_MODEL
+        ]
+
+        payload = {
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }],
+            "generationConfig": {
+                "temperature": TEMPERATURE,
+                "maxOutputTokens": MAX_TOKENS,
             }
-            
-            # The agent route falls back to the advisor when it does not
-            # recognise a message. A slow answer there looks like a hung
-            # request, so the timeout is kept short and the caller gets
-            # the deterministic fallback answer instead.
-            response = requests.post(
-                url,
-                json=payload,
-                headers={"Content-Type": "application/json"},
-                timeout=12
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-            else:
-                print(f"Gemini API error: {response.status_code} - {response.text}")
-                return None
-                
-        except Exception as e:
-            print(f"Gemini API exception: {e}")
-            return None
+        }
+
+        # A model and a key that were both refused are not tried again
+        # for the same question.
+        failed = set()
+
+        for model in models:
+            for key in keys:
+                if (model, key) in failed:
+                    continue
+                failed.add((model, key))
+
+                try:
+                    url = (
+                        "https://generativelanguage.googleapis.com/"
+                        f"{GEMINI_API_VERSION}/models/{model}:generateContent"
+                        f"?key={key}"
+                    )
+
+                    # The timeout is generous enough for a real answer.
+                    # The caller waits for it rather than getting a
+                    # canned reply that does not answer the question.
+                    response = requests.post(
+                        url,
+                        json=payload,
+                        headers={"Content-Type": "application/json"},
+                        timeout=GEMINI_TIMEOUT
+                    )
+
+                    if response.status_code == 200:
+                        data = response.json()
+                        text = (
+                            data.get("candidates", [{}])[0]
+                            .get("content", {}).get("parts", [{}])[0].get("text", "")
+                        )
+                        if text:
+                            return text
+                        continue
+
+                    # 429 and 503 are the provider being busy. The
+                    # other codes are about this key or model.
+                    if response.status_code in (429, 500, 502, 503, 504):
+                        print(
+                            f"Gemini busy ({response.status_code}) "
+                            f"on {model}, trying the next one"
+                        )
+                        time.sleep(0.3)
+                        continue
+
+                    print(
+                        f"Gemini API error: {response.status_code} on {model} "
+                        f"- {response.text[:160]}"
+                    )
+                    continue
+
+                except requests.Timeout:
+                    print(
+                        f"Gemini timed out after {GEMINI_TIMEOUT}s on "
+                        f"{model}, trying the next one"
+                    )
+                    continue
+                except Exception as e:  # noqa: BLE001
+                    print(f"Gemini API exception on {model}: {e}")
+                    continue
+
+        return None
 
     def build_context(self, summary: FinancialSummary) -> str:
-        """Build context prompt from financial summary."""
-        user_info = f"Nama pengguna: {summary.user_name}" if summary.user_name else "Pengguna baru"
-        
-        return f"""Kamu adalah konselor keuangan profesional yang spesialisasi dalam keuangan pribadi untuk pengguna Indonesia.
+        """
+        Build the context the model answers from.
 
-{user_info}
+        The context is kept short on purpose. It used to carry a long
+        list of transactions and a fixed JSON output format, and the
+        request was slow enough to time out. A short context with the
+        numbers that matter answers the question faster and leaves the
+        model free to answer in its own words.
+        """
+        user_info = (
+            f"Nama pengguna: {summary.user_name}"
+            if summary.user_name else "Pengguna baru"
+        )
 
-SITUASI KEUANGAN SAAT INI:
-- Total Saldo: Rp {summary.total_balance:,.0f}
-- Pendapatan Bulanan: Rp {summary.monthly_income:,.0f}
-- Pengeluaran Bulanan: Rp {summary.monthly_expense:,.0f}
-- Tingkat Tabungan: {summary.savings_rate:.1f}%
-- Total Utang: Rp {summary.total_debt:,.0f}
-- Tujuan Aktif: {summary.active_goals}
+        lines = [
+            f"Kamu adalah konsultan keuangan pribadi untuk pengguna Indonesia.",
+            "",
+            user_info,
+            "",
+            "SITUASI KEUANGAN SAAT INI:",
+            f"- Total Saldo: Rp {summary.total_balance:,.0f}",
+            f"- Pendapatan Bulanan: Rp {summary.monthly_income:,.0f}",
+            f"- Pengeluaran Bulanan: Rp {summary.monthly_expense:,.0f}",
+            f"- Tingkat Tabungan: {summary.savings_rate:.1f}%",
+            f"- Total Utang: Rp {summary.total_debt:,.0f}",
+            f"- Tujuan Aktif: {summary.active_goals}",
+        ]
 
-KATEGORI PENGELUARAN TERBESAR:
-{chr(10).join([f"- {cat['category']}: Rp {cat['total']:,.0f}" for cat in summary.top_categories[:5]])}
+        if summary.top_categories:
+            lines.append("")
+            lines.append("PENGELUARAN TERBESAR:")
+            for cat in summary.top_categories[:3]:
+                lines.append(f"- {cat['category']}: Rp {cat['total']:,.0f}")
 
-PROGRES TUJUAN:
-{chr(10).join([f"- {g['name']}: {g['progress']:.0f}% selesai (Rp {g['saved']:,.0f} dari Rp {g['target']:,.0f})" for g in summary.goal_progress[:3]])}
+        if summary.goal_progress:
+            lines.append("")
+            lines.append("PROGRES TUJUAN:")
+            for goal in summary.goal_progress[:2]:
+                lines.append(
+                    f"- {goal['name']}: {goal['progress']:.0f}% "
+                    f"(Rp {goal['saved']:,.0f} dari Rp {goal['target']:,.0f})"
+                )
 
-TRANSAKSI TERAKHIR:
-{chr(10).join([f"- {t['date']}: {t['description']} - Rp {abs(t['amount']):,.0f} ({t['type']})" for t in summary.recent_transactions[:5]])}
+        if summary.recent_transactions:
+            lines.append("")
+            lines.append("TRANSAKSI TERAKHIR:")
+            for tx in summary.recent_transactions[:5]:
+                lines.append(
+                    f"- {tx['date']}: {tx['description']} "
+                    f"- Rp {abs(tx['amount']):,.0f} ({tx['type']})"
+                )
 
-Instruksi Penting:
-1. Jawab SELALU dalam Bahasa Indonesia
-2. Fokus hanya pada topik keuangan pribadi
-3. Berikan jawaban yang spesifik dan actionable
-4. Gunakan angka konkret dari data di atas
-5. Jika pertanyaan di luar topik keuangan, jawab dengan sopan bahwa kamu hanya bisa membantu topik keuangan
+        lines += [
+            "",
+            "Cara menjawab:",
+            "- Selalu dalam Bahasa Indonesia, dengan gaya percakapan.",
+            "- Pakai angka dari data di atas, bukan nasihat umum.",
+            "- Jawaban singkat dan jelas, kecuali user minta detail.",
+            "- Kalau data tidak cukup, katakan apa yang perlu dicatat.",
+            "- Kalau pertanyaan di luar topik keuangan, jawab singkat "
+            "bahwa kamu hanya membantu keuangan pribadi.",
+        ]
 
-Format jawaban JSON:
-{{
-  "response": "Jawaban lengkap dalam Bahasa Indonesia...",
-  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"],
-  "is_finance_related": true
-}}
-"""
+        return "\n".join(lines)
 
-    def chat(self, message: str, summary: FinancialSummary, system_prompt: str = None) -> Dict[str, Any]:
-        """Chat with AI about finances. Optionally override system prompt based on topic."""
+    def chat(
+        self,
+        message: str,
+        summary: FinancialSummary,
+        system_prompt: str = None,
+        history: List[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Chat with AI about finances.
+
+        The history is what the user said before. Without it every
+        question is answered as if it were the first one, and a
+        follow-up like "kalau untuk 2 tahun呢" makes no sense to the
+        model. It is optional, so a first message still works.
+        """
         if not system_prompt:
-            system_prompt = "Anda adalah asisten keuangan personal yang helpful dan friendly. Selalu jawab dalam Bahasa Indonesia yang natural."
-        
+            system_prompt = (
+                "Anda adalah asisten keuangan personal yang helpful dan friendly. "
+                "Selalu jawab dalam Bahasa Indonesia yang natural."
+            )
+
         # Build context with user data and topic
         context = self.build_context(summary)
-        
+
+        # What was said before, so the answer can build on it.
+        earlier = ""
+        if history:
+            lines = []
+            for entry in history[-8:]:
+                role = entry.get("role")
+                content = (entry.get("content") or "").strip()
+                if not content:
+                    continue
+                who = "Pengguna" if role == "user" else "Asisten"
+                lines.append(f"{who}: {content[:400]}")
+            if lines:
+                earlier = (
+                    "\nPERCAKAPAN SEBELUMNYA:\n"
+                    + "\n".join(lines)
+                    + "\n\n"
+                )
+
         prompt = f"""{system_prompt}
 
 {context}
-
-PERTANYAAN PENGGUNA:
+{earlier}PERTANYAAN PENGGUNA:
 {message}
 
 Jawab pertanyaan di atas berdasarkan data keuangan pengguna. Berikan jawaban yang spesifik, actionable, dan dalam Bahasa Indonesia. Jangan ulangi data user kecuali diminta. Jika pertanyaan memerlukan data yang tidak ada, sampaikan dengan sopan dan tawarkan bantuan lain.
 """
         
         response = self._call_gemini(prompt)
-        
+
         if response:
+            text = response.strip()
+
+            # The model was asked for JSON, but it does not always
+            # oblige. A plain answer is still a good answer, so it is
+            # used rather than thrown away for the sake of the format.
             try:
-                import re
-                json_match = re.search(r'\{[\s\S]*\}', response)
+                json_match = re.search(r'\{[\s\S]*\}', text)
                 if json_match:
                     data = json.loads(json_match.group())
-                    return {
-                        "response": data.get("response", response[:500]),
-                        "suggestions": data.get("suggestions", DEFAULT_QUESTIONS[:3]),
-                        "is_finance_related": True
-                    }
-            except (json.JSONDecodeError, KeyError) as e:
+                    answer = (data.get("response") or "").strip()
+                    if answer:
+                        return {
+                            "response": answer,
+                            "suggestions": data.get(
+                                "suggestions", DEFAULT_QUESTIONS[:3]
+                            ),
+                            "is_finance_related": True,
+                        }
+            except (json.JSONDecodeError, KeyError, TypeError) as e:
                 print(f"Failed to parse Gemini response: {e}")
-        
+
+            # No JSON, but a real answer. It is used as it is.
+            if text and not text.startswith("{"):
+                return {
+                    "response": text,
+                    "suggestions": DEFAULT_QUESTIONS[:3],
+                    "is_finance_related": True,
+                }
+
         # Fallback response
         if isinstance(message, dict):
             message = message.get("message", str(message))
@@ -501,7 +666,8 @@ def get_financial_summary(
         Transaction.user_id == user_id,
         Transaction.date >= first_of_month,
         Transaction.date <= today,
-        Transaction.type.in_(["income", "expense"])
+        Transaction.type.in_(["income", "expense"]),
+        Transaction.is_deleted == False
     ).group_by(Transaction.type).all()
     
     monthly_income = 0
@@ -530,24 +696,61 @@ def get_financial_summary(
         for g in goals
     ]
     
-    # Get top categories
+    # Get top categories.
+    #
+    # The category is a relationship, so the name lives on the Category
+    # row. Querying the relationship directly joined the whole
+    # categories table without a user filter, and the totals came back
+    # as the sum over every user in the database.
+    from app.models.category import Category
+
     categories = db.query(
-        Transaction.category,
+        Category.name,
         func.sum(func.abs(Transaction.amount)).label("total")
+    ).outerjoin(
+        Transaction, Transaction.category_id == Category.id
     ).filter(
         Transaction.user_id == user_id,
         Transaction.type == "expense",
-        Transaction.date >= first_of_month
-    ).group_by(Transaction.category).order_by(func.sum(func.abs(Transaction.amount)).desc()).limit(5).all()
-    
+        Transaction.date >= first_of_month,
+        Transaction.date <= today,
+        Transaction.is_deleted == False
+    ).group_by(Category.name).order_by(
+        func.sum(func.abs(Transaction.amount)).desc()
+    ).limit(5).all()
+
     top_categories = [
         {
-            "category": c[0] if c[0] else "Other",
+            "category": c[0] if c[0] else "Lainnya",
             "total": float(c[1]),
             "percentage": float(c[1]) / monthly_expense * 100 if monthly_expense > 0 else 0
         }
         for c in categories
     ]
+
+    # The transactions that carry no category still have to show up,
+    # otherwise the spending totals in the answer do not add up.
+    uncategorised = db.query(
+        func.sum(func.abs(Transaction.amount))
+    ).filter(
+        Transaction.user_id == user_id,
+        Transaction.type == "expense",
+        Transaction.date >= first_of_month,
+        Transaction.date <= today,
+        Transaction.is_deleted == False,
+        Transaction.category_id.is_(None)
+    ).scalar()
+
+    if uncategorised:
+        if uncategorised > 0:
+            top_categories.append({
+                "category": "Lainnya",
+                "total": float(uncategorised),
+                "percentage": (
+                    float(uncategorised) / monthly_expense * 100
+                    if monthly_expense > 0 else 0
+                ),
+            })
     
     # Get recent transactions
     recent = db.query(Transaction).filter(
@@ -561,7 +764,9 @@ def get_financial_summary(
             "description": t.description or "",
             "amount": float(t.amount or 0),
             "type": t.type or "expense",
-            "category": str(t.category) if t.category else "Other"
+            # The relationship holds the whole row, so its name is what
+            # belongs here, not the row itself.
+            "category": (t.category.name if t.category else "Lainnya")
         }
         for t in recent
     ]

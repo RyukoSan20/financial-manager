@@ -170,8 +170,14 @@ def chat_with_advisor(
     # Get financial context
     summary = get_financial_summary(db, current_user.id)
     
+    # The messages that came before, so the answer can refer to them.
+    history = [
+        h for h in (message.get("history") or [])
+        if isinstance(h, dict) and h.get("content")
+    ][-8:]
+    
     # Use the new chat method with full context
-    result = ai_advisor.chat(user_message, summary)
+    result = ai_advisor.chat(user_message, summary, history=history)
     
     return result
 
@@ -335,6 +341,8 @@ def get_financial_tips(
 
 class ExecuteRequest(BaseModel):
     message: str
+    # The messages that came before, so the answer can refer to them.
+    history: List[dict] = []
 
 class ActionResult(BaseModel):
     success: bool
@@ -468,6 +476,12 @@ def ai_agent(
 
     from app.services.ai_agent_executor import build_plan, execute_plan
 
+    # The messages that came before, so the answer can refer to them.
+    history = [
+        h for h in (request.history or [])
+        if isinstance(h, dict) and h.get("content")
+    ][-8:]
+
     plan = build_plan(db, current_user.id, message)
 
     # A message can hold several requests. When every one of them is a
@@ -478,7 +492,7 @@ def ai_agent(
     ):
         from app.services.ai_agent_executor import AgentExecutor, execute_plan
 
-        plan = execute_plan(db, current_user.id, plan, message)
+        plan = execute_plan(db, current_user.id, plan, message, history)
         try:
             db.commit()
         except Exception as exc:  # noqa: BLE001
@@ -509,7 +523,7 @@ def ai_agent(
     if plan.intent in ("query", "query_advice") and plan.actions:
         from app.services.ai_agent_executor import AgentExecutor, execute_plan
 
-        plan = execute_plan(db, current_user.id, plan, message)
+        plan = execute_plan(db, current_user.id, plan, message, history)
         try:
             db.commit()
         except Exception as exc:  # noqa: BLE001
@@ -538,7 +552,7 @@ def ai_agent(
 
         try:
             summary = get_financial_summary(db, current_user.id)
-            chat_result = ai_advisor.chat(message, summary)
+            chat_result = ai_advisor.chat(message, summary, history=history)
             reply = chat_result.get("response") or ""
             if not reply:
                 raise RuntimeError("advisor returned an empty reply")
@@ -572,7 +586,7 @@ def ai_agent(
             message=reply,
         )
 
-    plan = execute_plan(db, current_user.id, plan, message)
+    plan = execute_plan(db, current_user.id, plan, message, history)
     try:
         db.commit()
     except Exception as exc:  # noqa: BLE001
@@ -616,6 +630,10 @@ def execute_ai_action(
     from app.services.ai_agent_executor import build_plan, execute_plan
 
     message = (request.message or "").strip()
+    history = [
+        h for h in (request.history or [])
+        if isinstance(h, dict) and h.get("content")
+    ][-8:]
     plan = build_plan(db, current_user.id, message)
 
     if not plan.actions:
@@ -630,7 +648,7 @@ def execute_ai_action(
             ),
         )
 
-    plan = execute_plan(db, current_user.id, plan, message)
+    plan = execute_plan(db, current_user.id, plan, message, history)
     try:
         db.commit()
     except Exception as exc:  # noqa: BLE001

@@ -813,7 +813,11 @@ class AgentExecutor:
 
     # -- query ------------------------------------------------------------
 
-    def query_advice(self, message: str) -> AgentAction:
+    def query_advice(
+        self,
+        message: str,
+        history: Optional[List[Dict[str, str]]] = None,
+    ) -> AgentAction:
         """
         Answer a request for advice.
 
@@ -828,7 +832,7 @@ class AgentExecutor:
             )
 
             summary = get_financial_summary(self.db, self.user_id)
-            result = ai_advisor.chat(message, summary)
+            result = ai_advisor.chat(message, summary, history=history or [])
             reply = result.get("response") or ""
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"Advisor advice failed: {exc}")
@@ -1270,7 +1274,11 @@ def build_plan(db: Session, user_id: int, message: str) -> AgentPlan:
 
 
 def execute_plan(
-    db: Session, user_id: int, plan: AgentPlan, message: str
+    db: Session,
+    user_id: int,
+    plan: AgentPlan,
+    message: str,
+    history: Optional[List[Dict[str, str]]] = None,
 ) -> AgentPlan:
     """Run the actions of a plan against the database."""
     executor = AgentExecutor(db, user_id)
@@ -1307,7 +1315,7 @@ def execute_plan(
             elif action.kind == "query_transactions":
                 result = executor.query_transactions(text)
             elif action.kind == "query_advice":
-                result = executor.query_advice(text)
+                result = executor.query_advice(text, history)
             else:
                 result = AgentAction(
                     kind=action.kind,

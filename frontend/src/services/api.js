@@ -248,9 +248,11 @@ export const api = {
   ai: {
     advice: () => api.request('/ai/advice'),
     summary: () => api.request('/ai/summary'),
-    chat: (message) => api.request('/ai/chat', {
+    // The chat endpoint answers a question. It takes the conversation
+    // with it, so a follow up can refer to what was said before.
+    chat: (payload) => api.request('/ai/chat', {
       method: 'POST',
-      body: JSON.stringify({ message }),
+      body: JSON.stringify(payload),
     }),
     execute: (message) => api.request('/ai/execute', {
       method: 'POST',
@@ -258,9 +260,9 @@ export const api = {
     }),
     // The real agent: it reads the intent first, so a number means "record
     // this" while a question about a budget only reports information.
-    agent: (message, planOnly = false) => api.request('/ai/agent', {
+    agent: (message, planOnly = false, history = []) => api.request('/ai/agent', {
       method: 'POST',
-      body: JSON.stringify({ message, plan_only: planOnly }),
+      body: JSON.stringify({ message, plan_only: planOnly, history }),
     }),
   },
 
