@@ -405,24 +405,26 @@ def _find_or_create_budget(
     end: date,
 ) -> Budget:
     """
-    The budget with this name and period, created or updated.
+    The budget with this name, period and range, created or updated.
 
     Re-running the same plan changes the amounts instead of piling up
-    duplicates.
+    duplicates. A plan over a different stretch of time is a different
+    budget: without the date range in the lookup, a one year plan
+    would shorten the two year plan the user made before it.
     """
     existing = db.execute(
         select(Budget).where(
             Budget.user_id == user_id,
             Budget.name == name,
             Budget.period == period,
+            Budget.start_date == start,
+            Budget.end_date == end,
             Budget.is_active.is_(True),
         )
     ).scalars().first()
 
     if existing:
         existing.amount = _to_decimal(amount)
-        existing.start_date = start
-        existing.end_date = end
         return existing
 
     budget = Budget(
