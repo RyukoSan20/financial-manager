@@ -58,6 +58,15 @@ class ScanManager {
   update(jobId, patch) {
     const job = this.jobs.get(jobId);
     if (!job) return;
+
+    // A job that was still running when the app was closed comes back as
+    // unseen. When it finishes, it has to show up as a notification
+    // again, so the seen flag is cleared when the job reaches a final
+    // state.
+    if (patch.status === 'completed' && job.restoredRunning) {
+      patch = { ...patch, seen: false, restoredRunning: false };
+    }
+
     Object.assign(job, patch);
     this.emit();
   }
@@ -205,9 +214,14 @@ class ScanManager {
       if (!response.ok) return;
       const data = await response.json();
       (data.jobs || []).forEach((job) => {
-        if (this.jobs.has(job.job_id)) return;
-        this.jobs.set(job.job_id, {
-          jobId: job.job_id,
+        // The list endpoint names the identifier "id", while the single
+        // job endpoint names it "job_id". Both are accepted so a restored
+        // job is matched against the one the client is already polling.
+        const jobId = job.job_id || job.id;
+        if (!jobId) return;
+        if (this.jobs.has(jobId)) return;
+        this.jobs.set(jobId, {
+          jobId,
           kind: job.kind,
           status: job.status,
           progress: job.progress || 0,
@@ -215,8 +229,20 @@ class ScanManager {
           result: job.result || null,
           error: job.error || null,
           startedAt: job.created_at ? new Date(job.created_at).getTime() : Date.now(),
+          // A job that finished while the app was closed has not been
+          // looked at yet, so it shows up as a notification. A job that
+          // was still running is marked seen until it finishes, and the
+          // update rule clears the flag then.
           seen: job.status !== 'completed',
+          restoredRunning: job.status === 'running' || job.status === 'queued',
         });
+
+        // A job that was still running when the app was closed has to be
+        // picked up again, otherwise the bar sits at its last progress
+        // until the page is reloaded.
+        if (job.status === 'running' || job.status === 'queued') {
+          this.poll(jobId);
+        }
       });
       this.emit();
     } catch (err) {

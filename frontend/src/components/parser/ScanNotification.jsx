@@ -33,7 +33,22 @@ export const ScanNotification = () => {
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
 
+  // The collapsed bar is dragged upwards to open, the open sheet is
+  // dragged downwards to close. Both directions therefore need their own
+  // distance and their own release behaviour.
+  const [barDragY, setBarDragY] = useState(0);
+  const [barDragging, setBarDragging] = useState(false);
+
   const dragStart = useRef(0);
+  const barDragStart = useRef(0);
+  const dragDistanceRef = useRef(0);
+  // The pointer move handler has to know whether a drag is in progress
+  // right now. React state is only applied after the render, so the very
+  // first move would be ignored. A ref is read synchronously, which is
+  // what a drag needs.
+  const barDraggingRef = useRef(false);
+  const draggingRef = useRef(false);
+  const barDistanceRef = useRef(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -70,25 +85,61 @@ export const ScanNotification = () => {
 
   const handlePointerDown = (event) => {
     dragStart.current = event.clientY;
+    draggingRef.current = true;
     setDragging(true);
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
   const handlePointerMove = (event) => {
-    if (!dragging) return;
-    const delta = dragStart.current - event.clientY;
-    // Only upward movement is allowed; the sheet never goes down past its
-    // resting position.
-    setDragY(Math.max(0, delta));
+    if (!draggingRef.current) return;
+    // The open sheet is dragged downwards to dismiss it. The sheet
+    // follows the finger, and it never goes up past its resting place.
+    const delta = event.clientY - dragStart.current;
+    const distance = Math.max(0, delta);
+    dragDistanceRef.current = distance;
+    setDragY(distance);
   };
 
   const handlePointerUp = () => {
-    if (!dragging) return;
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
     setDragging(false);
-    if (dragY >= OPEN_THRESHOLD) {
+    const distance = dragDistanceRef.current;
+    setDragY(0);
+    if (distance >= OPEN_THRESHOLD) {
+      // Pulled far enough down: the sheet goes away.
       closeSheet();
-    } else {
-      setDragY(0);
+    }
+  };
+
+  // --- The collapsed bar: pull it up to open ----------------------------
+
+  const handleBarPointerDown = (event) => {
+    barDragStart.current = event.clientY;
+    barDraggingRef.current = true;
+    setBarDragging(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleBarPointerMove = (event) => {
+    if (!barDraggingRef.current) return;
+    const delta = barDragStart.current - event.clientY;
+    // Only upward movement counts.
+    const distance = Math.max(0, delta);
+    barDistanceRef.current = distance;
+    setBarDragY(distance);
+  };
+
+  const handleBarPointerUp = () => {
+    if (!barDraggingRef.current) return;
+    barDraggingRef.current = false;
+    setBarDragging(false);
+    // The distance is read from the ref as well, because the state value
+    // is one render behind the last pointer move.
+    const distance = barDistanceRef.current;
+    setBarDragY(0);
+    if (distance >= OPEN_THRESHOLD) {
+      openJob(bar);
     }
   };
 
@@ -125,11 +176,21 @@ export const ScanNotification = () => {
     const isFailed = bar.status === 'failed';
 
     return (
-      <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 pointer-events-none">
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 pointer-events-none"
+        style={{
+          transform: `translateY(${-barDragY}px)`,
+          transition: barDragging ? 'none' : 'transform 200ms ease-out',
+        }}
+      >
         <button
           type="button"
           onClick={() => openJob(bar)}
-          className="pointer-events-auto w-full max-w-md mx-auto flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-2xl px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+          onPointerDown={handleBarPointerDown}
+          onPointerMove={handleBarPointerMove}
+          onPointerUp={handleBarPointerUp}
+          onPointerCancel={handleBarPointerUp}
+          className="pointer-events-auto touch-none w-full max-w-md mx-auto flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-2xl px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition"
         >
           <span
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
@@ -187,7 +248,7 @@ export const ScanNotification = () => {
       <div
         className="relative w-full max-w-md rounded-t-3xl bg-white dark:bg-gray-900 shadow-2xl pb-6"
         style={{
-          transform: `translateY(${dragY ? -dragY : 0}px)`,
+          transform: `translateY(${dragY || 0}px)`,
           transition: dragging ? 'none' : 'transform 200ms ease-out',
         }}
       >
