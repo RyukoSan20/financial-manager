@@ -62,6 +62,9 @@ ACT_VERBS = {
     # 500000 sebulan" means the same as "set budget makan 500000".
     "budget": 0.9, "anggaran": 0.9, "target": 0.9, "tujuan": 0.8,
     "rencana": 0.8, "plan": 0.8,
+    # "budgeting" is the Indonesian word for budgeting. It names the
+    # subject, so it is worth a full action verb, not a soft one.
+    "budgeting": 1.0,
 }
 
 # Words that mark a question. The interrogatives are strong; the
@@ -358,7 +361,7 @@ _INTENT_SUBJECTS = (
     ("build_plan", ("plan", "rencana", "pola", "sistem", "struktur",
                     "primer", "sekunder", "tersier", "kebutuhan",
                     "prioritas", "stratifikasi")),
-    ("set_budget", ("budget", "anggaran", "batas", "limit")),
+    ("set_budget", ("budget", "budgeting", "anggaran", "batas", "limit")),
     ("set_savings_goal", ("target", "tujuan", "goal", "tabungan", "niat")),
     ("set_recurring", ("rutin", "berulang", "recurring", "setoran",
                        "otomatis", "langsung")),
@@ -378,6 +381,29 @@ def _has_amount(clause: str) -> bool:
     return bool(_AMOUNT_RE.search(clause or ""))
 
 
+def _has_real_amount(clause: str) -> bool:
+    """
+    A figure, as opposed to a duration.
+
+    "2 tahun" holds a number, but it is two years, not two rupiah. A
+    clause that holds nothing but a duration has no figure in it.
+    """
+    without_duration = _DURATION_RE.sub(" ", clause or "")
+    return bool(_AMOUNT_RE.search(without_duration))
+
+
+# A duration is a count of time, not a sum of money. "2 tahun ke
+# depan" is two years, and it must never be read as two rupiah.
+_DURATION_RE = re.compile(
+    r"\d+\s*(?:tahun|tahunan|year|years|bulan|bulanan|month|months|"
+    r"minggu|mingguan|week|weeks|hari|harian|day|days|kuartal|quarter)"
+)
+
+
+def _has_duration(clause: str) -> bool:
+    return bool(_DURATION_RE.search(clause or ""))
+
+
 def _intent_of_instruction(clause: str) -> Tuple[str, float]:
     """
     Which action an instruction asks for.
@@ -392,6 +418,15 @@ def _intent_of_instruction(clause: str) -> Tuple[str, float]:
     for intent, words in _INTENT_SUBJECTS:
         if not any(word in tokens for word in words):
             continue
+
+        if intent == "set_budget":
+            # "budgeting untuk 2 tahun ke depan" asks for a budget over
+            # a stretch of time, not for one line item. That is a plan.
+            # The duration is checked first, because the number inside
+            # it is not a figure: "2 tahun" is two years, not two
+            # rupiah.
+            if _has_duration(clause):
+                return "build_plan", 0.85
 
         if intent in ("add_transaction", "set_budget", "set_savings_goal"):
             if not _has_amount(clause):

@@ -15,6 +15,7 @@ from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app.services.ai_agent import extract_amount  # noqa: E402
 from app.services.intent_classifier import (  # noqa: E402
     INSTRUCTION,
     QUESTION,
@@ -161,6 +162,44 @@ check("two transactions are two instructions",
       len(two.instructions) == 2
       and all(c.intent == "add_transaction" for c in two.instructions),
       [(c.kind, c.intent) for c in two.instructions])
+
+# ---------------------------------------------------------------------------
+# A duration is a count of time, not a sum of money
+# ---------------------------------------------------------------------------
+
+check("a duration is not a figure",
+      intent_of("buatkan budgeting untuk 2 tahun ke depan") == "build_plan",
+      intent_of("buatkan budgeting untuk 2 tahun ke depan"))
+
+check("a duration with an income is still a plan",
+      intent_of("buatkan budgeting untuk 2 tahun ke depan gaji 6 juta per bulan")
+      == "build_plan")
+
+check("a budget without a duration is one budget line",
+      intent_of("budget makan 500000 sebulan") == "set_budget")
+
+check("budgeting is a budget, not a transaction",
+      intent_of("oke coba buatkan budgeting untuk 2 tahun ke depan")
+      == "build_plan")
+
+# ---------------------------------------------------------------------------
+# Reading the figure out of a message
+# ---------------------------------------------------------------------------
+
+check("a duration is not read as a figure",
+      extract_amount("buatkan budgeting untuk 2 tahun ke depan")[0] is None,
+      extract_amount("buatkan budgeting untuk 2 tahun ke depan")[0])
+
+check("a figure next to a duration is still read",
+      extract_amount("budget 500000 per bulan")[0] == 500000,
+      extract_amount("budget 500000 per bulan")[0])
+
+check("a month count is not a figure",
+      extract_amount("rencana 6 bulan")[0] is None,
+      extract_amount("rencana 6 bulan")[0])
+
+check("a normal amount is read",
+      extract_amount("tambah 25000 kopi")[0] == 25000)
 
 # ---------------------------------------------------------------------------
 

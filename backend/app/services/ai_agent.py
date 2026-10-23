@@ -330,8 +330,23 @@ def extract_amount(message: str) -> Tuple[Optional[float], str]:
     """
     text = message or ""
 
+    # A duration is not an amount. "buatkan budgeting untuk 2 tahun ke
+    # depan" was read as a transaction of 2, so the duration is taken
+    # out before any number is looked at.
+    working = re.sub(
+        r"\b(?:untuk|dalam|selama|periode|periode\s+selama|jangka\s+waktu)?"
+        r"\s*\d+\s*(?:tahun|tahunan|year|years|bulan|bulanan|month|months|"
+        r"minggu|mingguan|week|weeks|hari|harian|day|days|quarter|kuartal)\b",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+
     # A date written out in words is not an amount. "target 23 Oktober
     # 2027" was read as an amount of 23, so the date is taken out first.
+    #
+    # The substitution reads from "working", not from "text", so the
+    # duration that was just removed stays removed.
     working = re.sub(
         r"\b\d{1,2}\s+"
         r"(januari|februari|maret|april|mei|juni|juli|agustus|september|"
@@ -339,7 +354,7 @@ def extract_amount(message: str) -> Tuple[Optional[float], str]:
         r"july|august|september|october|november|december)"
         r"\s+\d{4}\b",
         " ",
-        text,
+        working,
         flags=re.IGNORECASE,
     )
 

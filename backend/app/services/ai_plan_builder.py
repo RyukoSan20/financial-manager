@@ -408,19 +408,24 @@ def build_plan_action(
     income = _read_income(message)
     expenses = _read_expenses(message)
 
+    months = _read_duration_months(message)
+
     if income is None or income <= 0:
+        # The plan is built on what the user earns, so without an
+        # income there is nothing to plan. The question names the
+        # figure that is missing, so the user can answer in one go.
         return AgentAction(
             kind="build_plan",
             description="Rencana butuh jumlah penghasilan bulanan",
             requires_confirmation=False,
             success=False,
             error=(
-                "Sebutkan penghasilan bulanan Anda, misal: "
-                "'bikin plan 1 tahun gaji 6 juta per bulan'"
+                f"Berapa penghasilan bulanan Anda? Rencana {months} bulan "
+                "dibangun dari penghasilan itu, misal: "
+                "'buatkan budgeting untuk 2 tahun ke depan, gaji 6 juta "
+                "per bulan'"
             ),
         )
-
-    months = _read_duration_months(message)
     stated = _read_tiers(message)
 
     # The stated expenses come out of the income before the tiers are
@@ -454,11 +459,20 @@ def build_plan_action(
     else:
         note = ""
 
-    period = "monthly"
+    # A plan of one year or more is a yearly budget; a shorter one is
+    # a monthly one. "2 tahun ke depan" has to produce budgets that
+    # last two years, not budgets that expire at the end of this
+    # month.
     today = date.today()
-    start = date(today.year, today.month, 1)
-    last_day = _last_day_of_month(start)
-    end = date(last_day.year, last_day.month, last_day.day)
+    if months >= 12:
+        period = "yearly"
+        start = date(today.year, 1, 1)
+        end = date(today.year + (months // 12) - 1, 12, 31)
+    else:
+        period = "monthly"
+        start = date(today.year, today.month, 1)
+        last_day = _last_day_of_month(start)
+        end = date(last_day.year, last_day.month, last_day.day)
 
     created_budgets: List[Dict[str, Any]] = []
     tier_totals: Dict[str, float] = {}
@@ -485,7 +499,9 @@ def build_plan_action(
 
     # The goals. The user named them, or the tiers get a default set.
     goals_created: List[Dict[str, Any]] = []
-    target_date = today + timedelta(days=365)
+    # The goal is reached at the end of the plan, not a year after
+    # today whatever the plan is.
+    target_date = today + timedelta(days=30 * months)
 
     named_goals: List[Tuple[str, float]] = list(_read_goal_amounts(message))
     if not named_goals:
@@ -527,6 +543,7 @@ def build_plan_action(
         kind="build_plan",
         params={
             "months": months,
+            "period": period,
             "income": income,
             "expenses": expenses,
             "tiers": tier_totals,
@@ -542,6 +559,7 @@ def build_plan_action(
         success=True,
         result={
             "months": months,
+            "period": period,
             "income": income,
             "expenses": expenses,
             "tiers": tier_totals,

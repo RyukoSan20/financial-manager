@@ -409,7 +409,21 @@ def _agent_reply(plan, executed: bool) -> str:
                 f"  - {b['name']}: Rp{float(b['amount']):,.0f}"
                 for b in budgets
             ]
-            reply += "\n\nAnggaran bulanan:\n" + "\n".join(lines)
+            # The figures are monthly, but the period they cover is not
+            # always a month. A two year plan says so.
+            months = result.get("months")
+            period = result.get("period")
+            if period == "yearly" or (months or 0) >= 12:
+                months_total = months or 12
+                years, leftover = divmod(months_total, 12)
+                if leftover:
+                    span = f"{years} tahun {leftover} bulan"
+                else:
+                    span = f"{years} tahun" if years != 1 else "1 tahun"
+                heading = f"Anggaran per bulan, periode {span}:"
+            else:
+                heading = "Anggaran bulanan:"
+            reply += "\n\n" + heading + "\n" + "\n".join(lines)
         if goals:
             lines = [
                 f"  - {g['name']}: Rp{float(g['amount']):,.0f} "
