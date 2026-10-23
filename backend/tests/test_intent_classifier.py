@@ -220,6 +220,26 @@ for written, months in [
           intent_of(f"buatkan budgeting untuk {written}") == "build_plan")
 
 # ---------------------------------------------------------------------------
+# A duration written in words
+# ---------------------------------------------------------------------------
+
+for written, months in [
+    ("dua tahun", 24), ("dua bulan", 2), ("tiga bulan", 3),
+    ("dua puluh empat bulan", 24), ("sembilan puluh hari", 3),
+]:
+    check(f"the duration of '{written}' is read",
+          duration_months(written) == months, duration_months(written))
+    check(f"'{written}' is not read as a figure",
+          extract_amount(f"buatkan budgeting untuk {written}")[0] is None,
+          extract_amount(f"buatkan budgeting untuk {written}")[0])
+    check(f"'{written}' asks for a plan",
+          intent_of(f"buatkan budgeting untuk {written}") == "build_plan")
+
+check("a number that is not a duration is left alone",
+      duration_months("dua buku") is None
+      and extract_amount("dua buku")[0] is None)
+
+# ---------------------------------------------------------------------------
 
 if FAILED:
     print(f"{PASSED} passed, {len(FAILED)} failed")
