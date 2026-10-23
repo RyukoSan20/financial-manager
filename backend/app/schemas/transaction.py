@@ -45,6 +45,10 @@ class TransactionUpdate(BaseModel):
     notes: Optional[str] = None
     category_id: Optional[int] = None
     account_id: Optional[int] = None
+    # The status is editable, so a pending transaction can be approved.
+    # Without this field the update was silently ignored, because
+    # exclude_unset only ever carried the fields the schema declares.
+    status: Optional[str] = None
 
 
 class TransactionResponse(BaseModel):

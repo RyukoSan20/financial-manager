@@ -305,9 +305,40 @@ class ItemParser:
         # Only true discounts have explicit DISKON/VOUCHER keywords
         return False
     
+    def _discount_is_item_count(self, line: str) -> bool:
+        """
+        Tell a discount COUNT apart from a discount VALUE.
+
+        A receipt prints the count of discounted items as a small parenthesised
+        number - "DISKON : (1)" - and the value of the discount as a larger
+        parenthesised amount - "DISKON FRISIAN FLAG : (1, 300)". Only the
+        second one is money.
+        """
+        groups = re.findall(r"\(([^)]*)\)", line)
+        if not groups:
+            return False
+        
+        for group in groups:
+            digits = re.sub(r"[^\d]", "", group)
+            if not digits:
+                continue
+            # A thousands separator means the group is an amount, not a count.
+            if re.search(r"[,\.\s]\d{3}\b", group):
+                return False
+            if len(digits) <= 2 and int(digits) <= 50:
+                return True
+        return False
+    
     def _parse_discount_line(self, line: str, amounts: List[float], category: str = "Unknown") -> Optional[ReceiptItem]:
         """Parse discount line."""
         if not amounts:
+            return None
+        
+        # "DISKON : (1)" is a COUNT of discounted items, not an amount.
+        # The value is printed separately as "DISKON FRISIAN FLAG : (1, 300)"
+        # where the comma is the Indonesian thousands separator. Treating
+        # the count as the value put a -1 discount next to the real one.
+        if self._discount_is_item_count(line):
             return None
         
         # Largest amount is the discount value

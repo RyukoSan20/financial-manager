@@ -7,6 +7,7 @@ import os
 import logging
 import re
 from typing import Optional, Dict, Any, List, Tuple
+from sqlalchemy.orm import Session
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,14 @@ class ParsedReceipt:
     # good the source photo was, and whether the dynamic parser was used.
     ocr_diagnostics: Optional[Dict[str, Any]] = None
     dynamic_parse: Optional[Dict[str, Any]] = None
+    # The itemised breakdown: products, quantities, unit prices, discounts
+    # and the computed total. Produced by receipt_breakdown.build_breakdown.
+    breakdown: Optional[Dict[str, Any]] = None
+    # What the catalog learning pass discovered on this scan: which
+    # merchants and products were new to the system.
+    learning: Optional[Dict[str, Any]] = None
+    # Set when the merchant itself was newly learned.
+    merchant_is_new: bool = False
     
     def items_total(self) -> float:
         """Calculate sum of all item totals."""
@@ -675,13 +684,21 @@ def process_receipt_hybrid(
     raw_text: str = None,
     lines: List[str] = None,
     use_gemini_fallback: bool = True,
-    use_gemini_enrichment: bool = True
+    use_gemini_enrichment: bool = True,
+    use_llm_structuring: bool = True,
+    db: Session = None,
+    user_id: Optional[int] = None,
 ) -> ParsedReceipt:
     """
     Hybrid receipt processing using GenericPipeline (Rule-First, AI-Last).
     1. Parse with GenericPipeline (discount-aware, currency-normalized)
     2. Validate with IntegrityGatekeeper
     3. Conditional Gemini fallback on validation failure
+    4. LLM structuring pass: group the lines, repair damaged words, split
+       a line that contains several products
+    5. Catalog learning: remember the merchant and the products, even when
+       they have never been seen before
+    6. Breakdown: compute subtotal, discount and total from the items
     """
     from app.services.generic_pipeline import GenericPipeline, IntegrityGatekeeper
     
@@ -758,11 +775,36 @@ def process_receipt_hybrid(
     if not is_valid and image_bytes and use_gemini_fallback:
         logger.info("Calling Gemini fallback...")
         receipt = enrich_with_gemini(receipt, image_bytes)
-    
+
+    # Step 3b: LLM structuring pass.
+    #
+    # The deterministic parser works line by line, so it cannot repair a
+    # torn word using the surrounding context, and it cannot split a line
+    # that lists three products. The LLM sees the whole receipt, so it can
+    # do both. Its numbers are validated against the source text before
+    # they are trusted.
+    if use_llm_structuring and lines:
+        try:
+            from app.services.llm_structuring import (
+                structure_with_llm,
+                merge_with_rule_result,
+            )
+            from app.services.receipt_breakdown import apply_structured_breakdown
+
+            structured = structure_with_llm(lines, raw_text)
+            if structured:
+                receipt = apply_structured_breakdown(receipt, structured)
+                logger.info(
+                    f"LLM structuring merged: {len(structured.items)} items, "
+                    f"merchant={structured.merchant}"
+                )
+        except Exception as exc:  # noqa: BLE001 - never fail the scan on the LLM
+            logger.warning(f"LLM structuring skipped: {exc}")
+
     # Step 4: Post-process
     if receipt.items:
         receipt = post_process_receipt(receipt)
-    
+
     # Fallback merchant name
     if not receipt.merchant_name:
         for line in (receipt.raw_lines or []):
@@ -772,12 +814,138 @@ def process_receipt_hybrid(
                     break
         if not receipt.merchant_name:
             receipt.merchant_name = "Merchant"
-    
+
     # Fallback total from items
     if receipt.total_amount <= 0 and receipt.items:
         receipt.total_amount = sum(item.total_price for item in receipt.items)
-    
+
+    # Step 5: Catalog learning.
+    #
+    # A merchant or product the system has never seen is not discarded any
+    # more: it is created in the catalogue so the next receipt from the
+    # same shop resolves to the same records.
+    learning_summary = None
+    if db is not None and user_id is not None:
+        try:
+            from app.services.catalog_learning import get_learning_service
+
+            learning = get_learning_service(db, user_id)
+            learning_summary = learning.learn_from_scan(
+                receipt.merchant_name,
+                [
+                    {
+                        "name": i.name,
+                        "category": i.category,
+                        "price_per_unit": i.price_per_unit,
+                        "is_discount": i.is_discount,
+                    }
+                    for i in receipt.items
+                ],
+                merchant_type=receipt.merchant_type,
+            )
+            receipt.learning = learning_summary
+            receipt.merchant_is_new = bool(
+                (learning_summary.get("merchant") or {}).get("created")
+            )
+        except Exception as exc:  # noqa: BLE001 - learning must never block a scan
+            logger.warning(f"Catalog learning skipped: {exc}")
+            db.rollback()
+
+    # Step 6: Build the itemised breakdown.
+    #
+    # This always runs, so the UI gets the itemised view even when the
+    # catalog learning pass was skipped (no database session available).
+    try:
+        from app.services.receipt_breakdown import build_breakdown
+
+        breakdown = build_breakdown(receipt, learning_summary)
+        receipt.breakdown = breakdown.to_dict()
+        if breakdown.total > 0 and receipt.total_amount <= 0:
+            receipt.total_amount = breakdown.total
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Breakdown computation failed: {exc}")
+
     return receipt
+
+
+def dedupe_items(items: List[ParsedItem]) -> List[ParsedItem]:
+    """
+    Keep one row per product.
+
+    A receipt often shows the same product twice: once on the line with
+    the name and the price, and once on a line the parser could not
+    attach. "PLASTIK SDG" appearing twice, and "DISKON :" appearing twice
+    with a different value, both come from that.
+
+    Two lines are the same product when their names match after the
+    punctuation and the discount marker have been removed. The rows are
+    then merged: the quantities add up, and the price that was actually
+    read wins over an estimated one.
+    """
+    if not items:
+        return items
+
+    def key_of(item: ParsedItem) -> str:
+        name = (item.name or "").upper()
+        # The discount marker is not part of the product name.
+        # The discount marker itself is not part of the product name, but
+        # the rest of the line is: "DISKON FRISIAN FLAG : (1, 300)" is one
+        # discount, and dropping everything after the marker left an empty
+        # key, which made the row disappear from the breakdown.
+        name = re.sub(r"\bDISKON\b", " ", name)
+        # The trailing "1" is the index the receipt prints, not part of
+        # the name.
+        name = re.sub(r"\s*\(\d[\d.,]*\)\s*$", "", name)
+        name = re.sub(r"[^A-Z0-9]+", " ", name).strip()
+        return name
+
+    merged: List[ParsedItem] = []
+    index: Dict[str, ParsedItem] = {}
+
+    for item in items:
+        key = key_of(item)
+        if not key:
+            continue
+
+        existing = index.get(key)
+        if existing is None:
+            index[key] = item
+            merged.append(item)
+            continue
+
+        # Same product. Merge the quantities and keep the real price.
+        if item.is_discount and not existing.is_discount:
+            # A discount wins over a plain row with the same name.
+            existing.is_discount = True
+            existing.total_price = item.total_price
+            existing.price_per_unit = item.price_per_unit
+            continue
+
+        if not existing.is_discount and not item.is_discount:
+            existing.quantity = max(
+                existing.quantity or 1, item.quantity or 1
+            )
+            # A row with a real price beats a row without one.
+            if item.price_per_unit and not existing.price_per_unit:
+                existing.price_per_unit = item.price_per_unit
+            if item.total_price and not existing.total_price:
+                existing.total_price = item.total_price
+            if item.total_price and existing.total_price:
+                # The larger total is the real line; the other one is the
+                # bare name row.
+                existing.total_price = max(
+                    abs(existing.total_price), abs(item.total_price)
+                )
+                existing.price_per_unit = (
+                    existing.total_price / (existing.quantity or 1)
+                )
+            continue
+
+        # Both are discounts: keep the larger one.
+        if abs(item.total_price) > abs(existing.total_price):
+            existing.total_price = item.total_price
+
+    return merged
 
 
 def post_process_receipt(receipt: ParsedReceipt) -> ParsedReceipt:
@@ -799,14 +967,20 @@ def post_process_receipt(receipt: ParsedReceipt) -> ParsedReceipt:
         receipt.items = valid_items
     
     for item in receipt.items:
+        # A discount line has no price of its own. Giving it an estimated
+        # price turned "DISKON :" into a -3520 discount, which broke the
+        # total. Discounts keep the value that was read from the receipt.
+        if item.is_discount:
+            continue
+
         # If price_per_unit is 0 but total_price > 0 and qty > 1
         if item.price_per_unit == 0 and item.total_price > 0 and item.quantity > 1:
             item.price_per_unit = item.total_price / item.quantity
-        
+
         # If total_price is 0 but price_per_unit > 0 and qty > 1
         if item.total_price == 0 and item.price_per_unit > 0 and item.quantity > 1:
             item.total_price = item.price_per_unit * item.quantity
-        
+
         # If both are 0 but qty exists, calculate from other items if possible
         if item.price_per_unit == 0 and item.total_price == 0:
             # Try to estimate from subtotal
@@ -814,10 +988,24 @@ def post_process_receipt(receipt: ParsedReceipt) -> ParsedReceipt:
                 avg_price = receipt.subtotal / len(receipt.items)
                 item.price_per_unit = avg_price
                 item.total_price = avg_price * item.quantity
-    
-    # Recalculate subtotal
-    receipt.subtotal = sum(item.total_price for item in receipt.items)
-    
+
+    # The same product can be read twice - once from the name line and
+    # once from the price line. Keep one row per product.
+    receipt.items = dedupe_items(receipt.items)
+
+    # Recalculate the subtotal.
+    #
+    # The subtotal is the sum of the product lines. The discount is
+    # subtracted separately, so it must not be part of this sum, and
+    # otherwise the discount is counted twice.
+    receipt.subtotal = sum(
+        item.total_price for item in receipt.items if not item.is_discount
+    )
+    if receipt.discount <= 0:
+        receipt.discount = abs(
+            sum(item.total_price for item in receipt.items if item.is_discount)
+        )
+
     return receipt
 
 

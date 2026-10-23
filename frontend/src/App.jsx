@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationToast } from './components/notifications/NotificationBell';
+import { ScanNotification } from './components/parser/ScanNotification';
 import { Layout } from './components/layout/Layout';
 import { AddTransactionPage, MorePage } from './components/layout/Navigation';
 import { I18nProvider } from './i18n';
@@ -158,6 +159,10 @@ function App() {
             {/* Catch all - redirect to login */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
+
+          {/* The background scan notification. It sits above everything
+              else so a finished scan is visible from any page. */}
+          <ScanNotification />
         </BrowserRouter>
         </NotificationProvider>
       </AuthProvider>

@@ -10,11 +10,13 @@
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
-import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles, X, RotateCcw, ZoomIn, FileImage, Smartphone, Monitor } from 'lucide-react';
+import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles, X, RotateCcw, ZoomIn, FileImage, Smartphone, Monitor, Bell } from 'lucide-react';
 import api from '../../services/api';
 import { apiUrl as buildApiUrl } from '../../config/url';
 import { formatCurrency } from '../../utils/format';
 import { ScanDiagnostics, LearnFromScan } from './ScanDiagnostics';
+import { ReceiptBreakdown } from './ReceiptBreakdown';
+import { scanManager, dataUrlToFile } from '../../services/scanManager';
 
 export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
@@ -45,6 +47,11 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   const canvasRef = useRef(null);
   const [usingCamera, setUsingCamera] = useState(false);
   const [stream, setStream] = useState(null);
+  // When true the scan is queued on the server and the user is sent back
+  // to what they were doing. The result arrives as a notification.
+  const [backgroundMode, setBackgroundMode] = useState(true);
+  // True while a file is being dragged over the drop zone.
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -142,19 +149,76 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const handleDrop = async (e) => {
+    // preventDefault has to run on both dragover and drop, otherwise the
+    // browser navigates to the dropped file instead of scanning it.
     e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      await processFile(file);
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) {
+      setError('Tidak ada file yang dilepas.');
+      return;
     }
+    if (!file.type.startsWith('image/')) {
+      setError('File yang dilepas bukan gambar. Gunakan JPG, PNG, atau WebP.');
+      return;
+    }
+    await processFile(file);
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    // Without this the browser treats the drop as a navigation.
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only clear the highlight when the pointer actually leaves the zone.
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDragging(false);
+    }
+  };
+
+  /**
+   * Queue the scan on the server and let the user carry on.
+   *
+   * The result arrives as a notification that can be tapped or dragged
+   * open, so the user is not stuck watching a spinner.
+   */
+  const processReceiptInBackground = async () => {
+    if (!preview) return;
+
+    setLoading(true);
+    setProcessingStatus('Mengirim ke server...');
+    setError('');
+
+    try {
+      const file = await dataUrlToFile(preview, 'receipt.jpg');
+      await scanManager.scanReceipt(file);
+      onSuccess?.();
+      handleReset();
+      onClose();
+    } catch (err) {
+      console.error('Background scan error:', err);
+      setError(
+        'Gagal mengirim scan: ' + (err.message || 'periksa koneksi internet')
+      );
+      setLoading(false);
+      setProcessingStatus('');
+    }
   };
 
   const processReceipt = async () => {
     if (!preview) return;
+
+    if (backgroundMode) {
+      return processReceiptInBackground();
+    }
 
     setLoading(true);
     setProcessingStatus('Mengupload gambar...');
@@ -440,7 +504,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -449,11 +513,23 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               <div
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
-                className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-blue-500 transition-colors"
+                onDragEnter={handleDragOver}
+                onDragLeave={handleDragLeave}
+                className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
+                  isDragging
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-gray-300 hover:border-blue-500 dark:border-gray-600'
+                }`}
               >
-                <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <Upload
+                  className={`w-12 h-12 mx-auto mb-4 ${
+                    isDragging ? 'text-blue-500' : 'text-gray-400'
+                  }`}
+                />
                 <p className="text-gray-600 dark:text-gray-400">
-                  Atau drag & drop gambar receipt di sini
+                  {isDragging
+                    ? 'Lepaskan untuk memindai'
+                    : 'Atau drag & drop gambar receipt di sini'}
                 </p>
                 <p className="text-xs text-gray-500 mt-2">
                   JPG, PNG, WebP, HEIC • Maksimal 10MB
@@ -518,12 +594,34 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
+              ) : backgroundMode ? (
+                <Bell className="w-4 h-4" />
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
-              Scan Receipt
+              {backgroundMode ? 'Scan di Latar' : 'Scan Receipt'}
             </Button>
           </div>
+
+          {/* The user can wait for the result here, or let it run in the
+              background. The background mode is the default because a
+              scan takes several seconds. */}
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+            <input
+              type="checkbox"
+              checked={backgroundMode}
+              onChange={(e) => setBackgroundMode(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-600 dark:text-gray-400">
+              <span className="font-medium text-gray-800 dark:text-gray-200">
+                Proses di latar belakang
+              </span>
+              <br />
+              Kamu bisa lanjut melakukan aktivitas lain. Hasil scan muncul
+              sebagai notifikasi yang bisa diketuk atau digeser ke atas.
+            </span>
+          </label>
 
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm">
@@ -562,6 +660,13 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               }}
             />
           )}
+
+          {/* The itemised breakdown. The user can see every product, the
+              quantity and the discount before the transaction is saved. */}
+          <ReceiptBreakdown
+            breakdown={parsedData?.breakdown}
+            learning={parsedData?.learning}
+          />
 
           {/* Form */}
           <div className="space-y-3">

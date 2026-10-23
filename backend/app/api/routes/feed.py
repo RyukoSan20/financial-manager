@@ -247,13 +247,16 @@ async def approve_transaction(
     
     transaction.status = "approved"
     
-    # Update account balance
+    # Update account balance. The signed effect comes from the same helper
+    # the transactions route uses, so a transfer out leaves the account and
+    # a transfer in arrives - which the old two-branch version ignored.
+    from app.api.routes.transactions import balance_delta
+
     account = db.query(Account).filter(Account.id == transaction.account_id).first()
     if account:
-        if transaction.type == "expense":
-            account.balance -= transaction.amount
-        elif transaction.type == "income":
-            account.balance += transaction.amount
+        account.balance = float(account.balance) + balance_delta(
+            transaction.type, transaction.amount
+        )
     
     db.commit()
     

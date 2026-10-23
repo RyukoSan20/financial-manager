@@ -407,8 +407,16 @@ def suggest_category(text: str, merchant: Optional[str] = None) -> Optional[str]
 # ---------------------------------------------------------------------------
 
 class VoiceParseRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=1000)
+    # Either name is accepted: the browser recognises speech as a
+    # "transcript", while the rest of the app calls it "text". Making both
+    # optional means the caller never has to rename it first.
+    text: Optional[str] = Field(default=None, max_length=1000)
+    transcript: Optional[str] = Field(default=None, max_length=1000)
     account_id: Optional[int] = None
+    # The browser may send the recognition as a list of chunks. They are
+    # cleaned and joined server-side, which removes the duplicates that
+    # straddle two chunks.
+    segments: Optional[List[str]] = None
 
 
 class VoiceParseResponse(BaseModel):
@@ -419,6 +427,9 @@ class VoiceParseResponse(BaseModel):
     category: Optional[str] = None
     confidence_score: float = 0.0
     raw_text: str
+    # The cleaned text. This is what the parser actually read, so the UI
+    # can show the user exactly what was understood.
+    cleaned_text: Optional[str] = None
     missing_fields: List[str] = []
 
 
@@ -428,7 +439,27 @@ def parse_voice_text(
     current_user: User = Depends(get_current_user_optional),
 ):
     """Parse a spoken phrase into a structured transaction."""
-    raw = (request.text or "").strip()
+    from app.services.voice_cleanup import clean_transcript, clean_transcript_segments
+
+    raw = (request.text or request.transcript or "").strip()
+    if not raw:
+        raise HTTPException(
+            status_code=422,
+            detail="Isi 'text' atau 'transcript' dengan kalimat yang diucapkan.",
+        )
+
+    # Clean the transcript before parsing. The speech engine commonly
+    # repeats a word and mangles a brand name; both would otherwise turn
+    # into a wrong amount or a wrong merchant.
+    if request.segments:
+        cleaned = clean_transcript_segments(request.segments)
+    else:
+        cleaned = clean_transcript(raw)
+    # The parser has to read the CLEANED text. Without this the cleanup
+    # ran but its result was thrown away, so "duapuluh" still failed to
+    # parse and "dua puluh dua puluh" still counted as 40.000.
+    raw = cleaned or raw
+
     if not raw:
         raise HTTPException(status_code=400, detail="Teks kosong")
 
@@ -454,7 +485,8 @@ def parse_voice_text(
         missing.append("merchant_name")
 
     logger.info(
-        f"Voice parse: amount={amount} merchant={merchant!r} type={tx_type} conf={confidence}"
+        f"Voice parse: amount={amount} merchant={merchant!r} type={tx_type} conf={confidence} "
+        f"raw={request.text!r} cleaned={raw!r}"
     )
 
     return VoiceParseResponse(
@@ -464,7 +496,8 @@ def parse_voice_text(
         description=raw[:200],
         category=category,
         confidence_score=confidence,
-        raw_text=raw,
+        raw_text=request.text,
+        cleaned_text=cleaned,
         missing_fields=missing,
     )
 

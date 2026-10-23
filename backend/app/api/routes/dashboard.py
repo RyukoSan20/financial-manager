@@ -73,7 +73,8 @@ def get_dashboard_summary(
     spent_query = db.query(func.sum(Transaction.amount)).filter(
         Transaction.type == 'expense',
         Transaction.date >= first_day,
-        Transaction.date <= end
+        Transaction.date <= end,
+        *counted_transactions_filter(),
     )
     if user_id:
         spent_query = spent_query.filter(Transaction.user_id == user_id)
@@ -143,6 +144,22 @@ def get_date_range(timeframe: str) -> tuple:
     return ranges.get(timeframe, (today - timedelta(days=90), today))
 
 
+def counted_transactions_filter():
+    """
+    The transactions that actually count towards the user's money.
+
+    A transaction only counts once it is approved. A pending transaction is
+    waiting in the Feed & Review queue and a rejected one was thrown away -
+    neither of them has moved the balance, so neither of them may show up
+    in the totals, the category breakdown or the cash flow. Soft-deleted
+    rows are excluded too.
+    """
+    return [
+        Transaction.status.in_(("approved", None, "")),
+        Transaction.is_deleted.is_(False),
+    ]
+
+
 def get_category_breakdown_by_date(
     db: Session, 
     start: date, 
@@ -158,7 +175,8 @@ def get_category_breakdown_by_date(
     ).outerjoin(Category, Category.id == Transaction.category_id).filter(
         Transaction.type == tx_type,
         Transaction.date >= start,
-        Transaction.date <= end
+        Transaction.date <= end,
+        *counted_transactions_filter(),
     )
     
     if user_id:
@@ -178,7 +196,8 @@ def get_totals_by_date(
     """Get income and expense totals for a date range."""
     base_filter = [
         Transaction.date >= start,
-        Transaction.date <= end
+        Transaction.date <= end,
+        *counted_transactions_filter(),
     ]
     
     if user_id:

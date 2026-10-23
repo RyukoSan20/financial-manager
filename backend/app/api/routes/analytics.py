@@ -76,6 +76,7 @@ def get_cash_flow_trend(
     db: Session = Depends(get_db)
 ):
     """Get monthly cash flow trend for N months."""
+    user_id = current_user.id if current_user else None
     today = date.today()
     monthly_data = []
     
@@ -92,31 +93,39 @@ def get_cash_flow_trend(
         # Query transactions (exclude transfers)
         income = db.query(func.sum(Transaction.amount)).filter(
             Transaction.type == "income",
+            Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False
+            Transaction.is_deleted == False,
+            Transaction.status.in_(('approved', None, ''))
         ).scalar() or Decimal("0")
         
         expense = db.query(func.sum(Transaction.amount)).filter(
             Transaction.type == "expense",
+            Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False
+            Transaction.is_deleted == False,
+            Transaction.status.in_(('approved', None, ''))
         ).scalar() or Decimal("0")
         
         # Transfer totals (for reference)
         transfer_out = db.query(func.sum(Transaction.amount)).filter(
             Transaction.type == "transfer_out",
+            Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False
+            Transaction.is_deleted == False,
+            Transaction.status.in_(('approved', None, ''))
         ).scalar() or Decimal("0")
         
         transfer_in = db.query(func.sum(Transaction.amount)).filter(
             Transaction.type == "transfer_in",
+            Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False
+            Transaction.is_deleted == False,
+            Transaction.status.in_(('approved', None, ''))
         ).scalar() or Decimal("0")
         
         monthly_data.append({
@@ -131,6 +140,7 @@ def get_cash_flow_trend(
         })
     
     # Calculate trends
+    previous = None
     if len(monthly_data) >= 2:
         latest = monthly_data[-1]
         previous = monthly_data[-2]
@@ -145,6 +155,9 @@ def get_cash_flow_trend(
     
     return {
         "months": monthly_data,
+        # The frontend has always read "monthly". Without this alias the cash
+        # flow chart rendered empty even though the data was there.
+        "monthly": monthly_data,
         "summary": {
             "total_income": sum(m["income"] for m in monthly_data),
             "total_expense": sum(m["expense"] for m in monthly_data),
@@ -156,8 +169,14 @@ def get_cash_flow_trend(
         "trends": {
             "income_trend": income_trend,
             "expense_trend": expense_trend,
-            "income_change_pct": float(income_change / previous["income"] * 100) if previous["income"] > 0 else 0,
-            "expense_change_pct": float(expense_change / previous["expense"] * 100) if previous["expense"] > 0 else 0,
+            "income_change_pct": (
+                float(income_change / previous["income"] * 100)
+                if previous is not None and previous["income"] > 0 else 0
+            ),
+            "expense_change_pct": (
+                float(expense_change / previous["expense"] * 100)
+                if previous is not None and previous["expense"] > 0 else 0
+            ),
         }
     }
 
@@ -175,6 +194,7 @@ def get_expense_breakdown(
     db: Session = Depends(get_db)
 ):
     """Get expense breakdown by category, account, or time period."""
+    user_id = current_user.id if current_user else None
     if not start_date:
         start_date, _ = get_month_range(date.today().year, date.today().month)
     if not end_date:
@@ -183,9 +203,11 @@ def get_expense_breakdown(
     # Query expenses with category
     transactions = db.query(Transaction).filter(
         Transaction.type == "expense",
+        Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= end_date,
-        Transaction.is_deleted == False
+        Transaction.is_deleted == False,
+        Transaction.status.in_(('approved', None, ''))
     ).all()
     
     total_expense = sum(t.amount for t in transactions)
@@ -210,7 +232,8 @@ def get_expense_breakdown(
             "amount": t.amount,
             "date": t.date,
             "description": t.description,
-            "category": t.category.name if t.category else None,
+
+                "message": t.description,            "category": t.category.name if t.category else None,
             "category_icon": t.category.icon if t.category else None,
             "category_color": t.category.color if t.category else None,
         })
@@ -243,6 +266,7 @@ def get_top_expenses(
     db: Session = Depends(get_db)
 ):
     """Get top individual expenses."""
+    user_id = current_user.id if current_user else None
     if not start_date:
         start_date, _ = get_month_range(date.today().year, date.today().month)
     if not end_date:
@@ -250,9 +274,11 @@ def get_top_expenses(
     
     transactions = db.query(Transaction).filter(
         Transaction.type == "expense",
+        Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= end_date,
-        Transaction.is_deleted == False
+        Transaction.is_deleted == False,
+        Transaction.status.in_(('approved', None, ''))
     ).order_by(Transaction.amount.desc()).limit(limit).all()
     
     return {
@@ -263,7 +289,8 @@ def get_top_expenses(
                 "amount": t.amount,
                 "date": t.date,
                 "description": t.description,
-                "category": t.category.name if t.category else "Uncategorized",
+
+                "message": t.description,                "category": t.category.name if t.category else "Uncategorized",
                 "category_icon": t.category.icon if t.category else None,
                 "account": t.account.name if t.account else None,
             }
@@ -311,7 +338,8 @@ def get_recurring_expenses(
         items.append({
             "id": rule.id,
             "description": rule.description,
-            "amount": rule.amount,
+
+                "message": rule.description,            "amount": rule.amount,
             "frequency": freq,
             "monthly_equivalent": _round(Decimal(str(monthly))),
             "next_date": rule.next_occurrence,
@@ -338,6 +366,7 @@ def get_income_breakdown(
     db: Session = Depends(get_db)
 ):
     """Get income breakdown by category."""
+    user_id = current_user.id if current_user else None
     if not start_date:
         start_date, _ = get_month_range(date.today().year, date.today().month)
     if not end_date:
@@ -345,9 +374,11 @@ def get_income_breakdown(
     
     transactions = db.query(Transaction).filter(
         Transaction.type == "income",
+        Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= end_date,
-        Transaction.is_deleted == False
+        Transaction.is_deleted == False,
+        Transaction.status.in_(('approved', None, ''))
     ).all()
     
     total_income = sum(t.amount for t in transactions)
@@ -403,7 +434,8 @@ def get_income_sources(
         items.append({
             "id": rule.id,
             "description": rule.description,
-            "amount": rule.amount,
+
+                "message": rule.description,            "amount": rule.amount,
             "frequency": freq,
             "monthly_equivalent": _round(Decimal(str(monthly))),
         })
@@ -427,6 +459,7 @@ def get_budget_vs_actual(
     db: Session = Depends(get_db)
 ):
     """Compare budgets vs actual spending."""
+    user_id = current_user.id if current_user else None
     if not start_date:
         start_date, _ = get_month_range(date.today().year, date.today().month)
     if not end_date:
@@ -446,9 +479,11 @@ def get_budget_vs_actual(
         # Calculate actual spending for this budget
         query = db.query(func.sum(Transaction.amount)).filter(
             Transaction.type == "expense",
+            Transaction.user_id == user_id,
             Transaction.date >= budget.start_date,
             Transaction.date <= (budget.end_date or end_date),
-            Transaction.is_deleted == False
+            Transaction.is_deleted == False,
+        Transaction.status.in_(('approved', None, ''))
         )
         
         if budget.category_id:
@@ -497,14 +532,17 @@ def get_spending_patterns(
     db: Session = Depends(get_db)
 ):
     """Analyze spending patterns by day of week and time of month."""
+    user_id = current_user.id if current_user else None
     today = date.today()
     start_date = today - timedelta(days=90)  # Last 3 months
     
     transactions = db.query(Transaction).filter(
         Transaction.type == "expense",
+        Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= today,
-        Transaction.is_deleted == False
+        Transaction.is_deleted == False,
+        Transaction.status.in_(('approved', None, ''))
     ).all()
     
     if not transactions:
@@ -691,6 +729,7 @@ def get_monthly_comparison(
     db: Session = Depends(get_db)
 ):
     """Compare current month with previous N months."""
+    user_id = current_user.id if current_user else None
     today = date.today()
     current_month = (today.year, today.month)
     
@@ -707,16 +746,20 @@ def get_monthly_comparison(
         
         income = db.query(func.sum(Transaction.amount)).filter(
             Transaction.type == "income",
+            Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False
+            Transaction.is_deleted == False,
+            Transaction.status.in_(('approved', None, ''))
         ).scalar() or Decimal("0")
         
         expense = db.query(func.sum(Transaction.amount)).filter(
             Transaction.type == "expense",
+            Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False
+            Transaction.is_deleted == False,
+            Transaction.status.in_(('approved', None, ''))
         ).scalar() or Decimal("0")
         
         # Budget comparison
@@ -756,22 +799,27 @@ def get_financial_health(
     db: Session = Depends(get_db)
 ):
     """Calculate overall financial health score."""
+    user_id = current_user.id if current_user else None
     today = date.today()
     start_date, end_date = get_month_range(today.year, today.month)
     
     # Get key metrics
     income = db.query(func.sum(Transaction.amount)).filter(
         Transaction.type == "income",
+        Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= end_date,
-        Transaction.is_deleted == False
+        Transaction.is_deleted == False,
+        Transaction.status.in_(('approved', None, ''))
     ).scalar() or Decimal("0")
     
     expense = db.query(func.sum(Transaction.amount)).filter(
         Transaction.type == "expense",
+        Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= end_date,
-        Transaction.is_deleted == False
+        Transaction.is_deleted == False,
+        Transaction.status.in_(('approved', None, ''))
     ).scalar() or Decimal("0")
     
     # Get accounts
@@ -868,6 +916,9 @@ def get_financial_health(
     
     return {
         "overall_score": overall_score,
+        # The same score under the name the frontend has always read. Without
+        # this the health card rendered as an empty block.
+        "total_score": overall_score,
         "rating": rating,
         "message": message,
         "breakdown": {
@@ -875,25 +926,29 @@ def get_financial_health(
                 "score": scores["savings_rate"],
                 "max": 25,
                 "label": "Savings Rate",
-                "description": "aim for 20%+ savings rate" if scores["savings_rate"] < 25 else "Great savings rate!"
+                "description": "aim for 20%+ savings rate" if scores["savings_rate"] < 25 else "Great savings rate!",
+                "message": "aim for 20%+ savings rate" if scores["savings_rate"] < 25 else "Great savings rate!",
             },
             "emergency_fund": {
                 "score": scores["emergency_fund"],
                 "max": 25,
                 "label": "Emergency Fund",
-                "description": f"Target: 6x monthly expenses ({_round(emergency_target):,})" if total_balance < emergency_target else "Fully funded!"
+                "description": f"Target: 6x monthly expenses ({_round(emergency_target):,})" if total_balance < emergency_target else "Fully funded!",
+                "message": f"Target: 6x monthly expenses ({_round(emergency_target):,})" if total_balance < emergency_target else "Fully funded!",
             },
             "debt_level": {
                 "score": scores["debt_level"],
                 "max": 25,
                 "label": "Debt Level",
-                "description": f"DTI: {float(total_debt/income)*100:.0f}% (target: <36%)" if income > 0 else "No income data"
+                "description": f"DTI: {float(total_debt/income)*100:.0f}% (target: <36%)" if income > 0 else "No income data",
+                "message": f"DTI: {float(total_debt/income)*100:.0f}% (target: <36%)" if income > 0 else "No income data",
             },
             "goals_progress": {
                 "score": scores["goals_progress"],
                 "max": 25,
                 "label": "Goals Progress",
-                "description": f"{len(goals)} active goals" if goals else "No active goals"
+                "description": f"{len(goals)} active goals" if goals else "No active goals",
+                "message": f"{len(goals)} active goals" if goals else "No active goals",
             }
         },
         "metrics": {

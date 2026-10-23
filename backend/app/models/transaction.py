@@ -31,6 +31,12 @@ class Transaction(Base):
     
     # Transfer linking - transfer_out points to Transfer record
     transfer_id = Column(Integer, ForeignKey("transfers.id"), nullable=True)
+    # The other half of a transfer: the transfer_out row points at the
+    # transfer_in row through this column. Without it a transfer could not
+    # be created at all.
+    transfer_to_transaction_id = Column(
+        Integer, ForeignKey("transactions.id"), nullable=True
+    )
     
     # Recurring transaction
     is_recurring = Column(Boolean, default=False)

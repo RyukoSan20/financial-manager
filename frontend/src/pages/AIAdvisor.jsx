@@ -101,16 +101,36 @@ const AIAdvisor = () => {
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
 
     try {
-      const response = await api.ai.chat({ 
-        message: userMsg, 
-        context: {
-          summary: summary,
-          advice: advice,
+      // Try the agent first: it understands the intent, so a number becomes
+      // a transaction and a budget instruction becomes a budget rule. When
+      // the agent has nothing to do it answers with information anyway.
+      let response = null;
+      let agentActions = null;
+
+      try {
+        const agent = await api.ai.agent(userMsg);
+        if (agent && agent.success && agent.intent !== 'unknown') {
+          response = { response: agent.reply || agent.message || '' };
+          agentActions = agent.actions || null;
         }
-      });
+      } catch (agentErr) {
+        console.warn('Agent unavailable, falling back to chat:', agentErr);
+      }
+
+      if (!response) {
+        response = await api.ai.chat({ 
+          message: userMsg, 
+          context: {
+            summary: summary,
+            advice: advice,
+          }
+        });
+      }
+
       setMessages(prev => [...prev, { 
         role: "assistant", 
         content: response.response || response,
+        actions: agentActions,
         timestamp: new Date()
       }]);
     } catch (err) {
@@ -452,6 +472,20 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
                   <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
                     {msg.content}
                   </div>
+                  {msg.actions && msg.actions.length > 0 && (
+                    <ul className="mt-2 pt-2 border-t border-black/5 dark:border-white/10 space-y-1">
+                      {msg.actions.map((a, ai) => (
+                        <li key={ai} className="text-xs flex items-start gap-1.5">
+                          <span className={`shrink-0 mt-0.5 ${
+                            a.success === false ? 'text-red-500' : 'text-green-600'
+                          }`}>
+                            {a.success === false ? '\u2715' : '\u2713'}
+                          </span>
+                          <span className="min-w-0">{a.description || a.type}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {msg.timestamp && (
                     <p className={`text-xs mt-1 ${
                       msg.role === "user" ? "text-purple-200" : "text-gray-400"

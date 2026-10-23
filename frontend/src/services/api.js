@@ -256,6 +256,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ message }),
     }),
+    // The real agent: it reads the intent first, so a number means "record
+    // this" while a question about a budget only reports information.
+    agent: (message, planOnly = false) => api.request('/ai/agent', {
+      method: 'POST',
+      body: JSON.stringify({ message, plan_only: planOnly }),
+    }),
   },
 
   // Calculators

@@ -235,7 +235,40 @@ const AIAssistant = ({ userData = {} }) => {
     setIsTyping(true);
 
     try {
-      // First, try to execute action (for transaction commands)
+      // The agent reads the intent before it acts: a number becomes a
+      // transaction, a budget request becomes a budget rule, and a plain
+      // question only gets information. Anything else falls through to the
+      // advisor below.
+      const agentResult = await api.ai.agent(userMsg);
+
+      if (agentResult && agentResult.success && agentResult.intent !== 'unknown') {
+        const reply = agentResult.reply || agentResult.message || '';
+        const hasActions = Array.isArray(agentResult.actions) && agentResult.actions.length > 0;
+
+        if (hasActions) {
+          const lines = agentResult.actions.map((a) => {
+            const mark = a.success === false ? 'x' : 'v';
+            return `${mark} ${a.description || a.type}`;
+          }).join('\n');
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `${reply}\n\n${lines}`,
+            actions: agentResult.actions,
+            intent: agentResult.intent,
+          }]);
+
+          if (userData.onRefresh) {
+            setTimeout(() => userData.onRefresh(), 800);
+          }
+          return;
+        }
+
+        setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+        return;
+      }
+
+      // Fall back to the old execute path for anything the agent did not
+      // recognise.
       const actionResult = await api.ai.execute(userMsg);
       
       if (actionResult && actionResult.success) {
@@ -592,6 +625,25 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  {msg.actions && msg.actions.length > 0 && (
+                    <ul className="mt-2 pt-2 border-t border-black/5 dark:border-white/10 space-y-1">
+                      {msg.actions.map((a, ai) => (
+                        <li key={ai} className="text-xs flex items-start gap-1.5">
+                          <span className={`shrink-0 mt-0.5 ${
+                            a.success === false ? 'text-red-500' : 'text-green-600'
+                          }`}>
+                            {a.success === false ? '\u2715' : '\u2713'}
+                          </span>
+                          <span className="min-w-0">
+                            {a.description || a.type}
+                            {a.amount != null && (
+                              <span className="opacity-70"> - {a.amount}</span>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             ))}

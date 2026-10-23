@@ -7,6 +7,7 @@ import json
 import base64
 import logging
 import os
+import time
 from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -157,22 +158,109 @@ def extract_receipt_with_gemini(
         }
     except Exception as e:
         logger.error(f"Gemini Vision failed: {e}")
-        # Return structured fallback with merchant inferred from INDOMARET logo description
-        # This prevents empty results when Gemini fails
+        # Return a structured fallback. The merchant is left empty on purpose:
+        # naming a specific merchant here would invent data that was never
+        # read from the receipt.
         return {
-            "merchant": {
-                "name": "INDOMARET",  # Common Indonesian minimarket
-                "type": "Retail",
-                "location": None
-            },
+            "merchant": {"name": "", "type": "", "location": None},
             "transaction_date": None,
             "items": [],
             "subtotal": 0.0,
             "discount": 0.0,
             "total_amount": 0.0,
-            "payment_method": "Cash",
+            "payment_method": "",
             "confidence": 0.0
         }
+
+
+def call_gemini_text(
+    prompt: str,
+    timeout: int = 45,
+    temperature: float = 0.1,
+    max_output_tokens: int = 4096,
+    json_response: bool = False,
+) -> Optional[str]:
+    """
+    Send a text prompt to Gemini and return the raw text answer.
+
+    Used by the receipt structuring path, where the model is asked to group
+    the OCR lines rather than to read an image.
+
+    Returns None when the model is unavailable or the request fails. Every
+    caller treats this as strictly optional and falls back to the
+    deterministic parser.
+    """
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        logger.warning("GEMINI_API_KEY not configured")
+        return None
+
+    generation_config: Dict[str, Any] = {
+        "temperature": temperature,
+        "maxOutputTokens": max_output_tokens,
+    }
+    if json_response:
+        generation_config["responseMimeType"] = "application/json"
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": generation_config,
+    }
+
+    try:
+        import urllib.error
+        import urllib.request
+
+        url = f"{GEMINI_API_URL}?key={api_key}"
+        data = json.dumps(payload).encode("utf-8")
+
+        # The free tier of the API answers 429 and 503 fairly often. A
+        # short backoff and one retry turns most of those into a normal
+        # answer, which is the difference between a structured receipt and
+        # a receipt that only has what the regex found.
+        last_error: Optional[Exception] = None
+        for attempt in range(3):
+            req = urllib.request.Request(
+                url,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as response:
+                    result = json.loads(response.read().decode("utf-8"))
+
+                candidates = result.get("candidates") or []
+                if not candidates:
+                    logger.warning("Gemini returned no candidates")
+                    return None
+
+                parts = (candidates[0].get("content") or {}).get("parts") or []
+                text = "".join(part.get("text", "") for part in parts).strip()
+                return text or None
+
+            except urllib.error.HTTPError as exc:
+                last_error = exc
+                # 429 (rate limit) and 503 (overloaded) are worth a retry.
+                if exc.code not in (429, 500, 502, 503, 504):
+                    logger.warning(f"Gemini text call failed: {exc}")
+                    return None
+                wait = 2 ** attempt
+                logger.warning(
+                    f"Gemini text call got HTTP {exc.code}, retrying in {wait}s"
+                )
+                time.sleep(wait)
+            except Exception as exc:  # noqa: BLE001
+                last_error = exc
+                logger.warning(f"Gemini text call failed: {exc}")
+                return None
+
+        logger.warning(f"Gemini text call gave up: {last_error}")
+        return None
+
+    except Exception as exc:  # noqa: BLE001 - the LLM is strictly optional
+        logger.warning(f"Gemini text call failed: {exc}")
+        return None
 
 
 class GeminiVisionService:

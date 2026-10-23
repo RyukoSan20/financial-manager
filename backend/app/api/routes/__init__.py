@@ -33,4 +33,8 @@ from . import (
     location,
     unified_market,
     user_settings,
+    voice,
+    profile,
+    learning,
+    scans,
 )

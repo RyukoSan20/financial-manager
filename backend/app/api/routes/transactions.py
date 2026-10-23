@@ -18,6 +18,23 @@ from app.models.user import User
 from app.schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse, TransactionWithDetails
 from app.models.receipt import ReceiptScan
 
+def balance_delta(tx_type: str, amount) -> float:
+    """
+    The signed effect a transaction has on an account balance.
+
+    Income adds, expense subtracts, a transfer out leaves the account and a
+    transfer in arrives. Every place that touches a balance uses this one
+    function, so an approve, a delete and a transfer can never disagree
+    about what the sign should be.
+    """
+    amount = float(amount or 0)
+    if tx_type == "income" or tx_type == "transfer_in":
+        return amount
+    if tx_type == "expense" or tx_type == "transfer_out":
+        return -amount
+    return 0.0
+
+
 router = APIRouter()
 
 
@@ -243,8 +260,11 @@ def create_transaction(
     # === ATOMIC BALANCE UPDATE (only for approved transactions) ===
     # Pending transactions don't affect balance until approved
     from sqlalchemy import text
-    if transaction.status == "approved":
-        delta = transaction.amount if transaction.type == "income" else -transaction.amount
+    # A NULL or empty status counts as approved: that is what the older
+    # rows in the database carry, and leaving them out made the balance
+    # drift away from the sum of the transactions.
+    if transaction.status in (None, "", "approved"):
+        delta = balance_delta(transaction.type, transaction.amount)
         # Atomic update: balance = balance + delta
         db.execute(
             text("""
@@ -302,34 +322,56 @@ def update_transaction(
         raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = transaction.model_dump(exclude_unset=True)
-    
-    # If amount changes, adjust account balance
+
+    # The balance is only moved by a transaction that is actually counted.
+    # A pending transaction has not moved the balance yet, so changing its
+    # amount or its type must not move the balance either.
+    old_status = db_transaction.status
+    was_counted = old_status in (None, "", "approved")
+
     old_amount = db_transaction.amount
     old_type = db_transaction.type
-    
+
     for key, value in update_data.items():
         setattr(db_transaction, key, value)
-    
-    # Update account balance if amount changed
-    if "amount" in update_data or "type" in update_data:
+
+    new_status = db_transaction.status
+    is_counted = new_status in (None, "", "approved")
+
+    # A transaction that just became approved starts counting, and one that
+    # stopped being approved stops counting.
+    became_counted = (not was_counted) and is_counted
+    stopped_counting = was_counted and (not is_counted)
+
+    amount_changed = "amount" in update_data or "type" in update_data
+    amount_delta = 0.0
+
+    if was_counted and is_counted:
+        # Still counted: apply the difference between the old and the new
+        # effect on the balance.
+        if amount_changed:
+            old_delta = balance_delta(str(old_type), old_amount)
+            new_delta = balance_delta(str(db_transaction.type), db_transaction.amount)
+            amount_delta = new_delta - old_delta
+    elif became_counted:
+        # It just started counting: apply its full effect.
+        amount_delta = balance_delta(str(db_transaction.type), db_transaction.amount)
+    elif stopped_counting:
+        # It just stopped counting: undo its full effect.
+        amount_delta = -balance_delta(str(old_type), old_amount)
+    # was_counted == False and is_counted == False: nothing to do.
+
+    if amount_delta != 0:
         from sqlalchemy import text
-        
-        # Determine if old transaction was income
-        old_is_income = str(old_type) == "income"
-        old_delta = old_amount if old_is_income else -old_amount
+
         db.execute(
-            text("UPDATE accounts SET balance = balance + :delta, updated_at = NOW() WHERE id = :account_id"),
-            {"delta": old_delta, "account_id": db_transaction.account_id}
+            text(
+                "UPDATE accounts SET balance = balance + :delta, updated_at = NOW() "
+                "WHERE id = :account_id"
+            ),
+            {"delta": amount_delta, "account_id": db_transaction.account_id},
         )
-        
-        # Apply new transaction
-        new_type = str(db_transaction.type)
-        new_delta = db_transaction.amount if new_type == "income" else -db_transaction.amount
-        db.execute(
-            text("UPDATE accounts SET balance = balance + :delta, updated_at = NOW() WHERE id = :account_id"),
-            {"delta": new_delta, "account_id": db_transaction.account_id}
-        )
-    
+
     db.commit()
     db.refresh(db_transaction)
     return db_transaction
@@ -349,22 +391,42 @@ def delete_transaction(
     # Ownership check
     if db_transaction.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     # === ATOMIC BALANCE UPDATE ===
-    # Reverse the balance change atomically
+    # Reverse the balance change atomically - but only for a transaction that
+    # actually changed the balance.
+    #
+    # The balance is only moved when a transaction is approved (see the feed
+    # approve endpoint). A pending transaction has not touched the balance
+    # yet, and a rejected one never will. Reversing those would ADD money
+    # the user never spent, which is exactly the "total saldo tidak kembali
+    # ke normal after deleting" symptom.
     from sqlalchemy import text
-    delta = db_transaction.amount if db_transaction.type == "income" else -db_transaction.amount
-    
-    db.execute(
-        text("""
-            UPDATE accounts 
-            SET balance = balance + :delta,
-                updated_at = NOW()
-            WHERE id = :account_id
-        """),
-        {"delta": delta, "account_id": db_transaction.account_id}
+
+    affects_balance = (
+        db_transaction.status == "approved"
+        or db_transaction.status is None
+        or db_transaction.status == ""
     )
-    
+    # A transaction that was created directly (not through the feed) is
+    # already counted, so it has to be reversed on delete.
+    if affects_balance:
+        # The ORIGINAL effect of the transaction was +amount for an income
+        # and -amount for an expense. Reversing it means applying the
+        # OPPOSITE sign. Applying the original sign again subtracts the
+        # money a second time, which is the "the balance does not go back
+        # to normal after a delete" symptom.
+        original_delta = balance_delta(db_transaction.type, db_transaction.amount)
+        db.execute(
+            text("""
+                UPDATE accounts
+                SET balance = balance + :delta,
+                    updated_at = NOW()
+                WHERE id = :account_id
+            """),
+            {"delta": -original_delta, "account_id": db_transaction.account_id},
+        )
+
     db.delete(db_transaction)
     db.commit()
     return None

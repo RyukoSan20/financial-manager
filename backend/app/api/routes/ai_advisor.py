@@ -8,6 +8,7 @@ from pydantic import BaseModel
 import json
 import asyncio
 import re
+import logging
 from datetime import datetime
 
 from app.core.database import get_db
@@ -21,6 +22,8 @@ from app.services.ai_advisor_service import (
     get_financial_summary,
     AIAdvice
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["AI Advisor"])
 
@@ -339,142 +342,221 @@ class ActionResult(BaseModel):
     data: Optional[dict] = None
     message: str
 
+
+# === AI Agent ===
+
+class AgentRequest(BaseModel):
+    message: str
+    # When true the plan is only built, not executed. The client uses this
+    # to show the user what will happen before anything is written.
+    plan_only: bool = False
+    # The messages that came before, used as context for the reply.
+    history: List[dict] = []
+
+
+class AgentResponse(BaseModel):
+    success: bool
+    intent: str
+    confidence: float
+    reply: str
+    plan: Optional[dict] = None
+    actions: List[dict] = []
+    needs_confirmation: bool = False
+    data: Optional[dict] = None
+    message: str = ""
+
+
+def _agent_reply(plan, executed: bool) -> str:
+    """Turn the outcome of the plan into a sentence for the user."""
+    if not executed:
+        descriptions = ", ".join(a.description for a in plan.actions if a.description)
+        return (
+            f"Baik, saya bisa melakukan ini: {descriptions}. "
+            "Konfirmasi ya untuk saya jalankan."
+        )
+
+    done = [a for a in plan.actions if a.success]
+    failed = [a for a in plan.actions if not a.success]
+
+    if done:
+        reply = " ".join(a.description for a in done if a.description)
+    else:
+        reply = ""
+
+    if failed:
+        reason = failed[0].error or "tidak diketahui"
+        reply = (reply + " " if reply else "") + f"Ada bagian yang gagal: {reason}."
+
+    if not reply:
+        reply = "Selesai."
+
+    return reply.strip()
+
+
+@router.post("/agent", response_model=AgentResponse)
+def ai_agent(
+    request: AgentRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    The financial agent.
+
+    Unlike the old `/execute` endpoint, this one understands the *intent*
+    of the message before acting. "tambah 15000 kopi" adds a transaction,
+    "bagi saldo 50% belanja 30% tabungan" creates budgets, and "berapa
+    budget saya" only reports information - it never changes anything.
+    """
+    message = (request.message or "").strip()
+    if not message:
+        return AgentResponse(
+            success=False,
+            intent="unknown",
+            confidence=0.0,
+            reply="Pesan kosong. Apa yang ingin Anda lakukan?",
+            message="Pesan kosong",
+        )
+
+    from app.services.ai_agent_executor import build_plan, execute_plan
+
+    plan = build_plan(db, current_user.id, message)
+
+    # A query only reads. It must never look like a pending write, and its
+    # result has to be the answer the user sees - not a "konfirmasi ya"
+    # prompt for something that changes nothing.
+    if plan.intent == "query" and plan.actions:
+        from app.services.ai_agent_executor import AgentExecutor, execute_plan
+
+        plan = execute_plan(db, current_user.id, plan, message)
+        try:
+            db.commit()
+        except Exception as exc:  # noqa: BLE001
+            db.rollback()
+            logger.warning(f"Agent read commit failed: {exc}")
+
+        reply = plan.actions[0].description if plan.actions else "Tidak ada data."
+        return AgentResponse(
+            success=True,
+            intent=plan.intent,
+            confidence=plan.confidence,
+            reply=reply,
+            plan=plan.to_dict(),
+            actions=[a.to_dict() for a in plan.actions],
+            needs_confirmation=False,
+            data=(plan.actions[0].result if plan.actions else None),
+            message=reply,
+        )
+
+    # Nothing to do: fall back to the advisor for an informative answer.
+    if not plan.actions:
+        from app.services.ai_advisor_service import ai_advisor
+
+        try:
+            advice = ai_advisor(message, db=db, user_id=current_user.id)
+            reply = getattr(advice, "message", None) or str(advice)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"Advisor fallback failed: {exc}")
+            reply = (
+                "Saya belum yakin maksud Anda. Coba jelaskan seperti: "
+                "'tambah 15000 kopi', 'set budget makan 500000 per bulan', "
+                "atau 'bagi saldo 50% belanja 30% tabungan'."
+            )
+        return AgentResponse(
+            success=True,
+            intent=plan.intent,
+            confidence=plan.confidence,
+            reply=reply,
+            plan=plan.to_dict(),
+            message=reply,
+        )
+
+    if request.plan_only:
+        plan.needs_confirmation = True
+        reply = _agent_reply(plan, executed=False)
+        return AgentResponse(
+            success=True,
+            intent=plan.intent,
+            confidence=plan.confidence,
+            reply=reply,
+            plan=plan.to_dict(),
+            actions=[a.to_dict() for a in plan.actions],
+            needs_confirmation=True,
+            message=reply,
+        )
+
+    plan = execute_plan(db, current_user.id, plan, message)
+    try:
+        db.commit()
+    except Exception as exc:  # noqa: BLE001
+        db.rollback()
+        logger.exception("Agent commit failed")
+        return AgentResponse(
+            success=False,
+            intent=plan.intent,
+            confidence=plan.confidence,
+            reply=f"Perubahan tidak bisa disimpan: {exc}",
+            plan=plan.to_dict(),
+            message=str(exc),
+        )
+
+    reply = _agent_reply(plan, executed=True)
+    first = plan.actions[0] if plan.actions else None
+    return AgentResponse(
+        success=bool(first and first.success),
+        intent=plan.intent,
+        confidence=plan.confidence,
+        reply=reply,
+        plan=plan.to_dict(),
+        actions=[a.to_dict() for a in plan.actions],
+        data=first.result if first else None,
+        message=reply,
+    )
+
+
 @router.post("/execute", response_model=ActionResult)
 def execute_ai_action(
     request: ExecuteRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
-    Execute financial actions from natural language.
-    Supported actions: add_transaction, delete_transaction, update_transaction
+    Kept for backwards compatibility.
+
+    The real agent lives at `/ai-advisor/agent`. This endpoint now simply
+    forwards to it, so old clients get the better behaviour.
     """
-    message = request.message.lower()
-    
-    # Get default account
-    default_account = db.query(Account).filter(
-        Account.user_id == current_user.id,
-        Account.is_active == True
-    ).first()
-    
-    if not default_account:
+    from app.services.ai_agent_executor import build_plan, execute_plan
+
+    message = (request.message or "").strip()
+    plan = build_plan(db, current_user.id, message)
+
+    if not plan.actions:
         return ActionResult(
             success=False,
             action="none",
-            message="Tidak ada akun ditemukan. Buat akun terlebih dahulu."
+            data={"intent": plan.intent, "confidence": plan.confidence},
+            message=(
+                "Tidak dapat mengenali aksi. Contoh: 'tambah 15000 kopi', "
+                "'set budget makan 500000 per bulan', "
+                "'bagi saldo 50% belanja 30% tabungan'."
+            ),
         )
-    
-    # Parse expense/income
-    expense_pattern = r'(pengeluaran|expense|bayar|beli|makan|belanja|kasar|rugi)'
-    income_pattern = r'(pemasukan|income|gaji|terima|masuk|dapat)'
-    
-    is_expense = bool(re.search(expense_pattern, message))
-    is_income = bool(re.search(income_pattern, message))
-    
-    if not is_expense and not is_income:
-        return ActionResult(
-            success=False,
-            action="none",
-            message="Tidak dapat mengenali jenis transaksi. Gunakan kata 'pengeluaran' atau 'pemasukan'."
-        )
-    
-    # Extract amount
-    amount_pattern = r'[\d.,]+(?:ribu|juta)?'
-    amounts = re.findall(amount_pattern, message)
-    
-    if not amounts:
-        return ActionResult(
-            success=False,
-            action="parse_amount",
-            message="Tidak dapat menemukan jumlah nominal. Contoh: 'Rp 150.000' atau '15000'"
-        )
-    
-    # Convert to number
-    amount_str = amounts[0].replace('.', '').replace(',', '')
-    multiplier = 1
-    if 'ribu' in amounts[0].lower():
-        multiplier = 1000
-    elif 'juta' in amounts[0].lower():
-        multiplier = 1000000
-    amount = float(amount_str) * multiplier
-    
-    if amount <= 0:
-        return ActionResult(
-            success=False,
-            action="validate_amount",
-            message=f"Jumlah {amounts[0]} tidak valid."
-        )
-    
-    # Get default category
-    cat_type = 'expense' if is_expense else 'income'
-    category = db.query(Category).filter(
-        Category.user_id == current_user.id,
-        Category.type == cat_type,
-        Category.is_active == True
-    ).first()
-    
-    if not category:
-        # Get any category of this type
-        category = db.query(Category).filter(
-            Category.user_id == None,
-            Category.type == cat_type,
-            Category.is_active == True
-        ).first()
-    
-    if not category:
-        return ActionResult(
-            success=False,
-            action="find_category",
-            message=f"Tidak ada kategori {cat_type} ditemukan."
-        )
-    
-    # Extract description
-    desc_pattern = r'(makan|beli|bayar|untuk|dari|dengan|kategori)\s+(.+?)(?:\s+seharga|\s+harga|\s+rp|\s+\d|$)'
-    desc_match = re.search(desc_pattern, message)
-    description = desc_match.group(2).strip() if desc_match else f"{'Pengeluaran' if is_expense else 'Pemasukan'} via AI"
-    
-    # Extract date
-    date_pattern = r'(kemarin|besok|hari ini|minggu ini)'
-    if 'kemarin' in message:
-        trans_date = datetime.now().replace(day=datetime.now().day - 1)
-    elif 'besok' in message:
-        trans_date = datetime.now().replace(day=datetime.now().day + 1)
-    else:
-        trans_date = datetime.now()
-    
-    # Create transaction
+
+    plan = execute_plan(db, current_user.id, plan, message)
     try:
-        transaction = Transaction(
-            user_id=current_user.id,
-            account_id=default_account.id,
-            category_id=category.id,
-            type=cat_type,
-            amount=amount,
-            description=description,
-            date=trans_date,
-            is_recurring=False
-        )
-        db.add(transaction)
         db.commit()
-        db.refresh(transaction)
-        
-        action_type = "pengeluaran" if is_expense else "pemasukan"
-        return ActionResult(
-            success=True,
-            action="add_transaction",
-            data={
-                "id": transaction.id,
-                "amount": amount,
-                "type": cat_type,
-                "description": description,
-                "category": category.name
-            },
-            message=f"Berhasil menambahkan {action_type} Rp {amount:,.0f} ({description})"
-        )
-    except Exception as e:
+    except Exception as exc:  # noqa: BLE001
         db.rollback()
         return ActionResult(
             success=False,
-            action="create_transaction",
-            message=f"Gagal menyimpan transaksi: {str(e)}"
+            action=plan.actions[0].kind,
+            message=f"Gagal menyimpan: {exc}",
         )
+
+    action = plan.actions[0]
+    return ActionResult(
+        success=action.success,
+        action=action.kind,
+        data=action.result,
+        message=action.description or (action.error or "Selesai"),
+    )

@@ -131,24 +131,37 @@ def parse_text(
 # CPU-Bound Task Wrapper (Non-blocking)
 # ============================================================
 
-def _process_receipt_cpu_bound(image_bytes: bytes) -> dict:
+def _process_receipt_cpu_bound(
+    image_bytes: bytes,
+    db: Optional[Session] = None,
+    user_id: Optional[int] = None,
+) -> dict:
     """
     CPU-bound OCR processing using HYBRID pipeline:
     1. OCR Extraction (RapidOCR)
     2. Regex Parse + Sanity Check
     3. Conditional Gemini Fallback/Enrichment
+    4. LLM structuring pass (grouping, damaged words, splitting lines)
+    5. Catalog learning (new merchants and products are remembered)
+    6. Breakdown computation (subtotal, discount, total)
+
+    `db` and `user_id` are optional. When they are supplied the scan also
+    learns the merchant and the products into the catalogue, which is what
+    makes a receipt from a shop the user has never scanned before work.
     """
     import logging
     logger = logging.getLogger(__name__)
-    
+
     from app.services.receipt_service import process_receipt_hybrid, receipt_to_dict
-    
+
     # Use hybrid receipt processing (OCR + Regex + Gemini)
     try:
         receipt_result = process_receipt_hybrid(
             image_bytes=image_bytes,
             use_gemini_fallback=True,
-            use_gemini_enrichment=True
+            use_gemini_enrichment=True,
+            db=db,
+            user_id=user_id,
         )
         
         # Convert to dict for API response
@@ -209,6 +222,10 @@ def _process_receipt_cpu_bound(image_bytes: bytes) -> dict:
             "ocr_diagnostics": getattr(receipt_result, "ocr_diagnostics", None),
             "dynamic_parse": getattr(receipt_result, "dynamic_parse", None),
             "parser_engine": receipt_result.parse_method,
+            # The itemised breakdown and what the learning pass discovered.
+            "breakdown": getattr(receipt_result, "breakdown", None),
+            "learning": getattr(receipt_result, "learning", None),
+            "merchant_is_new": getattr(receipt_result, "merchant_is_new", False),
         }
         
     except Exception as e:
@@ -261,11 +278,55 @@ async def parse_receipt_image_endpoint(
         raise HTTPException(status_code=400, detail="File too large (max 10MB)")
     
     try:
-        # Run CPU-bound OCR processing in thread pool (non-blocking)
+        # Run CPU-bound OCR processing in thread pool (non-blocking).
+        #
+        # The database session is deliberately NOT passed into the worker
+        # thread: a SQLAlchemy session belongs to the thread that created
+        # it. The catalog learning runs afterwards, in the request thread.
         result = await run_in_threadpool(_process_receipt_cpu_bound, content)
         
         receipt = result["receipt"]
         receipt_result = result.get("receipt_result")  # From hybrid service
+
+        # Learn the merchant and the products into the catalogue.
+        #
+        # This runs here, in the request thread, because it writes to the
+        # database and the session is bound to this thread.
+        learning_summary = None
+        if current_user and receipt_result is not None:
+            try:
+                from app.services.catalog_learning import get_learning_service
+
+                learning = get_learning_service(db, current_user.id)
+                learning_summary = learning.learn_from_scan(
+                    receipt_result.merchant_name,
+                    [
+                        {
+                            "name": i.name,
+                            "category": i.category,
+                            "price_per_unit": i.price_per_unit,
+                            "is_discount": i.is_discount,
+                        }
+                        for i in receipt_result.items
+                    ],
+                    merchant_type=receipt_result.merchant_type,
+                )
+                receipt_result.learning = learning_summary
+                receipt_result.merchant_is_new = bool(
+                    (learning_summary.get("merchant") or {}).get("created")
+                )
+                # The breakdown is built after the learning pass so it can
+                # report which products were new.
+                from app.services.receipt_breakdown import build_breakdown
+
+                breakdown = build_breakdown(receipt_result, learning_summary)
+                receipt_result.breakdown = breakdown.to_dict()
+                result["breakdown"] = receipt_result.breakdown
+                result["learning"] = learning_summary
+                result["merchant_is_new"] = receipt_result.merchant_is_new
+            except Exception as exc:  # noqa: BLE001 - learning must not fail the scan
+                logger.warning(f"Catalog learning failed: {exc}")
+                db.rollback()
         
         # Get amount from hybrid result or OCRResult
         hybrid_total = receipt_result.total_amount if receipt_result else 0
@@ -383,6 +444,14 @@ async def parse_receipt_image_endpoint(
             "ocr_diagnostics": result.get("ocr_diagnostics") or {},
             "dynamic_parse": result.get("dynamic_parse"),
             "parser_engine": result.get("parser_engine", "rules"),
+            # The itemised breakdown: products, quantities, unit prices,
+            # discounts and the computed total.
+            "breakdown": result.get("breakdown")
+            or (getattr(receipt_result, "breakdown", None) if receipt_result else None)
+            or {},
+            # What the catalog learning pass discovered on this scan.
+            "learning": result.get("learning") or {},
+            "merchant_is_new": result.get("merchant_is_new", False),
         }
         
     except Exception as e:

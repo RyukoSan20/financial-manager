@@ -15,6 +15,7 @@ from app.models.scan_job import ScanJob, ScanChunk, JobStatus
 from app.models.activity_log import ActivityLog, ActivityLogger
 from app.models.merchant import Merchant, MerchantProduct, DailySettlement
 from app.models.shopping_item import ShoppingItem, WishlistItem
+from app.models.merchant_catalog import MerchantCatalog, UserProduct
 
 __all__ = [
     "Account",
@@ -42,4 +43,6 @@ __all__ = [
     "DailySettlement",
     "ShoppingItem",
     "WishlistItem",
+    "MerchantCatalog",
+    "UserProduct",
 ]
