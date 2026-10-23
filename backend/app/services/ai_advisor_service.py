@@ -137,11 +137,15 @@ class AIFinancialAdvisor:
                 }
             }
             
+            # The agent route falls back to the advisor when it does not
+            # recognise a message. A slow answer there looks like a hung
+            # request, so the timeout is kept short and the caller gets
+            # the deterministic fallback answer instead.
             response = requests.post(
                 url,
                 json=payload,
                 headers={"Content-Type": "application/json"},
-                timeout=30
+                timeout=12
             )
             
             if response.status_code == 200:

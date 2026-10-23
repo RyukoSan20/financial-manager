@@ -233,6 +233,15 @@ def detect_intent(message: str) -> Tuple[str, float]:
     if any(cue in text for cue in INFORMATION_ONLY_CUES):
         return "query", 0.8
 
+    # "transaksi terakhir", "riwayat pengeluaran" - a read about a noun,
+    # with no verb and no amount. The noun is what makes it a read.
+    if any(w in tokens for w in ("transaksi", "riwayat", "history")) and any(
+        w in tokens for w in ("terakhir", "terbaru", "baru", "recent", "latest")
+    ):
+        return "query", 0.8
+    if "riwayat" in tokens:
+        return "query", 0.75
+
     # --- Suggestion ----------------------------------------------------
     if any(w in tokens for w in ("saran", "suggest", "rekomendasi", "recommend", "tips", "bantuan", "help")):
         return "suggest", 0.75

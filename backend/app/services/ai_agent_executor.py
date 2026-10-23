@@ -785,6 +785,157 @@ class AgentExecutor:
                                 for r in rows]},
         )
 
+    def query_balance(self, message: str) -> AgentAction:
+        """Report the balance across the user's own accounts."""
+        accounts = self.db.execute(
+            select(Account).where(
+                Account.user_id == self.user_id,
+                Account.is_active.is_(True),
+            )
+        ).scalars().all()
+
+        total = sum(float(a.balance or 0) for a in accounts)
+        lines = [
+            f"{a.name}: Rp{float(a.balance or 0):,.0f}" for a in accounts
+        ]
+
+        return AgentAction(
+            kind="query_balance",
+            description=f"Total saldo Anda Rp{total:,.0f}"
+            + (f" ({'; '.join(lines)})" if lines else ""),
+            success=True,
+            result={
+                "total_balance": total,
+                "accounts": [
+                    {"id": a.id, "name": a.name, "balance": float(a.balance or 0)}
+                    for a in accounts
+                ],
+            },
+        )
+
+    def query_expenses(self, message: str) -> AgentAction:
+        """Report this month's spending, split by category."""
+        today = date.today()
+        start = date(today.year, today.month, 1)
+
+        rows = self.db.execute(
+            select(Transaction.category_id, func.sum(Transaction.amount))
+            .where(
+                Transaction.user_id == self.user_id,
+                Transaction.type == "expense",
+                Transaction.status.in_(("approved", None, "")),
+                Transaction.is_deleted.is_(False),
+                Transaction.date >= start,
+            )
+            .group_by(Transaction.category_id)
+        ).all()
+
+        total = sum(float(amount or 0) for _, amount in rows)
+        parts = []
+        for category_id, amount in rows:
+            name = "Lainnya"
+            if category_id is not None:
+                category = self.db.get(Category, category_id)
+                if category is not None:
+                    name = category.name
+            parts.append(f"{name}: Rp{float(amount or 0):,.0f}")
+        parts.sort(key=lambda part: part, reverse=True)
+
+        return AgentAction(
+            kind="query_expenses",
+            description=f"Pengeluaran bulan ini Rp{total:,.0f}"
+            + (f" ({'; '.join(parts)})" if parts else ""),
+            success=True,
+            result={"total": total, "period": "month", "categories": parts},
+        )
+
+    def query_goals(self, message: str) -> AgentAction:
+        """Report the user's savings goals."""
+        rows = self.db.execute(
+            select(Goal).where(
+                Goal.user_id == self.user_id,
+                Goal.is_active.is_(True),
+                Goal.is_completed.is_(False),
+            )
+        ).scalars().all()
+
+        if not rows:
+            return AgentAction(
+                kind="query_goals",
+                description="Belum ada target tabungan aktif",
+                success=True,
+                result={"goals": []},
+            )
+
+        lines = []
+        for row in rows:
+            target = float(row.target_amount or 0)
+            saved = float(row.current_amount or 0)
+            percent = (saved / target * 100) if target > 0 else 0
+            lines.append(
+                f"{row.name}: Rp{saved:,.0f} dari Rp{target:,.0f} ({percent:.0f}%)"
+            )
+
+        return AgentAction(
+            kind="query_goals",
+            description="; ".join(lines),
+            success=True,
+            result={
+                "goals": [
+                    {
+                        "id": r.id,
+                        "name": r.name,
+                        "target_amount": float(r.target_amount or 0),
+                        "current_amount": float(r.current_amount or 0),
+                    }
+                    for r in rows
+                ],
+            },
+        )
+
+    def query_transactions(self, message: str) -> AgentAction:
+        """Report the most recent transactions."""
+        rows = self.db.execute(
+            select(Transaction)
+            .where(
+                Transaction.user_id == self.user_id,
+                Transaction.is_deleted.is_(False),
+            )
+            .order_by(Transaction.date.desc(), Transaction.id.desc())
+            .limit(5)
+        ).scalars().all()
+
+        if not rows:
+            return AgentAction(
+                kind="query_transactions",
+                description="Belum ada transaksi",
+                success=True,
+                result={"transactions": []},
+            )
+
+        lines = [
+            f"{r.description or 'Tanpa nama'}: Rp{float(r.amount or 0):,.0f}"
+            for r in rows
+        ]
+
+        return AgentAction(
+            kind="query_transactions",
+            description="; ".join(lines),
+            success=True,
+            result={
+                "transactions": [
+                    {
+                        "id": r.id,
+                        "description": r.description,
+                        "amount": float(r.amount or 0),
+                        "type": r.type,
+                        "date": r.date.isoformat() if r.date else None,
+                    }
+                    for r in rows
+                ],
+            },
+        )
+
     def _spent_for_budget(self, budget: Budget) -> float:
         """How much of a budget has already been used."""
         try:
@@ -808,6 +959,42 @@ class AgentExecutor:
 # ---------------------------------------------------------------------------
 # Planning
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Query routing
+# ---------------------------------------------------------------------------
+
+# Which read answers a question. The order matters: the first subject
+# whose words appear in the message wins.
+_QUERY_SUBJECTS = (
+    ("query_budgets", ("budget", "anggaran", "batas", "limit")),
+    ("query_balance", ("saldo", "balance", "duit", "uang", "sisa")),
+    ("query_expenses", ("pengeluaran", "expense", "belanja", "biaya", "habis")),
+    ("query_goals", ("target", "goal", "tujuan", "cita")),
+    ("query_transactions", ("transaksi", "transaction", "riwayat", "history")),
+)
+
+_QUERY_DESCRIPTIONS = {
+    "query_budgets": "Menampilkan informasi anggaran",
+    "query_balance": "Menampilkan saldo saat ini",
+    "query_expenses": "Menampilkan ringkasan pengeluaran",
+    "query_goals": "Menampilkan target tabungan",
+    "query_transactions": "Menampilkan transaksi terbaru",
+}
+
+
+def _query_subject(message: str) -> str:
+    """Pick the read that answers the question.
+
+    Falls back to the budgets, which is the most common thing a user
+    asks the agent about.
+    """
+    text = (message or "").lower()
+    for kind, words in _QUERY_SUBJECTS:
+        if any(word in text for word in words):
+            return kind
+    return "query_budgets"
 
 def build_plan(db: Session, user_id: int, message: str) -> AgentPlan:
     """
@@ -851,9 +1038,13 @@ def build_plan(db: Session, user_id: int, message: str) -> AgentPlan:
             description="Membuat transaksi rutin",
         ))
     elif intent == "query":
+        # A question can be about several things. Picking the wrong one
+        # made "berapa saldo saya" answer with the budget table, so the
+        # subject decides which read runs.
+        subject = _query_subject(message)
         plan.actions.append(AgentAction(
-            kind="query_budgets",
-            description="Menampilkan informasi anggaran",
+            kind=subject,
+            description=_QUERY_DESCRIPTIONS[subject],
         ))
 
     return plan
@@ -881,6 +1072,14 @@ def execute_plan(
                 result = executor.set_recurring(message)
             elif action.kind == "query_budgets":
                 result = executor.query_budgets(message)
+            elif action.kind == "query_balance":
+                result = executor.query_balance(message)
+            elif action.kind == "query_expenses":
+                result = executor.query_expenses(message)
+            elif action.kind == "query_goals":
+                result = executor.query_goals(message)
+            elif action.kind == "query_transactions":
+                result = executor.query_transactions(message)
             else:
                 result = AgentAction(
                     kind=action.kind,

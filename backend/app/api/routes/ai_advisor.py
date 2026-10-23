@@ -449,11 +449,17 @@ def ai_agent(
 
     # Nothing to do: fall back to the advisor for an informative answer.
     if not plan.actions:
-        from app.services.ai_advisor_service import ai_advisor
+        from app.services.ai_advisor_service import (
+            ai_advisor,
+            get_financial_summary,
+        )
 
         try:
-            advice = ai_advisor(message, db=db, user_id=current_user.id)
-            reply = getattr(advice, "message", None) or str(advice)
+            summary = get_financial_summary(db, current_user.id)
+            chat_result = ai_advisor.chat(message, summary)
+            reply = chat_result.get("response") or ""
+            if not reply:
+                raise RuntimeError("advisor returned an empty reply")
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"Advisor fallback failed: {exc}")
             reply = (
