@@ -1,32 +1,33 @@
 """Goal schemas."""
 
+from app.schemas.base import EmptyStringAsNone
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import date, datetime
+from datetime import date as _date, datetime
 
 
-class GoalBase(BaseModel):
+class GoalBase(EmptyStringAsNone):
     name: str = Field(max_length=100)
     description: Optional[str] = None
     target_amount: float = Field(gt=0)
     currency: str = "IDR"
-    target_date: Optional[date] = None
+    target_date: Optional[_date] = None
     goal_type: str = "savings"
     account_id: Optional[int] = None
     icon: Optional[str] = None
     color: Optional[str] = None
 
 
-class GoalCreate(GoalBase):
+class GoalCreate(GoalBase, EmptyStringAsNone):
     current_amount: float = 0
 
 
-class GoalUpdate(BaseModel):
+class GoalUpdate(EmptyStringAsNone):
     name: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = None
     target_amount: Optional[float] = None
     current_amount: Optional[float] = None  # Allow updating current amount
-    target_date: Optional[date] = None
+    target_date: Optional[_date] = None
     goal_type: Optional[str] = None
     account_id: Optional[int] = None
     icon: Optional[str] = None
@@ -56,7 +57,7 @@ class GoalWithProgress(GoalResponse):
     required_weekly: float
     required_daily: float
     on_track: bool
-    estimated_completion: Optional[date] = None
+    estimated_completion: Optional[_date] = None
     status: str
 
 
@@ -73,7 +74,7 @@ class GoalContributionResponse(BaseModel):
     goal_id: int
     amount: float
     currency: str
-    date: date
+    date: _date
     notes: Optional[str] = None
     transaction_id: Optional[int] = None
     created_at: datetime

@@ -1,16 +1,17 @@
 """Transaction schemas - Updated with transfer types and idempotency."""
 
+from app.schemas.base import EmptyStringAsNone
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from datetime import date, datetime
+from datetime import date as _date, datetime
 from decimal import Decimal
 
 
-class TransactionBase(BaseModel):
+class TransactionBase(EmptyStringAsNone):
     type: str = Field(..., pattern="^(income|expense|transfer_out|transfer_in)$")
     amount: Decimal = Field(..., gt=0)
     currency: str = Field(default="IDR", max_length=10)
-    date: date
+    date: _date
     description: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
     category_id: Optional[int] = None
@@ -27,7 +28,7 @@ class TransactionBase(BaseModel):
     longitude: Optional[float] = None
 
 
-class TransactionCreate(TransactionBase):
+class TransactionCreate(TransactionBase, EmptyStringAsNone):
     # Idempotency key - prevents duplicate transactions from double-tap or retry
     client_request_id: Optional[str] = Field(
         None,
@@ -36,11 +37,11 @@ class TransactionCreate(TransactionBase):
     )
 
 
-class TransactionUpdate(BaseModel):
+class TransactionUpdate(EmptyStringAsNone):
     type: Optional[str] = None
     amount: Optional[Decimal] = None
     currency: Optional[str] = None
-    date: Optional[date] = None
+    date: Optional[_date] = None
     description: Optional[str] = None
     notes: Optional[str] = None
     category_id: Optional[int] = None
@@ -57,7 +58,7 @@ class TransactionResponse(BaseModel):
     type: str
     amount: Decimal
     currency: str
-    date: date
+    date: _date
     description: Optional[str]
     notes: Optional[str]
     account_id: int
@@ -71,6 +72,10 @@ class TransactionResponse(BaseModel):
     raw_source_text: Optional[str]
     confidence_score: Optional[float]
     receipt_scan_id: Optional[int] = None
+    # The review state. A transaction that was never reviewed has no
+    # status, and the UI needs to tell that apart from one that was
+    # approved or rejected.
+    status: Optional[str] = None
     # Location fields
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -98,8 +103,8 @@ class TransactionFilter(BaseModel):
     type: Optional[str] = None
     account_id: Optional[int] = None
     category_id: Optional[int] = None
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: Optional[_date] = None
+    end_date: Optional[_date] = None
     min_amount: Optional[Decimal] = None
     max_amount: Optional[Decimal] = None
     search: Optional[str] = None

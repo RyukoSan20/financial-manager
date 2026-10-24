@@ -255,7 +255,7 @@ export const Debts = () => {
                   {/* Details */}
                   <div className="grid grid-cols-3 gap-4 mt-4 text-sm text-gray-500">
                     <div>
-                      <p>Bunga: {debt.interest_rate}%</p>
+                      <p>Bunga: {Number(debt.interest_rate * 100 || 0).toFixed(2).replace(/\.00$/, '')}%</p>
                     </div>
                     <div>
                       <p>Sisa: {debt.remaining_months || 0} bulan</p>
@@ -324,7 +324,9 @@ function DebtModal({ debt, onClose, onSubmit }) {
     description: debt?.description || '',
     debt_type: debt?.debt_type || 'personal',
     principal: debt?.principal?.toString() || '',
-    interest_rate: debt?.interest_rate?.toString() || '0',
+    interest_rate: debt?.interest_rate != null
+      ? String(Number(debt.interest_rate) * 100)
+      : '0',
     tenor_months: debt?.tenor_months?.toString() || '12',
     start_date: debt?.start_date || new Date().toISOString().split('T')[0],
     lender_name: debt?.lender_name || '',
@@ -336,7 +338,8 @@ function DebtModal({ debt, onClose, onSubmit }) {
     onSubmit({
       ...form,
       principal: parseFloat(form.principal) || 0,
-      interest_rate: parseFloat(form.interest_rate) || 0,
+      // The backend stores the rate as a fraction, so 10% is 0.1.
+      interest_rate: (parseFloat(form.interest_rate) || 0) / 100,
       tenor_months: parseInt(form.tenor_months) || 12,
     });
   };

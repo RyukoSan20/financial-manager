@@ -30,6 +30,7 @@ from app.models.goal import Goal
 from app.models.transaction import Transaction
 from app.models.recurring import RecurringRule
 
+from app.services.direction_classifier import classify_direction
 from app.services.ai_agent import (
     AgentAction,
     AgentPlan,
@@ -265,14 +266,6 @@ class AgentExecutor:
         description = extract_description(message, rest) or "Transaksi"
         tx_date = extract_date(message)
 
-        # Income or expense?
-        lowered = (message or "").lower()
-        is_income = any(
-            w in lowered for w in ("masuk", "pemasukan", "gaji", "salary", "income",
-                                   "bonus", "dapat", "terima", "dibayar", "refund")
-        )
-        tx_type = "income" if is_income else "expense"
-
         account = _default_account(self.db, self.user_id)
         if account is None:
             return AgentAction(
@@ -288,6 +281,19 @@ class AgentExecutor:
         # A merchant named in the message is learned too, so the next
         # receipt from that shop is recognised.
         merchant_name = self._extract_merchant(message, description)
+
+        # The wording that decides the direction is the description on
+        # its own. The message carries the instruction ("tambah") and
+        # the amount, and neither of those says which way the money
+        # went. Using the description alone also means the correction
+        # the user made for that wording is found.
+        direction = classify_direction(
+            description,
+            db=self.db,
+            user_id=self.user_id,
+            merchant=merchant_name,
+        )
+        tx_type = direction.direction
 
         tx = Transaction(
             user_id=self.user_id,

@@ -20,8 +20,10 @@ from decimal import Decimal, InvalidOperation
 import re
 import logging
 
+from app.core.database import get_db
 from app.core.security import get_current_user_optional
 from app.models.user import User
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -378,16 +380,24 @@ def extract_merchant(text: str, amount_span=None) -> Optional[str]:
     return name.title()
 
 
-def detect_transaction_type(text: str) -> str:
-    """Detect whether the phrase describes income or expense."""
-    text = text.lower()
-    for cue in INCOME_CUES:
-        if re.search(rf"\b{re.escape(cue)}\b", text):
-            return "income"
-    for cue in EXPENSE_CUES:
-        if re.search(rf"\b{re.escape(cue)}\b", text):
-            return "expense"
-    return "expense"
+def detect_transaction_type(text: str, db=None, user_id=None) -> str:
+    """
+    Detect whether the phrase describes income or expense.
+
+    This used to be a pair of keyword lists of its own, which meant the
+    voice parser could disagree with the quick entry box about the same
+    sentence. It now asks the shared classifier, so every capture path
+    gives the same answer.
+    """
+    from app.services.direction_classifier import classify_direction
+
+    result = classify_direction(text, db=db, user_id=user_id)
+    if result.direction == "transfer":
+        # A transfer is recorded as money leaving the account it was
+        # made from. The transaction table has no separate direction
+        # for it.
+        return "expense"
+    return result.direction
 
 
 def suggest_category(text: str, merchant: Optional[str] = None) -> Optional[str]:
@@ -437,6 +447,7 @@ class VoiceParseResponse(BaseModel):
 def parse_voice_text(
     request: VoiceParseRequest,
     current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
 ):
     """Parse a spoken phrase into a structured transaction."""
     from app.services.voice_cleanup import clean_transcript, clean_transcript_segments
@@ -465,7 +476,9 @@ def parse_voice_text(
 
     amount, span = find_amount(raw)
     merchant = extract_merchant(raw, span)
-    tx_type = detect_transaction_type(raw)
+    tx_type = detect_transaction_type(
+        raw, db=db, user_id=current_user.id if current_user else None
+    )
     category = suggest_category(raw, merchant)
 
     # Confidence reflects how much of the transaction we actually resolved.

@@ -1,12 +1,13 @@
 """Debt schemas - simplified for frontend compatibility."""
 
+from app.schemas.base import EmptyStringAsNone
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import date, datetime
 from decimal import Decimal
 
 
-class DebtBase(BaseModel):
+class DebtBase(EmptyStringAsNone):
     name: str = Field(..., max_length=100)
     description: Optional[str] = None
     debt_type: str = Field(default="personal_loan")
@@ -25,12 +26,12 @@ class DebtBase(BaseModel):
     lender_contact: Optional[str] = None
 
 
-class DebtCreate(DebtBase):
+class DebtCreate(DebtBase, EmptyStringAsNone):
     """Create debt - inherits all fields from DebtBase."""
     pass
 
 
-class DebtUpdate(BaseModel):
+class DebtUpdate(EmptyStringAsNone):
     name: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = None
     current_balance: Optional[Decimal] = None

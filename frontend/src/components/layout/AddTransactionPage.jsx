@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, API_BASE_URL as API_URL, getToken } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
-import { parseQuickEntry } from "../../features/transactions/nlp/parseQuickEntry.js";
+import { parseQuickEntry, fetchDirection } from "../../features/transactions/nlp/parseQuickEntry.js";
 import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
 
 const AddTransactionPage = () => {
@@ -191,7 +191,66 @@ const AddTransactionPage = () => {
     if (parsed.type && parsed.type !== type) {
       setType(parsed.type);
     }
+
+    // Which way does the money go? The backend decides, so this box and
+    // the voice parser and the AI agent always agree. The local answer
+    // above is only a stand-in until the answer comes back.
+    classifyDirection(quickEntry, parsed);
   }, [quickEntry, categories, accounts]);
+
+  // Ask the backend which way the money goes, and apply the answer.
+  //
+  // The request is tagged so that a slow answer for an earlier phrase
+  // cannot overwrite the answer for the phrase the user is looking at
+  // now.
+  const directionRequestId = useRef(0);
+
+  const classifyDirection = useCallback(async (text) => {
+    const requestId = ++directionRequestId.current;
+
+    const answer = await fetchDirection(text);
+    if (!answer) {
+      // The device is offline. The local answer stands.
+      return;
+    }
+    if (requestId !== directionRequestId.current) {
+      // The user has typed something else since this was asked for.
+      return;
+    }
+
+    const wanted = answer.direction === 'transfer' ? 'transfer' : answer.direction;
+
+    setNlpPreview((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        type: wanted,
+        directionSource: answer.source,
+        directionConfidence: answer.confidence,
+        directionReasons: answer.reasons,
+      };
+    });
+
+    setType(wanted);
+  }, []);
+
+  // When the user picks the type themselves, that is a correction.
+  // The backend remembers it, so the same wording is classified the
+  // same way next time.
+  const recordTypeCorrection = useCallback(async (chosen) => {
+    const text = (quickEntry || "").trim();
+    if (!text) return;
+
+    const previous = nlpPreview?.type;
+    if (previous && previous === chosen) return;
+
+    try {
+      await api.direction.feedback(text, chosen);
+    } catch (err) {
+      // The correction is a nicety. Failing to record it must not
+      // stop the user from saving the transaction.
+    }
+  }, [quickEntry, nlpPreview]);
 
   // Format number with dots
   const formatNumber = (num) => {
@@ -425,7 +484,10 @@ const AddTransactionPage = () => {
           {["expense", "income", "transfer"].map((t) => (
             <button
               key={t}
-              onClick={() => setType(t)}
+              onClick={() => {
+                setType(t);
+                recordTypeCorrection(t);
+              }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                 type === t ? `${getTypeColor()} text-white` : "text-gray-600"
               }`}

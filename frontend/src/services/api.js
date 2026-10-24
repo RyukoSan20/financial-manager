@@ -2,6 +2,8 @@
 // VITE_API_URL already includes /api (e.g. https://my-financial-manager.online/api)
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://my-financial-manager.online/api';
 
+import { sanitizePayload } from '../utils/sanitize';
+
 // Support both backend JWT (token) and Supabase (sb_token)
 const TOKEN_KEYS = ['token', 'sb_token'];
 
@@ -94,7 +96,26 @@ export const api = {
   async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
     try {
-      const response = await fetchWithInterceptor(url, options);
+      // The forms keep their state as strings, so an empty optional date
+      // arrives as "". The backend cannot parse that as a date, and the
+      // whole request fails with a 422. Cleaning the payload here means
+      // every page is covered, not just the one that was reported.
+      const finalOptions = { ...options };
+      if (
+        finalOptions.body &&
+        typeof finalOptions.body === 'string' &&
+        finalOptions.method &&
+        finalOptions.method !== 'GET'
+      ) {
+        try {
+          const parsed = JSON.parse(finalOptions.body);
+          finalOptions.body = JSON.stringify(sanitizePayload(parsed));
+        } catch {
+          // The body was not JSON. Send it as it is.
+        }
+      }
+
+      const response = await fetchWithInterceptor(url, finalOptions);
       
       // Handle 204 No Content - return success object
       if (response.status === 204) {
@@ -134,7 +155,9 @@ export const api = {
 
   // Categories
   categories: {
-    list: (type) => api.request(`/categories/${type ? `?type=${type}` : ''}`),
+    // The type is a query parameter. Putting it in the path made the
+    // server read "expense" as a category id and answer with 422.
+    list: (type) => api.request(`/categories/${type ? `?type=${encodeURIComponent(type)}` : ''}`),
     get: (id) => api.request(`/categories/${id}`),
     create: (data) => api.request('/categories/', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => api.request(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -176,6 +199,25 @@ export const api = {
   },
 
   // Recurring
+  // Which way does the money go?
+  // The backend owns this decision, so the quick entry box, the voice
+  // parser and the AI agent all give the same answer for the same
+  // sentence.
+  direction: {
+    classify: (text, merchant = null) =>
+      api.request('/parser/direction', {
+        method: 'POST',
+        body: JSON.stringify({ text, merchant }),
+      }),
+    // A correction the user made. The backend remembers it so the same
+    // wording is classified the same way next time.
+    feedback: (text, direction, merchant = null) =>
+      api.request('/parser/direction/feedback', {
+        method: 'POST',
+        body: JSON.stringify({ text, merchant, direction }),
+      }),
+  },
+
   recurring: {
     list: () => api.request('/recurring/'),
     get: (id) => api.request(`/recurring/${id}`),

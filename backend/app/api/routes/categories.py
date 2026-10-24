@@ -33,6 +33,29 @@ def list_categories(
     return query.all()
 
 
+@router.get("/by-type/{type}", response_model=List[CategoryResponse])
+def list_categories_by_type(
+    type: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    The categories of one type.
+
+    This is a separate route because `/{category_id}` would otherwise
+    swallow "expense" and answer with a confusing path parse error.
+    """
+    query = db.query(Category).filter(
+        Category.is_active == True,
+        Category.type == type,
+    )
+    if current_user:
+        query = query.filter(
+            (Category.user_id == current_user.id) | (Category.user_id == None)
+        )
+    return query.all()
+
+
 @router.get("/{category_id}", response_model=CategoryResponse)
 def get_category(
     category_id: int,

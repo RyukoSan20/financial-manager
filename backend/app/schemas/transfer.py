@@ -1,29 +1,30 @@
 """Transfer schemas."""
 
+from app.schemas.base import EmptyStringAsNone
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import date, datetime
+from datetime import date as _date, datetime
 from decimal import Decimal
 
 
-class TransferBase(BaseModel):
+class TransferBase(EmptyStringAsNone):
     amount: Decimal = Field(..., gt=0)
     currency: str = Field(default="IDR", max_length=10)
-    date: date
+    date: _date
     description: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
     from_account_id: int
     to_account_id: int
 
 
-class TransferCreate(TransferBase):
+class TransferCreate(TransferBase, EmptyStringAsNone):
     pass
 
 
-class TransferUpdate(BaseModel):
+class TransferUpdate(EmptyStringAsNone):
     amount: Optional[Decimal] = None
     currency: Optional[str] = None
-    date: Optional[date] = None
+    date: Optional[_date] = None
     description: Optional[str] = None
     notes: Optional[str] = None
 

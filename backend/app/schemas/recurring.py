@@ -1,12 +1,13 @@
 """Recurring rule schemas."""
 
+from app.schemas.base import EmptyStringAsNone
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
 
 
-class RecurringRuleBase(BaseModel):
+class RecurringRuleBase(EmptyStringAsNone):
     type: str = Field(..., pattern="^(income|expense|transfer)$")
     amount: Decimal = Field(..., gt=0)
     currency: str = Field(default="IDR", max_length=10)
@@ -27,11 +28,11 @@ class RecurringRuleBase(BaseModel):
     reminder_days_before: Optional[int] = Field(None, ge=1, le=30)
 
 
-class RecurringRuleCreate(RecurringRuleBase):
+class RecurringRuleCreate(RecurringRuleBase, EmptyStringAsNone):
     pass
 
 
-class RecurringRuleUpdate(BaseModel):
+class RecurringRuleUpdate(EmptyStringAsNone):
     type: Optional[str] = None
     amount: Optional[Decimal] = None
     description: Optional[str] = None

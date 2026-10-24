@@ -1,10 +1,12 @@
 """Budget API routes with multi-tenancy."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from app.core.database import get_db
@@ -16,6 +18,7 @@ from app.schemas.budget import BudgetCreate, BudgetUpdate, BudgetResponse
 from app.services.calculation_service import calculation_service
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Fix redirect to HTTPS
 @router.get("", include_in_schema=False)
@@ -73,6 +76,10 @@ def list_budgets(
             "category_id": budget.category_id,
             "account_id": budget.account_id,
             "is_active": budget.is_active,
+            # The frontend and the schema call this field "period". The
+            # old name is kept alongside it so a client that was
+            # written against "period_type" still works.
+            "period": budget.period,
             "period_type": budget.period,
         }
         result.append(budget_dict)
@@ -110,10 +117,30 @@ def create_budget(
     
     budget_data = budget.model_dump()
     budget_data["user_id"] = current_user.id
-    
+
+    # The start date is required by the database. A budget without one
+    # starts at the beginning of the current period.
+    if not budget_data.get("start_date"):
+        from datetime import date as date_type
+
+        today = date_type.today()
+        if budget_data.get("period") == "weekly":
+            budget_data["start_date"] = today - timedelta(days=today.weekday())
+        elif budget_data.get("period") == "yearly":
+            budget_data["start_date"] = date_type(today.year, 1, 1)
+        else:
+            budget_data["start_date"] = date_type(today.year, today.month, 1)
+
     db_budget = Budget(**budget_data)
     db.add(db_budget)
-    db.commit()
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Could not create the budget: {exc}")
+        raise HTTPException(
+            status_code=400, detail=f"Data anggaran tidak valid: {exc}"
+        )
     db.refresh(db_budget)
     return db_budget
 
@@ -137,8 +164,15 @@ def update_budget(
     update_data = budget.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_budget, key, value)
-    
-    db.commit()
+
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Could not update the budget: {exc}")
+        raise HTTPException(
+            status_code=400, detail=f"Data anggaran tidak valid: {exc}"
+        )
     db.refresh(db_budget)
     return db_budget
 

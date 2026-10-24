@@ -419,14 +419,24 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
       alert('Please enter a valid amount');
       return;
     }
-    onSubmit({
-      ...form,
-      type: form.rule_type, // Backend expects 'type', frontend uses 'rule_type'
+    // The backend model takes 'type', 'description' and 'start_date'.
+    // The fields the backend does not know are left out, and an empty
+    // optional date is not sent at all.
+    const payload = {
+      type: form.rule_type,
       amount: parseFloat(form.amount),
+      description: form.name || `${form.rule_type} recurring`,
+      frequency: form.frequency,
+      start_date: form.start_date,
       category_id: form.category_id ? parseInt(form.category_id) : null,
       account_id: parseInt(form.account_id),
-      description: form.name || `${form.rule_type} recurring`,
-    });
+      is_active: form.is_active,
+    };
+
+    // An empty end date is not sent, so the rule stays open ended.
+    if (form.end_date) payload.end_date = form.end_date;
+
+    onSubmit(payload);
   };
 
   return (

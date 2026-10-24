@@ -249,6 +249,14 @@ def detect_intent(message: str) -> Tuple[str, float]:
         r"\d", text
     ):
         return "add_transaction", 0.88
+    # "terima gaji 5 juta" is an instruction to record an income, even
+    # though it carries no verb like "tambah".
+    if (
+        "terima" in tokens
+        or "dapat" in tokens
+        or "masuk" in tokens
+    ) and re.search(r"\d", text):
+        return "add_transaction", 0.85
     if "pembelian" in tokens and re.search(r"\d", text):
         return "add_transaction", 0.8
 

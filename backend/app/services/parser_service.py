@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import Optional, Dict, Any, List, Tuple
 from dataclasses import dataclass
 
+from app.services.direction_classifier import classify_direction
 from app.services.merchant_classifier import classify_transaction, suggest_category, merchant_classifier
 
 
@@ -285,7 +286,7 @@ class TextParserService:
         
         return "GENERIC"
     
-    def parse_text(self, raw_text: str) -> List[ParsedTransaction]:
+    def parse_text(self, raw_text: str, db=None, user_id=None) -> List[ParsedTransaction]:
         """Parse raw SMS/text and extract transaction data using AI classification."""
         results = []
         
@@ -331,15 +332,13 @@ class TextParserService:
         if merchant:
             classification = classify_transaction(text, merchant)
         
-        # Detect transaction type from context
-        tx_type = "DEBIT"
-        if any(k in text.lower() for k in ['transfer masuk', 'penerimaan', 'diterima', 'masuk dari', 'dari:', 'dari ']):
-            tx_type = "CREDIT"
-        
-        # Use classification to determine transaction type
-        if classification.transaction_type_hint:
-            if tx_type == "DEBIT":  # Only override if it's a debit
-                pass  # Keep the detected type
+        # Which way does the money go? The shared classifier answers
+        # this, so an SMS and a quick entry saying the same thing get
+        # the same answer.
+        direction = classify_direction(
+            text, merchant=merchant, db=db, user_id=user_id
+        )
+        tx_type = "CREDIT" if direction.is_income else "DEBIT"
         
         # Get category suggestion from classifier
         category_hint = merchant_classifier.get_category_suggestion(classification)
@@ -533,9 +532,9 @@ text_parser = TextParserService()
 ocr_parser = OCRParserService()
 
 
-def parse_sms_or_qris(raw_text: str) -> List[ParsedTransaction]:
+def parse_sms_or_qris(raw_text: str, db=None, user_id=None) -> List[ParsedTransaction]:
     """Main entry point for parsing SMS/QRIS text."""
-    return text_parser.parse_text(raw_text)
+    return text_parser.parse_text(raw_text, db=db, user_id=user_id)
 
 
 def parse_receipt(ocr_text: str) -> ParsedTransaction:

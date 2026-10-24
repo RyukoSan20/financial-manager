@@ -364,7 +364,11 @@ _INTENT_SUBJECTS = (
                     "primer", "sekunder", "tersier", "kebutuhan",
                     "prioritas", "stratifikasi")),
     ("set_budget", ("budget", "budgeting", "anggaran", "batas", "limit")),
-    ("set_savings_goal", ("target", "tujuan", "goal", "tabungan", "niat")),
+    # "tabungan" alone is a goal only when nothing else in the sentence
+    # says what to do. "transfer ke tabungan" is a transfer to an account
+    # called tabungan, not a request to set a savings goal, so the
+    # stronger cue has to win.
+    ("set_savings_goal", ("target", "tujuan", "goal", "niat")),
     ("set_recurring", ("rutin", "berulang", "recurring", "setoran",
                        "otomatis", "langsung")),
     ("delete_transaction", ("hapus", "hapuskan", "delete", "remove",

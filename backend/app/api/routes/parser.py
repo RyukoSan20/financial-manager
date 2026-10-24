@@ -8,6 +8,7 @@ from decimal import Decimal
 from pydantic import BaseModel
 import base64
 import io
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,110 @@ class ParsedTransactionResponse(BaseModel):
 
 # === API Endpoints ===
 
+class DirectionRequest(BaseModel):
+    """A phrase whose direction the client wants worked out."""
+    text: str
+    merchant: Optional[str] = None
+
+
+class DirectionResponse(BaseModel):
+    direction: str
+    confidence: float
+    band: str
+    source: str
+    reasons: List[str] = []
+    scores: dict = {}
+
+
+@router.post("/direction", response_model=DirectionResponse)
+def classify_direction_endpoint(
+    request: DirectionRequest,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
+    """
+    Work out whether a phrase is money coming in or going out.
+
+    The quick entry box used to decide this with a keyword list of its
+    own, which is why the same sentence could be filed as an expense in
+    one place and as income in another. It now asks this endpoint, so
+    every way of adding a transaction answers the same way.
+
+    The answer is based on three things, in order of how much they can
+    be trusted: what the user has taught the system before, the wording
+    of the phrase, and the language model for the cases the wording
+    cannot separate. The model is optional, so a slow or unavailable
+    provider never blocks the answer.
+    """
+    from app.services.direction_classifier import classify_direction
+
+    result = classify_direction(
+        request.text,
+        db=db,
+        user_id=current_user.id if current_user else None,
+        merchant=request.merchant,
+    )
+    return DirectionResponse(**result.to_dict())
+
+
+class DirectionFeedbackRequest(BaseModel):
+    """A correction the user made to a classification."""
+    text: str
+    merchant: Optional[str] = None
+    direction: str
+
+
+@router.post("/direction/feedback")
+def record_direction_feedback(
+    request: DirectionFeedbackRequest,
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
+    """
+    Remember that a phrase means something in particular to this user.
+
+    The classifier already reads the user's own transactions, so a
+    correction shows up the next time the same wording is used. This
+    endpoint exists for the case where the user corrected a
+    classification before the transaction was saved: the wording is
+    written down as a note of its own, so the correction is not lost.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    direction = (request.direction or "").strip().lower()
+    if direction not in ("income", "expense", "transfer"):
+        raise HTTPException(
+            status_code=422,
+            detail="Direction must be income, expense or transfer",
+        )
+
+    from app.models.learning_note import LearningNote
+    from app.services.direction_classifier import normalise_for_learning
+
+    note = LearningNote(
+        user_id=current_user.id,
+        kind="direction",
+        token=normalise_for_learning(request.text),
+        # The column holds text, so the note is stored as JSON.
+        payload=json.dumps(
+            {
+                "text": request.text,
+                "merchant": request.merchant,
+                "direction": direction,
+            }
+        ),
+    )
+    db.add(note)
+    db.commit()
+
+    return {
+        "ok": True,
+        "direction": direction,
+        "text": request.text,
+    }
+
+
 @router.post("/parse-text", response_model=List[ParsedTransactionResponse])
 def parse_text(
     request: dict,
@@ -90,7 +195,11 @@ def parse_text(
         raise HTTPException(status_code=400, detail="Text too long (max 5000 characters)")
     
     # Parse the text
-    results = parse_sms_or_qris(raw_text)
+    results = parse_sms_or_qris(
+        raw_text,
+        db=db,
+        user_id=current_user.id if current_user else None,
+    )
     
     # Convert to response models with geocoding
     response = []

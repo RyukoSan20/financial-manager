@@ -289,11 +289,21 @@ def create_qr_scan_job(
     job = manager.create(user_id or 0, kind="qr", payload={"qr_data": payload.qr_data})
 
     def worker(scan_job):
+        from app.core.database import SessionLocal
         from app.services.parser_service import parse_sms_or_qris
 
-        # The parser returns a list: a single QR payload can contain more
-        # than one transaction.
-        parsed_list = parse_sms_or_qris(payload.qr_data) or []
+        # The database session belongs to the request thread, so the
+        # worker opens its own. The classifier reads the user's history
+        # to work out which way the money went.
+        session = SessionLocal()
+        try:
+            # The parser returns a list: a single QR payload can contain
+            # more than one transaction.
+            parsed_list = (
+                parse_sms_or_qris(payload.qr_data, db=session, user_id=user_id) or []
+            )
+        finally:
+            session.close()
         parsed = parsed_list[0] if parsed_list else None
         return {
             "qr_data": payload.qr_data,

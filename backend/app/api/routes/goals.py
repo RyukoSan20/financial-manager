@@ -1,5 +1,7 @@
 """Goal API routes with multi-tenancy."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -22,6 +24,7 @@ from app.services.calculation.formulas import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=List[GoalWithProgress])
@@ -147,10 +150,25 @@ def create_goal(
     
     goal_data = goal.model_dump()
     goal_data["user_id"] = current_user.id
-    
+
+    # The target date is required by the database. A goal without one
+    # gets a year, which is the usual horizon for a savings goal.
+    if not goal_data.get("target_date"):
+        from datetime import date as date_type
+        from datetime import timedelta
+
+        goal_data["target_date"] = date_type.today() + timedelta(days=365)
+
     db_goal = Goal(**goal_data)
     db.add(db_goal)
-    db.commit()
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Could not create the goal: {exc}")
+        raise HTTPException(
+            status_code=400, detail=f"Data target tidak valid: {exc}"
+        )
     db.refresh(db_goal)
     return db_goal
 
@@ -174,8 +192,15 @@ def update_goal(
     update_data = goal.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_goal, key, value)
-    
-    db.commit()
+
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Could not update the goal: {exc}")
+        raise HTTPException(
+            status_code=400, detail=f"Data target tidak valid: {exc}"
+        )
     db.refresh(db_goal)
     return db_goal
 

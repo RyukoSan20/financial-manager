@@ -1,5 +1,7 @@
 """Recurring Rule API routes with multi-tenancy."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -18,6 +20,7 @@ from app.schemas.recurring import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Fix redirect to HTTPS
 @router.get("", include_in_schema=False)
@@ -173,7 +176,14 @@ def create_recurring_rule(
         next_occurrence=next_occ
     )
     db.add(db_rule)
-    db.commit()
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Could not create the recurring rule: {exc}")
+        raise HTTPException(
+            status_code=400, detail=f"Data transaksi rutin tidak valid: {exc}"
+        )
     db.refresh(db_rule)
     return db_rule
 
@@ -197,7 +207,12 @@ def update_recurring_rule(
     update_data = rule.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_rule, key, value)
-    
+
+    # The start date is required by the database, so a rule that somehow
+    # lost it gets today's date rather than failing the request.
+    if not db_rule.start_date:
+        db_rule.start_date = date.today()
+
     # Recalculate next occurrence if frequency changed
     if "frequency" in update_data or "interval_value" in update_data:
         db_rule.next_occurrence = calculate_next_occurrence(
@@ -208,8 +223,15 @@ def update_recurring_rule(
             ),
             date.today()
         )
-    
-    db.commit()
+
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Could not update the recurring rule: {exc}")
+        raise HTTPException(
+            status_code=400, detail=f"Data transaksi rutin tidak valid: {exc}"
+        )
     db.refresh(db_rule)
     return db_rule
 

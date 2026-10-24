@@ -1,12 +1,13 @@
 """Account schemas."""
 
+from app.schemas.base import EmptyStringAsNone
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from decimal import Decimal
 
 
-class AccountBase(BaseModel):
+class AccountBase(EmptyStringAsNone):
     name: str = Field(..., max_length=100)
     account_type: str = Field(..., pattern="^(cash|bank|e-wallet|credit_card)$")
     currency: str = Field(default="IDR", max_length=10)
@@ -14,11 +15,11 @@ class AccountBase(BaseModel):
     credit_limit: Optional[Decimal] = None
 
 
-class AccountCreate(AccountBase):
+class AccountCreate(AccountBase, EmptyStringAsNone):
     balance: Decimal = Field(default=Decimal("0"))
 
 
-class AccountUpdate(BaseModel):
+class AccountUpdate(EmptyStringAsNone):
     name: Optional[str] = Field(None, max_length=100)
     account_type: Optional[str] = None
     currency: Optional[str] = None

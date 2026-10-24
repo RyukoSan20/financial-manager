@@ -1,11 +1,15 @@
 """Debt API routes with multi-tenancy."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date, timedelta
 from decimal import Decimal
+
+from datetime import date as date_type
 
 from app.core.database import get_db
 from app.core.security import get_current_user_optional, get_current_user
@@ -24,6 +28,7 @@ from app.services.calculation.formulas import (
 from app.services.calculation.formulas import AmortizationResult
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Fix redirect to HTTPS
 @router.get("", include_in_schema=False)
@@ -167,6 +172,23 @@ def get_debt(
     )
 
 
+def _add_months(start, months):
+    """
+    The date that is `months` after `start`.
+
+    The day of the month is clamped to the last day of the target month,
+    so 31 January plus one month is the end of February, not the 3rd of
+    March.
+    """
+    from calendar import monthrange
+
+    total = start.month - 1 + months
+    year = start.year + total // 12
+    month = total % 12 + 1
+    day = min(start.day, monthrange(year, month)[1])
+    return date_type(year, month, day)
+
+
 @router.post("/", response_model=DebtResponse, status_code=201)
 def create_debt(
     debt: DebtCreate,
@@ -176,27 +198,71 @@ def create_debt(
     """Create a new debt."""
     debt_data = debt.model_dump()
     debt_data["user_id"] = current_user.id
-    
+
+    from datetime import date as date_type
+
+    # The start date defaults to today.
+    if not debt_data.get("start_date"):
+        debt_data["start_date"] = date_type.today()
+
+    # The final payment date is required by the database. It is worked
+    # out from the term when the caller did not give one, so a debt can
+    # be created with only a principal.
+    term = debt_data.get("tenor_months") or 12
+    if not debt_data.get("end_date"):
+        start = debt_data["start_date"]
+        if isinstance(start, str):
+            start = date_type.fromisoformat(start)
+        debt_data["end_date"] = _add_months(start, term)
+
     # Calculate remaining_months if not provided
     if not debt_data.get("remaining_months"):
-        term = debt_data.get("term_months", 12)
-        start = debt_data.get("start_date")
-        if start and term:
-            from datetime import date
-            if isinstance(start, str):
-                start = date.fromisoformat(start)
-            months_diff = (date.today().year - start.year) * 12 + (date.today().month - start.month)
-            debt_data["remaining_months"] = max(0, term - months_diff)
-        else:
-            debt_data["remaining_months"] = debt_data.get("term_months", 12)
-    
+        start = debt_data["start_date"]
+        if isinstance(start, str):
+            start = date_type.fromisoformat(start)
+        months_diff = (date_type.today().year - start.year) * 12 + (
+            date_type.today().month - start.month
+        )
+        debt_data["remaining_months"] = max(0, term - months_diff)
+
     # Set default current_balance to principal if not provided
     if not debt_data.get("current_balance"):
         debt_data["current_balance"] = debt_data["principal"]
-    
+
+    # The next payment date defaults to the start date.
+    if not debt_data.get("next_payment_date"):
+        debt_data["next_payment_date"] = debt_data["start_date"]
+
+    # The monthly instalment is required by the database. When the caller
+    # did not work it out, it is derived from the principal, the annual
+    # interest rate and the term, using the standard amortised payment
+    # formula. A zero interest loan is simply the principal spread over
+    # the term.
+    if not debt_data.get("monthly_payment"):
+        principal = float(debt_data["principal"])
+        rate = float(debt_data.get("interest_rate") or 0)
+        months = term or 1
+        if rate > 0:
+            monthly_rate = rate / 12
+            factor = (1 + monthly_rate) ** months
+            payment = principal * monthly_rate * factor / (factor - 1)
+        else:
+            payment = principal / months
+        debt_data["monthly_payment"] = round(payment, 2)
+
     db_debt = Debt(**debt_data)
     db.add(db_debt)
-    db.commit()
+    try:
+        db.commit()
+    except Exception as exc:
+        # Without the rollback the session stays broken and the next
+        # request on the same connection fails with a reset.
+        db.rollback()
+        logger.error(f"Could not create the debt: {exc}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Data utang tidak valid: {exc}",
+        )
     db.refresh(db_debt)
     return db_debt
 
@@ -220,8 +286,16 @@ def update_debt(
     update_data = debt.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_debt, key, value)
-    
-    db.commit()
+
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Could not update the debt: {exc}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Data utang tidak valid: {exc}",
+        )
     db.refresh(db_debt)
     return db_debt
 

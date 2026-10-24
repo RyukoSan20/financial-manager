@@ -8,6 +8,32 @@ import { normalize, tokenize } from './normalize.js';
 import { parseAmount, evalMath } from './parseAmount.js';
 import { suggestCategory } from './suggestCategory.js';
 
+
+/**
+ * The old keyword list, kept for the case where the device cannot reach
+ * the backend. It is deliberately the same wording the backend uses, so
+ * the two do not disagree in a way the user would notice.
+ */
+function detectTypeLocally(normalized) {
+  const lowerText = normalized.toLowerCase();
+
+  const transferWords = ['transfer', 'mutasi', 'pindah', 'topup', 'top up', 'kirim'];
+  for (const word of transferWords) {
+    if (lowerText.includes(word)) return 'transfer';
+  }
+
+  const incomeWords = [
+    'gaji', 'salary', 'bonus', 'dividen', 'refund', 'cashback', 'komisi',
+    'income', 'pemasukan', 'pendapatan', 'penghasilan', 'terima', 'masuk',
+    'dapat', 'dibayarkan ke saya'
+  ];
+  for (const word of incomeWords) {
+    if (lowerText.includes(word)) return 'income';
+  }
+
+  return null;
+}
+
 /**
  * Parse quick entry text
  * @param {string} text - Raw input text
@@ -54,26 +80,17 @@ export function parseQuickEntry(text, options = {}) {
   
   const tokens = tokenize(textForTokens);
   
-  // Detect type from keywords
+  // Which way does the money go?
+  //
+  // The decision belongs to the backend. It weighs the wording,
+  // remembers what the user taught it before, and asks the language
+  // model for the cases the wording cannot separate. The keyword list
+  // that used to live here is kept as a fallback for the moment when
+  // the device is offline, but it is no longer the answer.
   let type = 'expense';
-  const typeKeywords = {
-    income: ['gaji', 'terima', 'masuk', 'dapat', 'bonus', 'komisi', 'fee', 'pendapatan'],
-    transfer: ['transfer', 'tf', 'mutasi', 'pindah', 'topup', 'top up', 'kirim']
-  };
-  
-  const lowerText = normalized.toLowerCase();
-  for (const kw of typeKeywords.transfer) {
-    if (lowerText.includes(kw)) {
-      type = 'transfer';
-      break;
-    }
-  }
-  for (const kw of typeKeywords.income) {
-    if (lowerText.includes(kw) && type !== 'transfer') {
-      type = 'income';
-      break;
-    }
-  }
+  let directionSource = 'local';
+  const localType = detectTypeLocally(normalized);
+  if (localType) type = localType;
   
   // Suggest category
   const categorySuggestion = suggestCategory(tokens, userHints, categoryMap);
@@ -94,6 +111,9 @@ export function parseQuickEntry(text, options = {}) {
     accountId: null,
     toAccountId: null,
     date: wibDate,
+    directionSource,
+    directionConfidence: null,
+    directionReasons: [],
     suggestions: []
   };
   
@@ -189,4 +209,34 @@ export function getTouchedFields(formData, parsed) {
   return touched;
 }
 
-export default { parseQuickEntry, applyToForm, getTouchedFields };
+
+/**
+ * Ask the backend which way the money goes.
+ *
+ * The backend is the single place that answers this, so the quick entry
+ * box, the voice parser, the receipt scanner and the AI agent all give
+ * the same answer for the same sentence. It also remembers what the
+ * user taught it before, so a phrase the user has used before is
+ * answered the same way every time.
+ *
+ * When the device is offline this returns null, and the caller keeps
+ * the local answer.
+ */
+export async function fetchDirection(text, merchant = null) {
+  try {
+    const { api } = await import('../../../services/api.js');
+    const result = await api.direction.classify(text, merchant);
+    return {
+      direction: result.direction,
+      confidence: result.confidence,
+      band: result.band,
+      source: result.source,
+      reasons: result.reasons || [],
+    };
+  } catch (err) {
+    // Being offline is not an error here. The local answer stands.
+    return null;
+  }
+}
+
+export default { parseQuickEntry, fetchDirection, applyToForm, getTouchedFields };

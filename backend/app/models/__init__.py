@@ -16,6 +16,7 @@ from app.models.activity_log import ActivityLog, ActivityLogger
 from app.models.merchant import Merchant, MerchantProduct, DailySettlement
 from app.models.shopping_item import ShoppingItem, WishlistItem
 from app.models.merchant_catalog import MerchantCatalog, UserProduct
+from app.models.learning_note import LearningNote
 
 __all__ = [
     "Account",
@@ -45,4 +46,5 @@ __all__ = [
     "WishlistItem",
     "MerchantCatalog",
     "UserProduct",
+    "LearningNote",
 ]
