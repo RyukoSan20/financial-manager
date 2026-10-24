@@ -857,21 +857,77 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       {/* ================================================================ */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Saldo', value: summary?.total_balance, icon: Wallet, color: 'green', gradient: 'from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30' },
-          { label: 'Pemasukan', value: summary?.totalIncome || summary?.total_income, icon: TrendingUp, color: 'blue', gradient: 'from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30' },
-          { label: 'Pengeluaran', value: summary?.totalExpense || summary?.total_expense, icon: TrendingDown, color: 'red', gradient: 'from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30' },
-          { label: 'Arus Kas', value: summary?.netSavings || summary?.net_cash_flow, icon: Activity, color: 'purple', gradient: 'from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30' },
+          {
+            label: 'Total Saldo',
+            value: summary?.total_balance,
+            icon: Wallet,
+            gradient: 'from-green-50 to-green-100 dark:from-green-900/50 dark:to-green-800/40',
+            // The classes are written out in full. A class built at
+            // runtime, like `text-${color}-600`, is never seen by
+            // Tailwind when it scans the source, so it never reaches
+            // the stylesheet. In the dark mode the missing rule left
+            // the amount in the light colour on a dark background.
+            labelClass: 'text-green-700 dark:text-green-300',
+            valueClass: 'text-green-800 dark:text-green-100',
+            iconBg: 'bg-green-200 dark:bg-green-900',
+            iconClass: 'text-green-700 dark:text-green-300',
+          },
+          {
+            label: 'Pemasukan',
+            value: summary?.totalIncome || summary?.total_income,
+            icon: TrendingUp,
+            gradient: 'from-blue-50 to-blue-100 dark:from-blue-900/50 dark:to-blue-800/40',
+            labelClass: 'text-blue-700 dark:text-blue-300',
+            valueClass: 'text-blue-800 dark:text-blue-100',
+            iconBg: 'bg-blue-200 dark:bg-blue-900',
+            iconClass: 'text-blue-700 dark:text-blue-300',
+          },
+          {
+            label: 'Pengeluaran',
+            value: summary?.totalExpense || summary?.total_expense,
+            icon: TrendingDown,
+            gradient: 'from-red-50 to-red-100 dark:from-red-900/50 dark:to-red-800/40',
+            labelClass: 'text-red-700 dark:text-red-300',
+            valueClass: 'text-red-800 dark:text-red-100',
+            iconBg: 'bg-red-200 dark:bg-red-900',
+            iconClass: 'text-red-700 dark:text-red-300',
+          },
+          {
+            label: 'Arus Kas',
+            value: summary?.netSavings || summary?.net_cash_flow,
+            icon: Activity,
+            gradient: 'from-purple-50 to-purple-100 dark:from-purple-900/50 dark:to-purple-800/40',
+            labelClass: 'text-purple-700 dark:text-purple-300',
+            valueClass: 'text-purple-800 dark:text-purple-100',
+            iconBg: 'bg-purple-200 dark:bg-purple-900',
+            iconClass: 'text-purple-700 dark:text-purple-300',
+          },
         ].map((card, i) => {
           const Icon = card.icon;
           return (
             <Card key={i} className={`p-4 bg-gradient-to-br ${card.gradient} border ${borderColor}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className={`text-sm text-${card.color}-600 dark:text-${card.color}-400`}>{card.label}</p>
-                  <p className={`text-2xl font-bold text-${card.color}-700 dark:text-${card.color}-300`}>{formatCurrency(card.value || 0)}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  {/* The label is small and quiet so the amount is the
+                      first thing read. */}
+                  <p
+                    className={`text-xs font-semibold uppercase tracking-wider leading-none ${card.labelClass}`}
+                  >
+                    {card.label}
+                  </p>
+                  {/* The amount uses the numeric font and tabular figures,
+                      so the rupiah column lines up and the digits do not
+                      jump around when the value changes. */}
+                  <p
+                    className={`mt-2 font-numeric font-bold leading-none truncate text-[19px] sm:text-[22px] lg:text-2xl ${card.valueClass}`}
+                  >
+                    {formatCurrency(card.value || 0)}
+                  </p>
                 </div>
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-${card.color}-200 dark:bg-${card.color}-700`}>
-                  <Icon className={`w-6 h-6 text-${card.color}-600 dark:text-${card.color}-400`} />
+                <div
+                  className={`w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full flex items-center justify-center shrink-0 ${card.iconBg}`}
+                >
+                  <Icon className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 ${card.iconClass}`} />
                 </div>
               </div>
             </Card>

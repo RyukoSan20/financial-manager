@@ -1050,3 +1050,77 @@ body {
     radial-gradient(at 25% 85%, var(--scheme-100) 0px, transparent 45%);
   background-size: cover;
 }
+
+/* ---------------------------------------------------------------------------
+   The dark safety net
+   ---------------------------------------------------------------------------
+   A page that says `bg-white` and nothing else stays white in the dark
+   theme, and text meant for a light background stays dark on it. That is
+   what makes the two halves of the app look like they were drawn by
+   different people.
+
+   Rather than change every file, the surfaces that have no dark
+   counterpart are mapped here. These rules come after Tailwind's
+   utilities, so they win where the two meet.
+
+   The colours match the ones Tailwind uses, so a card that says
+   `bg-white dark:bg-gray-800` still ends up on gray-800.
+--------------------------------------------------------------------------- */
+
+.dark body {
+  background-color: #111827;
+  color: #f3f4f6;
+}
+
+/* The page itself. */
+.dark .min-h-screen.bg-gray-50,
+.dark .bg-gray-50 {
+  background-color: #111827;
+}
+
+/* A card or a panel. */
+.dark .bg-white {
+  background-color: #1f2937;
+}
+
+/* A recessed area: an input, a track, a quiet block. */
+.dark .bg-gray-100 {
+  background-color: #1f2937;
+}
+
+/* The text that sits on those surfaces. */
+.dark .bg-white .text-gray-600,
+.dark .bg-white .text-gray-500,
+.dark .bg-gray-50 .text-gray-600,
+.dark .bg-gray-50 .text-gray-500,
+.dark .bg-gray-100 .text-gray-600,
+.dark .bg-gray-100 .text-gray-500 {
+  color: #d1d5db;
+}
+
+/* A border on those surfaces. */
+.dark .bg-white.border-gray-200,
+.dark .bg-gray-50.border-gray-200,
+.dark .bg-gray-100.border-gray-200 {
+  border-color: #374151;
+}
+
+/* The font used for money.
+   The user can pick a different family for the whole app, but the
+   amounts keep the numeric font: the digits line up in a column, and
+   they do not change width when the value changes. That is what makes
+   a list of rupiah amounts readable. */
+.font-numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+  letter-spacing: -0.02em;
+}
+
+/* The serif theme keeps the serif's own figures. The serif has real
+   lining tabular figures, so the column still lines up and the money
+   does not look like it was pasted in from another app. */
+[data-font='serif'] .font-numeric {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  font-variant-numeric: lining-nums tabular-nums;
+}
