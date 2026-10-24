@@ -150,6 +150,8 @@ def create_goal(
     
     goal_data = goal.model_dump()
     goal_data["user_id"] = current_user.id
+    # expand_breakdown steers the behaviour, it is not a column.
+    expand = goal_data.pop("expand_breakdown", True)
 
     # The target date is required by the database. A goal without one
     # gets a year, which is the usual horizon for a savings goal.
@@ -161,6 +163,57 @@ def create_goal(
 
     db_goal = Goal(**goal_data)
     db.add(db_goal)
+    try:
+        db.flush()
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Could not create the goal: {exc}")
+        raise HTTPException(
+            status_code=400, detail=f"Data target tidak valid: {exc}"
+        )
+
+    # A goal that only carries a number gives the user nothing to look
+    # at. The parts that number has to cover are worked out and stored
+    # with it, so the goal can be opened and read.
+    if expand:
+        try:
+            from app.services.goal_breakdown import expand_goal
+            from app.services.breakdown_service import set_breakdown
+
+            text = " ".join(
+                part for part in (db_goal.name, db_goal.description) if part
+            ) or "target"
+            expansion = expand_goal(
+                message=text,
+                target_amount=float(db_goal.target_amount),
+                target_date=db_goal.target_date,
+            )
+            lines = expansion.get("lines") or []
+            if lines:
+                set_breakdown(
+                    db,
+                    current_user.id,
+                    "goal",
+                    db_goal.id,
+                    [
+                        {
+                            "name": line.get("name"),
+                            "quantity": 1,
+                            "unit_price": line.get("amount", 0),
+                            "total_price": line.get("amount", 0),
+                            "category": line.get("category"),
+                            "kind": "expense",
+                            "notes": line.get("note"),
+                            "source": expansion.get("source", "template"),
+                            "is_estimated": True,
+                        }
+                        for line in lines
+                    ],
+                    replace=True,
+                )
+        except Exception as exc:  # noqa: BLE001 - the goal still gets saved
+            logger.warning("Could not work out the goal breakdown: %s", exc)
+
     try:
         db.commit()
     except Exception as exc:

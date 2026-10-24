@@ -319,6 +319,56 @@ class AgentExecutor:
 
         self.db.flush()
 
+        # A purchase at a shop is more than one line in the ledger. The
+        # things it paid for are worked out and stored with it, so the
+        # transaction can be opened and read line by line.
+        breakdown_lines: List[Dict[str, Any]] = []
+        breakdown_source = "none"
+        if tx_type == "expense" and float(amount) > 0:
+            try:
+                from app.services.transaction_breakdown import expand_transaction
+
+                expansion = expand_transaction(
+                    message=message,
+                    amount=float(amount),
+                    merchant=merchant_name,
+                    db=self.db,
+                    user_id=self.user_id,
+                )
+                breakdown_lines = expansion.get("lines") or []
+                breakdown_source = expansion.get("source", "none")
+            except Exception as exc:  # noqa: BLE001 - the transaction still stands
+                logger.warning("Could not work out the transaction breakdown: %s", exc)
+
+        if breakdown_lines:
+            from app.services.breakdown_service import set_breakdown
+
+            set_breakdown(
+                self.db,
+                self.user_id,
+                "transaction",
+                tx.id,
+                [
+                    {
+                        "name": line.get("name"),
+                        "quantity": 1,
+                        "unit_price": line.get("amount", 0),
+                        "total_price": line.get("amount", 0),
+                        "category": line.get("category"),
+                        "kind": "expense",
+                        "source": breakdown_source,
+                        "is_estimated": True,
+                    }
+                    for line in breakdown_lines
+                ],
+                replace=True,
+            )
+
+        breakdown_preview = ", ".join(
+            f"{line.get('name')} Rp{float(line.get('amount', 0)):,.0f}"
+            for line in breakdown_lines[:3]
+        )
+
         return AgentAction(
             kind="add_transaction",
             params={
@@ -329,10 +379,13 @@ class AgentExecutor:
                 "category": category.name if category else None,
                 "account": account.name,
                 "merchant": merchant_name,
+                "breakdown": breakdown_lines,
+                "breakdown_source": breakdown_source,
             },
             description=(
                 f"Menambah transaksi {tx_type} {description} "
                 f"sebesar Rp{amount:,.0f}"
+                + (f" - rincian: {breakdown_preview}" if breakdown_preview else "")
             ),
             success=True,
             result={
@@ -341,6 +394,8 @@ class AgentExecutor:
                 "type": tx_type,
                 "description": description,
                 "new_balance": float(account.balance),
+                "breakdown": breakdown_lines,
+                "breakdown_source": breakdown_source,
             },
         )
 
@@ -722,16 +777,76 @@ class AgentExecutor:
         self.db.add(goal)
         self.db.flush()
 
+        # A goal with one number in it tells the user nothing. Before it
+        # is saved, the parts that number has to cover are worked out, so
+        # the goal shows the flight, the stay, the food and the rest.
+        breakdown_lines: List[Dict[str, Any]] = []
+        breakdown_source = "none"
+        try:
+            from app.services.goal_breakdown import expand_goal
+
+            expansion = expand_goal(
+                message=message,
+                target_amount=float(amount),
+                target_date=target_date,
+            )
+            breakdown_lines = expansion.get("lines") or []
+            breakdown_source = expansion.get("source", "none")
+        except Exception as exc:  # noqa: BLE001 - the goal still gets saved
+            logger.warning("Could not work out the goal breakdown: %s", exc)
+
+        if breakdown_lines:
+            from app.services.breakdown_service import set_breakdown
+
+            set_breakdown(
+                self.db,
+                self.user_id,
+                "goal",
+                goal.id,
+                [
+                    {
+                        "name": line.get("name"),
+                        "quantity": 1,
+                        "unit_price": line.get("amount", 0),
+                        "total_price": line.get("amount", 0),
+                        "category": line.get("category"),
+                        "kind": "expense",
+                        "notes": line.get("note"),
+                        "source": breakdown_source,
+                        "is_estimated": True,
+                    }
+                    for line in breakdown_lines
+                ],
+                replace=True,
+            )
+
+        breakdown_preview = ", ".join(
+            f"{line.get('name')} Rp{float(line.get('amount', 0)):,.0f}"
+            for line in breakdown_lines[:4]
+        )
+
         return AgentAction(
             kind="set_savings_goal",
-            params={"goal_id": goal.id, "name": goal.name, "amount": float(amount),
-                    "target_date": target_date.isoformat()},
+            params={
+                "goal_id": goal.id,
+                "name": goal.name,
+                "amount": float(amount),
+                "target_date": target_date.isoformat(),
+                "breakdown": breakdown_lines,
+                "breakdown_source": breakdown_source,
+            },
             description=(
                 f"Membuat target {goal.name} sebesar Rp{amount:,.0f} "
                 f"target {target_date.strftime('%d %B %Y')}"
+                + (f" - rincian: {breakdown_preview}" if breakdown_preview else "")
             ),
             success=True,
-            result={"goal_id": goal.id, "amount": float(amount)},
+            result={
+                "goal_id": goal.id,
+                "amount": float(amount),
+                "breakdown": breakdown_lines,
+                "breakdown_source": breakdown_source,
+            },
         )
 
     # -- plan ------------------------------------------------------------

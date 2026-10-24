@@ -250,8 +250,66 @@ def create_debt(
             payment = principal / months
         debt_data["monthly_payment"] = round(payment, 2)
 
+    # items steers the breakdown, it is not a column.
+    debt_items = debt_data.pop("items", None)
+
     db_debt = Debt(**debt_data)
     db.add(db_debt)
+    try:
+        db.flush()
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Data hutang tidak valid: {exc}")
+
+    # A debt is not one number. It is the part that comes back to the
+    # lender and the part that is the cost of borrowing. The split is
+    # worked out from the principal, the term and the interest rate.
+    try:
+        from app.services.breakdown_service import set_breakdown
+
+        if debt_items:
+            set_breakdown(
+                db, current_user.id, "debt", db_debt.id, debt_items, replace=True
+            )
+        else:
+            principal = float(debt_data.get("principal") or 0)
+            rate = float(debt_data.get("interest_rate") or 0)
+            months = int(debt_data.get("tenor_months") or 1)
+            if principal > 0 and months > 0:
+                payment = float(debt_data.get("monthly_payment") or 0)
+                total_paid = payment * months if payment else principal
+                interest_total = max(0.0, total_paid - principal)
+                lines = [
+                    {
+                        "name": "Pokok pinjaman",
+                        "quantity": 1,
+                        "unit_price": principal,
+                        "total_price": principal,
+                        "category": "other",
+                        "kind": "expense",
+                        "source": "rule",
+                        "is_estimated": False,
+                    }
+                ]
+                if interest_total > 0:
+                    lines.append(
+                        {
+                            "name": "Bunga pinjaman",
+                            "quantity": 1,
+                            "unit_price": round(interest_total, 2),
+                            "total_price": round(interest_total, 2),
+                            "category": "other",
+                            "kind": "expense",
+                            "source": "rule",
+                            "is_estimated": False,
+                        }
+                    )
+                set_breakdown(
+                    db, current_user.id, "debt", db_debt.id, lines, replace=True
+                )
+    except Exception as exc:  # noqa: BLE001 - the debt still gets saved
+        logger.warning("Could not attach the debt breakdown: %s", exc)
+
     try:
         db.commit()
     except Exception as exc:

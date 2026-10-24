@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner } from '../components/ui';
 import api from '../services/api';
+import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { apiUrl as buildApiUrl } from '../config/url';
 import { Plus, Repeat, RefreshCw, Trash2, Edit2, Calendar, Clock, Play, Pause } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
@@ -344,6 +345,13 @@ export const Recurring = () => {
                       </button>
                     </div>
                   </div>
+
+                  <BreakdownViewer
+                    parentType="recurring"
+                    parentId={rule.id}
+                    title="Rincian"
+                    compact
+                  />
                 </div>
               </Card>
             );

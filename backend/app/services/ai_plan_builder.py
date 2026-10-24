@@ -91,6 +91,7 @@ TIER_DESCRIPTIONS = {
 # Words that mark a message as a request for a whole plan. The list
 # lives in the agent module, which owns the intent vocabulary.
 from app.services.ai_agent import PLAN_CUES  # noqa: E402
+from app.services.number_parsing import parse_number
 
 # Words that mark a tier.
 TIER_WORDS = {
@@ -337,10 +338,8 @@ def _read_goal_amounts(message: str) -> List[Tuple[str, float]]:
             continue
 
         raw = match.group("amount")
-        cleaned = raw.replace(".", "").replace(",", ".")
-        try:
-            value = float(cleaned)
-        except ValueError:
+        value = parse_number(raw)
+        if value is None:
             continue
 
         scale = match.group("scale")

@@ -20,6 +20,9 @@ class GoalBase(EmptyStringAsNone):
 
 class GoalCreate(GoalBase, EmptyStringAsNone):
     current_amount: float = 0
+    # Set to False to store the goal without working out what it is
+    # made of. The default is to work it out.
+    expand_breakdown: bool = True
 
 
 class GoalUpdate(EmptyStringAsNone):

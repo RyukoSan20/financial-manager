@@ -4,6 +4,7 @@ import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp, TrendingDown, Clock
 import { formatCurrency, formatPercent, formatDate } from '../utils/format';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
+import { BreakdownViewer } from '../components/common/BreakdownViewer';
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -44,7 +45,7 @@ export const Goals = () => {
       fetchData();
     } catch (err) {
       console.error('Failed to save goal:', err);
-      alert('Failed to save goal: ' + (err.message || 'Unknown error'));
+      alert('Gagal menyimpan target: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -249,6 +250,13 @@ export const Goals = () => {
                       </Button>
                     </div>
                   </div>
+
+                  <BreakdownViewer
+                    parentType="goal"
+                    parentId={goal.id}
+                    title="Rincian biaya"
+                    compact
+                  />
                 </div>
               </Card>
             );
@@ -276,6 +284,40 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
     goal_type: 'savings',
     color: '#3b82f6',
   });
+
+  // The parts the target has to cover, worked out before the goal is
+  // saved so the user can see where the money goes.
+  const [preview, setPreview] = useState(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+
+  useEffect(() => {
+    setPreview(null);
+    setPreviewError('');
+  }, [goal]);
+
+  const handlePreview = async () => {
+    const amount = parseFloat(form.target_amount);
+    if (!amount || amount <= 0) {
+      setPreviewError('Isi nominal target dulu');
+      return;
+    }
+    setPreviewing(true);
+    setPreviewError('');
+    try {
+      const res = await api.breakdown.previewGoal({
+        name: form.name,
+        description: form.name,
+        target_amount: amount,
+        target_date: form.target_date || null,
+      });
+      setPreview(res);
+    } catch (err) {
+      setPreviewError('Gagal membuat rincian. Target tetap bisa disimpan.');
+    } finally {
+      setPreviewing(false);
+    }
+  };
 
   useEffect(() => {
     if (goal) {
@@ -357,6 +399,55 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
           value={form.target_date}
           onChange={(e) => setForm(f => ({ ...f, target_date: e.target.value }))}
         />
+
+        <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+              Rincian biaya
+            </p>
+            <button
+              type="button"
+              onClick={handlePreview}
+              disabled={previewing}
+              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {previewing ? 'Menyusun...' : 'Susun rincian'}
+            </button>
+          </div>
+
+          {previewError && (
+            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+              {previewError}
+            </p>
+          )}
+
+          {preview && (
+            <div className="mt-3 space-y-1.5">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {preview.message}
+              </p>
+              <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+                {(preview.lines || []).map((line, index) => (
+                  <li
+                    key={`${line.name}-${index}`}
+                    className="flex items-center justify-between gap-3 py-1.5"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm text-gray-700 dark:text-gray-200">
+                      {line.name}
+                    </span>
+                    <span className="shrink-0 text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {formatCurrency(line.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex items-center justify-between pt-1.5 text-sm font-semibold">
+                <span className="text-gray-700 dark:text-gray-200">Total</span>
+                <span>{formatCurrency(preview.total)}</span>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>

@@ -103,12 +103,17 @@ export const api = {
       const finalOptions = { ...options };
       if (
         finalOptions.body &&
-        typeof finalOptions.body === 'string' &&
         finalOptions.method &&
         finalOptions.method !== 'GET'
       ) {
         try {
-          const parsed = JSON.parse(finalOptions.body);
+          // The body is sometimes a plain object and sometimes a JSON
+          // string. Both have to be cleaned, because an empty optional
+          // date is the bug this guards against.
+          const parsed =
+            typeof finalOptions.body === 'string'
+              ? JSON.parse(finalOptions.body)
+              : finalOptions.body;
           finalOptions.body = JSON.stringify(sanitizePayload(parsed));
         } catch {
           // The body was not JSON. Send it as it is.
@@ -199,6 +204,33 @@ export const api = {
   },
 
   // Recurring
+  // The lines inside a financial record.
+  // A transaction, a budget, a recurring rule, a goal and a debt can all
+  // carry them.
+  breakdown: {
+    read: (parentType, parentId) =>
+      api.request(`/breakdown/${parentType}/${parentId}`),
+    write: (parentType, parentId, lines, replace = true) =>
+      api.request(`/breakdown/${parentType}/${parentId}`, {
+        method: 'PUT',
+        body: { lines, replace },
+      }),
+    addLine: (parentType, parentId, line) =>
+      api.request(`/breakdown/${parentType}/${parentId}/lines`, {
+        method: 'POST',
+        body: line,
+      }),
+    removeLine: (parentType, parentId, lineId) =>
+      api.request(`/breakdown/${parentType}/${parentId}/lines/${lineId}`, {
+        method: 'DELETE',
+      }),
+    previewGoal: (payload) =>
+      api.request('/breakdown/goal/preview', {
+        method: 'POST',
+        body: payload,
+      }),
+  },
+
   // Which way does the money go?
   // The backend owns this decision, so the quick entry box, the voice
   // parser and the AI agent all give the same answer for the same

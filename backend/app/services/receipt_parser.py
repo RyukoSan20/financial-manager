@@ -308,6 +308,34 @@ class ReceiptParser:
                 category_name=item_data.get("category")
             )
             self.db.add(item)
+
+        # The same lines go into the shared breakdown table, so the
+        # receipt can be read through the same API as every other
+        # financial record.
+        if items:
+            from app.services.breakdown_service import set_breakdown
+
+            set_breakdown(
+                self.db,
+                transaction.user_id,
+                "transaction",
+                transaction.id,
+                [
+                    {
+                        "name": item_data.get("name", "Item"),
+                        "quantity": item_data.get("quantity", 1),
+                        "unit_price": item_data.get("unit_price", 0),
+                        "total_price": item_data.get("total_price", 0),
+                        "category": item_data.get("category"),
+                        "kind": "expense",
+                        "is_discount": bool(item_data.get("is_discount", False)),
+                        "source": "ocr",
+                        "is_estimated": False,
+                    }
+                    for item_data in items
+                ],
+                replace=True,
+            )
         
         self.db.commit()
         self.db.refresh(transaction)

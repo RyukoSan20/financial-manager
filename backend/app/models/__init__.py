@@ -17,6 +17,7 @@ from app.models.merchant import Merchant, MerchantProduct, DailySettlement
 from app.models.shopping_item import ShoppingItem, WishlistItem
 from app.models.merchant_catalog import MerchantCatalog, UserProduct
 from app.models.learning_note import LearningNote
+from app.models.breakdown_item import BreakdownItem
 
 __all__ = [
     "Account",
@@ -47,4 +48,5 @@ __all__ = [
     "MerchantCatalog",
     "UserProduct",
     "LearningNote",
+    "BreakdownItem",
 ]

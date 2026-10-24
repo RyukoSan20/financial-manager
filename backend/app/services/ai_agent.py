@@ -27,6 +27,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
+from app.services.number_parsing import parse_number
 
 logger = logging.getLogger(__name__)
 
@@ -368,10 +369,8 @@ def extract_amount(message: str) -> Tuple[Optional[float], str]:
     # A "Rp 15.000" or "15000" style number.
     for match in _NUMBER_RE.finditer(working):
         raw = match.group(0)
-        cleaned = raw.replace(".", "").replace(",", ".")
-        try:
-            value = float(cleaned)
-        except ValueError:
+        value = parse_number(raw)
+        if value is None:
             continue
         if value <= 0:
             continue

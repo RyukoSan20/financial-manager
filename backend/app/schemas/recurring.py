@@ -2,7 +2,7 @@
 
 from app.schemas.base import EmptyStringAsNone
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -28,8 +28,22 @@ class RecurringRuleBase(EmptyStringAsNone):
     reminder_days_before: Optional[int] = Field(None, ge=1, le=30)
 
 
+class BreakdownLineInput(BaseModel):
+    """One line of a breakdown the user sends."""
+    name: str = Field(max_length=255)
+    quantity: float = 1
+    unit_price: float = 0
+    total_price: float = 0
+    category: Optional[str] = Field(None, max_length=50)
+    kind: str = "expense"
+    is_discount: bool = False
+    notes: Optional[str] = None
+    source: str = "user"
+    is_estimated: bool = False
+
+
 class RecurringRuleCreate(RecurringRuleBase, EmptyStringAsNone):
-    pass
+    items: Optional[List[BreakdownLineInput]] = None
 
 
 class RecurringRuleUpdate(EmptyStringAsNone):

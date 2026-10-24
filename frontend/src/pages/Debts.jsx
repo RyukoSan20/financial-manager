@@ -3,6 +3,7 @@ import { Card, Button, Input, Select, Modal, ProgressBar, Badge, EmptyState, Spi
 import { Plus, CreditCard, RefreshCw, Trash2, Edit2, Calendar, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import api from '../services/api';
+import { BreakdownViewer } from '../components/common/BreakdownViewer';
 
 export const Debts = () => {
   const [debts, setDebts] = useState([]);
@@ -263,6 +264,15 @@ export const Debts = () => {
                     <div>
                       <p>Jatuh Tempo: {debt.next_payment_date ? formatDate(debt.next_payment_date) : '-'}</p>
                     </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <BreakdownViewer
+                      parentType="debt"
+                      parentId={debt.id}
+                      title="Rincian"
+                      compact
+                    />
                   </div>
                 </div>
 

@@ -8,6 +8,7 @@ import { ReceiptScannerModal } from '../components/parser/ReceiptScannerModal';
 import { VoiceTransactionModal } from '../components/parser/VoiceTransactionModal';
 import { notifyTransactionAdded, notifyTransactionDeleted, notifyTransactionUpdated, notifyError } from '../components/notifications/NotificationHelper';
 import api from '../services/api';
+import { BreakdownViewer } from '../components/common/BreakdownViewer';
 
 const typeOptions = [
   { value: '', label: 'All' },
@@ -521,6 +522,19 @@ export const Transactions = () => {
                               </div>
                             )}
                           </div>
+                        </div>
+                      )}
+
+                      {/* A transaction that did not come from a receipt
+                          can still carry its own lines. */}
+                      {!hasItems && (
+                        <div className="mt-3">
+                          <BreakdownViewer
+                            parentType="transaction"
+                            parentId={tx.id}
+                            title="Rincian"
+                            compact
+                          />
                         </div>
                       )}
                     </div>

@@ -21,6 +21,62 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # Fix redirect to HTTPS
+def _attach_budget_breakdown(db, user_id, budget, given_items):
+    """
+    Give a budget its lines.
+
+    A budget can carry them from the request, and when it does not, the
+    parts are worked out from the budget's own name and category. The
+    numbers are an estimate, and they are marked as one.
+    """
+    try:
+        from app.services.breakdown_service import set_breakdown
+
+        if given_items:
+            set_breakdown(
+                db, user_id, "budget", budget.id, given_items, replace=True
+            )
+            return
+
+        amount = float(budget.amount or 0)
+        if amount <= 0:
+            return
+
+        from app.services.transaction_breakdown import expand_transaction
+
+        name = budget.name or "Budget"
+        expansion = expand_transaction(
+            message=name,
+            amount=amount,
+            merchant=name,
+        )
+        lines = expansion.get("lines") or []
+        if not lines:
+            return
+
+        set_breakdown(
+            db,
+            user_id,
+            "budget",
+            budget.id,
+            [
+                {
+                    "name": line.get("name"),
+                    "quantity": 1,
+                    "unit_price": line.get("amount", 0),
+                    "total_price": line.get("amount", 0),
+                    "category": line.get("category"),
+                    "kind": "expense",
+                    "source": expansion.get("source", "template"),
+                    "is_estimated": True,
+                }
+                for line in lines
+            ],
+            replace=True,
+        )
+    except Exception as exc:  # noqa: BLE001 - the budget still gets saved
+        logger.warning("Could not attach the budget breakdown: %s", exc)
+
 @router.get("", include_in_schema=False)
 def redirect_to_slash():
     return RedirectResponse(url="/api/budgets/", status_code=308)
@@ -131,8 +187,21 @@ def create_budget(
         else:
             budget_data["start_date"] = date_type(today.year, today.month, 1)
 
+    # items steers the breakdown, it is not a column.
+    budget_items = budget_data.pop("items", None)
+
     db_budget = Budget(**budget_data)
     db.add(db_budget)
+    try:
+        db.flush()
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Data budget tidak valid: {exc}")
+
+    # A budget is a pot of money. What it is meant for is worth showing,
+    # so the parts can be read back with the budget.
+    _attach_budget_breakdown(db, current_user.id, db_budget, budget_items)
+
     try:
         db.commit()
     except Exception as exc:

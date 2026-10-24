@@ -171,11 +171,64 @@ def create_recurring_rule(
     if not rule_data.get("start_date"):
         rule_data["start_date"] = start
     
+    # items steers the breakdown, it is not a column.
+    rule_items = rule_data.pop("items", None)
+
     db_rule = RecurringRule(
         **rule_data,
         next_occurrence=next_occ
     )
     db.add(db_rule)
+    try:
+        db.flush()
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Data aturan berulang tidak valid: {exc}")
+
+    # A recurring rule is one payment that happens again and again.
+    # When the rule covers more than the headline number - the rent plus
+    # the electricity, the subscription plus the insurance - the parts are
+    # worked out so the rule can be read line by line.
+    try:
+        from app.services.breakdown_service import set_breakdown
+        from app.services.transaction_breakdown import expand_transaction
+
+        amount = float(rule_data.get("amount") or 0)
+        if rule_items:
+            set_breakdown(
+                db, current_user.id, "recurring", db_rule.id, rule_items, replace=True
+            )
+        elif amount > 0 and rule_data.get("type") == "expense":
+            expansion = expand_transaction(
+                message=rule_data.get("name") or "Recurring",
+                amount=amount,
+                merchant=rule_data.get("merchant_name"),
+            )
+            lines = expansion.get("lines") or []
+            if lines:
+                set_breakdown(
+                    db,
+                    current_user.id,
+                    "recurring",
+                    db_rule.id,
+                    [
+                        {
+                            "name": line.get("name"),
+                            "quantity": 1,
+                            "unit_price": line.get("amount", 0),
+                            "total_price": line.get("amount", 0),
+                            "category": line.get("category"),
+                            "kind": "expense",
+                            "source": expansion.get("source", "template"),
+                            "is_estimated": True,
+                        }
+                        for line in lines
+                    ],
+                    replace=True,
+                )
+    except Exception as exc:  # noqa: BLE001 - the rule still gets saved
+        logger.warning("Could not attach the recurring breakdown: %s", exc)
+
     try:
         db.commit()
     except Exception as exc:

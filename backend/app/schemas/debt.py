@@ -26,9 +26,23 @@ class DebtBase(EmptyStringAsNone):
     lender_contact: Optional[str] = None
 
 
+class BreakdownLineInput(BaseModel):
+    """One line of a breakdown the user sends."""
+    name: str = Field(max_length=255)
+    quantity: float = 1
+    unit_price: float = 0
+    total_price: float = 0
+    category: Optional[str] = Field(None, max_length=50)
+    kind: str = "expense"
+    is_discount: bool = False
+    notes: Optional[str] = None
+    source: str = "user"
+    is_estimated: bool = False
+
+
 class DebtCreate(DebtBase, EmptyStringAsNone):
     """Create debt - inherits all fields from DebtBase."""
-    pass
+    items: Optional[List[BreakdownLineInput]] = None
 
 
 class DebtUpdate(EmptyStringAsNone):

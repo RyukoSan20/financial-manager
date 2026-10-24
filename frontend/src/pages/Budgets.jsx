@@ -3,6 +3,7 @@ import { Card, Button, Input, Select, Modal, ProgressBar, Badge, EmptyState, Spi
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import api from '../services/api';
+import { BreakdownViewer } from '../components/common/BreakdownViewer';
 
 export const Budgets = () => {
   const [budgets, setBudgets] = useState([]);
@@ -198,6 +199,13 @@ export const Budgets = () => {
                       </span>
                     </div>
                   </div>
+
+                  <BreakdownViewer
+                    parentType="budget"
+                    parentId={budget.id}
+                    title="Rincian"
+                    compact
+                  />
                 </div>
               </Card>
             );

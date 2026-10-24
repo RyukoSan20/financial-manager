@@ -277,6 +277,9 @@ def create_transaction(
         )
     
     # Create transaction record
+    # items steers the breakdown, it is not a column.
+    given_transaction_items = transaction.items or []
+
     db_transaction = Transaction(
         user_id=current_user.id,
         amount=transaction.amount,
@@ -300,6 +303,67 @@ def create_transaction(
     )
     
     db.add(db_transaction)
+    db.flush()
+
+    # The lines this transaction paid for. The user can send them, and
+    # when they do not, a purchase at a shop gets them worked out so the
+    # transaction can be opened and read line by line.
+    try:
+        from app.services.breakdown_service import set_breakdown
+
+        given_items = [
+            item.model_dump() for item in given_transaction_items
+        ]
+
+        if given_items:
+            set_breakdown(
+                db,
+                current_user.id,
+                "transaction",
+                db_transaction.id,
+                given_items,
+                replace=True,
+            )
+        elif (
+            transaction.expand_breakdown
+            and transaction.type == "expense"
+            and float(transaction.amount or 0) > 0
+            and transaction.merchant_name
+        ):
+            from app.services.transaction_breakdown import expand_transaction
+
+            expansion = expand_transaction(
+                message=transaction.description or "",
+                amount=float(transaction.amount),
+                merchant=transaction.merchant_name,
+                db=db,
+                user_id=current_user.id,
+            )
+            lines = expansion.get("lines") or []
+            if lines:
+                set_breakdown(
+                    db,
+                    current_user.id,
+                    "transaction",
+                    db_transaction.id,
+                    [
+                        {
+                            "name": line.get("name"),
+                            "quantity": 1,
+                            "unit_price": line.get("amount", 0),
+                            "total_price": line.get("amount", 0),
+                            "category": line.get("category"),
+                            "kind": "expense",
+                            "source": expansion.get("source", "template"),
+                            "is_estimated": True,
+                        }
+                        for line in lines
+                    ],
+                    replace=True,
+                )
+    except Exception as exc:  # noqa: BLE001 - the transaction still stands
+        logger.warning("Could not attach the transaction breakdown: %s", exc)
+
     db.commit()
     db.refresh(db_transaction)
     return db_transaction

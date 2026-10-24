@@ -2,7 +2,7 @@
 
 from app.schemas.base import EmptyStringAsNone
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import date as _date, datetime
 from decimal import Decimal
 
@@ -12,7 +12,9 @@ class BudgetBase(EmptyStringAsNone):
     amount: Decimal = Field(..., gt=0)
     currency: str = Field(default="IDR", max_length=10)
     period: str = Field(..., pattern="^(weekly|monthly|yearly)$")
-    start_date: _date
+    # The start date is worked out from the period when it is not given,
+    # so the form does not have to ask for it.
+    start_date: Optional[_date] = None
     end_date: Optional[_date] = None
     category_id: Optional[int] = None
     account_id: Optional[int] = None
@@ -22,8 +24,22 @@ class BudgetBase(EmptyStringAsNone):
     allocation_account_id: Optional[int] = None
 
 
+class BreakdownLineInput(BaseModel):
+    """One line of a breakdown the user sends."""
+    name: str = Field(max_length=255)
+    quantity: float = 1
+    unit_price: float = 0
+    total_price: float = 0
+    category: Optional[str] = Field(None, max_length=50)
+    kind: str = "expense"
+    is_discount: bool = False
+    notes: Optional[str] = None
+    source: str = "user"
+    is_estimated: bool = False
+
+
 class BudgetCreate(BudgetBase, EmptyStringAsNone):
-    pass
+    items: Optional[List[BreakdownLineInput]] = None
 
 
 class BudgetUpdate(EmptyStringAsNone):

@@ -28,6 +28,19 @@ class TransactionBase(EmptyStringAsNone):
     longitude: Optional[float] = None
 
 
+class TransactionItemCreate(BaseModel):
+    """One line inside a transaction."""
+    name: str = Field(max_length=255)
+    quantity: float = 1
+    unit_price: float = 0
+    total_price: float = 0
+    category: Optional[str] = Field(None, max_length=50)
+    is_discount: bool = False
+    notes: Optional[str] = None
+    source: str = "user"
+    is_estimated: bool = False
+
+
 class TransactionCreate(TransactionBase, EmptyStringAsNone):
     # Idempotency key - prevents duplicate transactions from double-tap or retry
     client_request_id: Optional[str] = Field(
@@ -35,6 +48,11 @@ class TransactionCreate(TransactionBase, EmptyStringAsNone):
         description="Client-generated UUID for idempotency. Same ID returns existing transaction.",
         max_length=64
     )
+    # The lines this transaction paid for. When they are left out and the
+    # transaction is a purchase at a shop, the backend works them out.
+    items: Optional[List[TransactionItemCreate]] = None
+    # Set to False to skip working out the lines.
+    expand_breakdown: bool = True
 
 
 class TransactionUpdate(EmptyStringAsNone):

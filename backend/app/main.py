@@ -18,7 +18,8 @@ from app.api.routes import (
     # scan_jobs disabled (OCR)
     exchange, market, finnhub, ninjas, market_intel, zap_ink,
     realtime_market, logs, merchant, webhooks, location,
-    unified_market, user_settings, voice, profile, learning, scans
+    unified_market, user_settings, voice, profile, learning, scans,
+    breakdown,
 )
 
 # Import models to register with SQLAlchemy
@@ -239,6 +240,7 @@ app.include_router(transfers.router, prefix="/api/transfers", tags=["Transfers"]
 app.include_router(budgets.router, prefix="/api/budgets", tags=["Budgets"])
 app.include_router(recurring.router, prefix="/api/recurring", tags=["Recurring"])
 app.include_router(goals.router, prefix="/api/goals", tags=["Goals"])
+app.include_router(breakdown.router, prefix="/api/breakdown", tags=["Breakdown"])
 app.include_router(debts.router, prefix="/api/debts", tags=["Debts"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
