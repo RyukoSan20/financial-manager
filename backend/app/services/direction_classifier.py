@@ -833,19 +833,21 @@ def _ask_model(text: str) -> Optional[DirectionResult]:
         return None
 
     try:
-        from app.services.gemini_vision import call_gemini_text
+        from app.services.gemini_client import call_gemini_json
+        from app.services.instructions import build_prompt
     except Exception as exc:  # pragma: no cover - import problems
         logger.warning("Could not load the Gemini client: %s", exc)
         return None
 
     try:
-        raw = call_gemini_text(
-            _MODEL_PROMPT.format(text=text),
-            timeout=12,
+        payload = call_gemini_json(
+            build_prompt("direction", {"text": text}),
+            timeout=15,
             temperature=0.0,
-            max_output_tokens=256,
-            json_response=True,
+            max_output_tokens=300,
         )
+        if payload is None:
+            return None
     except Exception as exc:  # pragma: no cover - provider problems
         logger.warning("The model could not be reached: %s", exc)
         _open_breaker()
@@ -853,11 +855,6 @@ def _ask_model(text: str) -> Optional[DirectionResult]:
 
     if not raw:
         _open_breaker()
-        return None
-
-    payload = _extract_json(raw)
-    if payload is None:
-        logger.info("The model answer held no JSON: %s", raw[:200])
         return None
 
     if not isinstance(payload, dict):

@@ -94,6 +94,7 @@ def _check_parent(parent_type: str) -> None:
 def preview_goal(
     payload: GoalPreviewRequest,
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Work out what a goal is made of, before the user saves it.
@@ -104,6 +105,7 @@ def preview_goal(
     correct them before the goal exists.
     """
     from app.services.goal_breakdown import expand_goal
+    from app.services.instruction_context import goal_context
 
     text = " ".join(
         part for part in (payload.name, payload.description) if part
@@ -114,6 +116,7 @@ def preview_goal(
         target_amount=payload.target_amount,
         target_date=payload.target_date,
         use_model=payload.use_model,
+        history=goal_context(db, current_user.id),
     )
 
     lines = result.get("lines") or []
@@ -137,6 +140,25 @@ def preview_goal(
         used_model=bool(result.get("used_model")),
         message=message,
     )
+
+
+@router.get("/gemini/health")
+async def gemini_health():
+    """
+    What the model provider is doing.
+
+    The pool holds several keys, because the free tier runs out of
+    quota. When it runs out, this says so, so the situation is not a
+    mystery when a breakdown comes back with the fallback lines.
+    """
+    from app.services.gemini_client import get_pool
+
+    pool = get_pool()
+    return {
+        "status": "ok" if pool.has_keys else "no_key",
+        **pool.health(),
+        "keys": pool.stats(),
+    }
 
 
 @router.get("/{parent_type}/{parent_id}", response_model=BreakdownResponse)

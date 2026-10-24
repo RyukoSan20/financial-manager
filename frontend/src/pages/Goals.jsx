@@ -423,9 +423,16 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
 
           {preview && (
             <div className="mt-3 space-y-1.5">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {preview.message}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {preview.message}
+                </p>
+                {preview.used_model === false && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                    Mode model sedang penuh, memakai pola bawaan
+                  </span>
+                )}
+              </div>
               <ul className="divide-y divide-gray-100 dark:divide-gray-800">
                 {(preview.lines || []).map((line, index) => (
                   <li

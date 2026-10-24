@@ -194,6 +194,7 @@ def expand_transaction(
     user_id: Optional[int] = None,
     use_model: bool = True,
     timeout: int = 25,
+    history: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Work out what a purchase was for.
@@ -204,6 +205,8 @@ def expand_transaction(
     total = float(amount or 0)
     if total <= 0:
         return {"lines": [], "source": "none", "used_model": False}
+
+    history = history or {}
 
     lines: List[Dict[str, Any]] = []
     used_model = False
@@ -225,25 +228,30 @@ def expand_transaction(
 
     if not lines and use_model:
         try:
-            from app.services.gemini_vision import call_gemini_text
+            from app.services.instructions import build_prompt
+            from app.services.gemini_client import call_gemini_json
 
-            raw = call_gemini_text(
-                _ITEMS_PROMPT.format(
-                    message=message or "",
-                    amount=total,
-                    merchant=merchant or "toko",
-                ),
+            prompt = build_prompt(
+                "transaction_breakdown",
+                {
+                    "message": message or "",
+                    "amount": total,
+                    "merchant": merchant,
+                    **history,
+                },
+            )
+
+            payload = call_gemini_json(
+                prompt,
                 timeout=timeout,
                 temperature=0.2,
-                max_output_tokens=900,
-                json_response=True,
+                max_output_tokens=1000,
             )
         except Exception as exc:  # noqa: BLE001 - the model is optional
             logger.warning("Transaction breakdown model unavailable: %s", exc)
-            raw = None
+            payload = None
 
-        if raw:
-            payload = _extract_json(raw)
+        if payload:
             if isinstance(payload, dict):
                 lines = _normalise_lines(payload.get("lines") or [])
             elif isinstance(payload, list):

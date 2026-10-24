@@ -261,6 +261,7 @@ def expand_goal(
     target_date: Optional[date] = None,
     use_model: bool = True,
     timeout: int = 30,
+    history: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Work out what a goal is made of.
@@ -272,6 +273,8 @@ def expand_goal(
     if target <= 0:
         return {"lines": [], "source": "none", "used_model": False}
 
+    history = history or {}
+
     days_left = 365
     if target_date:
         days_left = max(0, (target_date - date.today()).days)
@@ -281,26 +284,31 @@ def expand_goal(
 
     if use_model:
         try:
-            from app.services.gemini_vision import call_gemini_text
+            from app.services.instructions import build_prompt
+            from app.services.gemini_client import call_gemini_json
 
-            raw = call_gemini_text(
-                _BREAKDOWN_PROMPT.format(
-                    message=message or "",
-                    target=target,
-                    target_date=target_date.isoformat() if target_date else "tidak ditentukan",
-                    days_left=days_left,
-                ),
+            prompt = build_prompt(
+                "goal_breakdown",
+                {
+                    "message": message or "",
+                    "target_amount": target,
+                    "target_date": target_date.isoformat() if target_date else None,
+                    "days_left": days_left,
+                    **history,
+                },
+            )
+
+            payload = call_gemini_json(
+                prompt,
                 timeout=timeout,
                 temperature=0.2,
-                max_output_tokens=1200,
-                json_response=True,
+                max_output_tokens=1400,
             )
         except Exception as exc:  # noqa: BLE001 - the model is optional
             logger.warning("Goal breakdown model unavailable: %s", exc)
-            raw = None
+            payload = None
 
-        if raw:
-            payload = _extract_json(raw)
+        if payload:
             if isinstance(payload, dict):
                 lines = _normalise_categories(payload.get("lines") or [])
             elif isinstance(payload, list):

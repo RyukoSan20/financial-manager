@@ -331,6 +331,7 @@ def create_transaction(
             and transaction.merchant_name
         ):
             from app.services.transaction_breakdown import expand_transaction
+            from app.services.instruction_context import transaction_context
 
             expansion = expand_transaction(
                 message=transaction.description or "",
@@ -338,6 +339,9 @@ def create_transaction(
                 merchant=transaction.merchant_name,
                 db=db,
                 user_id=current_user.id,
+                history=transaction_context(
+                    db, current_user.id, transaction.merchant_name
+                ),
             )
             lines = expansion.get("lines") or []
             if lines:

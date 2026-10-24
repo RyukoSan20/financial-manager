@@ -328,12 +328,17 @@ class AgentExecutor:
             try:
                 from app.services.transaction_breakdown import expand_transaction
 
+                from app.services.instruction_context import transaction_context
+
                 expansion = expand_transaction(
                     message=message,
                     amount=float(amount),
                     merchant=merchant_name,
                     db=self.db,
                     user_id=self.user_id,
+                    history=transaction_context(
+                        self.db, self.user_id, merchant_name
+                    ),
                 )
                 breakdown_lines = expansion.get("lines") or []
                 breakdown_source = expansion.get("source", "none")
@@ -785,10 +790,13 @@ class AgentExecutor:
         try:
             from app.services.goal_breakdown import expand_goal
 
+            from app.services.instruction_context import goal_context
+
             expansion = expand_goal(
                 message=message,
                 target_amount=float(amount),
                 target_date=target_date,
+                history=goal_context(self.db, self.user_id),
             )
             breakdown_lines = expansion.get("lines") or []
             breakdown_source = expansion.get("source", "none")
