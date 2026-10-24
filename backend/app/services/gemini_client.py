@@ -240,7 +240,7 @@ class GeminiPool:
                     "available": state.calls == 0 or state.successes > 0,
                     "calls": state.calls,
                     "successes": state.successes,
-                    "failures": state.failures,
+                    "failures": sum(state._failures.values()),
                     "last_error": state.last_error,
                 }
                 for state in self._keys.values()
@@ -478,7 +478,7 @@ class GeminiPool:
                     "available": state.calls == 0 or state.successes > 0,
                     "calls": state.calls,
                     "successes": state.successes,
-                    "failures": state.failures,
+                    "failures": sum(state._failures.values()),
                     "last_error": state.last_error,
                 }
                 for state in self._keys.values()
