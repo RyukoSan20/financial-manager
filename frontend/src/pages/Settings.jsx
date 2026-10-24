@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/ui';
-import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut } from 'lucide-react';
+import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut, Palette } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
 import api from '../services/api';
@@ -12,6 +12,7 @@ export const Settings = () => {
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
+    { id: 'appearance', label: 'Tampilan', icon: Palette },
     { id: 'security', label: 'Security', icon: Lock },
     { id: 'preferences', label: 'Preferences', icon: Globe },
     { id: 'data', label: 'Data', icon: Download },
@@ -61,12 +62,43 @@ export const Settings = () => {
         {/* Content */}
         <div className="flex-1">
           {activeTab === 'profile' && <ProfileTab user={user} />}
+          {activeTab === 'appearance' && <AppearanceTab />}
           {activeTab === 'security' && <SecurityTab />}
           {activeTab === 'preferences' && <PreferencesTab user={user} />}
           {activeTab === 'data' && <DataTab logout={logout} />}
         </div>
       </div>
     </div>
+  );
+};
+
+/**
+ * The appearance tab.
+ *
+ * The heavy part of the appearance lives on its own page, which is
+ * reachable from here and from the settings list.
+ */
+const AppearanceTab = () => {
+  const [activeTab, setActiveTab] = useState('profile');
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center gap-3 mb-2">
+        <Palette className="w-5 h-5 text-primary-600" />
+        <h2 className="text-lg font-semibold">Tampilan</h2>
+      </div>
+      <p className="text-sm text-gray-500 mb-4">
+        Warna aksen, font, ukuran teks, dan latar belakang. Tersimpan di
+        akun Anda, jadi ikut ke perangkat lain.
+      </p>
+      <Link
+        to="/settings/appearance"
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
+      >
+        <Palette className="w-4 h-4" />
+        Atur tampilan
+      </Link>
+    </Card>
   );
 };
 

@@ -7,6 +7,7 @@ import {
   Sparkles, Activity, Layers, ChevronRight
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/format';
+import { useSyncedPreference } from '../hooks/useSyncedPreference';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart as RePieChart, Pie, Cell,
@@ -16,6 +17,10 @@ import {
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 const PREFS_KEY = 'fm.analytics.layout.v2';
+
+// The key the layout is stored under in the user's settings on the
+// server. The same layout follows the user to another device.
+const PREFS_SERVER_KEY = 'analytics_layout';
 
 /**
  * Every widget explains what it is for. Before the redesign the page was a
@@ -83,6 +88,54 @@ const WIDGETS = {
 
 const DEFAULT_LAYOUT = ['health', 'cashflow', 'categories', 'budget', 'topexpenses', 'patterns', 'recurring', 'monthly'];
 
+/**
+ * Ready-made layouts.
+ *
+ * Choosing one of these is quicker than hiding five widgets one by one,
+ * and they are arranged around what a person usually wants to know
+ * first. The order of the widgets is what tells the story, so each
+ * preset starts with the part that answers the biggest question.
+ */
+const LAYOUT_PRESETS = {
+  ringkasan: {
+    id: 'ringkasan',
+    label: 'Ringkasan Harian',
+    description: 'Kesehatan dan arus kas saja. Enam widget yang paling sering dicek.',
+    order: ['health', 'cashflow', 'topexpenses', 'budget', 'categories', 'recurring'],
+    hidden: ['patterns', 'monthly'],
+  },
+  lengkap: {
+    id: 'lengkap',
+    label: 'Lengkap',
+    description: 'Semua bagian, dari kesehatan sampai pola belanja.',
+    order: DEFAULT_LAYOUT,
+    hidden: [],
+  },
+  pengeluaran: {
+    id: 'pengeluaran',
+    label: 'Fokus Pengeluaran',
+    description: 'Ke mana uang pergi. Kategori, terbesar, pola, dan budget.',
+    order: ['categories', 'topexpenses', 'patterns', 'budget', 'monthly', 'cashflow'],
+    hidden: ['health', 'recurring'],
+  },
+  tabungan: {
+    id: 'tabungan',
+    label: 'Fokus Tabungan',
+    description: 'Progres menabung. Menuju target dan arus kas.',
+    order: ['health', 'cashflow', 'monthly', 'budget', 'recurring', 'categories'],
+    hidden: ['topexpenses', 'patterns'],
+  },
+};
+
+// The layout as it stands when the user has not changed anything. It
+// is defined once, so the hook does not see a new object on every
+// render.
+const DEFAULT_PREFS = {
+  order: DEFAULT_LAYOUT,
+  hidden: [],
+  period: '6',
+};
+
 const loadPrefs = () => {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
@@ -103,6 +156,30 @@ const loadPrefs = () => {
   }
 };
 
+/**
+ * Make sure the layout is the shape the page expects.
+ *
+ * The copy on the server may come from an older version of the app, so
+ * the widget list is filtered against the ones that exist now and
+ * anything missing is added back.
+ */
+const normalizeAnalyticsPrefs = (stored, defaults) => {
+  if (!stored || typeof stored !== 'object') return { ...defaults };
+
+  const order = Array.isArray(stored.order)
+    ? stored.order.filter((id) => WIDGETS[id])
+    : defaults.order;
+  const missing = defaults.order.filter((id) => !order.includes(id));
+
+  return {
+    order: [...order, ...missing],
+    hidden: Array.isArray(stored.hidden)
+      ? stored.hidden.filter((id) => WIDGETS[id])
+      : defaults.hidden,
+    period: stored.period || defaults.period,
+  };
+};
+
 const savePrefs = (prefs) => {
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
@@ -114,7 +191,15 @@ const savePrefs = (prefs) => {
 export const Analytics = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [prefs, setPrefs] = useState(loadPrefs);
+
+  // The layout lives on the server as well as in the browser, so the
+  // dashboard looks the same on the phone as on the laptop.
+  const [prefs, setPrefs] = useSyncedPreference(
+    PREFS_SERVER_KEY,
+    PREFS_KEY,
+    DEFAULT_PREFS,
+    normalizeAnalyticsPrefs
+  );
   const [customizing, setCustomizing] = useState(false);
   const [explain, setExplain] = useState({});
 
@@ -164,9 +249,25 @@ export const Analytics = () => {
     fetchData();
   }, [fetchData]);
 
+  // The hook writes to the browser and to the server. `savePrefs` is
+  // left in place for the first render, before the server has answered.
   const updatePrefs = (next) => {
     setPrefs(next);
     savePrefs(next);
+  };
+
+  /**
+   * Use one of the ready-made layouts.
+   *
+   * The hidden list is taken from the preset as well, so the result is
+   * exactly what the preset describes and not just a reordering.
+   */
+  const applyPreset = (preset) => {
+    updatePrefs({
+      ...prefs,
+      order: [...preset.order],
+      hidden: [...preset.hidden],
+    });
   };
 
   const toggleHidden = (id) => {
@@ -607,6 +708,55 @@ export const Analytics = () => {
         </Card>
       )}
 
+      {/* The summary strip: the four numbers that decide whether the
+          month went well, in one row before any chart. */}
+      {!loading && health && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            {
+              label: 'Saldo',
+              value: formatCurrency(health.total_balance || 0),
+              tone: 'text-gray-900 dark:text-gray-100',
+            },
+            {
+              label: 'Tingkat tabungan',
+              value: `${(health.savings_rate || 0).toFixed(1)}%`,
+              tone:
+                (health.savings_rate || 0) >= 20
+                  ? 'text-success-600 dark:text-success-400'
+                  : 'text-warning-600 dark:text-warning-400',
+            },
+            {
+              label: 'Total utang',
+              value: formatCurrency(health.total_debt || 0),
+              tone:
+                (health.total_debt || 0) > 0
+                  ? 'text-danger-600 dark:text-danger-400'
+                  : 'text-gray-900 dark:text-gray-100',
+            },
+            {
+              label: 'Target aktif',
+              value: String(health.active_goals || 0),
+              tone: 'text-primary-600 dark:text-primary-400',
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-xl bg-white dark:bg-gray-800 p-3.5 shadow-sm border border-gray-100 dark:border-gray-700"
+            >
+              <div className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                {stat.label}
+              </div>
+              <div
+                className={`text-lg font-bold tabular-nums mt-0.5 ${stat.tone}`}
+              >
+                {stat.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Customisation panel */}
       {customizing && (
         <Card className="border-primary-200">
@@ -621,6 +771,57 @@ export const Analytics = () => {
               <RotateCcw size={13} className="mr-1" /> Reset
             </Button>
           </CardHeader>
+          <CardBody>
+            {/* The ready-made layouts */}
+            <div className="mb-4">
+              <div className="text-xs font-medium text-gray-500 mb-2">
+                Susunan siap pakai
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.values(LAYOUT_PRESETS).map((preset) => {
+                  // A widget that was added to the app after the preset
+                  // was made is appended to the order, so only the
+                  // widgets the preset names are compared.
+                  const visible = prefs.order.filter(
+                    (id) => !prefs.hidden.includes(id)
+                  );
+                  const active =
+                    visible.length === preset.order.length &&
+                    preset.order.every((id, i) => visible[i] === id);
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => applyPreset(preset)}
+                      className={`text-left rounded-lg border-2 p-2.5 transition ${
+                        active
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-gray-900">
+                          {preset.label}
+                        </span>
+                        {active && (
+                          <span className="text-[10px] text-primary-600 font-medium">
+                            aktif
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-gray-500 mt-0.5 leading-snug">
+                        {preset.description}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="text-xs font-medium text-gray-500 mb-1">
+              Atur satu per satu
+            </div>
+          </CardBody>
           <CardBody className="p-0">
             <ul className="divide-y divide-gray-100">
               {prefs.order.map((id) => {

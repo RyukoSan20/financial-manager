@@ -12,7 +12,7 @@
 
 /* Base Styles */
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior: none;
@@ -879,4 +879,174 @@ html[data-theme='dark'],
 html[data-theme='dark'] body {
   background-color: #111827 !important;
   color: #f3f4f6 !important;
+}
+
+/* ---------------------------------------------------------------------------
+   The look
+   ---------------------------------------------------------------------------
+   The colour scheme, the font and the background are set as custom
+   properties by `utils/appearance.js`. The components read them, so
+   one change restyles the whole app.
+
+   The body background is the plain colour, and a layer behind the
+   content draws the pattern. The layer is fixed, so it does not scroll
+   with the page and stays a background rather than becoming content.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-scale: 1;
+
+  /* Filled in by applyAppearance(). The defaults keep the app looking
+     right before the script runs. */
+  --scheme-accent: #059669;
+  --scheme-on-accent: #ffffff;
+  --scheme-50: #ecfdf5;
+  --scheme-100: #d1fae5;
+  --scheme-200: #a7f3d0;
+  --scheme-500: #10b981;
+  --scheme-600: #059669;
+  --scheme-700: #047857;
+  --background-image: none;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+/* The numbers. Money is read in a fixed width so a column of them
+   lines up and the eye can compare them. */
+.font-numeric,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* The layer that draws the background pattern. */
+.app-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--background-image);
+  background-size: 32px 32px;
+  background-attachment: fixed;
+  transition: background-image 200ms ease;
+}
+
+.dark .app-background {
+  opacity: 0.55;
+}
+
+/* The financial grid is drawn in the accent colour so it belongs to
+   the scheme rather than sitting on top of it. */
+[data-background='grid'] .app-background {
+  background-image:
+    linear-gradient(rgba(100, 116, 139, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 116, 139, 0.18) 1px, transparent 1px),
+    linear-gradient(rgba(100, 116, 139, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 116, 139, 0.09) 1px, transparent 1px);
+  background-size: 160px 160px, 160px 160px, 32px 32px, 32px 32px;
+}
+
+.dark[data-background='grid'] .app-background {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.14) 1px, transparent 1px),
+    linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
+}
+
+/* The glow backgrounds use the light steps of the scheme, so they have
+   to be drawn per scheme rather than baked into the utility. */
+[data-background='rings'] .app-background,
+[data-background='mesh'] .app-background {
+  background-size: cover;
+}
+
+[data-background='rings'] .app-background {
+  background-image:
+    radial-gradient(circle at 20% 10%, var(--scheme-100) 0%, transparent 45%),
+    radial-gradient(circle at 85% 30%, var(--scheme-50) 0%, transparent 40%);
+}
+
+[data-background='mesh'] .app-background {
+  background-image:
+    radial-gradient(at 15% 20%, var(--scheme-200) 0px, transparent 50%),
+    radial-gradient(at 85% 15%, var(--scheme-100) 0px, transparent 45%),
+    radial-gradient(at 70% 80%, var(--scheme-50) 0px, transparent 45%),
+    radial-gradient(at 25% 85%, var(--scheme-100) 0px, transparent 45%);
+}
+
+.dark[data-background='rings'] .app-background,
+.dark[data-background='mesh'] .app-background {
+  opacity: 0.25;
+}
+
+/* The accent, as a Tailwind colour. The classes are generated from
+   the custom properties, so they follow the scheme. */
+.bg-accent { background-color: var(--scheme-accent); }
+.text-accent { color: var(--scheme-accent); }
+.border-accent { border-color: var(--scheme-accent); }
+.bg-accent-soft { background-color: var(--scheme-100); }
+.text-accent-strong { color: var(--scheme-700); }
+.dark .bg-accent-soft { background-color: var(--scheme-900); }
+.dark .text-accent-strong { color: var(--scheme-300); }
+
+/* Serif and mono have to override the body font everywhere. */
+[data-font='serif'] body,
+[data-font='serif'] .font-sans {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+}
+
+[data-font='mono'] body,
+[data-font='mono'] .font-sans {
+  font-family: var(--font-mono);
+}
+
+[data-font='rounded'] body,
+[data-font='rounded'] .font-sans {
+  font-family: 'Nunito', 'Quicksand', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* The money, always in the mono face so the columns line up. */
+[data-font='serif'] .font-numeric,
+[data-font='serif'] .tabular-nums {
+  font-family: var(--font-mono);
+}
+
+/* The tiles in the appearance page that show what each background
+   looks like. They use the same drawing as the real background, so
+   what the user sees there is what they get. */
+.preview-bg {
+  background-size: 32px 32px;
+}
+
+.preview-bg[data-preview='grid'] {
+  background-image:
+    linear-gradient(rgba(100, 116, 139, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 116, 139, 0.18) 1px, transparent 1px),
+    linear-gradient(rgba(100, 116, 139, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 116, 139, 0.09) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+}
+
+.preview-bg[data-preview='rings'] {
+  background-image:
+    radial-gradient(circle at 20% 10%, var(--scheme-100) 0%, transparent 45%),
+    radial-gradient(circle at 85% 30%, var(--scheme-50) 0%, transparent 40%);
+  background-size: cover;
+}
+
+.preview-bg[data-preview='mesh'] {
+  background-image:
+    radial-gradient(at 15% 20%, var(--scheme-200) 0px, transparent 50%),
+    radial-gradient(at 85% 15%, var(--scheme-100) 0px, transparent 45%),
+    radial-gradient(at 70% 80%, var(--scheme-50) 0px, transparent 45%),
+    radial-gradient(at 25% 85%, var(--scheme-100) 0px, transparent 45%);
+  background-size: cover;
 }

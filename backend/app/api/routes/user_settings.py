@@ -12,7 +12,8 @@ Endpoints (all under /api/settings):
 - POST   /api/settings/support    -> create support request (contact form)
 - GET    /api/settings/support/{id}
 """
-from typing import Optional, List
+import json
+from typing import Any, Dict, Optional, List
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -31,6 +32,12 @@ router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
 class AppSettingsResponse(BaseModel):
     theme: str = "light"
+    color_scheme: str = "emerald"
+    font_family: str = "sans"
+    font_scale: str = "md"
+    background_style: str = "plain"
+    preferences: Dict[str, Any] = Field(default_factory=dict)
+    revision: int = 1
     language: str = "id"
     currency: str = "IDR"
     date_format: str = "DD/MM/YYYY"
@@ -59,6 +66,15 @@ class SettingsResponse(BaseModel):
 
 class AppSettingsUpdate(BaseModel):
     theme: Optional[str] = None
+    color_scheme: Optional[str] = None
+    font_family: Optional[str] = None
+    font_scale: Optional[str] = None
+    background_style: Optional[str] = None
+    preferences: Optional[Dict[str, Any]] = None
+    # The revision the client last saw. A change that is based on an
+    # older revision is rejected, so a device that was offline does not
+    # overwrite a newer change made on another device.
+    base_revision: Optional[int] = None
     language: Optional[str] = None
     currency: Optional[str] = None
     date_format: Optional[str] = None
@@ -111,9 +127,29 @@ def _get_or_create_settings(db: Session, user_id: int) -> UserSettings:
     return settings
 
 
+def _decode_preferences(s: UserSettings) -> Dict[str, Any]:
+    """The structured preferences, as a dict."""
+    if not s.preferences:
+        return {}
+    try:
+        parsed = json.loads(s.preferences)
+        if isinstance(parsed, dict):
+            return parsed
+    except (ValueError, TypeError):
+        pass
+    return {}
+
+
 def _to_app_response(s: UserSettings) -> AppSettingsResponse:
     return AppSettingsResponse(
-        theme=s.theme, language=s.language, currency=s.currency,
+        theme=s.theme,
+        color_scheme=getattr(s, "color_scheme", "emerald"),
+        font_family=getattr(s, "font_family", "sans"),
+        font_scale=getattr(s, "font_scale", "md"),
+        background_style=getattr(s, "background_style", "plain"),
+        preferences=_decode_preferences(s),
+        revision=getattr(s, "revision", 1) or 1,
+        language=s.language, currency=s.currency,
         date_format=s.date_format, start_of_week=s.start_of_week,
         timezone=s.timezone, auto_backup=s.auto_backup,
         biometric_login=s.biometric_login,
@@ -232,10 +268,41 @@ def update_app_settings(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """
+    Save the app settings.
+
+    The revision is what keeps two devices from fighting. Each device
+    remembers the revision it last saw. When it sends a change, it
+    says which revision that change was based on. If the stored
+    revision has moved on, the change is stale: the device was
+    offline while something changed on another one, and its answer is
+    out of date. The server then hands back what is stored, and the
+    client merges instead of overwriting.
+
+    A change that is based on the current revision is applied and the
+    revision moves on by one.
+    """
     s = _get_or_create_settings(db, current_user.id)
-    for key, value in payload.model_dump(exclude_unset=True).items():
-        if value is not None:
+    changes = payload.model_dump(exclude_unset=True)
+    base_revision = changes.pop("base_revision", None)
+
+    if base_revision is not None and base_revision < s.revision:
+        # The change is based on an older state. The stored settings
+        # are newer, so they win. The client is told what is stored so
+        # it can merge.
+        return _to_app_response(s)
+
+    preferences = changes.pop("preferences", None)
+    if preferences is not None:
+        merged = _decode_preferences(s)
+        merged.update(preferences)
+        s.preferences = json.dumps(merged)
+
+    for key, value in changes.items():
+        if value is not None and hasattr(s, key):
             setattr(s, key, value)
+
+    s.revision = (s.revision or 0) + 1
     db.commit()
     db.refresh(s)
     return _to_app_response(s)

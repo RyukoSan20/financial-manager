@@ -52,6 +52,10 @@ class MerchantCatalog(Base):
     normalized_name = Column(String(255), nullable=True, index=True)
     # minimarket, supermarket, apotek, restoran, ...
     merchant_type = Column(String(50), nullable=True)
+    # The icon the user picked for this shop. The system fills in a
+    # sensible one when the shop is first learned, and the user can
+    # change it to any of the icons in the catalogue.
+    icon = Column(String(16), nullable=True)
     address = Column(Text, nullable=True)
 
     # How many times this shop has been seen.
@@ -97,6 +101,17 @@ class UserProduct(Base):
     # The cleaned name the system prefers to show.
     canonical_name = Column(String(255), nullable=True)
     category = Column(String(100), nullable=True)
+    # The icon the user picked for this product.
+    icon = Column(String(16), nullable=True)
+
+    # The shop this product was bought at. Without it the catalogue
+    # cannot say "these three things came from Indomaret".
+    merchant_catalog_id = Column(
+        Integer,
+        ForeignKey("merchant_catalog.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Reference prices, learned from the receipts.
     typical_price = Column(Numeric(20, 2), nullable=True)
@@ -114,6 +129,7 @@ class UserProduct(Base):
 
     user = relationship("User", backref="user_products")
     catalog = relationship("ProductCatalog")
+    merchant = relationship("MerchantCatalog", backref="products")
 
     __table_args__ = (
         Index("ix_user_products_user_name", "user_id", "normalized_name"),

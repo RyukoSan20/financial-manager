@@ -36,6 +36,8 @@ import {
 import ProfileSettings from './pages/Settings/ProfileSettings';
 import NotificationSettings from './pages/Settings/NotificationSettings';
 import AppSettings from './pages/Settings/AppSettings';
+import Appearance from './pages/Settings/Appearance';
+import { CatalogPage } from './pages/CatalogPage';
 import HelpSupport from './pages/Settings/HelpSupport';
 import ProfileSummary from './pages/ProfileSummary';
 import { AuthCallback } from './pages/AuthCallback';
@@ -84,11 +86,13 @@ const RedirectIfAuth = ({ children }) => {
 function App() {
   return (
     <I18nProvider>
-      <ThemeProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <ThemeProvider>
           <NotificationProvider>
             <NotificationToast />
             <BrowserRouter>
+          {/* The financial background, behind everything. */}
+          <div className="app-background" aria-hidden="true" />
           <Routes>
             {/* Auth routes - redirect if already logged in */}
             <Route 
@@ -142,6 +146,8 @@ function App() {
               <Route path="profile/summary" element={<ProfileSummary />} />
               <Route path="settings/notifications" element={<NotificationSettings />} />
               <Route path="settings/app" element={<AppSettings />} />
+              <Route path="settings/appearance" element={<Appearance />} />
+              <Route path="catalog" element={<CatalogPage />} />
               <Route path="help" element={<HelpSupport />} />
               <Route path="more" element={<MorePage />} />
             </Route>
@@ -165,8 +171,8 @@ function App() {
           <ScanNotification />
         </BrowserRouter>
         </NotificationProvider>
+        </ThemeProvider>
       </AuthProvider>
-      </ThemeProvider>
     </I18nProvider>
   );
 }

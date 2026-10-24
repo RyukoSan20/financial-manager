@@ -30,7 +30,7 @@ import {
   Heart,
   ShoppingCart,
   Kanban,
-  Mail
+  Mail, Package,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -414,6 +414,7 @@ const BottomNav = ({ pendingScanResult }) => {
 const MorePage = () => {
   const menuItems = [
     { icon: ShoppingBag, label: 'Toko / Merchant', href: '/merchant', color: 'bg-indigo-100 text-indigo-600', desc: 'POS & Kasir Cepat' },
+    { icon: Package, label: 'Katalog', href: '/catalog', color: 'bg-teal-100 text-teal-600', desc: 'Toko & produk yang dipelajari' },
     { icon: PieChart, label: 'Category Expenses', href: '/category-expenses', color: 'bg-teal-100 text-teal-600', desc: 'View spending by category' },
     { icon: Target, label: 'Goals', href: '/goals', color: 'bg-purple-100 text-purple-600', desc: 'Track your savings goals' },
     { icon: CreditCard, label: 'Debts', href: '/debts', color: 'bg-orange-100 text-orange-600', desc: 'Manage loans & credits' },

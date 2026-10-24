@@ -435,13 +435,18 @@ class CatalogLearningService:
             return {"id": match["id"], "name": match["name"], "created": False}
 
         from app.models.merchant_catalog import MerchantCatalog
+        from app.services.icon_catalog import suggest_icon
 
         inferred_type = merchant_type or self.infer_merchant_type(cleaned)
+        # The icon the system picks first. The user can change it later
+        # to any of the icons in the catalogue.
+        picked = suggest_icon(cleaned, limit=1, category=inferred_type)
         merchant = MerchantCatalog(
             user_id=self.user_id,
             name=cleaned,
             normalized_name=normalize_token(cleaned),
             merchant_type=inferred_type or "lainnya",
+            icon=picked[0]["value"] if picked else None,
             address=address,
             scan_count=1,
             is_active=True,
@@ -475,6 +480,7 @@ class CatalogLearningService:
         name: str,
         category: Optional[str] = None,
         typical_price: Optional[float] = None,
+        merchant_catalog_id: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Create the product if it is new, or return the existing one.
@@ -529,12 +535,17 @@ class CatalogLearningService:
         except Exception as exc:  # noqa: BLE001
             logger.debug(f"Global product catalogue not updated: {exc}")
 
+        from app.services.icon_catalog import suggest_icon
+
+        picked = suggest_icon(cleaned, limit=1, category=resolved_category)
         product = UserProduct(
             user_id=self.user_id,
             name=cleaned,
             normalized_name=normalize_token(cleaned),
             canonical_name=cleaned,
             category=resolved_category,
+            icon=picked[0]["value"] if picked else None,
+            merchant_catalog_id=merchant_catalog_id,
             typical_price=typical_price,
             min_price=typical_price,
             max_price=typical_price,
@@ -574,10 +585,12 @@ class CatalogLearningService:
             "new_product_count": 0,
         }
 
+        merchant_id = None
         if merchant_name:
             learned = self.ensure_merchant(merchant_name, merchant_type)
             if learned:
                 summary["merchant"] = learned
+                merchant_id = learned.get("id")
 
         for item in items or []:
             if item.get("is_discount"):
@@ -589,6 +602,7 @@ class CatalogLearningService:
                 name,
                 category=item.get("category"),
                 typical_price=item.get("price_per_unit"),
+                merchant_catalog_id=merchant_id,
             )
             if not learned:
                 continue

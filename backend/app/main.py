@@ -12,7 +12,7 @@ from app.api.routes import (
     dashboard, calculators,
     transfers, recurring, goals, debts, analytics,
     auth, data, parser, ai_advisor, feed, shopping,
-    category_hints, search,
+    category_hints, search, catalog,
     shopping,
     kanban_board,
     # scan_jobs disabled (OCR)
@@ -241,6 +241,7 @@ app.include_router(budgets.router, prefix="/api/budgets", tags=["Budgets"])
 app.include_router(recurring.router, prefix="/api/recurring", tags=["Recurring"])
 app.include_router(goals.router, prefix="/api/goals", tags=["Goals"])
 app.include_router(breakdown.router, prefix="/api/breakdown", tags=["Breakdown"])
+app.include_router(catalog.router, prefix="/api/catalog", tags=["Catalog"])
 app.include_router(debts.router, prefix="/api/debts", tags=["Debts"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])

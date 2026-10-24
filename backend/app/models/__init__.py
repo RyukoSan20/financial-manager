@@ -18,6 +18,7 @@ from app.models.shopping_item import ShoppingItem, WishlistItem
 from app.models.merchant_catalog import MerchantCatalog, UserProduct
 from app.models.learning_note import LearningNote
 from app.models.breakdown_item import BreakdownItem
+from app.models.catalog_icon import CatalogIcon
 
 __all__ = [
     "Account",
@@ -49,4 +50,5 @@ __all__ = [
     "UserProduct",
     "LearningNote",
     "BreakdownItem",
+    "CatalogIcon",
 ]
