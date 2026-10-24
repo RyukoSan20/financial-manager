@@ -266,40 +266,11 @@ input:focus, select:focus, textarea:focus {
   padding: 1rem;
 }
 
-.summary-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.summary-card {
-  background: var(--card-bg, #fff);
-  border-radius: 12px;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.summary-card .card-icon {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.summary-card .card-label {
-  font-size: 0.8rem;
-  color: var(--text-muted, #666);
-  margin-bottom: 0.25rem;
-}
-
-.summary-card .card-value {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-primary, #333);
-}
+/* The rules that used to be here, `.summary-cards` and `.summary-card`,
+   are gone. Nothing used them, and `background` is a shorthand, so the
+   rule wiped out the `background-image` of any card that also carried a
+   gradient class. A style that is not used but still matches is a trap
+   for whoever uses the name next. */
 
 /* Topic Selection */
 .topic-selection {
@@ -1123,4 +1094,64 @@ body {
 [data-font='serif'] .font-numeric {
   font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   The summary cards at the top of the dashboard
+   ---------------------------------------------------------------------------
+   An amount must never be cut off. "Rp 14.610..." tells the reader
+   nothing, so the size of the text follows how much there is to show.
+
+   The text is sized by a container query rather than by the window.
+   The card is what the text has to fit in, and the card is narrower
+   on a wide screen with a sidebar open than on a narrow screen without
+   one - so the window width is the wrong thing to measure.
+
+   The longest amount that has to fit is a round number of millions:
+   Rp 1.234.567.890. At the narrowest card that still shows in full.
+--------------------------------------------------------------------------- */
+
+/* The card is the measuring context.
+
+   The name is deliberately not `summary-card`: the stylesheet already
+   has a rule of that name from an older theme, and it sets `background`,
+   which is a shorthand. The shorthand wipes out `background-image`, so
+   the gradient on the card would silently disappear. */
+.summary-amount-measure {
+  container-type: inline-size;
+  container-name: summary;
+}
+
+/* The size of the amount.
+
+   It is not a set of breakpoints. The size is worked out from the
+   width of the card, so there is no width at which the amount can be
+   cut off.
+
+   The divisor is how many em the longest realistic amount takes -
+   "Rp 12.345.678.901" - measured against the width that is left once
+   the padding, the icon and the gap are taken out.
+
+   The card is measured, not the window, because the card is what the
+   amount has to fit in. A card is narrower on a wide screen with the
+   sidebar open than on a narrow screen without one, and a window
+   breakpoint cannot tell the difference. */
+.text-summary-value {
+  font-size: clamp(0.875rem, calc((100cqw - 96px) / 7.4), 1.5rem);
+}
+
+/* A narrow card cannot hold both the icon and the amount. The icon is
+   decoration and the amount is the information, so the icon is the one
+   that goes. It is still in the accessibility tree, and it is still
+   there on the wider cards.
+
+   With the icon gone there is more room, so the amount gets it. */
+@container summary (max-width: 185px) {
+  .summary-icon {
+    display: none;
+  }
+
+  .text-summary-value {
+    font-size: clamp(0.875rem, calc((100cqw - 36px) / 7.4), 1.375rem);
+  }
 }

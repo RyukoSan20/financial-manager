@@ -855,7 +855,16 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       {/* ================================================================ */}
       {/* SUMMARY CARDS - DIPULIHKAN */}
       {/* ================================================================ */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* The number of columns follows the width that is actually
+          available, not the width of the window.
+
+          A window breakpoint gets this wrong: on a 900px window with
+          the sidebar open there is only about 830px of content, so
+          four columns leave each card narrower than the amount of text
+          on it. `auto-fit` fits as many cards as there is room for, each
+          at least 240px wide, so the cards stay readable and the
+          fourth one wraps to the next row when there is no room. */}
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         {[
           {
             label: 'Total Saldo',
@@ -905,32 +914,49 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         ].map((card, i) => {
           const Icon = card.icon;
           return (
-            <Card key={i} className={`p-4 bg-gradient-to-br ${card.gradient} border ${borderColor}`}>
-              <div className="flex items-start justify-between gap-3">
+            // The wrapper is what the container query measures. The
+            // card cannot be the container itself: a card that is a
+            // container cannot paint its own background image, so the
+            // gradient would disappear.
+            <div key={i} className="summary-amount-measure">
+            <Card
+              className={`summary-amount p-4 bg-gradient-to-br ${card.gradient} border ${borderColor}`}
+            >
+              <div className="flex items-start justify-between gap-2 sm:gap-3">
                 <div className="min-w-0 flex-1">
                   {/* The label is small and quiet so the amount is the
                       first thing read. */}
                   <p
-                    className={`text-xs font-semibold uppercase tracking-wider leading-none ${card.labelClass}`}
+                    className={`text-xs font-semibold uppercase tracking-wider leading-none truncate ${card.labelClass}`}
                   >
                     {card.label}
                   </p>
-                  {/* The amount uses the numeric font and tabular figures,
-                      so the rupiah column lines up and the digits do not
-                      jump around when the value changes. */}
+                  {/* The amount is never cut off.
+
+                      An amount that shows "Rp 14.610..." is worse than
+                      no amount at all, so the size of the text follows
+                      how much there is to show. The container query
+                      below measures the card itself, not the window,
+                      because the card is what the text has to fit in -
+                      and a card is narrower on a wide screen with a
+                      sidebar than on a narrow one without.
+
+                      The amount still uses tabular figures, so the digits
+                      do not move when the value changes. */}
                   <p
-                    className={`mt-2 font-numeric font-bold leading-none truncate text-[19px] sm:text-[22px] lg:text-2xl ${card.valueClass}`}
+                    className={`mt-2 font-numeric font-bold leading-none text-summary-value ${card.valueClass}`}
                   >
                     {formatCurrency(card.value || 0)}
                   </p>
                 </div>
                 <div
-                  className={`w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full flex items-center justify-center shrink-0 ${card.iconBg}`}
+                  className={`summary-icon w-8 h-8 sm:w-9 sm:h-9 lg:w-11 lg:h-11 rounded-full flex items-center justify-center shrink-0 ${card.iconBg}`}
                 >
-                  <Icon className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 ${card.iconClass}`} />
+                  <Icon className={`w-4 h-4 sm:w-4 sm:h-4 lg:w-5 lg:h-5 ${card.iconClass}`} />
                 </div>
               </div>
             </Card>
+            </div>
           );
         })}
       </div>
