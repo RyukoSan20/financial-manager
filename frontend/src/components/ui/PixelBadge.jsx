@@ -3,6 +3,9 @@
  * 8-bit style status badges and tags
  */
 
+import { useTranslation } from '../../i18n';
+import { batch3 } from '../../i18n/keys_batch3';
+
 export const PixelBadge = ({
   children,
   variant = 'default', // default, success, warning, danger, info, purple, income, expense
@@ -55,20 +58,25 @@ export const PixelBadge = ({
  * Category Badge - Transaction categories
  */
 export const CategoryBadge = ({ category, size = 'md', className = '' }) => {
+  const { language } = useTranslation();
+  const labels = batch3[language]?.categories || {};
+
+  // The colour and the shape of the badge do not change with the
+  // language. Only the name on it does.
   const categoryConfig = {
-    food_beverages: { label: 'Makanan', variant: 'warning', color: '#F59E0B' },
-    transport: { label: 'Transport', variant: 'info', color: '#3B82F6' },
-    shopping: { label: 'Belanja', variant: 'purple', color: '#8B5CF6' },
-    bills_utilities: { label: 'Tagihan', variant: 'danger', color: '#EF4444' },
-    entertainment: { label: 'Hiburan', variant: 'purple', color: '#EC4899' },
-    health: { label: 'Kesehatan', variant: 'success', color: '#10B981' },
-    education: { label: 'Pendidikan', variant: 'info', color: '#06B6D4' },
-    beauty: { label: 'Kecantikan', variant: 'purple', color: '#F472B6' },
-    salary: { label: 'Gaji', variant: 'success', color: '#10B981' },
-    freelance: { label: 'Freelance', variant: 'success', color: '#22C55E' },
-    investment: { label: 'Investasi', variant: 'success', color: '#14B8A6' },
-    gift: { label: 'Hadiah', variant: 'success', color: '#34D399' },
-    other: { label: 'Lainnya', variant: 'default', color: '#6B7280' },
+    food_beverages: { variant: 'warning', color: '#F59E0B' },
+    transport: { variant: 'info', color: '#3B82F6' },
+    shopping: { variant: 'purple', color: '#8B5CF6' },
+    bills_utilities: { variant: 'danger', color: '#EF4444' },
+    entertainment: { variant: 'purple', color: '#EC4899' },
+    health: { variant: 'success', color: '#10B981' },
+    education: { variant: 'info', color: '#06B6D4' },
+    beauty: { variant: 'purple', color: '#F472B6' },
+    salary: { variant: 'success', color: '#10B981' },
+    freelance: { variant: 'success', color: '#22C55E' },
+    investment: { variant: 'success', color: '#14B8A6' },
+    gift: { variant: 'success', color: '#34D399' },
+    other: { variant: 'default', color: '#6B7280' },
   };
 
   const config = categoryConfig[category] || categoryConfig.other;
@@ -79,7 +87,7 @@ export const CategoryBadge = ({ category, size = 'md', className = '' }) => {
       size={size}
       className={className}
     >
-      {config.label}
+      {labels[category] || labels.other}
     </PixelBadge>
   );
 };
@@ -88,19 +96,22 @@ export const CategoryBadge = ({ category, size = 'md', className = '' }) => {
  * Account Type Badge
  */
 export const AccountTypeBadge = ({ type, size = 'sm', className = '' }) => {
+  const { language } = useTranslation();
+  const labels = batch3[language]?.account_types || {};
+
   const typeConfig = {
-    bank: { label: 'Bank', variant: 'info' },
-    ewallet: { label: 'E-Wallet', variant: 'warning' },
-    cash: { label: 'Tunai', variant: 'default' },
-    credit_card: { label: 'Kartu Kredit', variant: 'danger' },
-    savings: { label: 'Tabungan', variant: 'success' },
+    bank: { variant: 'info' },
+    ewallet: { variant: 'warning' },
+    cash: { variant: 'default' },
+    credit_card: { variant: 'danger' },
+    savings: { variant: 'success' },
   };
 
   const config = typeConfig[type] || typeConfig.cash;
 
   return (
     <PixelBadge variant={config.variant} size={size} className={className}>
-      {config.label}
+      {labels[category] || labels.other}
     </PixelBadge>
   );
 };
@@ -146,23 +157,25 @@ export const StatusDot = ({
  * Transaction Type Badge (Income/Expense)
  */
 export const TransactionTypeBadge = ({ type, size = 'md', className = '' }) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.pixel_badge;
   if (type === 'income') {
     return (
       <PixelBadge variant="income" size={size} className={className}>
-        ↑ Masuk
+        ↑ {K.income}
       </PixelBadge>
     );
   }
   if (type === 'expense') {
     return (
       <PixelBadge variant="expense" size={size} className={className}>
-        ↓ Keluar
+        ↓ {K.expense}
       </PixelBadge>
     );
   }
   return (
     <PixelBadge variant="default" size={size} className={className}>
-      Transfer
+      {K.transfer}
     </PixelBadge>
   );
 };

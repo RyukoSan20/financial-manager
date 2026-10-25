@@ -1,6 +1,8 @@
 import { Bell, X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { useState, useEffect } from 'react';
+import { useTranslation } from '../../i18n';
+import { batch3 } from '../../i18n/keys_batch3';
 // Helper is already imported from NotificationHelper
 // This file exports NotificationBell component
 
@@ -54,6 +56,8 @@ export const NotificationToast = () => {
 
 // Notification Bell in Navigation
 export const NotificationBell = () => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.notifications;
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -123,21 +127,21 @@ export const NotificationBell = () => {
           />
           <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border z-50">
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-semibold">Notifications</h3>
+              <h3 className="font-semibold">{K.title}</h3>
               <div className="flex gap-2">
                 {notifications.length > 0 && (
                   <button 
                     onClick={markAllRead}
                     className="text-xs text-primary-600 hover:text-primary-700"
                   >
-                    Mark all read
+                    {K.mark_all_read}
                   </button>
                 )}
                 <button 
                   onClick={clearAll}
                   className="text-xs text-gray-500 hover:text-gray-700"
                 >
-                  Clear
+                  {K.clear}
                 </button>
               </div>
             </div>
@@ -145,7 +149,7 @@ export const NotificationBell = () => {
               {notifications.length === 0 ? (
                 <div className="p-8 text-center text-gray-500">
                   <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No notifications yet</p>
+                  <p className="text-sm">{K.empty}</p>
                 </div>
               ) : (
                 notifications.map(notif => (

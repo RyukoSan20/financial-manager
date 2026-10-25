@@ -12,9 +12,11 @@ from decimal import Decimal
 from datetime import date as date_type
 
 from app.core.database import get_db
+from app.services.currency_rules import assert_record_currency
 from app.core.security import get_current_user_optional, get_current_user
 from app.models.debt import Debt, DebtPayment
 from app.models.user import User
+from app.models.account import Account
 from app.schemas.debt import (
     DebtCreate, DebtUpdate, DebtResponse, DebtWithProgress,
     DebtPaymentCreate, DebtPaymentResponse, DebtAmortizationEntry, DebtAmortizationSchedule
@@ -253,6 +255,14 @@ def create_debt(
     # items steers the breakdown, it is not a column.
     debt_items = debt_data.pop("items", None)
 
+
+    # A record lives in the currency of the account it belongs to. A
+    # record that names a different currency is refused, so a goal in
+    # dollars can never be counted against a rupiah account.
+    if debt_data.get("account_id"):
+        _account = db.query(Account).filter(Account.id == debt_data["account_id"]).first()
+        if _account and _account.user_id == current_user.id:
+            debt_data["currency"] = assert_record_currency(debt_data.get("currency"), _account)
     db_debt = Debt(**debt_data)
     db.add(db_debt)
     try:

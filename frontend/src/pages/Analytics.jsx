@@ -387,8 +387,10 @@ export const Analytics = () => {
                   <Badge variant={getScoreLabel(healthScore).color} className="mt-2">
                     {getScoreLabel(healthScore).label}
                   </Badge>
-                  {health.message && (
-                    <p className="text-primary-100 text-xs mt-2 max-w-md">{health.message}</p>
+                  {(health.message_key || health.message) && (
+                    <p className="text-primary-100 text-xs mt-2 max-w-md">
+                      {health.message_key ? t(health.message_key) : health.message}
+                    </p>
                   )}
                 </div>
                 <div className="w-28 h-28 hidden sm:block">
@@ -411,12 +413,16 @@ export const Analytics = () => {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {Object.entries(healthBreakdown).map(([key, value]) => (
                   <div key={key} className="p-3 rounded-lg bg-gray-50">
-                    <p className="text-xs text-gray-500">{value.label || key.replace(/_/g, ' ')}</p>
+                    <p className="text-xs text-gray-500">
+                      {value.label_key ? t(value.label_key) : (value.label || key.replace(/_/g, ' '))}
+                    </p>
                     <p className={`text-lg font-bold mt-0.5 ${getScoreColor(value.score)}`}>
                       {value.score}<span className="text-xs text-gray-400">/{value.max || 25}</span>
                     </p>
                     <p className="text-xs text-gray-400 mt-1 leading-snug">
-                      {value.description || value.message}
+                      {value.description_key
+                        ? t(value.description_key, '', value.description_values || {})
+                        : (value.description || value.message)}
                     </p>
                   </div>
                 ))}
@@ -572,7 +578,7 @@ export const Analytics = () => {
                       </p>
                     </div>
                     <span className="text-sm font-semibold text-danger-600 shrink-0">
-                      {formatCurrency(tx.amount)}
+                      {formatCurrency(tx.amount, tx.currency)}
                     </span>
                   </li>
                 ))}
@@ -626,7 +632,7 @@ export const Analytics = () => {
                   <li key={r.id} className="flex items-center justify-between gap-3 text-sm">
                     <span className="truncate">{r.description || t('analytics.no_description')}</span>
                     <span className="shrink-0 text-gray-500">
-                      {formatCurrency(r.amount)} <span className="text-xs">/ {r.frequency}</span>
+                      {formatCurrency(r.amount, r.currency)} <span className="text-xs">/ {r.frequency}</span>
                     </span>
                   </li>
                 ))}

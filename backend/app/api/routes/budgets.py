@@ -10,10 +10,12 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from app.core.database import get_db
+from app.services.currency_rules import assert_record_currency
 from app.core.security import get_current_user_optional, get_current_user
 from app.models.budget import Budget
 from app.models.transaction import Transaction
 from app.models.user import User
+from app.models.account import Account
 from app.schemas.budget import BudgetCreate, BudgetUpdate, BudgetResponse
 from app.services.calculation_service import calculation_service
 
@@ -190,6 +192,14 @@ def create_budget(
     # items steers the breakdown, it is not a column.
     budget_items = budget_data.pop("items", None)
 
+
+    # A record lives in the currency of the account it belongs to. A
+    # record that names a different currency is refused, so a goal in
+    # dollars can never be counted against a rupiah account.
+    if budget_data.get("account_id"):
+        _account = db.query(Account).filter(Account.id == budget_data["account_id"]).first()
+        if _account and _account.user_id == current_user.id:
+            budget_data["currency"] = assert_record_currency(budget_data.get("currency"), _account)
     db_budget = Budget(**budget_data)
     db.add(db_budget)
     try:

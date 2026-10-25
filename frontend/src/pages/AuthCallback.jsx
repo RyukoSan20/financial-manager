@@ -3,8 +3,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase } from '../lib/supabase';
 import { apiUrl } from '../config/url';
+import { useTranslation } from '../i18n';
+import { batch3 } from '../i18n/keys_batch3';
 
 export const AuthCallback = () => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.auth_callback;
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -96,12 +100,12 @@ export const AuthCallback = () => {
         {error ? (
           <>
             <div className="text-red-500 text-lg mb-4">Error: {error}</div>
-            <p className="text-gray-500">Redirecting to login...</p>
+            <p className="text-gray-500">{K.redirecting}</p>
           </>
         ) : (
           <>
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Completing sign in...</p>
+            <p className="text-gray-600">{K.signing_in}</p>
           </>
         )}
       </div>

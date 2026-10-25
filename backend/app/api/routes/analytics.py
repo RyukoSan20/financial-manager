@@ -942,52 +942,64 @@ def get_financial_health(
     # Determine rating
     if overall_score >= 80:
         rating = "excellent"
-        message = "Your financial health is excellent!"
     elif overall_score >= 60:
         rating = "good"
-        message = "Your financial health is good, but there's room for improvement."
     elif overall_score >= 40:
         rating = "fair"
-        message = "Your financial health needs attention."
     else:
         rating = "poor"
-        message = "Your financial health needs significant improvement."
     
+    # The words are held in the locale files, not here. The backend
+    # names each one so the frontend can read it in the language the
+    # reader picked.
     return {
         "overall_score": overall_score,
         # The same score under the name the frontend has always read. Without
         # this the health card rendered as an empty block.
         "total_score": overall_score,
         "rating": rating,
-        "message": message,
+        "message_key": "analytics.health_message_" + rating,
         "breakdown": {
             "savings_rate": {
                 "score": scores["savings_rate"],
                 "max": 25,
-                "label": "Savings Rate",
-                "description": "aim for 20%+ savings rate" if scores["savings_rate"] < 25 else "Great savings rate!",
-                "message": "aim for 20%+ savings rate" if scores["savings_rate"] < 25 else "Great savings rate!",
+                "label_key": "analytics.health_savings_rate",
+                "description_key": (
+                    "analytics.health_savings_aim"
+                    if scores["savings_rate"] < 25
+                    else "analytics.health_savings_great"
+                ),
             },
             "emergency_fund": {
                 "score": scores["emergency_fund"],
                 "max": 25,
-                "label": "Emergency Fund",
-                "description": f"Target: 6x monthly expenses ({_round(emergency_target):,})" if total_balance < emergency_target else "Fully funded!",
-                "message": f"Target: 6x monthly expenses ({_round(emergency_target):,})" if total_balance < emergency_target else "Fully funded!",
+                "label_key": "analytics.health_emergency_fund",
+                "description_key": "analytics.health_emergency_funded",
+                "description_values": {"target": _round(emergency_target)},
             },
             "debt_level": {
                 "score": scores["debt_level"],
                 "max": 25,
-                "label": "Debt Level",
-                "description": f"DTI: {float(total_debt/income)*100:.0f}% (target: <36%)" if income > 0 else "No income data",
-                "message": f"DTI: {float(total_debt/income)*100:.0f}% (target: <36%)" if income > 0 else "No income data",
+                "label_key": "analytics.health_debt_level",
+                "description_key": (
+                    "analytics.health_debt_dti"
+                    if income > 0
+                    else "analytics.health_no_income"
+                ),
+                "description_values": {
+                    "dti": float(total_debt / income) * 100 if income > 0 else 0,
+                },
             },
             "goals_progress": {
                 "score": scores["goals_progress"],
                 "max": 25,
-                "label": "Goals Progress",
-                "description": f"{len(goals)} active goals" if goals else "No active goals",
-                "message": f"{len(goals)} active goals" if goals else "No active goals",
+                "label_key": "analytics.health_goals_progress",
+                "description_key": (
+                    "analytics.health_goals_active"
+                    if goals
+                    else "analytics.health_no_goals"
+                ),
+                "description_values": {"count": len(goals)},
             }
         },
         "metrics": {

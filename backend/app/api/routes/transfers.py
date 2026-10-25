@@ -1,9 +1,10 @@
 """Transfer API routes with multi-tenancy."""
 
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
-from datetime import date
+from typing import List, Optional
+from datetime import date, datetime
 from decimal import Decimal
 
 from app.core.database import get_db
@@ -13,86 +14,194 @@ from app.models.transaction import Transaction
 from app.models.account import Account
 from app.models.user import User
 from app.schemas.transfer import TransferCreate, TransferUpdate, TransferResponse, TransferWithTransactions
+from app.services.currency import converter
 
 router = APIRouter()
 
 
+async def _resolve_fx(
+    amount: Decimal,
+    from_currency: str,
+    to_currency: str,
+) -> dict:
+    """Work out what the destination account receives.
+
+    Two accounts that hold different currencies cannot simply pass the
+    same number to each other. The amount is converted with a live
+    rate, and the rate that was used is written down so the transfer
+    can be explained later.
+    """
+    src = (from_currency or "IDR").upper()
+    dst = (to_currency or "IDR").upper()
+    if src == dst:
+        return {
+            "to_amount": float(amount),
+            "rate": 1.0,
+            "rate_source": "same",
+            "converted": False,
+        }
+    result = await converter.convert(float(amount), src, dst)
+    if not result.get("converted"):
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Cannot convert {src} to {dst} right now. "
+                "The exchange rate is unavailable, so the transfer was not made."
+            ),
+        )
+    return {
+        "to_amount": float(result["result"]),
+        "rate": float(result["rate"]),
+        "rate_source": str(result.get("source", "unknown")),
+        "converted": True,
+    }
+
+
+@router.post("/preview", response_model=dict)
+async def preview_transfer(
+    transfer: TransferCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Work out a transfer before it is made.
+
+    The browser calls this to show what the destination account will
+    receive, and to find out whether the two accounts even hold the
+    same currency.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    from_account = db.query(Account).filter(Account.id == transfer.from_account_id).first()
+    if not from_account or from_account.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Source account not found")
+
+    to_account = db.query(Account).filter(Account.id == transfer.to_account_id).first()
+    if not to_account or to_account.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Destination account not found")
+
+    source_currency = (from_account.currency or "IDR").upper()
+    target_currency = (to_account.currency or "IDR").upper()
+
+    fx = await _resolve_fx(transfer.amount, source_currency, target_currency)
+
+    return {
+        "amount": float(transfer.amount),
+        "from_currency": source_currency,
+        "to_currency": target_currency,
+        "to_amount": fx["to_amount"],
+        "rate": fx["rate"],
+        "rate_source": fx["rate_source"],
+        "converted": fx["converted"],
+        "same_currency": source_currency == target_currency,
+        "from_account_name": from_account.name,
+        "to_account_name": to_account.name,
+    }
+
+
 @router.post("/", response_model=TransferWithTransactions, status_code=201)
-def create_transfer(
+async def create_transfer(
     transfer: TransferCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a transfer between two accounts."""
+    """Create a transfer between two accounts.
+
+    The two accounts do not have to hold the same currency. When they
+    do not, the amount is converted with a live rate and each side of
+    the transfer is written in the currency of the account it touches.
+    """
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
-    
+
     # Validate accounts
     from_account = db.query(Account).filter(Account.id == transfer.from_account_id).first()
     if not from_account:
         raise HTTPException(status_code=404, detail="Source account not found")
-    
+
     to_account = db.query(Account).filter(Account.id == transfer.to_account_id).first()
     if not to_account:
         raise HTTPException(status_code=404, detail="Destination account not found")
-    
+
     # Account ownership check
     if from_account.user_id != current_user.id or to_account.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Cannot transfer from another user's account")
-    
+
     if transfer.from_account_id == transfer.to_account_id:
         raise HTTPException(status_code=400, detail="Cannot transfer to the same account")
-    
-    # Create transfer record
-    db_transfer = Transfer(
-        amount=transfer.amount,
-        currency=transfer.currency,
-        date=transfer.date,
-        description=transfer.description,
-        notes=transfer.notes,
-        from_account_id=transfer.from_account_id,
-        to_account_id=transfer.to_account_id,
-        user_id=current_user.id,
-    )
-    db.add(db_transfer)
-    db.flush()
-    
-    # Create transfer_out transaction
-    tx_out = Transaction(
-        type="transfer_out",
-        amount=transfer.amount,
-        currency=transfer.currency,
-        date=transfer.date,
-        description=transfer.description or f"Transfer to {to_account.name}",
-        account_id=transfer.from_account_id,
-        transfer_id=db_transfer.id,
-        user_id=current_user.id,
-    )
-    db.add(tx_out)
-    
-    # Update source account balance
-    from_account.balance -= transfer.amount
-    
-    # Create transfer_in transaction
-    tx_in = Transaction(
-        type="transfer_in",
-        amount=transfer.amount,
-        currency=transfer.currency,
-        date=transfer.date,
-        description=transfer.description or f"Transfer from {from_account.name}",
-        account_id=transfer.to_account_id,
-        transfer_id=db_transfer.id,
-        transfer_to_transaction_id=tx_out.id,
-        user_id=current_user.id,
-    )
-    db.add(tx_in)
-    
-    # Update destination account balance
-    to_account.balance += transfer.amount
-    
-    db.commit()
-    db.refresh(db_transfer)
-    
+
+    # The currency of each side comes from the account itself, so a
+    # transfer can never move money that is not there. The amount in
+    # the request is always read in the source account's currency.
+    source_currency = (from_account.currency or "IDR").upper()
+    target_currency = (to_account.currency or "IDR").upper()
+
+    fx = await _resolve_fx(transfer.amount, source_currency, target_currency)
+    to_amount = Decimal(str(round(fx["to_amount"], 2)))
+
+    try:
+        # Create transfer record
+        db_transfer = Transfer(
+            amount=transfer.amount,
+            currency=source_currency,
+            date=transfer.date,
+            description=transfer.description,
+            notes=transfer.notes,
+            from_account_id=transfer.from_account_id,
+            to_account_id=transfer.to_account_id,
+            user_id=current_user.id,
+            # Only filled in when the two accounts hold different
+            # currencies. Otherwise they stay empty.
+            to_amount=to_amount if fx["converted"] else None,
+            to_currency=target_currency if fx["converted"] else None,
+            fx_rate=Decimal(str(fx["rate"])) if fx["converted"] else None,
+            fx_rate_source=fx["rate_source"] if fx["converted"] else None,
+            fx_rate_as_of=datetime.utcnow() if fx["converted"] else None,
+        )
+        db.add(db_transfer)
+        db.flush()
+
+        # The money leaving the source account, in the source currency.
+        tx_out = Transaction(
+            type="transfer_out",
+            amount=transfer.amount,
+            currency=source_currency,
+            date=transfer.date,
+            description=transfer.description or f"Transfer to {to_account.name}",
+            account_id=transfer.from_account_id,
+            transfer_id=db_transfer.id,
+            user_id=current_user.id,
+        )
+        db.add(tx_out)
+
+        # Update source account balance
+        from_account.balance -= transfer.amount
+
+        # The money arriving at the destination account, in the
+        # destination currency. It is only the same number when both
+        # accounts hold the same currency.
+        tx_in = Transaction(
+            type="transfer_in",
+            amount=to_amount,
+            currency=target_currency,
+            date=transfer.date,
+            description=transfer.description or f"Transfer from {from_account.name}",
+            account_id=transfer.to_account_id,
+            transfer_id=db_transfer.id,
+            transfer_to_transaction_id=tx_out.id,
+            user_id=current_user.id,
+        )
+        db.add(tx_in)
+
+        # Update destination account balance
+        to_account.balance += to_amount
+
+        db.commit()
+        db.refresh(db_transfer)
+    except Exception:
+        db.rollback()
+        raise
+
     return TransferWithTransactions(
         id=db_transfer.id,
         amount=db_transfer.amount,
@@ -225,14 +334,20 @@ def delete_transfer(
         Transaction.type == "transfer_in"
     ).first()
     
-    # Reverse balance changes
+    # Reverse balance changes. Each side goes back in the currency it
+    # went out in, which is not the same number when the two accounts
+    # hold different currencies.
     from_account = db.query(Account).filter(Account.id == transfer.from_account_id).first()
     to_account = db.query(Account).filter(Account.id == transfer.to_account_id).first()
-    
+
+    # The amount that arrived is taken from the transfer_in transaction,
+    # because that is the number that was actually added.
+    arrived = tx_in.amount if tx_in and tx_in.amount is not None else transfer.amount
+
     if from_account:
         from_account.balance += transfer.amount
     if to_account:
-        to_account.balance -= transfer.amount
+        to_account.balance -= arrived
     
     if tx_out:
         tx_out.is_deleted = True

@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { STAGES, STAGE_LABEL, idr, safeUrl } from '../constants';
+import { useTranslation } from '../../../i18n';
+import { batch3 } from '../../../i18n/keys_batch3';
 
 const META = Object.fromEntries(STAGES.map((s) => [s.key, s]));
 
@@ -14,6 +16,8 @@ function Stars({ value }) {
 }
 
 function Card({ item, onDragStart, onDragEnd, onPick }) {
+  const { language } = useTranslation();
+  const K = batch3[language]?.kanban;
   const link = safeUrl(item.product_url);
   return (
     <article className="sb-card" draggable onDragStart={(e) => onDragStart(e, item)} onDragEnd={onDragEnd}>
@@ -37,7 +41,7 @@ function Card({ item, onDragStart, onDragEnd, onPick }) {
         <Stars value={item.rating} />
         {link && (
           <a href={link} target="_blank" rel="noopener noreferrer">
-            Buka produk
+            {K.open_product}
           </a>
         )}
       </div>
@@ -50,7 +54,7 @@ function Card({ item, onDragStart, onDragEnd, onPick }) {
           onChange={(e) => onPick(item, e.target.value)}
         >
           <option value="" disabled>
-            Pindahkan ke…
+            {K.move_to}
           </option>
           {item.allowed_next.map((s) => (
             <option key={s} value={s}>
@@ -71,6 +75,8 @@ function Card({ item, onDragStart, onDragEnd, onPick }) {
  * Aturan boleh/tidaknya pindah datang dari server (item.allowed_next).
  */
 export default function KanbanBoard({ columns, onMove, onPurchase, onDetails }) {
+  const { language } = useTranslation();
+  const K = batch3[language]?.kanban;
   const [dragId, setDragId] = useState(null);
   const [overKey, setOverKey] = useState(null);
 
@@ -129,7 +135,7 @@ export default function KanbanBoard({ columns, onMove, onPurchase, onDetails }) 
 
             <div className="sb-col-body">
               {col.items.length === 0 ? (
-                <p className="sb-empty">Belum ada item.</p>
+                <p className="sb-empty">{K.empty}</p>
               ) : (
                 col.items.map((item) => (
                   <Card

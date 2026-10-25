@@ -285,11 +285,13 @@ export const api = {
 
   // Dashboard
   dashboard: {
-    summary: (startDate, endDate) => {
+    summary: (startDate, endDate, currency) => {
       let url = '/dashboard/summary';
       const params = [];
       if (startDate) params.push(`start_date=${startDate}`);
       if (endDate) params.push(`end_date=${endDate}`);
+      // The totals are shown in the currency that is on display.
+      if (currency) params.push(`currency=${encodeURIComponent(currency)}`);
       if (params.length) url += `?${params.join('&')}`;
       return api.request(url);
     },

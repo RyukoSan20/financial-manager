@@ -1,8 +1,12 @@
 // Gmail OAuth Callback Page
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from '../i18n';
+import { batch3 } from '../i18n/keys_batch3';
 
 const GmailCallback = () => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.gmail_callback;
   const [status, setStatus] = useState("Memproses...");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -40,21 +44,21 @@ const GmailCallback = () => {
         {error ? (
           <>
             <div className="text-6xl mb-4">❌</div>
-            <h1 className="text-2xl font-bold text-red-600 mb-2">Gagal Terhubung</h1>
+            <h1 className="text-2xl font-bold text-red-600 mb-2">{K.failed}</h1>
             <p className="text-gray-600 mb-6">{error}</p>
             <button
               onClick={() => navigate("/gmail")}
               className="w-full py-3 bg-primary-600 text-white rounded-xl font-medium"
             >
-              Coba Lagi
+              {K.retry}
             </button>
           </>
         ) : (
           <>
             <div className="animate-spin w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">Menyambungkan Gmail...</h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">{K.connecting}</h1>
             <p className="text-gray-600 mb-4">{status}</p>
-            <p className="text-sm text-gray-500">Mengalihkan ke halaman Gmail...</p>
+            <p className="text-sm text-gray-500">{K.redirecting}</p>
           </>
         )}
       </div>

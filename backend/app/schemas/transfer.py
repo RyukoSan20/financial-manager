@@ -39,6 +39,16 @@ class TransferResponse(TransferBase):
 
 
 class TransferWithTransactions(TransferResponse):
-    """Transfer with its paired transactions."""
+    """A transfer, with the two transactions it produced.
+
+    The foreign exchange fields are only filled in when the two
+    accounts hold different currencies.
+    """
+
     from_transaction_id: Optional[int] = None
     to_transaction_id: Optional[int] = None
+    to_amount: Optional[Decimal] = None
+    to_currency: Optional[str] = None
+    fx_rate: Optional[Decimal] = None
+    fx_rate_source: Optional[str] = None
+    fx_rate_as_of: Optional[datetime] = None

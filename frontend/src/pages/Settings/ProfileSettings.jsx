@@ -2,9 +2,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { useTranslation } from '../../i18n';
+import { batch2 } from '../../i18n/keys_batch2';
 
 const ProfileSettings = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const K = batch2[language]?.profile || batch2.id.profile;
   const [profile, setProfile] = useState({
     username: '',
     email: '',
@@ -29,11 +31,11 @@ const ProfileSettings = () => {
       });
     } catch (e) {
       console.error('Load profile error:', e);
-      setError(e.message || 'Gagal memuat profil');
+      setError(e.message || K.load_error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [K]);
 
   useEffect(() => {
     loadProfile();
@@ -58,7 +60,7 @@ const ProfileSettings = () => {
       await loadProfile();
       setTimeout(() => setMessage(''), 3000);
     } catch (e) {
-      setError(e.message || 'Gagal menyimpan profil');
+      setError(e.message || K.save_error);
     } finally {
       setSaving(false);
     }
@@ -97,7 +99,7 @@ const ProfileSettings = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Username
+                  {K.label_username}
                 </label>
                 <input
                   type="text"
@@ -117,7 +119,7 @@ const ProfileSettings = () => {
                   value={profile.email}
                   disabled
                   className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600"
-                  placeholder="email@example.com"
+                  placeholder={K.ph_email}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   {t('profile_settings.email_locked')}
@@ -126,7 +128,7 @@ const ProfileSettings = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nama Lengkap
+                  {K.label_full_name}
                 </label>
                 <input
                   type="text"
@@ -139,20 +141,20 @@ const ProfileSettings = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  No. Telepon
+                  {K.label_phone}
                 </label>
                 <input
                   type="tel"
                   value={profile.phone}
                   onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                   className="w-full p-3 border rounded-lg"
-                  placeholder="08xxxxxxxxxx"
+                  placeholder={K.ph_phone}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  URL Foto Profil
+                  {K.label_avatar}
                 </label>
                 <input
                   type="url"
@@ -170,7 +172,7 @@ const ProfileSettings = () => {
             disabled={saving}
             className="w-full py-3 bg-primary-600 text-white rounded-xl font-bold disabled:opacity-50"
           >
-            {saving ? 'Menyimpan...' : '💾 Simpan Perubahan'}
+            {saving ? K.saving : '💾 ' + K.save_changes}
           </button>
         </form>
       </div>

@@ -2,9 +2,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { useTranslation } from '../../i18n';
+import { batch2 } from '../../i18n/keys_batch2';
 
 const HelpSupport = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const K = batch2[language]?.help || batch2.id.help;
   const [expanded, setExpanded] = useState(null);
   const [contactForm, setContactForm] = useState({
     subject: '',
@@ -93,7 +95,7 @@ const HelpSupport = () => {
       await loadRequests();
       setTimeout(() => setMessage(''), 5000);
     } catch (err) {
-      setError(err.message || 'Gagal mengirim pesan. Coba lagi.');
+      setError(err.message || K.send_error);
     } finally {
       setSubmitting(false);
     }
@@ -217,7 +219,11 @@ const HelpSupport = () => {
                           : 'bg-green-100 text-green-800'
                       }`}
                     >
-                      {req.status}
+                      {req.status === 'open'
+                        ? K.status_open
+                        : req.status === 'closed'
+                        ? K.status_closed
+                        : req.status}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">{req.message}</p>

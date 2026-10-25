@@ -17,6 +17,7 @@ from app.api.routes import (
     kanban_board,
     # scan_jobs disabled (OCR)
     exchange, market, finnhub, ninjas, market_intel, zap_ink,
+    currency,
     realtime_market, logs, merchant, webhooks, location,
     unified_market, user_settings, voice, profile, learning, scans,
     breakdown,
@@ -258,6 +259,7 @@ app.include_router(feed.router, prefix="/api/feed", tags=["Feed & Review"])
 app.include_router(shopping.router, prefix="/api/shopping", tags=["Shopping Board"])
 app.include_router(kanban_board.router, prefix="/api/kanban", tags=["Kanban Board"])
 app.include_router(exchange.router, prefix="/api/exchange")
+app.include_router(currency.router, prefix="/api/currency", tags=["Currency"])
 # unified_market MUST be registered before market so its real-time handlers win
 # on the shared paths (/summary, /crypto, /commodities). FastAPI matches the
 # first registered route, and market.py only serves the legacy Yahoo-based

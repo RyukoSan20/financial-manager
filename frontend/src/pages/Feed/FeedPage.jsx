@@ -436,7 +436,7 @@ const FeedPage = () => {
                       {transaction.items.slice(0, 5).map((item, idx) => (
                         <div key={idx} className="flex justify-between text-gray-600 dark:text-gray-400 py-0.5">
                           <span>{item.quantity || 1}x {item.name}</span>
-                          <span className="font-medium">{formatCurrency(item.total_price)}</span>
+                          <span className="font-medium">{formatCurrency(item.total_price, item.currency)}</span>
                         </div>
                       ))}
                       {transaction.items.length > 5 && (

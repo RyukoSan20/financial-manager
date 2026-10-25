@@ -9,23 +9,25 @@ import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Settings2,
   LineChart, PieChart as PieChartIcon
 } from 'lucide-react';
-import { formatCurrency, formatNumber, formatPercent } from '../utils/format';
+import { formatCurrency, formatNumber, formatPercent, formatNative } from '../utils/format';
+import { useCurrency } from '../utils/currency';
 import api, { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../config/url';
 import { useTranslation } from '../i18n';
 import AIAssistant from '../components/common/AIAssistant';
 import { useTheme } from '../contexts/ThemeContext';
+import { batch3 } from '../i18n/keys_batch3';
 
 // ============================================================================
 // ACHIEVEMENTS CONFIGURATION - DIPULIHKAN DAN DIENHANCE
 // ============================================================================
 const ACHIEVEMENTS = [
-  { id: 'budget_master', name: 'Budget Guardian', icon: Shield, color: '#22c55e', descriptionKey: 'dashboard.achievement_budget_master_description', requirementKey: 'dashboard.achievement_budget_master_requirement' },
-  { id: 'savings_streak', name: 'Master Hemat', icon: Trophy, color: '#f59e0b', descriptionKey: 'dashboard.achievement_savings_streak_description', requirementKey: 'dashboard.achievement_savings_streak_requirement' },
-  { id: 'first_goal', name: 'Goal Getter', icon: Target, color: '#3b82f6', descriptionKey: 'dashboard.achievement_first_goal_description', requirementKey: 'dashboard.achievement_first_goal_requirement' },
-  { id: 'surplus', name: 'Surplus Star', icon: Zap, color: '#8b5cf6', descriptionKey: 'dashboard.achievement_surplus_description', requirementKey: 'dashboard.achievement_surplus_requirement' },
-  { id: 'early_bird', name: 'Early Bird', icon: Clock, color: '#06b6d4', descriptionKey: 'dashboard.achievement_early_bird_description', requirementKey: 'dashboard.achievement_early_bird_requirement' },
-  { id: 'diverse_saver', name: 'Diversified Saver', icon: PieChartIcon, color: '#ec4899', descriptionKey: 'dashboard.achievement_diverse_saver_description', requirementKey: 'dashboard.achievement_diverse_saver_requirement' },
+  { id: 'budget_master', nameKey: 'dashboard.achievement_budget_master_name', icon: Shield, color: '#22c55e', descriptionKey: 'dashboard.achievement_budget_master_description', requirementKey: 'dashboard.achievement_budget_master_requirement' },
+  { id: 'savings_streak', nameKey: 'dashboard.achievement_savings_streak_name', icon: Trophy, color: '#f59e0b', descriptionKey: 'dashboard.achievement_savings_streak_description', requirementKey: 'dashboard.achievement_savings_streak_requirement' },
+  { id: 'first_goal', nameKey: 'dashboard.achievement_first_goal_name', icon: Target, color: '#3b82f6', descriptionKey: 'dashboard.achievement_first_goal_description', requirementKey: 'dashboard.achievement_first_goal_requirement' },
+  { id: 'surplus', nameKey: 'dashboard.achievement_surplus_name', icon: Zap, color: '#8b5cf6', descriptionKey: 'dashboard.achievement_surplus_description', requirementKey: 'dashboard.achievement_surplus_requirement' },
+  { id: 'early_bird', nameKey: 'dashboard.achievement_early_bird_name', icon: Clock, color: '#06b6d4', descriptionKey: 'dashboard.achievement_early_bird_description', requirementKey: 'dashboard.achievement_early_bird_requirement' },
+  { id: 'diverse_saver', nameKey: 'dashboard.achievement_diverse_saver_name', icon: PieChartIcon, color: '#ec4899', descriptionKey: 'dashboard.achievement_diverse_saver_description', requirementKey: 'dashboard.achievement_diverse_saver_requirement' },
 ];
 
 const ACHIEVEMENT_ICONS = {
@@ -106,6 +108,8 @@ const CATEGORY_COLORS = {
 
 // Dark Mode Toggle Slider
 const DarkModeToggle = ({ isDark, onToggle }) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.dashboard;
   const { t } = useTranslation();
   return (
   <button
@@ -125,7 +129,10 @@ const DarkModeToggle = ({ isDark, onToggle }) => {
 };
 
 // Mode Toggle (Basic/Advanced)
-const ModeToggle = ({ mode, onToggle, isDark }) => (
+const ModeToggle = ({ mode, onToggle, isDark }) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.dashboard;
+  return (
   <div className={`flex rounded-lg p-1 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
     <button
       onClick={() => onToggle('basic')}
@@ -134,7 +141,7 @@ const ModeToggle = ({ mode, onToggle, isDark }) => (
       }`}
     >
       <TrendingUp className="w-3.5 h-3.5" />
-      Basic
+      {K.basic}
     </button>
     <button
       onClick={() => onToggle('advanced')}
@@ -143,10 +150,11 @@ const ModeToggle = ({ mode, onToggle, isDark }) => (
       }`}
     >
       <LineChart className="w-3.5 h-3.5" />
-      Advanced
+      {K.advanced}
     </button>
   </div>
-);
+  );
+};
 
 // Market Card with real-time data
 const MarketCard = ({ name, value, change, positive, isDark }) => (
@@ -276,6 +284,7 @@ const SpendingProgressBar = ({ current, total, status, isDark }) => {
 // MAIN DASHBOARD COMPONENT
 // ============================================================================
 export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
+  const { currency: displayCurrency } = useCurrency();
   const { t, language, currency, currencyConfig } = useTranslation();
   
   // ==========================================================================
@@ -427,7 +436,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         debtsData,
         recurringData,
       ] = await Promise.allSettled([
-        api.dashboard.summary(),
+        api.dashboard.summary(null, null, displayCurrency),
         api.transactions.list({ limit: 10 }),
         api.budgets?.list ? api.budgets.list() : Promise.resolve([]),
         api.accounts?.list ? api.accounts.list() : Promise.resolve([]),
@@ -468,6 +477,15 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     fetchData();
     fetchMarketData();
   }, []);
+
+  // The totals the server sends are in the currency that is on display.
+  // When that choice changes the summary has to be asked for again.
+  useEffect(() => {
+    if (!displayCurrency) return;
+    api.dashboard.summary(null, null, displayCurrency)
+      .then((value) => setSummary(value))
+      .catch(() => {});
+  }, [displayCurrency]);
 
   // Fetch cash flow when timeframe changes
   useEffect(() => {
@@ -790,7 +808,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         <div>
           <h1 className={`text-2xl font-bold ${textPrimary}`}>{t('dashboard.title', 'Dashboard')}</h1>
           <p className={`text-sm mt-1 ${textSecondary}`}>
-            {new Date().toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { month: 'long', year: 'numeric' })}
+            {new Date().toLocaleDateString(
+              language === 'ja' ? 'ja-JP' : language === 'en' ? 'en-US' : 'id-ID',
+              { month: 'long', year: 'numeric' }
+            )}
           </p>
         </div>
         
@@ -882,7 +903,13 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         {[
           {
             label: t('dashboard.total_balance'),
+            // The server already converted this into the currency it
+            // names, so it is shown as it is.
             value: summary?.total_balance,
+            // The server sends this already in the currency it names,
+            // so it is shown as it is rather than converted again.
+            currency: summary?.total_balance_currency || summary?.currency,
+            alreadyConverted: true,
             icon: Wallet,
             gradient: 'from-green-50 to-green-100 dark:from-green-900/50 dark:to-green-800/40',
             // The classes are written out in full. A class built at
@@ -960,7 +987,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   <p
                     className={`mt-2 font-numeric font-bold leading-none text-summary-value ${card.valueClass}`}
                   >
-                    {formatCurrency(card.value || 0)}
+                    {card.alreadyConverted
+                      ? formatNative(card.value || 0, card.currency)
+                      : formatCurrency(card.value || 0)}
                   </p>
                 </div>
                 <div
@@ -1105,7 +1134,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           >
             <option value="all">{t('dashboard.all_accounts')}</option>
             {accounts.map(acc => (
-              <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance || 0)})</option>
+              <option key={acc.id} value={acc.id}>{acc.name} ({formatNative(acc.balance || 0, acc.currency)})</option>
             ))}
           </select>
           
@@ -1267,9 +1296,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   <div key={debt.id || idx} className={`flex items-center justify-between p-2 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}>
                     <div>
                       <p className={`font-medium text-sm ${textPrimary}`}>{debt.name || debt.description}</p>
-                      <p className={`text-xs ${textSecondary}`}>{debt.due_date ? `Jatuh tempo: ${new Date(debt.due_date).toLocaleDateString()}` : ''}</p>
+                      <p className={`text-xs ${textSecondary}`}>{debt.due_date ? `${t('dashboard.due_date')}: ${new Date(debt.due_date).toLocaleDateString(
+                          language === 'ja' ? 'ja-JP' : language === 'en' ? 'en-US' : 'id-ID'
+                        )}` : ''}</p>
                     </div>
-                    <p className="font-bold text-orange-500">{formatCurrency(debt.amount || 0)}</p>
+                    <p className="font-bold text-orange-500">{formatCurrency(debt.amount || 0, debt.currency)}</p>
                   </div>
                 ))}
               </div>
@@ -1294,7 +1325,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                       <p className={`text-xs ${textSecondary}`}>{rec.frequency || 'Monthly'}</p>
                     </div>
                     <p className={`font-bold ${rec.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
-                      {rec.type === 'income' ? '+' : '-'}{formatCurrency(rec.amount || 0)}
+                      {rec.type === 'income' ? '+' : '-'}{formatCurrency(rec.amount || 0, rec.currency)}
                     </p>
                   </div>
                 ))}
@@ -1334,9 +1365,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   </div>
                   <div className="text-right">
                     <p className={`font-semibold ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount || 0)}
+                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount || 0, tx.currency)}
                     </p>
-                    <p className={`text-xs ${textSecondary}`}>{tx.date ? new Date(tx.date).toLocaleDateString() : ''}</p>
+                    <p className={`text-xs ${textSecondary}`}>{tx.date ? new Date(tx.date).toLocaleDateString(
+                          language === 'ja' ? 'ja-JP' : language === 'en' ? 'en-US' : 'id-ID'
+                        ) : ''}</p>
                   </div>
                 </div>
               ))}
@@ -1432,8 +1465,8 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                     </div>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className={textSecondary}>{formatCurrency(goal.current_amount || 0)}</span>
-                    <span className={`font-medium ${textPrimary}`}>{formatCurrency(goal.target_amount)}</span>
+                    <span className={textSecondary}>{formatCurrency(goal.current_amount || 0, goal.currency)}</span>
+                    <span className={`font-medium ${textPrimary}`}>{formatCurrency(goal.target_amount, goal.currency)}</span>
                   </div>
                   <p className={`text-xs text-center mt-1 ${textSecondary}`}>{progress.toFixed(0)}% tercapai</p>
                 </div>

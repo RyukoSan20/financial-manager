@@ -3,6 +3,7 @@ import { chartPalette } from '../utils/appearance';
 import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner, StatCard } from '../components/ui';
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp, TrendingDown, Clock, CheckCircle } from 'lucide-react';
 import { formatCurrency, formatPercent, formatDate } from '../utils/format';
+import { useCurrency, sumInDisplay } from '../utils/currency';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
@@ -17,6 +18,7 @@ const COLORS = chartPalette;
 
 export const Goals = () => {
   const { t } = useTranslation();
+  const { currency: displayCurrency } = useCurrency();
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -87,8 +89,8 @@ export const Goals = () => {
     );
   }
 
-  const totalTarget = goals.reduce((sum, g) => sum + parseFloat(g.target_amount), 0);
-  const totalCurrent = goals.reduce((sum, g) => sum + parseFloat(g.current_amount), 0);
+  const totalTarget = sumInDisplay(goals, 'target_amount');
+  const totalCurrent = sumInDisplay(goals, 'current_amount');
   const activeGoals = goals.filter(g => g.status === 'active').length;
 
   return (
@@ -110,15 +112,15 @@ export const Goals = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="!p-4">
             <p className="text-sm text-gray-500">{t('goals.total_target')}</p>
-            <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalTarget)}</p>
+            <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalTarget, displayCurrency)}</p>
           </Card>
           <Card className="!p-4">
             <p className="text-sm text-gray-500">{t('goals.total_saved')}</p>
-            <p className="text-xl font-bold text-success-600 mt-1">{formatCurrency(totalCurrent)}</p>
+            <p className="text-xl font-bold text-success-600 mt-1">{formatCurrency(totalCurrent, displayCurrency)}</p>
           </Card>
           <Card className="!p-4">
             <p className="text-sm text-gray-500">{t('goals.remaining')}</p>
-            <p className="text-xl font-bold text-warning-600 mt-1">{formatCurrency(totalTarget - totalCurrent)}</p>
+            <p className="text-xl font-bold text-warning-600 mt-1">{formatCurrency(totalTarget - totalCurrent, displayCurrency)}</p>
           </Card>
           <Card className="!p-4">
             <p className="text-sm text-gray-500">{t('goals.overall_progress')}</p>
@@ -216,10 +218,10 @@ export const Goals = () => {
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">
-                        {t('goals.saved_amount').replace('%s', formatCurrency(goal.current_amount))}
+                        {t('goals.saved_amount').replace('%s', formatCurrency(goal.current_amount, goal.currency))}
                       </span>
                       <span className="text-gray-500">
-                        {t('goals.target_label').replace('%s', formatCurrency(goal.target_amount))}
+                        {t('goals.target_label').replace('%s', formatCurrency(goal.target_amount, goal.currency))}
                       </span>
                     </div>
                   </div>
@@ -228,13 +230,13 @@ export const Goals = () => {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">{t('goals.remaining')}</span>
-                        <span className="font-medium text-gray-900">{formatCurrency(remaining)}</span>
+                        <span className="font-medium text-gray-900">{formatCurrency(remaining, goal.currency)}</span>
                       </div>
                       {goal.required_monthly_saving && (
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">{t('goals.monthly_target')}</span>
                           <span className="font-medium text-primary-600">
-                            {formatCurrency(goal.required_monthly_saving)}
+                            {formatCurrency(goal.required_monthly_saving, goal.currency)}
                           </span>
                         </div>
                       )}
@@ -454,7 +456,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
                       {line.name}
                     </span>
                     <span className="shrink-0 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {formatCurrency(line.amount)}
+                      {formatCurrency(line.amount, line.currency)}
                     </span>
                   </li>
                 ))}

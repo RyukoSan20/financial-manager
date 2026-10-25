@@ -5,9 +5,11 @@ import { formatCurrency, formatDate } from '../utils/format';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
+import { useCurrency, sumInDisplay } from '../utils/currency';
 
 export const Debts = () => {
   const { t } = useTranslation();
+  const { currency: displayCurrency } = useCurrency();
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -120,10 +122,16 @@ export const Debts = () => {
   }
 
   // Calculate totals
-  const totalDebt = debts.reduce((sum, d) => sum + parseFloat(d.current_balance || d.remaining_principal || d.principal || 0), 0);
-  const totalPrincipal = debts.reduce((sum, d) => sum + parseFloat(d.principal || 0), 0);
-  const totalPaid = debts.reduce((sum, d) => sum + parseFloat(d.total_paid || 0), 0);
-  const totalMonthly = debts.reduce((sum, d) => sum + parseFloat(d.monthly_payment || 0), 0);
+  const totalDebt = sumInDisplay(
+    debts.map((d) => ({
+      ...d,
+      _balance: d.current_balance || d.remaining_principal || d.principal || 0,
+    })),
+    '_balance'
+  );
+  const totalPrincipal = sumInDisplay(debts, 'principal');
+  const totalPaid = sumInDisplay(debts, 'total_paid');
+  const totalMonthly = sumInDisplay(debts, 'monthly_payment');
   const activeDebts = debts.filter(d => d.status !== 'paid_off').length;
   const paidOffDebts = debts.filter(d => d.status === 'paid_off').length;
 
@@ -156,7 +164,7 @@ export const Debts = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">{t('debts.total_remaining')}</p>
-              <p className="text-xl font-bold text-red-600">{formatCurrency(totalDebt)}</p>
+              <p className="text-xl font-bold text-red-600">{formatCurrency(totalDebt, displayCurrency)}</p>
             </div>
           </div>
         </Card>
@@ -168,7 +176,7 @@ export const Debts = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">{t('debts.total_principal')}</p>
-              <p className="text-xl font-bold text-primary-600">{formatCurrency(totalPrincipal)}</p>
+              <p className="text-xl font-bold text-primary-600">{formatCurrency(totalPrincipal, displayCurrency)}</p>
             </div>
           </div>
         </Card>
@@ -180,7 +188,7 @@ export const Debts = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">{t('debts.total_paid')}</p>
-              <p className="text-xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
+              <p className="text-xl font-bold text-green-600">{formatCurrency(totalPaid, displayCurrency)}</p>
             </div>
           </div>
         </Card>
@@ -192,7 +200,7 @@ export const Debts = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">{t('debts.monthly_payment')}</p>
-              <p className="text-xl font-bold text-yellow-600">{formatCurrency(totalMonthly)}</p>
+              <p className="text-xl font-bold text-yellow-600">{formatCurrency(totalMonthly, displayCurrency)}</p>
             </div>
           </div>
         </Card>
@@ -230,19 +238,19 @@ export const Debts = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <p className="text-gray-500">{t('debts.principal')}</p>
-                      <p className="font-medium">{formatCurrency(debt.principal)}</p>
+                      <p className="font-medium">{formatCurrency(debt.principal, debt.currency)}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">{t('debts.remaining')}</p>
-                      <p className="font-medium text-red-600">{formatCurrency(debt.current_balance)}</p>
+                      <p className="font-medium text-red-600">{formatCurrency(debt.current_balance, debt.currency)}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">{t('debts.paid')}</p>
-                      <p className="font-medium text-green-600">{formatCurrency(debt.total_paid || 0)}</p>
+                      <p className="font-medium text-green-600">{formatCurrency(debt.total_paid || 0, debt.currency)}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">{t('debts.installment')}</p>
-                      <p className="font-medium">{formatCurrency(debt.monthly_payment)}{t('debts.per_month_suffix')}</p>
+                      <p className="font-medium">{formatCurrency(debt.monthly_payment, debt.currency)}{t('debts.per_month_suffix')}</p>
                     </div>
                   </div>
 
@@ -441,11 +449,11 @@ function PaymentModal({ debt, onClose, onSubmit }) {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-500">{t('debts.remaining_debt')}</p>
-              <p className="font-bold text-red-600">{formatCurrency(debt.current_balance)}</p>
+              <p className="font-bold text-red-600">{formatCurrency(debt.current_balance, debt.currency)}</p>
             </div>
             <div>
               <p className="text-gray-500">{t('debts.monthly_payment')}</p>
-              <p className="font-bold">{formatCurrency(debt.monthly_payment)}</p>
+              <p className="font-bold">{formatCurrency(debt.monthly_payment, debt.currency)}</p>
             </div>
           </div>
         </div>

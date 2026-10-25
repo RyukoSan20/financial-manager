@@ -5,10 +5,17 @@ import { api, API_BASE_URL as API_URL, getToken } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { parseQuickEntry, fetchDirection } from "../../features/transactions/nlp/parseQuickEntry.js";
 import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
+import { useTranslation } from "../../i18n";
+import { batch1, fill } from "../../i18n/keys_batch1";
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { language, getCurrencyConfig } = useTranslation();
+  const K = batch1[language]?.addTx || batch1.id.addTx;
+  // The currency is a choice of its own, so the symbol is read from the
+  // store rather than written into the page.
+  const currencySymbol = getCurrencyConfig().symbol;
   
   // Helper: Get date in WIB timezone (YYYY-MM-DD) - defined first
   const getWIBDate = (offsetDays = 0) => {
@@ -80,8 +87,8 @@ const AddTransactionPage = () => {
   
   // Date shortcuts
   const dateShortcuts = [
-    { label: "Hari ini", getValue: () => getWIBDate() },
-    { label: "Kemarin", getValue: () => getWIBDate(-1) },
+    { label: K.today, getValue: () => getWIBDate() },
+    { label: K.yesterday, getValue: () => getWIBDate(-1) },
   ];
 
   useEffect(() => {
@@ -145,7 +152,7 @@ const AddTransactionPage = () => {
       
     } catch (err) {
       console.error("Load error:", err);
-      setLoadError(err.message || "Gagal memuat data");
+      setLoadError(err.message || K.loadFailed);
     } finally {
       setLoading(false);
     }
@@ -299,15 +306,15 @@ const AddTransactionPage = () => {
   const handleSave = async (addAnother = false) => {
     const finalAmount = parseNumber(amount);
     if (!finalAmount || finalAmount <= 0) {
-      alert("Masukkan jumlah yang valid");
+      alert(K.invalidAmount);
       return;
     }
     if (!accountId) {
-      alert("Pilih akun");
+      alert(K.pickAccountAlert);
       return;
     }
     if (type !== "transfer" && !categoryId) {
-      alert("Pilih kategori");
+      alert(K.pickCategoryAlert);
       return;
     }
 
@@ -319,7 +326,7 @@ const AddTransactionPage = () => {
         await api.transactions.create({
           type: "expense",
           amount: finalAmount,
-          description: description || `Transfer ke ${selectedToAccount?.name || "akun lain"}`,
+          description: description || fill(K.transferToDesc, { name: selectedToAccount?.name || K.transferOtherAccount }),
           account_id: accountId,
           date,
           category_id: getTransferCategory(),
@@ -330,7 +337,7 @@ const AddTransactionPage = () => {
         await api.transactions.create({
           type: "income",
           amount: finalAmount,
-          description: description || `Transfer dari ${selectedAccount?.name || "akun lain"}`,
+          description: description || fill(K.transferFromDesc, { name: selectedAccount?.name || K.transferOtherAccount }),
           account_id: toAccountId,
           date,
           category_id: getTransferCategory(),
@@ -342,7 +349,7 @@ const AddTransactionPage = () => {
           await api.transactions.create({
             type: "expense",
             amount: parseNumber(transferFee),
-            description: "Biaya admin transfer",
+            description: K.transferFeeDesc,
             account_id: accountId,
             date,
             category_id: getFeeCategory(),
@@ -397,7 +404,7 @@ const AddTransactionPage = () => {
       }
     } catch (err) {
       console.error("Save error:", err);
-      alert("Gagal menyimpan transaksi");
+      alert(K.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -452,13 +459,13 @@ const AddTransactionPage = () => {
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-6 shadow-sm text-center max-w-sm">
           <div className="text-4xl mb-4">⚠️</div>
-          <h2 className="font-semibold text-lg mb-2">Gagal Memuat Data</h2>
+          <h2 className="font-semibold text-lg mb-2">{K.loadFailedTitle}</h2>
           <p className="text-gray-600 mb-4">{loadError}</p>
           <button
             onClick={loadData}
             className="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium"
           >
-            🔄 Coba Lagi
+            🔄 {K.retry}
           </button>
         </div>
       </div>
@@ -473,7 +480,7 @@ const AddTransactionPage = () => {
           <button onClick={() => navigate(-1)} className="p-2">
             ✕
           </button>
-          <h1 className="font-semibold">Tambah Transaksi</h1>
+          <h1 className="font-semibold">{K.addTransaction}</h1>
           <div className="w-10"></div>
         </div>
       </div>
@@ -492,7 +499,7 @@ const AddTransactionPage = () => {
                 type === t ? `${getTypeColor()} text-white` : "text-gray-600"
               }`}
             >
-              {t === "expense" ? "💸 Pengeluaran" : t === "income" ? "💰 Pemasukan" : "🔄 Transfer"}
+              {t === "expense" ? K.expenseTab : t === "income" ? K.incomeTab : K.transferTab}
             </button>
           ))}
         </div>
@@ -501,13 +508,13 @@ const AddTransactionPage = () => {
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-lg">⚡</span>
-            <span className="text-sm font-medium text-gray-600">Ketik cepat</span>
+            <span className="text-sm font-medium text-gray-600">{K.quickType}</span>
           </div>
           <input
             type="text"
             value={quickEntry}
             onChange={(e) => setQuickEntry(e.target.value)}
-            placeholder="Contoh: kopi 45rb gopay"
+            placeholder={K.quickPlaceholder}
             className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none text-base"
           />
           {nlpPreview && nlpPreview.suggestions.length > 0 && (
@@ -532,7 +539,7 @@ const AddTransactionPage = () => {
         {/* Recent Combos */}
         {recentCombos.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs text-gray-500 font-medium">RECENT</p>
+            <p className="text-xs text-gray-500 font-medium">{K.recent}</p>
             <div className="flex flex-wrap gap-2">
               {recentCombos.map((combo, idx) => {
                 const cat = categories.find(c => c.id === combo.category_id);
@@ -543,7 +550,7 @@ const AddTransactionPage = () => {
                     className="bg-white border rounded-full px-3 py-1.5 text-sm flex items-center gap-1 hover:bg-gray-50"
                   >
                     <span>{getCategoryIcon(cat?.name)}</span>
-                    <span>{cat?.name || "Lainnya"}</span>
+                    <span>{cat?.name || K.other}</span>
                     <span className="text-gray-400">·</span>
                     <span className="font-medium">{formatNumber(combo.amount)}</span>
                   </button>
@@ -556,7 +563,7 @@ const AddTransactionPage = () => {
         {/* Amount Input */}
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-2xl">Rp</span>
+            <span className="text-2xl">{currencySymbol}</span>
             <input
               ref={amountInputRef}
               type="text"
@@ -588,7 +595,7 @@ const AddTransactionPage = () => {
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Deskripsi (contoh: Kopi susu)"
+            placeholder={K.descPlaceholder}
             className="w-full outline-none text-base"
           />
         </div>
@@ -601,8 +608,8 @@ const AddTransactionPage = () => {
           <div className="flex items-center gap-3">
             <span className="text-2xl">{getCategoryIcon(selectedCategory?.name)}</span>
             <div className="text-left">
-              <p className="text-sm text-gray-500">Kategori</p>
-              <p className="font-medium">{selectedCategory?.name || "Pilih kategori"}</p>
+              <p className="text-sm text-gray-500">{K.category}</p>
+              <p className="font-medium">{selectedCategory?.name || K.pickCategory}</p>
             </div>
           </div>
           <span className="text-gray-400">›</span>
@@ -614,11 +621,11 @@ const AddTransactionPage = () => {
           className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
         >
           <div className="text-left">
-            <p className="text-sm text-gray-500">Akun</p>
-            <p className="font-medium">{selectedAccount?.name || "Pilih akun"}</p>
+            <p className="text-sm text-gray-500">{K.account}</p>
+            <p className="font-medium">{selectedAccount?.name || K.pickAccount}</p>
             {selectedAccount?.balance && (
               <p className="text-xs text-gray-400">
-                Saldo: Rp {parseInt(selectedAccount.balance).toLocaleString("id-ID")}
+                {fill(K.balance, { amount: `${currencySymbol} ${parseInt(selectedAccount.balance).toLocaleString("id-ID")}` })}
               </p>
             )}
           </div>
@@ -632,8 +639,8 @@ const AddTransactionPage = () => {
             className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
           >
             <div className="text-left">
-              <p className="text-sm text-gray-500">Tujuan Transfer</p>
-              <p className="font-medium">{selectedToAccount?.name || "Pilih akun tujuan"}</p>
+              <p className="text-sm text-gray-500">{K.transferTo}</p>
+              <p className="font-medium">{selectedToAccount?.name || K.pickTargetAccount}</p>
             </div>
             <span className="text-gray-400">›</span>
           </button>
@@ -645,9 +652,9 @@ const AddTransactionPage = () => {
           className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
         >
           <div className="text-left">
-            <p className="text-sm text-gray-500">Tanggal</p>
-            <p className="font-medium">{new Date(date).toLocaleDateString("id-ID", { 
-              weekday: "long", year: "numeric", month: "long", day: "numeric" 
+            <p className="text-sm text-gray-500">{K.date}</p>
+            <p className="font-medium">{new Date(date).toLocaleDateString(language === 'ja' ? 'ja-JP' : language === 'en' ? 'en-US' : 'id-ID', {
+              weekday: "long", year: "numeric", month: "long", day: "numeric"
             })}</p>
           </div>
           <span className="text-gray-400">›</span>
@@ -675,7 +682,7 @@ const AddTransactionPage = () => {
             onClick={() => setShowDateSheet(true)}
             className="px-4 py-2 rounded-full text-sm font-medium bg-white text-gray-600"
           >
-            📅 Pilih
+            📅 {K.pick}
           </button>
         </div>
 
@@ -685,9 +692,9 @@ const AddTransactionPage = () => {
           className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
         >
           <div className="text-left">
-            <p className="text-sm text-gray-500">Lokasi</p>
+            <p className="text-sm text-gray-500">{K.location}</p>
             <p className={`font-medium ${location ? "text-gray-800" : "text-gray-400"}`}>
-              {location || "Tambah lokasi"}
+              {location || K.addLocation}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -705,14 +712,14 @@ const AddTransactionPage = () => {
             disabled={saving}
             className="flex-1 py-4 rounded-xl border-2 border-primary-500 text-primary-500 font-semibold disabled:opacity-50"
           >
-            + Lagi
+            + {K.more}
           </button>
           <button
             onClick={() => handleSave(false)}
             disabled={saving}
             className={`flex-1 py-4 rounded-xl text-white font-semibold disabled:opacity-50 ${getTypeColor()}`}
           >
-            {saving ? "Menyimpan..." : "Simpan"}
+            {saving ? K.saving : K.save}
           </button>
         </div>
       </div>
@@ -724,7 +731,7 @@ const AddTransactionPage = () => {
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCategorySheet(false)}></div>
           <div className="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
             <div className="shrink-0 p-4 border-b">
-              <h2 className="font-semibold text-lg">Pilih Kategori</h2>
+              <h2 className="font-semibold text-lg">{K.pickCategoryTitle}</h2>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {categories
@@ -761,7 +768,7 @@ const AddTransactionPage = () => {
           <div className="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
             <div className="shrink-0 p-4 border-b">
               <h2 className="font-semibold text-lg">
-                {type === "transfer" && !toAccountId ? "Pilih Akun Asal" : "Pilih Akun"}
+                {type === "transfer" && !toAccountId ? K.pickSourceAccount : K.pickAccountTitle}
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -792,7 +799,7 @@ const AddTransactionPage = () => {
                     <div>
                       <p className="font-medium">{acc.name}</p>
                       <p className="text-sm text-gray-500">
-                        Saldo: Rp {parseInt(acc.balance || 0).toLocaleString("id-ID")}
+                        {fill(K.balance, { amount: `${currencySymbol} ${parseInt(acc.balance || 0).toLocaleString("id-ID")}` })}
                       </p>
                     </div>
                   </button>
@@ -810,7 +817,7 @@ const AddTransactionPage = () => {
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowDateSheet(false)}></div>
           <div className="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
             <div className="shrink-0 p-4 border-b">
-              <h2 className="font-semibold text-lg">Pilih Tanggal</h2>
+              <h2 className="font-semibold text-lg">{K.pickDateTitle}</h2>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
               <input
@@ -830,7 +837,7 @@ const AddTransactionPage = () => {
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowLocationSheet(false)}></div>
           <div className="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
             <div className="shrink-0 p-4 border-b flex justify-between items-center">
-              <h2 className="font-semibold text-lg">Lokasi</h2>
+              <h2 className="font-semibold text-lg">{K.location}</h2>
               <button onClick={() => setShowLocationSheet(false)} className="text-gray-500">✕</button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -856,23 +863,23 @@ const AddTransactionPage = () => {
                         }
                         setShowLocationSheet(false);
                       },
-                      (err) => alert("Tidak bisa mendapat lokasi: " + err.message)
+                      (err) => alert(fill(K.geolocationFailed, { message: err.message }))
                     );
                   } else {
-                    alert("Geolocation tidak tersedia di browser ini");
+                    alert(K.geolocationUnsupported);
                   }
                 }}
                 className="w-full py-4 bg-primary-600 text-white rounded-xl font-medium flex items-center justify-center gap-2"
               >
-                📍 Gunakan Lokasi Saat Ini
+                📍 {K.useCurrentLocation}
               </button>
-              
+
               {/* Manual Input */}
               <div>
-                <label className="block text-sm text-gray-600 mb-2">Atau ketik nama tempat</label>
+                <label className="block text-sm text-gray-600 mb-2">{K.orTypePlace}</label>
                 <input
                   type="text"
-                  placeholder="Contoh: Alfamart Harmoni"
+                  placeholder={K.placePlaceholder}
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   className="w-full p-4 border rounded-xl"
@@ -890,7 +897,7 @@ const AddTransactionPage = () => {
                   onClick={() => { setLocation(""); setLocationCoords(null); setShowLocationSheet(false); }}
                   className="w-full py-3 text-red-500 border border-red-200 rounded-xl"
                 >
-                  🗑️ Hapus Lokasi
+                  🗑️ {K.removeLocation}
                 </button>
               )}
             </div>

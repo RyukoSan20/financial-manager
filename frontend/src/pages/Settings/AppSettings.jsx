@@ -5,6 +5,7 @@ import { api } from '../../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { THEME_DARK, THEME_LIGHT, THEME_SYSTEM } from '../../utils/theme';
 import { useTranslation } from '../../i18n';
+import { batch2, fill } from '../../i18n/keys_batch2';
 
 const DEFAULTS = {
   theme: 'system',
@@ -18,7 +19,8 @@ const DEFAULTS = {
 };
 
 const AppSettings = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const K = batch2[language]?.app_settings || batch2.id.app_settings;
   const { theme: activeTheme, setTheme } = useTheme();
   const [settings, setSettings] = useState(DEFAULTS);
   const [loading, setLoading] = useState(true);
@@ -42,11 +44,11 @@ const AppSettings = () => {
       localStorage.setItem('app_settings', JSON.stringify(merged));
     } catch (e) {
       console.error('Load app settings error:', e);
-      setError(e.message || 'Gagal memuat pengaturan aplikasi');
+      setError(e.message || K.load_error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [K]);
 
   useEffect(() => {
     load();
@@ -85,7 +87,7 @@ const AppSettings = () => {
       setMessage(t('app_settings.saved'));
       setTimeout(() => setMessage(''), 3000);
     } catch (e) {
-      setError(e.message || 'Gagal menyimpan pengaturan aplikasi');
+      setError(e.message || K.save_error);
     } finally {
       setSaving(false);
     }
@@ -120,27 +122,34 @@ const AppSettings = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{t('app_settings.theme')}</label>
               <div className="flex gap-2">
-                {['light', 'dark', 'system'].map(t => (
+                {[
+                  { value: 'light', icon: '☀️', label: t('appearance.mode_light') },
+                  { value: 'dark', icon: '🌙', label: t('appearance.mode_dark') },
+                  { value: 'system', icon: '💻', label: t('appearance.mode_system') },
+                ].map((opt) => (
                   <button
-                    key={t}
-                    onClick={() => setSettings({ ...settings, theme: t })}
+                    key={opt.value}
+                    onClick={() => setSettings({ ...settings, theme: opt.value })}
                     className={`flex-1 py-2 px-4 rounded-lg border ${
-                      settings.theme === t
+                      settings.theme === opt.value
                         ? 'bg-primary-600 text-white border-primary-500'
                         : 'bg-white text-gray-700'
                     }`}
                   >
-                    {t === 'light' ? '☀️ Light' : t === 'dark' ? '🌙 Dark' : '💻 System'}
+                    {opt.icon} {opt.label}
                   </button>
                 ))}
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                Pilihan <strong>Light</strong> atau <strong>Dark</strong> menimpa setelan
-                sistem dan mode gelap paksa browser, sehingga kontras teks selalu
-                terjaga. <strong>System</strong> mengikuti tema perangkat.
+                {K.theme_hint}
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                Tema aktif: <strong>{activeTheme === THEME_DARK ? 'Dark' : 'Light'}</strong>
+                {fill(
+                  K.theme_active,
+                  activeTheme === THEME_DARK
+                    ? t('appearance.mode_dark')
+                    : t('appearance.mode_light'),
+                )}
               </p>
             </div>
 
@@ -151,8 +160,8 @@ const AppSettings = () => {
                 onChange={(e) => setSettings({ ...settings, language: e.target.value })}
                 className="w-full p-3 border rounded-lg"
               >
-                <option value="id">🇮🇩 Indonesia</option>
-                <option value="en">🇺🇸 English</option>
+                <option value="id">🇮🇩 {K.lang_id}</option>
+                <option value="en">🇺🇸 {K.lang_en}</option>
               </select>
             </div>
           </div>
@@ -169,9 +178,9 @@ const AppSettings = () => {
                 onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
                 className="w-full p-3 border rounded-lg"
               >
-                <option value="IDR">🇮🇩 Rupiah (IDR)</option>
-                <option value="USD">🇺🇸 Dollar (USD)</option>
-                <option value="EUR">🇪🇺 Euro (EUR)</option>
+                <option value="IDR">🇮🇩 {K.currency_idr}</option>
+                <option value="USD">🇺🇸 {K.currency_usd}</option>
+                <option value="EUR">🇪🇺 {K.currency_eur}</option>
               </select>
             </div>
 
@@ -182,9 +191,9 @@ const AppSettings = () => {
                 onChange={(e) => setSettings({ ...settings, date_format: e.target.value })}
                 className="w-full p-3 border rounded-lg"
               >
-                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                <option value="DD/MM/YYYY">{K.date_ddmyyyy}</option>
+                <option value="MM/DD/YYYY">{K.date_mdyyyy}</option>
+                <option value="YYYY-MM-DD">{K.date_iso}</option>
               </select>
             </div>
 
@@ -207,9 +216,9 @@ const AppSettings = () => {
                 onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
                 className="w-full p-3 border rounded-lg"
               >
-                <option value="Asia/Jakarta">WIB (Asia/Jakarta)</option>
-                <option value="Asia/Makassar">WITA (Asia/Makassar)</option>
-                <option value="Asia/Jayapura">WIT (Asia/Jayapura)</option>
+                <option value="Asia/Jakarta">{K.tz_wib}</option>
+                <option value="Asia/Makassar">{K.tz_wita}</option>
+                <option value="Asia/Jayapura">{K.tz_wit}</option>
               </select>
             </div>
           </div>
@@ -221,14 +230,14 @@ const AppSettings = () => {
           <div className="space-y-4">
             <ToggleItem
               title={t('app_settings.auto_backup')}
-              description="Backup data setiap hari"
+              description={K.auto_backup_desc}
               checked={settings.auto_backup}
               onChange={() => setSettings({ ...settings, auto_backup: !settings.auto_backup })}
             />
 
             <ToggleItem
               title={t('app_settings.biometric')}
-              description="Gunakan sidik jari/face ID"
+              description={K.biometric_desc}
               checked={settings.biometric_login}
               onChange={() =>
                 setSettings({ ...settings, biometric_login: !settings.biometric_login })

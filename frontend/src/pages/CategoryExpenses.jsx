@@ -8,6 +8,7 @@ import api from '../services/api';
 import { formatCurrency, formatDate } from '../utils/format';
 import { showNotification } from '../components/notifications/NotificationHelper';
 import { useTranslation } from '../i18n';
+import { batch3 } from '../i18n/keys_batch3';
 
 // Default categories
 const DEFAULT_CATEGORIES = [
@@ -27,6 +28,7 @@ const DEFAULT_CATEGORIES = [
 
 export const CategoryExpenses = () => {
   const { t, language } = useTranslation();
+  const K = batch3[language];
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -252,7 +254,7 @@ export const CategoryExpenses = () => {
       <Card className="!p-4">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">From:</span>
+            <span className="text-sm text-gray-500">{K.from}</span>
             <input
               type="date"
               value={dateRange.start}
@@ -261,7 +263,7 @@ export const CategoryExpenses = () => {
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">To:</span>
+            <span className="text-sm text-gray-500">{K.to}</span>
             <input
               type="date"
               value={dateRange.end}
@@ -380,7 +382,7 @@ export const CategoryExpenses = () => {
                             </div>
                             <div className="flex items-center gap-3">
                               <p className={`font-semibold ${getTypeColor(trans.type)}`}>
-                                {trans.type === 'income' ? '+' : '-'}{formatCurrency(trans.amount)}
+                                {trans.type === 'income' ? '+' : '-'}{formatCurrency(trans.amount, trans.currency)}
                               </p>
                               <div className="flex gap-1">
                                 <button
@@ -426,6 +428,8 @@ export const CategoryExpenses = () => {
 
 // Edit Transaction Modal Component
 const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.category_expenses;
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -519,7 +523,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
             value={form.merchant_name}
             onChange={(e) => setForm(f => ({ ...f, merchant_name: e.target.value }))}
             className="w-full px-4 py-2 border rounded-lg"
-            placeholder="e.g., CIMORY, Indomaret"
+            placeholder={K.merchant_placeholder}
           />
         </div>
 
@@ -532,7 +536,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
             value={form.location}
             onChange={(e) => setForm(f => ({ ...f, location: e.target.value }))}
             className="w-full px-4 py-2 border rounded-lg"
-            placeholder="e.g., Jakarta"
+            placeholder={K.location_placeholder}
           />
         </div>
 

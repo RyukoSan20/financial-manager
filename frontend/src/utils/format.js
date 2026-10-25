@@ -1,5 +1,17 @@
-// Format utilities with i18n support
-import { CURRENCY_CONFIG } from '../i18n';
+// Format utilities with i18n support.
+//
+// The money formatting is handled by utils/currency.js, which holds the
+// display currency and the live rates. The language only decides the
+// way dates and numbers are read and written.
+
+import {
+  currencyStore,
+  CURRENCIES,
+  currencyConfig,
+  formatCurrency as convertCurrency,
+  formatNative as convertNative,
+  formatNumber as convertNumber,
+} from './currency';
 
 // Get current language from localStorage or default
 const getCurrentLanguage = () => {
@@ -9,71 +21,34 @@ const getCurrentLanguage = () => {
   return 'id';
 };
 
-// Get currency from localStorage or derive from language
-const getCurrency = () => {
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('currency');
-    if (saved) return saved;
-    // Default based on language
-    const langToCurrency = { id: 'IDR', en: 'USD', ja: 'JPY' };
-    return langToCurrency[getCurrentLanguage()] || 'IDR';
-  }
-  return 'IDR';
-};
+// The currency the app is showing money in.
+//
+// It is a choice of its own. The language does not change it, and
+// changing it does not change the language.
+const getCurrency = () => currencyStore.currency;
 
-// Get config for a currency
-const getCurrencyConfig = (currency = null) => {
-  const curr = currency || getCurrency();
-  const lang = getCurrentLanguage();
-  
-  // Map currency to language config
-  const currencyToLang = {
-    'IDR': 'id',
-    'USD': 'en',
-    'JPY': 'ja',
-  };
-  
-  const configLang = currencyToLang[curr] || lang;
-  return CURRENCY_CONFIG[configLang] || CURRENCY_CONFIG.id;
-};
+// The way a currency is written: its symbol, how many decimals it has,
+// and how the digits are grouped.
+const getCurrencyConfig = (currency = null) => currencyConfig(currency || getCurrency());
 
-// Format currency with language-aware formatting
-export const formatCurrency = (amount, currency = null) => {
-  if (amount === null || amount === undefined) return '-';
-  
-  const config = getCurrencyConfig(currency);
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  
-  if (isNaN(num) || !isFinite(num)) return `${config.symbol} 0`;
-  
-  // Format number with locale-specific separators
-  const parts = num.toFixed(config.decimals).split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, config.thousandsSeparator);
-  const formatted = parts.join(config.decimalSeparator);
-  
-  return `${config.symbol} ${formatted}`;
-};
+// Show an amount in the display currency.
+//
+// The second argument is the currency the amount is already in. When it
+// is left out the amount is read in rupiah.
+export const formatCurrency = (amount, currency = null) =>
+  convertCurrency(amount, currency || 'IDR');
 
-// Format number with language-aware separators
-export const formatNumber = (num) => {
-  if (num === null || num === undefined) return '-';
-  
-  const config = getCurrencyConfig();
-  const n = typeof num === 'string' ? parseFloat(num) : num;
-  
-  if (isNaN(n) || !isFinite(n)) return '0';
-  
-  const parts = n.toFixed(config.decimals).split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, config.thousandsSeparator);
-  
-  return parts.join(config.decimalSeparator);
-};
+// Show an amount in the currency it is already in, with no conversion.
+export const formatNative = (amount, currency = null) =>
+  convertNative(amount, currency || 'IDR');
+
+// Format a number the way the display currency is written.
+export const formatNumber = (num) => convertNumber(num);
 
 // Format percentage
-export const formatPercent = (value, decimals = 1, language = null) => {
+export const formatPercent = (value, decimals = 1) => {
   if (value === null || value === undefined || isNaN(value) || !isFinite(value)) return '0%';
-  const lang = language || getCurrentLanguage();
-  const formatted = formatNumber(parseFloat(value).toFixed(decimals), lang);
+  const formatted = formatNumber(parseFloat(value).toFixed(decimals));
   return `${formatted}%`;
 };
 
@@ -183,17 +158,21 @@ export const getLastNDaysRange = (days = 30) => {
 
 // Parse localized number input
 export const parseLocalizedNumber = (value, language = null) => {
-  const lang = language || getCurrentLanguage();
-  const config = CURRENCY_CONFIG[lang] || CURRENCY_CONFIG.id;
   if (!value) return 0;
-  
+
+  // The reader types the number the way their language writes it. The
+  // language decides how the separators are read, not the currency.
+  const lang = language || getCurrentLanguage();
+  const usesDotAsGroup = lang === 'id';
+
   let cleaned = value.toString().replace(/[^\d.,\-]/g, '');
-  
-  if (config.thousandsSeparator === '.') {
+
+  if (usesDotAsGroup) {
     cleaned = cleaned.replace(/\./g, '').replace(',', '.');
   } else {
-    cleaned = cleaned.replace(/,/g, '');
+    cleaned = cleaned.replace(/,/g, '').replace(/\.(?=\d{3}\b)/g, '');
+    cleaned = cleaned.replace(',', '.');
   }
-  
+
   return parseFloat(cleaned) || 0;
 };

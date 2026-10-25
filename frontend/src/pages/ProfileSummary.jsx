@@ -330,7 +330,7 @@ const ProfileSummary = () => {
                     }`}
                   >
                     {tx.type === 'income' ? '+' : '-'}
-                    {formatCurrency(tx.amount)}
+                    {formatCurrency(tx.amount, tx.currency)}
                   </p>
                 </li>
               ))}

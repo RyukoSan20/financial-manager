@@ -25,6 +25,17 @@ class Account(Base):
     # Icon and color
     icon = Column(String(50), nullable=True)
     color = Column(String(20), nullable=True)
+
+    # The bank or provider this account is held at. Two accounts of the
+    # same type but in different currencies are usually held at
+    # different places, and this says which one.
+    bank_name = Column(String(100), nullable=True)
+
+    # What kind of holding this is, in the words of the currency it is
+    # in. A rupiah savings account and a yen savings account are not
+    # the same thing, and this is where that difference is written
+    # down.
+    account_kind = Column(String(50), nullable=True)
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)

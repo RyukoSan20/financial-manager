@@ -3,6 +3,9 @@
  * 8-bit style progress indicator
  */
 
+import { useTranslation } from '../../i18n';
+import { batch3 } from '../../i18n/keys_batch3';
+
 export const PixelProgress = ({
   value = 0,
   max = 100,
@@ -12,6 +15,8 @@ export const PixelProgress = ({
   label,
   className = '',
 }) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.progress;
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
   
   const sizeClasses = {
@@ -37,7 +42,7 @@ export const PixelProgress = ({
     <div className={`w-full ${className}`}>
       {showLabel && (
         <div className="flex justify-between items-center mb-1">
-          <span className="text-sm text-gray-600">{label || 'Progress'}</span>
+          <span className="text-sm text-gray-600">{label || K.progress}</span>
           <span className="text-sm font-medium text-gray-700">
             {Math.round(percentage)}%
           </span>
@@ -51,9 +56,11 @@ export const PixelProgress = ({
       >
         <div
           className={`h-full rounded-full transition-all duration-500 ${variantClasses[autoVariant]}`}
-          style={{ 
+          style={{
             width: `${percentage}%`,
-            boxShadow: '0 0 8px rgba(99, 102, 241, 0.5)' if autoVariant === 'default' : 'none',
+            ...(autoVariant === 'default'
+              ? { boxShadow: '0 0 8px rgba(99, 102, 241, 0.5)' }
+              : {}),
           }}
         >
           {/* Pixel effect overlay */}
@@ -83,7 +90,10 @@ export const GoalProgress = ({
   const percentage = Math.min(100, (current / target) * 100);
   const remaining = target - current;
   
-  const formattedCurrency = (amount) => new Intl.NumberFormat('id-ID', {
+  const { language } = useTranslation();
+  const locale = language === 'ja' ? 'ja-JP' : language === 'en' ? 'en-US' : 'id-ID';
+
+  const formattedCurrency = (amount) => new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
@@ -142,12 +152,16 @@ export const BudgetProgress = ({
   category,
   className = '',
 }) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.progress;
   const percentage = (spent / budget) * 100;
   const variant = percentage >= 100 ? 'danger' 
     : percentage >= 80 ? 'warning' 
     : 'success';
     
-  const formatted = (amount) => new Intl.NumberFormat('id-ID', {
+  const locale = language === 'ja' ? 'ja-JP' : language === 'en' ? 'en-US' : 'id-ID';
+
+  const formatted = (amount) => new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
@@ -164,7 +178,7 @@ export const BudgetProgress = ({
       <PixelProgress value={spent} max={budget} variant={variant} />
       {percentage >= 100 && (
         <p className="text-xs text-red-600 mt-1 font-medium">
-          ⚠️ Budget melebihi batas!
+          {K.over_budget}
         </p>
       )}
     </div>
@@ -183,7 +197,9 @@ export const DebtProgress = ({
   const percentage = (paid / total) * 100;
   const remaining = total - paid;
   
-  const formatted = (amount) => new Intl.NumberFormat('id-ID', {
+  const locale = language === 'ja' ? 'ja-JP' : language === 'en' ? 'en-US' : 'id-ID';
+
+  const formatted = (amount) => new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,

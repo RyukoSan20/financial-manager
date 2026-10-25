@@ -11,6 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
+from app.services.currency_rules import assert_record_currency
 from app.core.security import get_current_user_optional, get_current_user
 from app.models.transaction import Transaction
 from app.models.account import Account
@@ -280,11 +281,20 @@ def create_transaction(
     # items steers the breakdown, it is not a column.
     given_transaction_items = transaction.items or []
 
+    # A transaction is in the currency of the account it belongs to. One
+    # that names a different currency is refused, so money cannot be
+    # added to a rupiah account in dollars without a transfer.
+    _tx_account = db.query(Account).filter(Account.id == transaction.account_id).first()
+    if _tx_account and _tx_account.user_id == current_user.id:
+        transaction_currency = assert_record_currency(transaction.currency, _tx_account)
+    else:
+        transaction_currency = (transaction.currency or "IDR").upper()
+
     db_transaction = Transaction(
         user_id=current_user.id,
         amount=transaction.amount,
         type=transaction.type,
-        currency=transaction.currency,
+        currency=transaction_currency,
         date=transaction.date,
         description=transaction.description,
         notes=transaction.notes,

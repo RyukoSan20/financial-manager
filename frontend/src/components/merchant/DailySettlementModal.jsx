@@ -2,8 +2,14 @@ import { useState } from 'react';
 import { X, CheckCircle, AlertCircle } from 'lucide-react';
 import merchantApi from '../../services/merchantApi';
 import { formatCurrency } from '../../utils/format';
+import { useTranslation } from '../../i18n';
+import { batch2 } from '../../i18n/keys_batch2';
 
 const DailySettlementModal = ({ isOpen, onClose, merchant, onComplete }) => {
+  const { language } = useTranslation();
+  const K = batch2[language]?.merchant?.daily || batch2.id.merchant.daily;
+  const locale = language === 'ja' ? 'ja-JP' : language === 'en' ? 'en-US' : 'id-ID';
+
   const [transferAmount, setTransferAmount] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,7 +33,7 @@ const DailySettlementModal = ({ isOpen, onClose, merchant, onComplete }) => {
       }, 2000);
     } catch (err) {
       console.error('Settlement failed:', err);
-      alert('Gagal membuat rekap harian');
+      alert(K.error);
     } finally {
       setIsSubmitting(false);
     }
@@ -42,7 +48,7 @@ const DailySettlementModal = ({ isOpen, onClose, merchant, onComplete }) => {
         <div className="flex items-center justify-between px-4 py-3 bg-green-600 text-white">
           <div className="flex items-center gap-2">
             <CheckCircle size={20} />
-            <span className="font-semibold">Tutup Kasir Harian</span>
+            <span className="font-semibold">{K.title}</span>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded">
             <X size={20} />
@@ -57,22 +63,22 @@ const DailySettlementModal = ({ isOpen, onClose, merchant, onComplete }) => {
               <div className="flex justify-center">
                 <CheckCircle size={64} className="text-green-500" />
               </div>
-              <h3 className="text-xl font-bold">Rekap Selesai!</h3>
+              <h3 className="text-xl font-bold">{K.done}</h3>
               <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 space-y-2">
                 <div className="flex justify-between">
-                  <span>Total Penjualan</span>
+                  <span>{K.total_sales}</span>
                   <span className="font-bold">{formatCurrency(result.total_sales)}</span>
                 </div>
                 <div className="flex justify-between text-green-600">
-                  <span>QRIS</span>
+                  <span>{K.qris}</span>
                   <span>{formatCurrency(result.total_qris)}</span>
                 </div>
                 <div className="flex justify-between text-primary-600">
-                  <span>Cash</span>
+                  <span>{K.cash}</span>
                   <span>{formatCurrency(result.total_cash)}</span>
                 </div>
                 <div className="border-t pt-2 flex justify-between">
-                  <span>Transaksi</span>
+                  <span>{K.transactions}</span>
                   <span className="font-bold">{result.total_transactions}</span>
                 </div>
               </div>
@@ -85,7 +91,7 @@ const DailySettlementModal = ({ isOpen, onClose, merchant, onComplete }) => {
                   {merchant?.store_name}
                 </p>
                 <p className="text-3xl font-bold mt-2">
-                  {new Date().toLocaleDateString('id-ID', {
+                  {new Date().toLocaleDateString(locale, {
                     weekday: 'long',
                     year: 'numeric',
                     month: 'long',
@@ -97,29 +103,29 @@ const DailySettlementModal = ({ isOpen, onClose, merchant, onComplete }) => {
               {/* Transfer Amount */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Jumlah Transfer ke Rekening Pribadi (opsional)
+                  {K.transfer_label}
                 </label>
                 <input
                   type="text"
-                  value={transferAmount ? parseInt(transferAmount).toLocaleString('id-ID') : ''}
+                  value={transferAmount ? parseInt(transferAmount).toLocaleString(locale) : ''}
                   onChange={(e) => setTransferAmount(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="0"
                   className="w-full px-4 py-3 text-xl font-bold text-center border-2 border-green-200 dark:border-green-800 rounded-lg dark:bg-gray-700"
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  Kosongkan jika belum ingin transfer
+                  {K.transfer_hint}
                 </p>
               </div>
 
               {/* Notes */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Catatan (opsional)
+                  {K.notes_label}
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Contoh: Ada kembalian di laci"
+                  placeholder={K.notes_placeholder}
                   rows={2}
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
                 />
@@ -129,7 +135,7 @@ const DailySettlementModal = ({ isOpen, onClose, merchant, onComplete }) => {
               <div className="flex items-start gap-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
                 <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
                 <p className="text-sm">
-                  Setelah di-submit, data penjualan hari ini akan di-lock dan tidak bisa diubah.
+                  {K.lock_warning}
                 </p>
               </div>
 
@@ -143,7 +149,7 @@ const DailySettlementModal = ({ isOpen, onClose, merchant, onComplete }) => {
                     : 'bg-green-600 hover:bg-green-700 text-white'
                 }`}
               >
-                {isSubmitting ? 'Memproses...' : 'Konfirmasi Tutup Kasir'}
+                {isSubmitting ? K.processing : K.confirm}
               </button>
             </>
           )}

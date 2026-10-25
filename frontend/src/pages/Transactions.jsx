@@ -9,20 +9,16 @@ import { VoiceTransactionModal } from '../components/parser/VoiceTransactionModa
 import { notifyTransactionAdded, notifyTransactionDeleted, notifyTransactionUpdated, notifyError } from '../components/notifications/NotificationHelper';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
-
-const typeOptions = [
-  { value: '', label: 'All' },
-  { value: 'income', label: 'Income' },
-  { value: 'expense', label: 'Expense' },
-];
+import { useTranslation } from '../i18n';
+import { batch1, fill } from '../i18n/keys_batch1';
 
 // Source badge component
-const SourceBadge = ({ type }) => {
+const SourceBadge = ({ type, K }) => {
   const badges = {
-    MANUAL: { label: 'Manual', color: 'bg-gray-100 text-gray-600' },
-    OCR_RECEIPT: { label: 'Receipt', color: 'bg-purple-100 text-purple-600' },
-    QRIS_TEXT: { label: 'QRIS', color: 'bg-blue-100 text-blue-600' },
-    SMS_BANK: { label: 'SMS', color: 'bg-green-100 text-green-600' },
+    MANUAL: { label: K.manual, color: 'bg-gray-100 text-gray-600' },
+    OCR_RECEIPT: { label: K.receipt, color: 'bg-purple-100 text-purple-600' },
+    QRIS_TEXT: { label: K.qris, color: 'bg-blue-100 text-blue-600' },
+    SMS_BANK: { label: K.sms, color: 'bg-green-100 text-green-600' },
   };
   const badge = badges[type] || badges.MANUAL;
   return (
@@ -33,6 +29,13 @@ const SourceBadge = ({ type }) => {
 };
 
 export const Transactions = () => {
+  const { language } = useTranslation();
+  const K = batch1[language]?.txns || batch1.id.txns;
+  const typeOptions = [
+    { value: '', label: K.all },
+    { value: 'income', label: K.income },
+    { value: 'expense', label: K.expense },
+  ];
   const [transactions, setTransactions] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -81,14 +84,14 @@ export const Transactions = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this transaction?')) return;
+    if (!confirm(K.deleteConfirm)) return;
     try {
       await api.transactions.delete(id);
       fetchData();
       window.dispatchEvent(new Event('transactionUpdated'));
     } catch (err) {
       console.error('Failed to delete transaction:', err);
-      alert('Failed to delete: ' + (err.message || 'Unknown error'));
+      alert(fill(K.deleteFailed, { message: err.message || K.unknown }));
     }
   };
 
@@ -103,7 +106,7 @@ export const Transactions = () => {
   const handleVoiceSave = async (voice) => {
     const accountId = accounts[0]?.id;
     if (!accountId) {
-      throw new Error('Belum ada akun. Tambahkan akun terlebih dahulu.');
+      throw new Error(K.noAccountYet);
     }
 
     let categoryId = null;
@@ -117,7 +120,7 @@ export const Transactions = () => {
     await api.transactions.create({
       amount: Number(voice.amount),
       type: voice.transaction_type === 'income' ? 'income' : 'expense',
-      description: voice.description || voice.merchant_name || 'Voice Transaction',
+      description: voice.description || voice.merchant_name || K.voiceTransaction,
       date: new Date().toISOString().split('T')[0],
       account_id: parseInt(accountId),
       category_id: categoryId,
@@ -167,7 +170,7 @@ export const Transactions = () => {
       window.dispatchEvent(new Event('transactionUpdated'));
     } catch (err) {
       console.error('Failed to update transaction:', err);
-      alert('Failed to update: ' + (err.message || 'Unknown error'));
+      alert(fill(K.updateFailed, { message: err.message || K.unknown }));
     }
   };
 
@@ -196,7 +199,7 @@ export const Transactions = () => {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Spinner size="lg" />
-          <p className="mt-4 text-gray-500">Loading transactions...</p>
+          <p className="mt-4 text-gray-500">{K.loading}</p>
         </div>
       </div>
     );
@@ -208,18 +211,18 @@ export const Transactions = () => {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{K.title}</h1>
             {pendingCount > 0 && (
               <button 
                 onClick={() => window.location.href = '/feed'}
                 className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium hover:bg-yellow-200 transition-colors"
               >
                 <BellRing className="w-4 h-4" />
-                <span>{pendingCount} Pending Review</span>
+                <span>{fill(K.pendingReview, { count: pendingCount })}</span>
               </button>
             )}
           </div>
-          <p className="text-sm text-gray-500">{filteredTransactions.length} transactions</p>
+          <p className="text-sm text-gray-500">{fill(K.count, { count: filteredTransactions.length })}</p>
         </div>
         <button
           onClick={() => window.location.href = '/add'}
@@ -236,28 +239,28 @@ export const Transactions = () => {
           className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary-50 text-primary-600 rounded-xl border border-primary-200 active:bg-primary-100"
         >
           <MessageSquare className="w-5 h-5" />
-          <span className="font-medium">SMS</span>
+          <span className="font-medium">{K.smsShort}</span>
         </button>
         <button
           onClick={() => setShowQRScanner(true)}
           className="flex-1 flex items-center justify-center gap-2 py-3 bg-purple-50 text-purple-600 rounded-xl border border-purple-200 active:bg-purple-100"
         >
           <ScanText className="w-5 h-5" />
-          <span className="font-medium">QR Code</span>
+          <span className="font-medium">{K.qrCode}</span>
         </button>
         <button
           onClick={() => setShowReceiptScanner(true)}
           className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-50 text-green-600 rounded-xl border border-green-200 active:bg-green-100"
         >
           <Camera className="w-5 h-5" />
-          <span className="font-medium">Struk</span>
+          <span className="font-medium">{K.receiptShort}</span>
         </button>
         <button
           onClick={() => setShowVoiceModal(true)}
           className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-50 text-orange-600 rounded-xl border border-orange-200 active:bg-orange-100"
         >
           <Mic className="w-5 h-5" />
-          <span className="font-medium">Suara</span>
+          <span className="font-medium">{K.voice}</span>
         </button>
       </div>
 
@@ -267,7 +270,7 @@ export const Transactions = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Search transactions..."
+            placeholder={K.searchPlaceholder}
             className="w-full pl-12 pr-4 py-3 bg-white border-0 rounded-2xl shadow-sm focus:ring-2 focus:ring-primary-500"
             value={filters.search}
             onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
@@ -317,13 +320,13 @@ export const Transactions = () => {
           <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
             <ArrowDownRight className="w-10 h-10 text-gray-400" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No transactions yet</h3>
-          <p className="text-gray-500 text-center mb-6">Start tracking your finances by adding your first transaction</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{K.noTransactions}</h3>
+          <p className="text-gray-500 text-center mb-6">{K.noTransactionsDesc}</p>
           <button
             onClick={() => window.location.href = '/add'}
             className="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium shadow-lg active:bg-primary-600"
           >
-            Add Transaction
+            {K.addTransaction}
           </button>
         </div>
       ) : (
@@ -346,7 +349,7 @@ export const Transactions = () => {
                             type="text"
                             value={editForm.description || ''}
                             onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
-                            placeholder="Description"
+                            placeholder={K.description}
                             className="w-full px-3 py-2 border rounded-lg"
                           />
                           <div className="grid grid-cols-2 gap-2">
@@ -369,7 +372,7 @@ export const Transactions = () => {
                               onChange={(e) => setEditForm(f => ({ ...f, category_id: parseInt(e.target.value) || null }))}
                               className="flex-1 px-3 py-2 border rounded-lg"
                             >
-                              <option value="">Select Category</option>
+                              <option value="">{K.selectCategory}</option>
                               {categories.filter(c => c.type === editForm.type).map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                               ))}
@@ -379,7 +382,7 @@ export const Transactions = () => {
                               onChange={(e) => setEditForm(f => ({ ...f, account_id: parseInt(e.target.value) }))}
                               className="flex-1 px-3 py-2 border rounded-lg"
                             >
-                              <option value="">Select Account</option>
+                              <option value="">{K.selectAccount}</option>
                               {accounts.map(a => (
                                 <option key={a.id} value={a.id}>{a.name}</option>
                               ))}
@@ -390,13 +393,13 @@ export const Transactions = () => {
                               onClick={cancelEdit}
                               className="flex-1 py-2 bg-gray-100 text-gray-600 rounded-lg"
                             >
-                              Cancel
+                              {K.cancel}
                             </button>
                             <button
                               onClick={() => saveEdit(tx.id)}
                               className="flex-1 py-2 bg-primary-600 text-white rounded-lg flex items-center justify-center gap-2"
                             >
-                              <Check className="w-4 h-4" /> Save
+                              <Check className="w-4 h-4" /> {K.save}
                             </button>
                           </div>
                         </div>
@@ -431,12 +434,12 @@ export const Transactions = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="font-semibold text-gray-900 truncate">
-                                {tx.description || category?.name || (tx.type === 'income' ? 'Income' : 'Expense')}
+                                {tx.description || category?.name || (tx.type === 'income' ? K.income : K.expense)}
                               </p>
-                              <SourceBadge type={tx.detection_type} />
+                              <SourceBadge type={tx.detection_type} K={K} />
                             </div>
                             <p className="text-sm text-gray-500 truncate">
-                              {category?.name || account?.name || 'Unknown'}
+                              {category?.name || account?.name || K.unknown}
                             </p>
                           </div>
                         </div>
@@ -445,7 +448,7 @@ export const Transactions = () => {
                             <p className={`font-bold text-lg ${
                               tx.type === 'income' ? 'text-success-600' : 'text-gray-900'
                             }`}>
-                              {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                              {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, tx.currency)}
                             </p>
                           </div>
                           {/* Chevron dropdown - always visible */}
@@ -478,10 +481,10 @@ export const Transactions = () => {
                       {hasItems && isExpanded && tx.items && tx.items.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-gray-100">
                           <p className="text-xs font-semibold text-gray-500 mb-2">
-                            Rincian Barang ({(tx.items || []).filter(i => !i.is_discount).length} item):
+                            {fill(K.itemsTitle, { count: (tx.items || []).filter(i => !i.is_discount).length })}
                             {(tx.items || []).some(i => i.is_discount) && (
                               <span className="ml-2 text-green-600">
-                                (Termasuk {(tx.items || []).filter(i => i.is_discount).length} diskon)
+                                {fill(K.includingDiscounts, { count: (tx.items || []).filter(i => i.is_discount).length })}
                               </span>
                             )}
                           </p>
@@ -495,16 +498,16 @@ export const Transactions = () => {
                                   className={`flex justify-between items-center text-sm ${isDiscount ? 'text-red-500 bg-red-50 -mx-2 px-2 rounded' : ''}`}
                                 >
                                   <span className={`truncate flex-1 ${isDiscount ? 'font-medium' : 'text-gray-700'}`}>
-                                    {isDiscount && <span className="mr-1">[DISKON]</span>}
-                                    {item.name} 
+                                    {isDiscount && <span className="mr-1">{K.discountTag}</span>}
+                                    {item.name}
                                     {!isDiscount && (
                                       <span className="text-gray-400">
-                                        ({item.quantity || 1}x @ Rp {(item.price_per_unit || 0).toLocaleString('id-ID')})
+                                        ({item.quantity || 1}x @ {formatCurrency(item.price_per_unit || 0, item.currency)})
                                       </span>
                                     )}
                                   </span>
                                   <span className={`ml-2 whitespace-nowrap font-medium ${isDiscount ? '' : 'text-gray-600'}`}>
-                                    {isDiscount ? '-' : ''}Rp {price.toLocaleString('id-ID')}
+                                    {isDiscount ? '-' : ''}{formatCurrency(price)}
                                   </span>
                                 </div>
                               );
@@ -512,12 +515,12 @@ export const Transactions = () => {
                             {/* Net Total */}
                             {(tx.items || []).some(i => i.is_discount) && (
                               <div className="flex justify-between items-center text-sm font-semibold border-t border-gray-200 pt-2 mt-2">
-                                <span className="text-gray-700">Net Total:</span>
+                                <span className="text-gray-700">{K.netTotal}</span>
                                 <span className="text-gray-900">
-                                  Rp {((tx.items || []).reduce((sum, i) => {
+                                  {formatCurrency((tx.items || []).reduce((sum, i) => {
                                     const price = i.total_price || 0;
                                     return i.is_discount ? sum - Math.abs(price) : sum + price;
-                                  }, 0)).toLocaleString('id-ID')}
+                                  }, 0))}
                                 </span>
                               </div>
                             )}
@@ -532,7 +535,7 @@ export const Transactions = () => {
                           <BreakdownViewer
                             parentType="transaction"
                             parentId={tx.id}
-                            title="Rincian"
+                            title={K.details}
                             compact
                           />
                         </div>

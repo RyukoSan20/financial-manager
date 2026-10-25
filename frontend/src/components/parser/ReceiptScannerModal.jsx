@@ -17,8 +17,12 @@ import { formatCurrency } from '../../utils/format';
 import { ScanDiagnostics, LearnFromScan } from './ScanDiagnostics';
 import { ReceiptBreakdown } from './ReceiptBreakdown';
 import { scanManager, dataUrlToFile } from '../../services/scanManager';
+import { useTranslation } from '../../i18n';
+import { batch1, fill } from '../../i18n/keys_batch1';
 
 export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
+  const { language } = useTranslation();
+  const K = batch1[language]?.scanner || batch1.id.scanner;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState(null);
@@ -90,7 +94,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       setUsingCamera(true);
     } catch (err) {
       console.error('Camera error:', err);
-      setError('Tidak dapat mengakses kamera. Pastikan izin kamera diberikan.');
+      setError(K.cameraDenied);
     }
   };
 
@@ -129,12 +133,12 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     // Validate file
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
     if (!allowedTypes.includes(file.type)) {
-      setError('Format tidak valid. Gunakan JPG, PNG, WebP, atau HEIC.');
+      setError(K.invalidFormat);
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      setError('File terlalu besar. Maksimal 10MB.');
+      setError(K.fileTooLarge);
       return;
     }
 
@@ -157,11 +161,11 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
     const file = e.dataTransfer?.files?.[0];
     if (!file) {
-      setError('Tidak ada file yang dilepas.');
+      setError(K.noFileDropped);
       return;
     }
     if (!file.type.startsWith('image/')) {
-      setError('File yang dilepas bukan gambar. Gunakan JPG, PNG, atau WebP.');
+      setError(K.notImage);
       return;
     }
     await processFile(file);
@@ -194,7 +198,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     if (!preview) return;
 
     setLoading(true);
-    setProcessingStatus('Mengirim ke server...');
+    setProcessingStatus(K.sending);
     setError('');
 
     try {
@@ -206,7 +210,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     } catch (err) {
       console.error('Background scan error:', err);
       setError(
-        'Gagal mengirim scan: ' + (err.message || 'periksa koneksi internet')
+        fill(K.sendFailed, { message: err.message || K.checkConnection })
       );
       setLoading(false);
       setProcessingStatus('');
@@ -221,7 +225,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     }
 
     setLoading(true);
-    setProcessingStatus('Mengupload gambar...');
+    setProcessingStatus(K.uploading);
     setError('');
 
     try {
@@ -230,7 +234,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       const blob = await response.blob();
       const imageFile = new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
 
-      setProcessingStatus('Memproses OCR...');
+      setProcessingStatus(K.processingOcr);
 
       // Try backend OCR endpoint
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
@@ -261,12 +265,12 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
         setStep('edit');
       } else {
         // Fallback to local OCR
-        setProcessingStatus('OCR lokal...');
+        setProcessingStatus(K.localOcr);
         await localOCR();
       }
     } catch (err) {
       console.error('OCR Error:', err);
-      setProcessingStatus('OCR lokal...');
+      setProcessingStatus(K.localOcr);
       await localOCR();
     } finally {
       setLoading(false);
@@ -280,12 +284,12 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       // Dynamic import Tesseract
       const Tesseract = await import('tesseract.js');
       
-      setProcessingStatus('Melakukan OCR...');
-      
+      setProcessingStatus(K.doingOcr);
+
       const result = await Tesseract.recognize(preview, 'eng+ind', {
         logger: (m) => {
           if (m.status === 'recognizing text') {
-            setProcessingStatus(`OCR: ${Math.round(m.progress * 100)}%`);
+            setProcessingStatus(fill(K.ocrProgress, { percent: Math.round(m.progress * 100) }));
           }
         }
       });
@@ -301,7 +305,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       setStep('edit');
     } catch (err) {
       console.error('Local OCR Error:', err);
-      setError('OCR gagal. Coba gunakan gambar yang lebih jelas.');
+      setError(K.ocrFailed);
       setLoading(false);
     }
   };
@@ -347,7 +351,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     }
 
     // Merchant name (usually first non-empty line or prominent text)
-    let merchant = 'Unknown Merchant';
+    let merchant = K.unknownMerchant;
     const firstLines = lines.slice(0, 3);
     for (const line of firstLines) {
       if (line.length > 3 && !line.match(/^\d+$/) && !line.match(/^[Tt]oken/)) {
@@ -397,12 +401,12 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
   const handleConfirm = async () => {
     if (!selectedAccount) {
-      setError('Pilih akun terlebih dahulu');
+      setError(K.pickAccountFirst);
       return;
     }
 
     if (!amount || parseFloat(amount) <= 0) {
-      setError('Masukkan jumlah yang valid');
+      setError(K.invalidAmount);
       return;
     }
 
@@ -413,7 +417,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       await api.transactions.create({
         amount: parseFloat(amount),
         type: 'expense',
-        description: merchantName || 'Receipt Scan',
+        description: merchantName || K.receiptScanDesc,
         date: transactionDate,
         account_id: parseInt(selectedAccount),
         category_id: selectedCategory ? parseInt(selectedCategory) : null,
@@ -429,16 +433,16 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
       onClose();
     } catch (err) {
       console.error('Save error:', err);
-      setError('Gagal menyimpan: ' + (err.message || 'Unknown error'));
+      setError(fill(K.saveFailed, { message: err.message || K.unknownError }));
     } finally {
       setLoading(false);
     }
   };
 
   const getConfidenceLabel = (score) => {
-    if (score >= 0.8) return { text: 'Tinggi', color: 'text-green-600' };
-    if (score >= 0.6) return { text: 'Sedang', color: 'text-yellow-600' };
-    return { text: 'Rendah', color: 'text-red-600' };
+    if (score >= 0.8) return { text: K.confHigh, color: 'text-green-600' };
+    if (score >= 0.6) return { text: K.confMedium, color: 'text-yellow-600' };
+    return { text: K.confLow, color: 'text-red-600' };
   };
 
   const confInfo = getConfidenceLabel(confidence);
@@ -447,7 +451,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     <Modal
       isOpen={isOpen}
       onClose={() => { handleReset(); onClose(); }}
-      title="Receipt Scanner"
+      title={K.title}
       size="lg"
     >
       {/* Step 1: Upload */}
@@ -470,13 +474,13 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
                   onClick={stopCamera}
                   className="bg-white/80"
                 >
-                  <X className="w-4 h-4 mr-2" /> Batal
+                  <X className="w-4 h-4 mr-2" /> {K.cancel}
                 </Button>
                 <Button
                   onClick={capturePhoto}
                   className="bg-primary-600 hover:bg-primary-700"
                 >
-                  <Camera className="w-4 h-4 mr-2" /> Capture
+                  <Camera className="w-4 h-4 mr-2" /> {K.capture}
                 </Button>
               </div>
             </div>
@@ -489,7 +493,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
                   className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                 >
                   <Smartphone className="w-8 h-8 text-gray-400" />
-                  <span className="text-sm font-medium">Kamera</span>
+                  <span className="text-sm font-medium">{K.camera}</span>
                 </button>
                 
                 <button
@@ -497,7 +501,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
                   className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                 >
                   <FileImage className="w-8 h-8 text-gray-400" />
-                  <span className="text-sm font-medium">Upload File</span>
+                  <span className="text-sm font-medium">{K.uploadFile}</span>
                 </button>
               </div>
 
@@ -528,11 +532,11 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
                 />
                 <p className="text-gray-600 dark:text-gray-400">
                   {isDragging
-                    ? 'Lepaskan untuk memindai'
-                    : 'Atau drag & drop gambar receipt di sini'}
+                    ? K.releaseToScan
+                    : K.dragDropHint}
                 </p>
                 <p className="text-xs text-gray-500 mt-2">
-                  JPG, PNG, WebP, HEIC • Maksimal 10MB
+                  {K.fileTypes}
                 </p>
               </div>
             </>
@@ -554,7 +558,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
           <div className="relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
             <img
               src={preview}
-              alt="Receipt preview"
+              alt={K.receiptPreviewAlt}
               className="w-full max-h-64 object-contain"
               style={{ transform: `rotate(${rotation}deg)` }}
             />
@@ -585,7 +589,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               onClick={handleReset}
               className="flex-1"
             >
-              Batal
+              {K.cancel}
             </Button>
             <Button
               onClick={processReceipt}
@@ -599,7 +603,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
-              {backgroundMode ? 'Scan di Latar' : 'Scan Receipt'}
+              {backgroundMode ? K.scanInBackground : K.scanReceipt}
             </Button>
           </div>
 
@@ -615,11 +619,10 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
             />
             <span className="text-xs text-gray-600 dark:text-gray-400">
               <span className="font-medium text-gray-800 dark:text-gray-200">
-                Proses di latar belakang
+                {K.bgTitle}
               </span>
               <br />
-              Kamu bisa lanjut melakukan aktivitas lain. Hasil scan muncul
-              sebagai notifikasi yang bisa diketuk atau digeser ke atas.
+              {K.bgDesc}
             </span>
           </label>
 
@@ -637,7 +640,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
         <div className="space-y-4">
           {/* Confidence Badge */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">OCR Confidence:</span>
+            <span className="text-sm text-gray-500">{K.ocrConfidence}</span>
             <span className={`text-sm font-medium ${confInfo.color}`}>
               {confInfo.text} ({Math.round(confidence * 100)}%)
             </span>
@@ -672,21 +675,21 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Merchant / Toko
+                {K.merchantStore}
               </label>
               <input
                 type="text"
                 value={merchantName}
                 onChange={(e) => setMerchantName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                placeholder="Nama merchant"
+                placeholder={K.merchantPlaceholder}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Jumlah (Rp)
+                {K.amount}
               </label>
               <input
                 type="text"
@@ -700,21 +703,21 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Lokasi
+                {K.location}
               </label>
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                placeholder="Alamat (opsional)"
+                placeholder={K.addressPlaceholder}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Tanggal
+                {K.date}
               </label>
               <input
                 type="date"
@@ -727,7 +730,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Akun
+                {K.account}
               </label>
               <select
                 value={selectedAccount}
@@ -735,7 +738,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
-                <option value="">Pilih Akun</option>
+                <option value="">{K.pickAccount}</option>
                 {accounts.map((acc) => (
                   <option key={acc.id} value={acc.id}>
                     {acc.name}
@@ -746,7 +749,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Kategori
+                {K.category}
               </label>
               <select
                 value={selectedCategory}
@@ -754,7 +757,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
-                <option value="">Pilih Kategori (opsional)</option>
+                <option value="">{K.pickCategoryOptional}</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
@@ -771,7 +774,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               onClick={() => setStep('preview')}
               className="flex-1"
             >
-              Kembali
+              {K.back}
             </Button>
             <Button
               onClick={handleConfirm}
@@ -783,7 +786,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               ) : (
                 <Check className="w-4 h-4" />
               )}
-              Simpan
+              {K.save}
             </Button>
           </div>
 

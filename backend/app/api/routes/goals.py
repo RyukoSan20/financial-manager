@@ -9,9 +9,11 @@ from datetime import date
 from decimal import Decimal
 
 from app.core.database import get_db
+from app.services.currency_rules import assert_record_currency
 from app.core.security import get_current_user_optional, get_current_user
 from app.models.goal import Goal, GoalContribution
 from app.models.user import User
+from app.models.account import Account
 from app.schemas.goal import (
     GoalCreate, GoalUpdate, GoalResponse, GoalWithProgress,
     GoalContributionCreate, GoalContributionResponse
@@ -161,6 +163,14 @@ def create_goal(
 
         goal_data["target_date"] = date_type.today() + timedelta(days=365)
 
+
+    # A record lives in the currency of the account it belongs to. A
+    # record that names a different currency is refused, so a goal in
+    # dollars can never be counted against a rupiah account.
+    if goal_data.get("account_id"):
+        _account = db.query(Account).filter(Account.id == goal_data["account_id"]).first()
+        if _account and _account.user_id == current_user.id:
+            goal_data["currency"] = assert_record_currency(goal_data.get("currency"), _account)
     db_goal = Goal(**goal_data)
     db.add(db_goal)
     try:

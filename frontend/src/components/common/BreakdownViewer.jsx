@@ -21,6 +21,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { useTranslation } from '../../i18n';
+import { batch3 } from '../../i18n/keys_batch3';
 
 const money = (value) => `Rp${Number(value || 0).toLocaleString('id-ID')}`;
 
@@ -50,11 +52,13 @@ export const BreakdownViewer = ({
   parentId,
   lines: initialLines,
   total: initialTotal,
-  title = 'Rincian',
+  title = null,
   editable = true,
   onChanged,
   compact = false,
 }) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.breakdown;
   const [lines, setLines] = useState(initialLines || []);
   const [expanded, setExpanded] = useState(!compact);
   const [busy, setBusy] = useState(false);
@@ -163,7 +167,7 @@ export const BreakdownViewer = ({
       >
         <span className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
           <Package className="h-4 w-4" />
-          {title}
+          {title || K.detail}
           {lines.length > 0 && (
             <span className="rounded-full bg-gray-200 px-1.5 text-xs font-normal text-gray-700 dark:bg-gray-700 dark:text-gray-300">
               {lines.length}
@@ -188,14 +192,14 @@ export const BreakdownViewer = ({
             <div className="flex items-start gap-2 border-b border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
               <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
-                Rincian ini dibuat AI sebagai perkiraan. Cek dan ubah bila perlu.
+                {K.ai_estimate_note}
               </span>
             </div>
           )}
 
           {lines.length === 0 && !adding && (
             <p className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
-              Belum ada rincian.
+              {K.empty}
             </p>
           )}
 
@@ -230,7 +234,7 @@ export const BreakdownViewer = ({
                     onClick={() => removeLine(line.id)}
                     disabled={busy}
                     className="shrink-0 rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:hover:bg-red-950"
-                    title="Hapus baris"
+                    title={K.remove_line}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -265,14 +269,14 @@ export const BreakdownViewer = ({
                   disabled={busy}
                   className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  Simpan
+                  {K.save}
                 </button>
                 <button
                   type="button"
                   onClick={() => setAdding(false)}
                   className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 dark:border-gray-600 dark:text-gray-300"
                 >
-                  Batal
+                  {K.cancel}
                 </button>
               </div>
             </form>
@@ -285,7 +289,7 @@ export const BreakdownViewer = ({
               className="flex w-full items-center gap-1.5 border-t border-gray-200 px-3 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 dark:border-gray-700 dark:text-emerald-400 dark:hover:bg-emerald-950"
             >
               <Plus className="h-3.5 w-3.5" />
-              Tambah baris
+              {K.add_line}
             </button>
           )}
 

@@ -23,6 +23,8 @@ import {
   Wrench,
 } from 'lucide-react';
 import { apiUrl } from '../../config/url';
+import { useTranslation } from '../../i18n';
+import { batch3 } from '../../i18n/keys_batch3';
 
 // Human-readable labels for the issue codes the backend reports.
 const ISSUE_LABELS = {
@@ -49,6 +51,8 @@ const QUALITY_STYLES = {
 };
 
 export const ScanDiagnostics = ({ diagnostics }) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.scan_diagnostics;
   const [expanded, setExpanded] = useState(false);
 
   if (!diagnostics || typeof diagnostics !== 'object') return null;
@@ -95,7 +99,7 @@ export const ScanDiagnostics = ({ diagnostics }) => {
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3 h-3 flex-shrink-0" />
               <span>
-                Varian terbaik: <strong>{best}</strong>
+                {K.best_variant} <strong>{best}</strong>
               </span>
             </div>
           )}
@@ -114,7 +118,7 @@ export const ScanDiagnostics = ({ diagnostics }) => {
 
           {variants.length > 0 && (
             <div>
-              <p className="font-medium mb-1">Varian yang diuji:</p>
+              <p className="font-medium mb-1">{K.tested_variants}</p>
               <ul className="space-y-0.5">
                 {variants.map((v) => (
                   <li key={v.name} className="flex justify-between gap-2">
@@ -143,6 +147,8 @@ export const ScanDiagnostics = ({ diagnostics }) => {
 };
 
 export const LearnFromScan = ({ items, onLearned }) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.scan_diagnostics;
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -248,7 +254,7 @@ export const LearnFromScan = ({ items, onLearned }) => {
             className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >
             {busy && <Loader2 className="w-3 h-3 animate-spin" />}
-            Simpan {selectedCount} istilah
+            {K.save_terms} ({selectedCount})
           </button>
         </div>
       )}

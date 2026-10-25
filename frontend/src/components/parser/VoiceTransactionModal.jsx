@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Modal, Button, Input } from '../ui';
 import { Mic, X, Loader2, AlertTriangle, Check, RotateCcw, Keyboard } from 'lucide-react';
 import { apiUrl } from '../../config/url';
+import { useTranslation } from '../../i18n';
+import { batch2, fill } from '../../i18n/keys_batch2';
 
 /**
  * Voice transaction input.
@@ -37,6 +39,9 @@ export const isVoiceSupported = () => Boolean(SpeechRecognitionCtor);
 const VOICE_LANG = 'id-ID';
 
 export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
+  const { language } = useTranslation();
+  const K = batch2[language]?.voice || batch2.id.voice;
+
   const [listening, setListening] = useState(false);
   const [recognized, setRecognized] = useState('');
   const [manualText, setManualText] = useState('');
@@ -101,7 +106,7 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
   const parseText = useCallback(async (text) => {
     const clean = (text || '').trim();
     if (!clean) {
-      setError('Tidak ada suara yang terdeteksi. Coba lagi.');
+      setError(K.err_no_voice);
       return;
     }
     setParsing(true);
@@ -118,7 +123,7 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
       }
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
-        throw new Error('Respons server bukan JSON');
+        throw new Error(K.err_not_json);
       }
 
       const data = await response.json();
@@ -132,17 +137,15 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
       });
     } catch (err) {
       console.error('Voice parse failed:', err);
-      setError('Gagal memproses suara: ' + (err?.message || err));
+      setError(fill(K.err_process, err?.message || err));
     } finally {
       setParsing(false);
     }
-  }, []);
+  }, [K]);
 
   const startListening = useCallback(() => {
     if (!SpeechRecognitionCtor) {
-      setError(
-        'Browser Anda tidak mendukung input suara (Web Speech API). Gunakan Chrome atau Edge, atau ketik manual di bawah.'
-      );
+      setError(K.err_unsupported);
       return;
     }
 
@@ -186,14 +189,14 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
       activeRef.current = false;
       setListening(false);
       const messages = {
-        'not-allowed': 'Izin mikrofon ditolak. Izinkan akses mikrofon di pengaturan browser lalu coba lagi.',
-        'service-not-allowed': 'Layanan pengenalan suara tidak tersedia di browser ini.',
-        'no-speech': 'Tidak ada suara terdeteksi. Coba lagi lebih dekat ke mikrofon.',
-        'audio-capture': 'Mikrofon tidak ditemukan.',
-        network: 'Koneksi jaringan bermasalah saat pengenalan suara.',
-        aborted: 'Pengenalan suara dibatalkan.',
+        'not-allowed': K.err_mic_denied,
+        'service-not-allowed': K.err_service,
+        'no-speech': K.err_no_speech,
+        'audio-capture': K.err_no_mic,
+        network: K.err_network,
+        aborted: K.err_aborted,
       };
-      setError(messages[event.error] || `Pengenalan suara gagal: ${event.error}`);
+      setError(messages[event.error] || fill(K.err_generic, event.error));
     };
 
     recognition.onend = () => {
@@ -212,14 +215,14 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
       recognition.start();
     } catch (err) {
       console.warn('Speech recognition start warning:', err?.message || err);
-      setError('Tidak dapat memulai pengenalan suara.');
+      setError(K.err_start);
     }
-  }, [parseText]);
+  }, [parseText, K]);
 
   const handleSave = async () => {
     if (!parsed) return;
     if (!form.amount || Number(form.amount) <= 0) {
-      setError('Jumlah transaksi harus diisi.');
+      setError(K.err_amount_required);
       return;
     }
     setError('');
@@ -236,7 +239,7 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
     } catch (err) {
       console.error('Voice transaction save failed:', err);
       setSaved(false);
-      setError('Gagal menyimpan transaksi: ' + (err?.message || err));
+      setError(fill(K.err_save, err?.message || err));
     }
   };
 
@@ -250,7 +253,7 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
   const effectiveText = recognized.trim() || manualText.trim();
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Input Transaksi dengan Suara" size="md">
+    <Modal isOpen={isOpen} onClose={handleClose} title={K.title} size="md">
       <div className="space-y-4">
         {/* Mic button */}
         <div className="flex flex-col items-center justify-center py-4">
@@ -262,7 +265,7 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
                 ? 'bg-red-600 text-white animate-pulse shadow-lg shadow-red-600/50'
                 : 'bg-primary-600 text-white hover:bg-primary-600 shadow-lg shadow-primary-500/30'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
-            aria-label={listening ? 'Hentikan merekam' : 'Mulai merekam'}
+            aria-label={listening ? K.aria_stop : K.aria_start}
           >
             {parsing ? (
               <Loader2 className="w-9 h-9 animate-spin" />
@@ -272,24 +275,23 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
           </button>
           <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
             {listening
-              ? 'Mendengarkan... ucapkan transaksi Anda, lalu tekan Stop'
+              ? K.listening
               : parsing
-              ? 'Memproses...'
-              : 'Tekan mikrofon dan ucapkan transaksi'}
+              ? K.processing
+              : K.press_mic}
           </p>
         </div>
 
         {!supported && (
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
-            Browser Anda tidak mendukung pengenalan suara (Web Speech API). Gunakan Chrome atau Edge,
-            atau ketik manual di bawah.
+            {K.unsupported_banner}
           </div>
         )}
 
         {/* Recognised speech - read only, never overwritten by the manual field */}
         {recognized && (
           <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Terdengar:</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{K.heard}</p>
             <p className="text-sm text-gray-800 dark:text-gray-200">{recognized}</p>
           </div>
         )}
@@ -306,14 +308,14 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             <span className="inline-flex items-center gap-1.5">
               <Keyboard className="w-3.5 h-3.5" />
-              Teks transaksi
+              {K.transaction_text}
             </span>
           </label>
           <div className="flex gap-2">
             <Input
               value={manualText}
               onChange={(e) => setManualText(e.target.value)}
-              placeholder="contoh: beli kopi dua puluh lima ribu"
+              placeholder={K.ph_example}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') parseText(manualText);
               }}
@@ -323,12 +325,12 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
               onClick={() => parseText(manualText)}
               disabled={parsing || !manualText.trim()}
             >
-              Parse
+              {K.parse}
             </Button>
           </div>
           {recognized && manualText.trim() && (
             <p className="text-xs text-gray-400 mt-1">
-              Teks manual yang akan diproses. Teks yang terdengar tetap tersimpan di atas.
+              {K.manual_hint}
             </p>
           )}
         </div>
@@ -338,12 +340,12 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
           <div className="space-y-3 p-4 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-center gap-2 text-green-800 font-medium text-sm">
               <Check className="w-4 h-4" />
-              Berhasil dikenali (keyakinan {(parsed.confidence_score * 100).toFixed(0)}%)
+              {fill(K.success, (parsed.confidence_score * 100).toFixed(0))}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Jumlah (Rp)</label>
+                <label className="block text-xs text-gray-600 mb-1">{K.amount}</label>
                 <Input
                   type="number"
                   value={form.amount}
@@ -352,48 +354,48 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Tipe</label>
+                <label className="block text-xs text-gray-600 mb-1">{K.type}</label>
                 <select
                   value={form.transaction_type}
                   onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 >
-                  <option value="expense">Pengeluaran</option>
-                  <option value="income">Pemasukan</option>
+                  <option value="expense">{K.expense}</option>
+                  <option value="income">{K.income}</option>
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Merchant / Sumber</label>
+              <label className="block text-xs text-gray-600 mb-1">{K.merchant_source}</label>
               <Input
                 value={form.merchant_name}
                 onChange={(e) => setForm({ ...form, merchant_name: e.target.value })}
-                placeholder="Nama merchant"
+                placeholder={K.ph_merchant}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Kategori</label>
+              <label className="block text-xs text-gray-600 mb-1">{K.category}</label>
               <Input
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
-                placeholder="contoh: Makanan & Minuman"
+                placeholder={K.ph_category}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Catatan</label>
+              <label className="block text-xs text-gray-600 mb-1">{K.note}</label>
               <Input
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Catatan transaksi"
+                placeholder={K.ph_note}
               />
             </div>
 
             {parsed.missing_fields?.length > 0 && (
               <p className="text-xs text-amber-700">
-                Perlu dilengkapi: {parsed.missing_fields.join(', ')}
+                {fill(K.missing_fields, parsed.missing_fields.join(', '))}
               </p>
             )}
           </div>
@@ -404,22 +406,22 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
           {parsed && (
             <Button variant="outline" onClick={() => setParsed(null)}>
               <RotateCcw className="w-4 h-4 mr-1" />
-              Ulangi
+              {K.retry}
             </Button>
           )}
           {listening && (
             <Button variant="outline" onClick={stopListening}>
               <X className="w-4 h-4 mr-1" />
-              Stop
+              {K.stop}
             </Button>
           )}
           {parsed && (
             <Button onClick={handleSave} disabled={saved}>
-              {saved ? 'Tersimpan' : 'Simpan Transaksi'}
+              {saved ? K.saved : K.save}
             </Button>
           )}
           <Button variant="secondary" onClick={handleClose}>
-            Batal
+            {K.cancel}
           </Button>
         </div>
       </div>

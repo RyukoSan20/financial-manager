@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from app.core.database import get_db
+from app.services.currency_rules import assert_record_currency
 from app.core.security import get_current_user_optional, get_current_user
 from app.models.recurring import RecurringRule
 from app.models.transaction import Transaction
@@ -173,6 +174,14 @@ def create_recurring_rule(
     
     # items steers the breakdown, it is not a column.
     rule_items = rule_data.pop("items", None)
+
+    # A record lives in the currency of the account it belongs to. A
+    # record that names a different currency is refused, so a recurring
+    # rule in dollars can never run against a rupiah account.
+    if rule_data.get("account_id"):
+        _account = db.query(Account).filter(Account.id == rule_data["account_id"]).first()
+        if _account and _account.user_id == current_user.id:
+            rule_data["currency"] = assert_record_currency(rule_data.get("currency"), _account)
 
     db_rule = RecurringRule(
         **rule_data,

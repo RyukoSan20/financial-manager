@@ -2,8 +2,14 @@ import { useState, useEffect } from 'react';
 import { X, Plus, Minus, ShoppingCart, CreditCard, Banknote, Smartphone } from 'lucide-react';
 import merchantApi from '../../services/merchantApi';
 import { formatCurrency } from '../../utils/format';
+import { useTranslation } from '../../i18n';
+import { batch2, fill } from '../../i18n/keys_batch2';
 
 const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
+  const { language } = useTranslation();
+  const K = batch2[language]?.merchant?.quick_pos || batch2.id.merchant.quick_pos;
+  const locale = language === 'ja' ? 'ja-JP' : language === 'en' ? 'en-US' : 'id-ID';
+
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
@@ -44,7 +50,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
 
   const handleSubmit = async () => {
     if (!selectedMerchant || !amount || parseInt(amount) <= 0) {
-      alert('Pilih toko dan masukkan jumlah yang valid');
+      alert(K.error_select);
       return;
     }
 
@@ -54,7 +60,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
         merchant_id: selectedMerchant.id,
         amount: parseInt(amount),
         payment_method: paymentMethod,
-        description: description || `Penjualan ${selectedMerchant.store_name}`,
+        description: description || fill(K.sale_desc, selectedMerchant.store_name),
       });
 
       if (result.success) {
@@ -68,7 +74,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
       }
     } catch (err) {
       console.error('Sale failed:', err);
-      alert('Gagal mencatat penjualan');
+      alert(K.error_sale);
     } finally {
       setIsSubmitting(false);
     }
@@ -83,7 +89,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
         <div className="flex items-center justify-between px-4 py-3 bg-primary-600 text-white">
           <div className="flex items-center gap-2">
             <ShoppingCart size={20} />
-            <span className="font-semibold">Kasir Cepat</span>
+            <span className="font-semibold">{K.title}</span>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded">
             <X size={20} />
@@ -96,7 +102,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
           {merchants.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Toko
+                {K.store_label}
               </label>
               <select
                 value={selectedMerchant?.id || ''}
@@ -106,7 +112,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
                 }}
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
               >
-                <option value="">Pilih Toko</option>
+                <option value="">{K.select_store}</option>
                 {merchants.map(m => (
                   <option key={m.id} value={m.id}>{m.store_name}</option>
                 ))}
@@ -117,7 +123,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
           {/* Payment Method */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Metode Bayar
+              {K.payment_method}
             </label>
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -130,7 +136,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
                 }`}
               >
                 <Banknote size={24} />
-                <span className="text-xs mt-1">Cash</span>
+                <span className="text-xs mt-1">{K.cash}</span>
               </button>
               <button
                 type="button"
@@ -142,7 +148,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
                 }`}
               >
                 <Smartphone size={24} />
-                <span className="text-xs mt-1">QRIS</span>
+                <span className="text-xs mt-1">{K.qris}</span>
               </button>
               <button
                 type="button"
@@ -154,7 +160,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
                 }`}
               >
                 <CreditCard size={24} />
-                <span className="text-xs mt-1">EDC</span>
+                <span className="text-xs mt-1">{K.edc}</span>
               </button>
             </div>
           </div>
@@ -162,7 +168,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
           {/* Quick Amount Buttons */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Jumlah Cepat
+              {K.quick_amount}
             </label>
             <div className="grid grid-cols-5 gap-2">
               {quickAmounts.map(val => (
@@ -181,11 +187,11 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
           {/* Amount Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Jumlah (Rp)
+              {K.amount_label}
             </label>
             <input
               type="text"
-              value={amount ? parseInt(amount).toLocaleString('id-ID') : ''}
+              value={amount ? parseInt(amount).toLocaleString(locale) : ''}
               onChange={handleInputChange}
               placeholder="0"
               className="w-full px-4 py-3 text-2xl font-bold text-center border-2 border-primary-200 dark:border-primary-800 rounded-lg dark:bg-gray-700"
@@ -195,13 +201,13 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Deskripsi (opsional)
+              {K.description_label}
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Contoh: 5 kopi hitam"
+              placeholder={K.description_placeholder}
               className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
             />
           </div>
@@ -209,7 +215,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
           {/* Success Message */}
           {success && (
             <div className="p-4 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-center">
-              ✓ Penjualan berhasil dicatat!
+              {K.success}
             </div>
           )}
 
@@ -223,7 +229,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
                 : 'bg-primary-600 hover:bg-primary-700 text-white'
             }`}
           >
-            {isSubmitting ? 'Menyimpan...' : 'Simpan Penjualan'}
+            {isSubmitting ? K.saving : K.save}
           </button>
         </div>
       </div>

@@ -15,6 +15,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user_optional
 from app.models.transaction import Transaction
 from app.models.account import Account
+from app.services.currency import converter, BASE
 from app.models.category import Category
 from app.models.user import User
 
@@ -22,9 +23,10 @@ router = APIRouter()
 
 # Dashboard summary endpoint for frontend compatibility
 @router.get("/summary")
-def get_dashboard_summary(
+async def get_dashboard_summary(
     start_date: Optional[str] = Query(default=None),
     end_date: Optional[str] = Query(default=None),
+    currency: Optional[str] = Query(default=None, description="The currency to show the totals in"),
     current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
@@ -51,11 +53,38 @@ def get_dashboard_summary(
     income_cats = get_category_breakdown_by_date(db, start, end, 'income', user_id)
     expense_cats = get_category_breakdown_by_date(db, start, end, 'expense', user_id)
     
-    # Get total balance (sum of all account balances)
-    account_query = db.query(func.sum(Account.balance))
+    # The total balance is the sum of the balances of the accounts.
+    # The accounts do not all hold the same currency, so the raw
+    # numbers cannot simply be added up. Each balance is converted into
+    # the currency that is being shown, with a live rate.
+    account_query = db.query(Account).filter(Account.is_active == True)
     if user_id:
         account_query = account_query.filter(Account.user_id == user_id)
-    total_balance = float(account_query.scalar() or 0)
+    account_rows = account_query.all()
+
+    display_currency = (currency or "IDR").upper()
+    rates = await converter.get_rates("IDR")
+
+    total_balance = 0.0
+    balance_by_currency = {}
+    for account in account_rows:
+        account_currency = (account.currency or "IDR").upper()
+        account_balance = float(account.balance or 0)
+        balance_by_currency[account_currency] = round(
+            balance_by_currency.get(account_currency, 0.0) + account_balance, 2
+        )
+
+        if account_currency == display_currency:
+            total_balance += account_balance
+            continue
+
+        rate = rates.rates.get(account_currency)
+        to_target = await converter.rate(BASE, display_currency)
+        if not rate or not to_target:
+            # Without a rate this balance is left out, so the number on
+            # the screen is never a mixture of converted and raw money.
+            continue
+        total_balance += (account_balance / rate) * to_target
     
     # Get budget info
     from app.models.budget import Budget
@@ -85,7 +114,9 @@ def get_dashboard_summary(
         "totalExpense": totals['totalExpense'],
         "netSavings": totals['netSavings'],
         # Frontend expected fields
-        "total_balance": total_balance,
+        "total_balance": round(total_balance, 2),
+        "total_balance_currency": display_currency,
+        "balance_by_currency": balance_by_currency,
         "net_cash_flow": totals['netSavings'],
         "total_spent": total_spent,
         "total_budget": total_budget,

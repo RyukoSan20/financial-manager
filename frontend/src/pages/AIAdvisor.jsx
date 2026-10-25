@@ -12,6 +12,7 @@ import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { formatCurrency, formatPercent } from '../utils/format';
 import { useTranslation } from '../i18n';
+import { batch3 } from '../i18n/keys_batch3';
 import { 
   Send, Sparkles, RefreshCw, TrendingUp, TrendingDown, 
   Wallet, PiggyBank, Target, AlertTriangle, CheckCircle,
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react';
 
 const AIAdvisor = () => {
-  const { t } = useTranslation();
+  const { t , language } = useTranslation();
   const { isAuthenticated } = useAuth();
   const [advice, setAdvice] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -189,6 +190,7 @@ const AIAdvisor = () => {
   };
 
   const getCategoryIcon = (category) => {
+  const K = batch3[language]?.ai_advisor;
     switch(category) {
       case "budget": return <BarChart3 className="w-5 h-5" />;
       case "savings": return <PiggyBank className="w-5 h-5" />;
@@ -217,7 +219,7 @@ const AIAdvisor = () => {
       <div className="bg-gradient-to-r from-purple-600 to-primary-600 rounded-2xl p-6 text-white mb-6">
         <div className="flex items-center gap-3 mb-2">
           <Sparkles className="w-8 h-8" />
-          <h1 className="text-2xl font-bold">AI Financial Advisor</h1>
+          <h1 className="text-2xl font-bold">{K.page_title}</h1>
         </div>
         <p className="text-purple-100">{t('ai_advisor.subtitle')}</p>
       </div>
@@ -233,7 +235,7 @@ const AIAdvisor = () => {
           }`}
         >
           <Lightbulb className="w-4 h-4 inline mr-2" />
-          Insights
+          {K.insights}
         </button>
         <button
           onClick={() => setActiveTab("chat")}
@@ -244,7 +246,7 @@ const AIAdvisor = () => {
           }`}
         >
           <MessageSquare className="w-4 h-4 inline mr-2" />
-          Chat
+          {K.chat}
         </button>
       </div>
 
@@ -362,7 +364,7 @@ const AIAdvisor = () => {
                       {isExpanded && item.action_items && (
                         <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-3">
                           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Action Items:
+                            {K.action_items}
                           </p>
                           <ul className="space-y-1">
                             {item.action_items.map((action, j) => (
@@ -383,7 +385,7 @@ const AIAdvisor = () => {
                 <Sparkles className="w-12 h-12 mx-auto text-gray-300 mb-3" />
                 <p className="text-gray-500">{t('ai_advisor.no_advice')}</p>
                 <p className="text-sm text-gray-400 mt-1">
-                  Saran akan muncul setelah AI menganalisis data Anda
+                  {K.empty_hint}
                 </p>
               </div>
             )}
@@ -395,7 +397,7 @@ const AIAdvisor = () => {
             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
-            Refresh Analisis
+            {K.refresh}
           </button>
         </div>
       )}
@@ -410,7 +412,7 @@ const AIAdvisor = () => {
                 <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-3" />
                 <p className="text-gray-500">{t('ai_advisor.chat_empty')}</p>
                 <p className="text-sm text-gray-400 mt-1">
-                  Tanyakan tentang keuangan, budgeting, atau investasi
+                  {K.placeholder}
                 </p>
               </div>
             )}

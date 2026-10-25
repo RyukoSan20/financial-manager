@@ -188,16 +188,16 @@ export const Budgets = () => {
                   <div className="flex items-center justify-between text-sm">
                     <div>
                       <span className="text-gray-500">{t('budgets.spent_label')}</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(budget.spent || 0)}</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(budget.spent || 0, budget.currency)}</span>
                     </div>
                     <div>
                       <span className="text-gray-500">{t('budgets.budget_label')}</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(budget.amount)}</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(budget.amount, budget.currency)}</span>
                     </div>
                     <div>
                       <span className="text-gray-500">{t('budgets.left_label')}</span>
                       <span className={`font-medium ${remaining >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-                        {formatCurrency(remaining)}
+                        {formatCurrency(remaining, budget.currency)}
                       </span>
                     </div>
                   </div>

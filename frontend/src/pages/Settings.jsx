@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/ui';
-import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut, Palette } from 'lucide-react';
+import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut, Palette, Coins } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
 import api from '../services/api';
+import { useCurrency, CURRENCIES, CURRENCY_CODES } from '../utils/currency';
 
 export const Settings = () => {
   const { user, logout } = useAuth();
@@ -262,19 +263,14 @@ const SecurityTab = () => {
 
 const PreferencesTab = ({ user }) => {
   const { language, changeLanguage, languages, t } = useTranslation();
-  const [currency, setCurrency] = useState(() => {
-    // Get currency from user preference or derive from language
-    const saved = localStorage.getItem('currency');
-    if (saved) return saved;
-    // Default currency based on language
-    const langToCurrency = { id: 'IDR', en: 'USD', ja: 'JPY' };
-    return langToCurrency[language] || 'IDR';
-  });
+  const { currency, setCurrency, ratesAsOf, ratesSource, loading, refreshRates } = useCurrency();
   const [saved, setSaved] = useState(false);
+  const [showAllCurrencies, setShowAllCurrencies] = useState(false);
 
+  // The currency the app shows money in. It is a choice of its own:
+  // picking a language does not change it, and changing it does not
+  // change the language.
   const handleSave = () => {
-    // Save to localStorage
-    localStorage.setItem('currency', currency);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -282,18 +278,18 @@ const PreferencesTab = ({ user }) => {
   // Each language is named in that language, so a person who cannot
   // read the current one can still find their own.
   const languageOptions = {
-    'id': { label: '🇮🇩 Indonesia', name: 'Bahasa Indonesia', currency: 'IDR' },
-    'en': { label: '🇺🇸 English', name: 'English', currency: 'USD' },
-    'ja': { label: '🇯🇵 日本語', name: '日本語', currency: 'JPY' },
+    id: { label: '🇮🇩 Indonesia', name: 'Bahasa Indonesia' },
+    en: { label: '🇺🇸 English', name: 'English' },
+    ja: { label: '🇯🇵 日本語', name: '日本語' },
   };
 
-  // When language changes, update currency to match
-  const handleLanguageChange = (code) => {
-    changeLanguage(code);
-    const langToCurrency = { id: 'IDR', en: 'USD', ja: 'JPY' };
-    setCurrency(langToCurrency[code] || 'IDR');
-    localStorage.setItem('currency', langToCurrency[code] || 'IDR');
-  };
+  const currencyOptions = useMemo(() => {
+    const codes = showAllCurrencies ? CURRENCY_CODES : ['IDR', 'USD', 'EUR', 'JPY', 'GBP', 'AUD'];
+    return codes.map((code) => ({
+      value: code,
+      label: `${CURRENCIES[code].symbol}  ${t(`currency.${code}`)}`,
+    }));
+  }, [showAllCurrencies, t]);
 
   return (
     <Card className="p-6">
@@ -314,7 +310,7 @@ const PreferencesTab = ({ user }) => {
             {Object.entries(languageOptions).map(([code, { label, name }]) => (
               <button
                 key={code}
-                onClick={() => handleLanguageChange(code)}
+                onClick={() => changeLanguage(code)}
                 className={`p-3 rounded-lg border-2 transition-all text-center ${
                   language === code
                     ? 'border-primary-500 bg-primary-50 text-primary-700'
@@ -331,16 +327,47 @@ const PreferencesTab = ({ user }) => {
           </p>
         </div>
 
-        <Select
-          label={t('settings.preferences.currency')}
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-          options={[
-            { value: 'IDR', label: t('settings.preferences.currency_names.IDR') },
-            { value: 'USD', label: t('settings.preferences.currency_names.USD') },
-            { value: 'JPY', label: t('settings.preferences.currency_names.JPY') },
-          ]}
-        />
+        {/* Currency */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Coins className="w-4 h-4 inline mr-2" />
+            {t('settings.preferences.currency')}
+          </label>
+          <Select
+            label={t('currency.display_currency')}
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            options={currencyOptions}
+          />
+          <button
+            type="button"
+            onClick={() => setShowAllCurrencies((v) => !v)}
+            className="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+          >
+            {showAllCurrencies
+              ? t('currency.show_fewer')
+              : t('currency.show_all')}
+          </button>
+          <p className="mt-2 text-sm text-gray-500">{t('currency.display_hint')}</p>
+
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2">
+            <span className="text-xs text-gray-500">
+              {loading
+                ? t('currency.rates_loading')
+                : ratesAsOf
+                  ? `${t('currency.rates_updated')} ${new Date(ratesAsOf).toLocaleString()}`
+                  : t('currency.rates_error')}
+            </span>
+            <button
+              type="button"
+              onClick={refreshRates}
+              className="text-xs font-medium text-primary-600 hover:text-primary-700"
+            >
+              {t('currency.refresh_rates')}
+            </button>
+          </div>
+        </div>
+
         <Button onClick={handleSave}>{t('settings.preferences.save')}</Button>
       </div>
     </Card>

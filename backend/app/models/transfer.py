@@ -20,6 +20,16 @@ class Transfer(Base):
     # Accounts
     from_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
     to_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
+
+    # Foreign exchange. When the two accounts hold the same currency
+    # these stay empty. When they do not, they hold what the transfer
+    # actually did: how much arrived, at what rate, and where that
+    # rate came from.
+    to_amount = Column(Numeric(20, 2), nullable=True)
+    to_currency = Column(String(10), nullable=True)
+    fx_rate = Column(Numeric(20, 8), nullable=True)
+    fx_rate_source = Column(String(50), nullable=True)
+    fx_rate_as_of = Column(DateTime, nullable=True)
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)

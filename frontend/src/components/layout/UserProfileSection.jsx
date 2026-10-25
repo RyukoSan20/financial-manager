@@ -12,9 +12,11 @@ import { User as UserIcon, ChevronRight, Loader2, History, Mail, CalendarDays, A
 import { api } from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 import { useTranslation } from '../../i18n';
+import { batch3 } from '../../i18n/keys_batch3';
 
 export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
-  const { t } = useTranslation();
+  const { t , language } = useTranslation();
+  const K = batch3[language]?.profile_card;
   const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
     <button
       onClick={handleClick}
       className="w-full text-left flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
-      aria-label="Buka ringkasan profil"
+      aria-label={K.profile_summary}
     >
       {/* Avatar */}
       <div className="w-12 h-12 rounded-full bg-primary-600 text-white flex items-center justify-center text-base font-bold shrink-0 overflow-hidden">
@@ -109,7 +111,10 @@ export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
             {identity.member_since && (
               <span className="inline-flex items-center gap-0.5">
                 <CalendarDays className="w-2.5 h-2.5" />
-                {identity.member_since.display}
+                {new Date(identity.member_since.iso || identity.member_since.date).toLocaleDateString(
+                  language === 'ja' ? 'ja-JP' : language === 'en' ? 'en-US' : 'id-ID',
+                  { year: 'numeric', month: 'long', day: 'numeric' }
+                )}
               </span>
             )}
             {stats && stats.account_balance !== 0 && (

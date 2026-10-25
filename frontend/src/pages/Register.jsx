@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../i18n';
+import { batch3 } from '../i18n/keys_batch3';
 
 export const Register = () => {
   const [form, setForm] = useState({
@@ -14,6 +16,8 @@ export const Register = () => {
   const [loading, setLoading] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState({ score: 0, feedback: [] });
   const { register, isSupabase } = useAuth();
+  const { language } = useTranslation();
+  const K = batch3[language]?.register;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -55,7 +59,7 @@ export const Register = () => {
 
     // Validation
     if (form.password !== form.confirmPassword) {
-      setError('Password tidak cocok');
+      setError(K.password_mismatch);
       return;
     }
 
@@ -92,10 +96,10 @@ export const Register = () => {
         {/* Logo & Title */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">FinManager</h1>
-          <p className="text-primary-100">Buat akun baru untuk memulai</p>
+          <p className="text-primary-100">{K.tagline}</p>
           {isSupabase && (
             <span className="inline-block mt-2 px-2 py-1 bg-white/20 rounded-full text-xs text-white">
-              Powered by Supabase
+              {K.powered_by}
             </span>
           )}
         </div>
@@ -112,7 +116,7 @@ export const Register = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email *
+                {K.email_label}
               </label>
               <input
                 type="email"
@@ -127,7 +131,7 @@ export const Register = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password *
+                {K.password_label}
               </label>
               <input
                 type="password"
@@ -177,7 +181,7 @@ export const Register = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Konfirmasi Password *
+                {K.confirm_password_label}
               </label>
               <input
                 type="password"
@@ -193,13 +197,13 @@ export const Register = () => {
                 }`}
               />
               {form.confirmPassword && form.password !== form.confirmPassword && (
-                <p className="mt-1 text-xs text-red-500">Password tidak cocok</p>
+                <p className="mt-1 text-xs text-red-500">{K.password_mismatch}</p>
               )}
             </div>
 
             {/* Password Requirements */}
             <div className="bg-gray-50 rounded-xl p-4">
-              <p className="text-xs font-medium text-gray-600 mb-2">Password harus:</p>
+              <p className="text-xs font-medium text-gray-600 mb-2">{K.password_rules}</p>
               <ul className="space-y-1 text-xs text-gray-500">
                 <li className={`flex items-center gap-2 ${form.password.length >= 8 ? 'text-green-600' : ''}`}>
                   {form.password.length >= 8 ? '✓' : '○'} Min. 8 karakter
@@ -230,30 +234,30 @@ export const Register = () => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                   </svg>
-                  Processing...
+                  {K.processing}
                 </>
-              ) : 'Daftar Akun'}
+              ) : K.register_button}
             </button>
           </form>
 
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
             <p className="text-sm text-gray-500 mb-4">
-              Sudah punya akun?
+              {K.have_account}
             </p>
             <Link
               to="/login"
               className="block w-full py-3 border-2 border-primary-600 text-primary-600 rounded-xl font-semibold text-center hover:bg-primary-50 transition-all"
             >
-              Masuk
+              {K.sign_in}
             </Link>
           </div>
 
           <div className="mt-4 text-center">
             <p className="text-xs text-gray-400">
               Dengan daftar, Anda menyetujui{' '}
-              <a href="/terms" className="text-primary-600 hover:underline">Syarat</a>
+              <a href="/terms" className="text-primary-600 hover:underline">{K.terms}</a>
               {' '}dan{' '}
-              <a href="/privacy" className="text-primary-600 hover:underline">Kebijakan Privasi</a>
+              <a href="/privacy" className="text-primary-600 hover:underline">{K.privacy}</a>
             </p>
           </div>
         </div>

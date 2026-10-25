@@ -20,6 +20,8 @@ import {
   Bell,
 } from 'lucide-react';
 import { scanManager } from '../../services/scanManager';
+import { useTranslation } from '../../i18n';
+import { batch3 } from '../../i18n/keys_batch3';
 
 /** How far the sheet has to be pulled up before it opens. */
 const OPEN_THRESHOLD = 64;
@@ -153,6 +155,8 @@ export const ScanNotification = () => {
   };
 
   const subtitle = (job) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.scan_notification;
     if (job.status === 'running' || job.status === 'queued') {
       return job.message || 'Tunggu sebentar...';
     }
@@ -240,7 +244,7 @@ export const ScanNotification = () => {
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <button
         type="button"
-        aria-label="Tutup"
+        aria-label={K.close}
         onClick={closeSheet}
         className="absolute inset-0 bg-black/40"
       />
@@ -280,7 +284,7 @@ export const ScanNotification = () => {
               type="button"
               onClick={closeSheet}
               className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-              aria-label="Tutup hasil scan"
+              aria-label={K.close_scan}
             >
               <XCircle className="h-5 w-5" />
             </button>
@@ -321,7 +325,7 @@ export const ScanNotification = () => {
                   {breakdown.discount_total > 0 && (
                     <tr>
                       <td className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        Diskon
+                        {K.discount}
                       </td>
                       <td className="px-3 py-1.5 text-right text-xs font-medium text-red-600 dark:text-red-400">
                         -Rp{Number(breakdown.discount_total).toLocaleString('id-ID')}
@@ -330,7 +334,7 @@ export const ScanNotification = () => {
                   )}
                   <tr>
                     <td className="px-3 py-2 text-sm font-bold text-gray-900 dark:text-gray-100">
-                      Total
+                      {K.total}
                     </td>
                     <td className="px-3 py-2 text-right text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100">
                       Rp{Number(breakdown.total || result.total_amount || 0).toLocaleString('id-ID')}
@@ -344,7 +348,7 @@ export const ScanNotification = () => {
           {/* What the scanner learned. */}
           {result.learning && result.learning.new_products?.length > 0 && (
             <div className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
-              <span className="font-semibold">Produk baru dipelajari: </span>
+              <span className="font-semibold">{K.learned_products} </span>
               {result.learning.new_products.join(', ')}
             </div>
           )}
@@ -355,7 +359,7 @@ export const ScanNotification = () => {
               onClick={closeSheet}
               className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
             >
-              Tutup
+              {K.close}
             </button>
             <button
               type="button"
@@ -365,7 +369,7 @@ export const ScanNotification = () => {
               }}
               className="flex-1 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700"
             >
-              Lihat Transaksi
+              {K.view_transaction}
             </button>
           </div>
         </div>

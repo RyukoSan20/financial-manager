@@ -4,13 +4,20 @@ import { Plus, Wallet, Banknote, CreditCard, Smartphone, RefreshCw, Trash2, Edit
 import api from '../services/api';
 import { showNotification } from '../components/notifications/NotificationHelper';
 import { useTranslation } from '../i18n';
+import { batch3 } from '../i18n/keys_batch3';
+import { CURRENCIES, CURRENCY_CODES, formatNative, useCurrency } from '../utils/currency';
+import { formatCurrency } from '../utils/format';
 
+// The kinds of holding there are. The name of each one follows the
+// currency it is in, because a rupiah savings account and a yen
+// savings account are not the same thing.
 const accountTypeOptions = [
-  { value: 'bank', label: 'Bank Account', icon: Banknote },
-  { value: 'cash', label: 'Cash', icon: Wallet },
-  { value: 'e-wallet', label: 'E-Wallet', icon: Smartphone },
-  { value: 'credit_card', label: 'Credit Card', icon: CreditCard },
-  { value: 'investment', label: 'Investment', icon: PiggyBank },
+  { value: 'bank', icon: Banknote },
+  { value: 'savings', icon: PiggyBank },
+  { value: 'cash', icon: Wallet },
+  { value: 'e-wallet', icon: Smartphone },
+  { value: 'credit_card', icon: CreditCard },
+  { value: 'investment', icon: PiggyBank },
 ];
 
 const getAccountIcon = (type) => {
@@ -19,7 +26,9 @@ const getAccountIcon = (type) => {
 };
 
 export const Accounts = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const K = batch3[language]?.accounts;
+  const { currency: displayCurrency } = useCurrency();
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -35,7 +44,7 @@ export const Accounts = () => {
     try {
       const [accRes, summaryRes] = await Promise.all([
         api.accounts.list(),
-        api.accounts.balance(),
+        api.request(`/accounts/summary/total-balance?currency=${encodeURIComponent(displayCurrency)}`),
       ]);
       setAccounts(Array.isArray(accRes) ? accRes : []);
       setSummary(summaryRes);
@@ -123,16 +132,17 @@ export const Accounts = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{K.title}</h1>
           <p className="text-gray-500 mt-1">
-            {accounts.length} {t('accounts.count')} • {t('accounts.total')}: {summary?.total_balance ? 
-              new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(summary.total_balance)
+            {accounts.length} {t('accounts.count')} • {t('accounts.total')}:{' '}
+            {summary?.total_balance !== undefined && summary?.total_balance !== null
+              ? formatNative(summary.total_balance, summary.currency || displayCurrency)
               : '-'}
           </p>
         </div>
         <Button onClick={() => { setEditingAccount(null); setShowModal(true); }}>
           <Plus className="w-4 h-4 mr-2" />
-          Add Account
+          {K.add_account}
         </Button>
       </div>
 
@@ -142,7 +152,7 @@ export const Accounts = () => {
           <Card className="!p-4 text-center">
             <p className="text-sm text-gray-500">{t('accounts.total_balance')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1">
-              {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(summary.total_balance)}
+              {formatNative(summary.total_balance, summary.currency || displayCurrency)}
             </p>
           </Card>
         </div>
@@ -152,12 +162,12 @@ export const Accounts = () => {
       {accounts.length === 0 ? (
         <EmptyState
           icon={<Wallet className="w-8 h-8 text-gray-400" />}
-          title="No accounts yet"
-          description="Add your bank accounts, cash, and e-wallets to track your finances"
+          title={K.empty}
+          description={K.empty_hint}
           action={
             <Button onClick={() => setShowModal(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              Add Account
+              {K.add_account}
             </Button>
           }
         />
@@ -171,7 +181,7 @@ export const Accounts = () => {
               <div key={type}>
                 <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
                   <Icon className="w-4 h-4" />
-                  {typeOption?.label || type}
+                  {K.kind_names?.[type] || type}
                 </h3>
                 <div className="grid gap-3">
                   {accs.map((account) => (
@@ -189,7 +199,10 @@ export const Accounts = () => {
                           </div>
                           <div>
                             <p className="font-semibold text-gray-900">{account.name}</p>
-                            <p className="text-sm text-gray-500">{account.currency}</p>
+                            <p className="text-sm text-gray-500">
+                              {account.currency}
+                              {account.bank_name ? ` · ${account.bank_name}` : ''}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -197,8 +210,13 @@ export const Accounts = () => {
                             <p className={`font-bold text-lg ${
                               parseFloat(account.balance) >= 0 ? 'text-gray-900' : 'text-danger-600'
                             }`}>
-                              {new Intl.NumberFormat('id-ID', { style: 'currency', currency: account.currency || 'IDR', minimumFractionDigits: 0 }).format(account.balance)}
+                              {formatNative(account.balance, account.currency)}
                             </p>
+                            {account.currency && account.currency !== displayCurrency && (
+                              <p className="text-xs text-gray-500">
+                                {formatCurrency(account.balance, account.currency)}
+                              </p>
+                            )}
                             <Badge size="sm" variant={account.is_active ? 'success' : 'default'}>
                               {account.is_active ? 'Active' : 'Inactive'}
                             </Badge>
@@ -240,13 +258,21 @@ export const Accounts = () => {
 };
 
 const AccountModal = ({ isOpen, onClose, onSubmit, account }) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.accounts;
+
   const [form, setForm] = useState({
     name: '',
     account_type: 'bank',
     balance: '0',
     currency: 'IDR',
+    bank_name: '',
     is_credit: false,
   });
+
+  // The kinds of holding there are for the currency that is chosen.
+  // The names and the banks follow the currency.
+  const [kinds, setKinds] = useState([]);
 
   useEffect(() => {
     if (account) {
@@ -255,6 +281,7 @@ const AccountModal = ({ isOpen, onClose, onSubmit, account }) => {
         account_type: account.account_type,
         balance: account.balance?.toString() || '0',
         currency: account.currency || 'IDR',
+        bank_name: account.bank_name || '',
         is_credit: account.is_credit || false,
       });
     } else {
@@ -263,10 +290,27 @@ const AccountModal = ({ isOpen, onClose, onSubmit, account }) => {
         account_type: 'bank',
         balance: '0',
         currency: 'IDR',
+        bank_name: '',
         is_credit: false,
       });
     }
   }, [account]);
+
+  // Ask the server what the kinds of holding are called in the currency
+  // that is chosen, and which banks they are usually kept at.
+  useEffect(() => {
+    let cancelled = false;
+    api.request(`/accounts/kinds/${form.currency}`)
+      .then((data) => {
+        if (cancelled) return;
+        const payload = data?.data || data;
+        setKinds(payload?.options || []);
+      })
+      .catch(() => {
+        if (!cancelled) setKinds([]);
+      });
+    return () => { cancelled = true; };
+  }, [form.currency]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -277,26 +321,74 @@ const AccountModal = ({ isOpen, onClose, onSubmit, account }) => {
     });
   };
 
+  const kindOptions = kinds.length
+    ? kinds.map((k) => ({ value: k.kind, label: k.label }))
+    : accountTypeOptions.map((o) => ({ value: o.value, label: o.value }));
+
+  const bankSuggestions = kinds.find((k) => k.kind === form.account_type)?.banks || [];
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={account ? 'Edit Account' : 'Add Account'} size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={account ? K.edit_account : K.add_account} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Account Name"
-          placeholder="e.g., BCA Savings"
-          value={form.name}
-          onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
-          required
+        {/* The currency comes first: it decides what the account is called
+            and where it is kept. */}
+        <Select
+          label={K.currency}
+          options={CURRENCY_CODES.map((code) => ({
+            value: code,
+            label: `${CURRENCIES[code].symbol}  ${batch3[language]?.currency?.[code] || code}`,
+          }))}
+          value={form.currency}
+          onChange={(e) => setForm(f => ({ ...f, currency: e.target.value, account_kind: undefined }))}
         />
 
         <Select
-          label="Account Type"
-          options={accountTypeOptions.map(o => ({ value: o.value, label: o.label }))}
+          label={K.account_kind}
+          options={kindOptions}
           value={form.account_type}
           onChange={(e) => setForm(f => ({ ...f, account_type: e.target.value }))}
         />
 
         <Input
-          label="Initial Balance"
+          label={K.account_name}
+          placeholder={K.account_name_placeholder}
+          value={form.name}
+          onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+          required
+        />
+
+        {bankSuggestions.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {K.bank_name}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {bankSuggestions.map((bank) => (
+                <button
+                  type="button"
+                  key={bank}
+                  onClick={() => setForm(f => ({ ...f, bank_name: bank }))}
+                  className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${
+                    form.bank_name === bank
+                      ? 'border-primary-500 bg-primary-50 text-primary-700'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  {bank}
+                </button>
+              ))}
+            </div>
+            <Input
+              className="mt-2"
+              value={form.bank_name}
+              onChange={(e) => setForm(f => ({ ...f, bank_name: e.target.value }))}
+              placeholder={K.bank_name_placeholder}
+            />
+          </div>
+        )}
+
+        <Input
+          label={K.initial_balance}
           type="number"
           step="0.01"
           placeholder="0"
@@ -304,22 +396,12 @@ const AccountModal = ({ isOpen, onClose, onSubmit, account }) => {
           onChange={(e) => setForm(f => ({ ...f, balance: e.target.value }))}
         />
 
-        <Select
-          label="Currency"
-          options={[
-            { value: 'IDR', label: 'Indonesian Rupiah (IDR)' },
-            { value: 'USD', label: 'US Dollar (USD)' },
-          ]}
-          value={form.currency}
-          onChange={(e) => setForm(f => ({ ...f, currency: e.target.value }))}
-        />
-
         <div className="flex gap-3 pt-4">
           <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-            Cancel
+            {K.cancel}
           </Button>
           <Button type="submit" className="flex-1">
-            {account ? 'Update' : 'Add'} Account
+            {account ? K.update : K.add_account}
           </Button>
         </div>
       </form>

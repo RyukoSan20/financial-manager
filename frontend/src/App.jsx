@@ -41,9 +41,13 @@ import { CatalogPage } from './pages/CatalogPage';
 import HelpSupport from './pages/Settings/HelpSupport';
 import ProfileSummary from './pages/ProfileSummary';
 import { AuthCallback } from './pages/AuthCallback';
+import { useTranslation } from './i18n';
+import { batch3 } from './i18n/keys_batch3';
 
 // Auth Guard Component
 const RequireAuth = ({ children }) => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.common;
   const { isAuthenticated, loading } = useAuth();
   
   if (loading) {
@@ -51,7 +55,7 @@ const RequireAuth = ({ children }) => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading...</p>
+          <p className="text-gray-500">{K.loading}</p>
         </div>
       </div>
     );

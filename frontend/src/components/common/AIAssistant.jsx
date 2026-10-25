@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
+import { useTranslation } from '../../i18n';
+import { batch3 } from '../../i18n/keys_batch3';
 
 // Language configurations
 const LANGUAGES = {
@@ -152,7 +154,10 @@ const AIAssistant = ({ userData = {} }) => {
   const [voiceSupported, setVoiceSupported] = useState(false);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
-  
+
+  // The label of the assistant, in the language that is picked here.
+  const K = batch3[language]?.ai_assistant;
+
   // Initialize messages with welcome in current language
   useEffect(() => {
     setMessages([{ role: 'assistant', content: t[language].welcome }]);
@@ -503,7 +508,7 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
       <button
         onClick={() => setIsOpen(true)}
         className="fixed left-4 bottom-24 z-50 w-14 h-14 bg-gradient-to-br from-purple-500 to-primary-500 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
-        title="AI Assistant"
+        title={K.title}
       >
         <Sparkles className="w-6 h-6 text-white" />
         <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
@@ -517,7 +522,7 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
       <div className="bg-gradient-to-r from-purple-500 to-primary-500 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Sparkles className="w-5 h-5 text-white" />
-          <span className="font-semibold text-white">AI Assistant</span>
+          <span className="font-semibold text-white">{K.title}</span>
           <span className="text-white/80 text-xs">{LANGUAGES[language].flag}</span>
         </div>
         <div className="flex items-center gap-2">

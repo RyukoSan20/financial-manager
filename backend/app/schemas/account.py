@@ -9,10 +9,15 @@ from decimal import Decimal
 
 class AccountBase(EmptyStringAsNone):
     name: str = Field(..., max_length=100)
-    account_type: str = Field(..., pattern="^(cash|bank|e-wallet|credit_card)$")
+    account_type: str = Field(
+        ...,
+        pattern="^(cash|bank|savings|e-wallet|credit_card|investment)$",
+    )
     currency: str = Field(default="IDR", max_length=10)
     is_credit: bool = False
     credit_limit: Optional[Decimal] = None
+    bank_name: Optional[str] = Field(None, max_length=100)
+    account_kind: Optional[str] = Field(None, max_length=50)
 
 
 class AccountCreate(AccountBase, EmptyStringAsNone):
@@ -27,6 +32,8 @@ class AccountUpdate(EmptyStringAsNone):
     is_active: Optional[bool] = None
     is_credit: Optional[bool] = None
     credit_limit: Optional[Decimal] = None
+    bank_name: Optional[str] = Field(None, max_length=100)
+    account_kind: Optional[str] = Field(None, max_length=50)
 
 
 class AccountResponse(AccountBase):

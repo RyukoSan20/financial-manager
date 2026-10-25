@@ -5,18 +5,23 @@ import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { apiUrl as buildApiUrl } from '../config/url';
 import { Plus, Repeat, RefreshCw, Trash2, Edit2, Calendar, Clock, Play, Pause } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
+import { useCurrency, sumInDisplay } from '../utils/currency';
 import { showNotification } from '../components/notifications/NotificationHelper';
+import { useTranslation } from '../i18n';
+import { batch1, fill } from '../i18n/keys_batch1';
 
-const frequencyOptions = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'biweekly', label: 'Bi-weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-  { value: 'yearly', label: 'Yearly' },
-];
+// The frequency list is built per language, because the words are read
+// when the screen is drawn and not when the module is loaded.
+const frequencyValues = ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'];
 
 export const Recurring = () => {
+  const { currency: displayCurrency } = useCurrency();
+  const { language } = useTranslation();
+  const K = batch1[language]?.recurring || batch1.id.recurring;
+  const frequencyOptions = frequencyValues.map((value) => ({
+    value,
+    label: K.freq[value] || value,
+  }));
   const [rules, setRules] = useState([]);
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -51,7 +56,7 @@ export const Recurring = () => {
 
   // Manual trigger for processing due recurring rules
   const triggerProcess = async () => {
-    if (!confirm('Process all due recurring rules now? Transactions will be auto-generated.')) return;
+    if (!confirm(K.processConfirm)) return;
     try {
       setLoading(true);
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
@@ -66,30 +71,32 @@ export const Recurring = () => {
       if (result.created > 0 || result.generated > 0) {
         showNotification({
           type: 'success',
-          title: '✅ Recurring Processed',
-          message: `Created ${result.created || result.generated} transactions`,
+          title: K.notif.processedTitle,
+          message: fill(K.notif.createdCount, {
+            count: result.created || result.generated,
+          }),
           category: 'recurring'
         });
         fetchData();
       } else if (result.processed === 0) {
         showNotification({
           type: 'info',
-          title: 'ℹ️ No Due Transactions',
-          message: 'All recurring rules are up to date. No transactions to generate.',
+          title: K.notif.noDueTitle,
+          message: K.notif.upToDate,
           category: 'recurring'
         });
       } else if (result.details && result.details.length > 0) {
         showNotification({
           type: 'info',
-          title: 'ℹ️ Recurring Checked',
+          title: K.notif.checkedTitle,
           message: result.details.join('\n'),
           category: 'recurring'
         });
       } else {
         showNotification({
           type: 'info',
-          title: 'ℹ️ No Action Needed',
-          message: 'No transactions to generate at this time.',
+          title: K.notif.noActionTitle,
+          message: K.notif.nothingToGenerate,
           category: 'recurring'
         });
       }
@@ -97,8 +104,8 @@ export const Recurring = () => {
       console.error('Process error:', error);
       showNotification({
         type: 'error',
-        title: '❌ Process Failed',
-        message: 'Failed to process recurring rules. Check if backend is running.',
+        title: K.notif.failedTitle,
+        message: K.notif.failedMsg,
         category: 'recurring'
       });
     } finally {
@@ -132,7 +139,7 @@ export const Recurring = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this recurring rule?')) return;
+    if (!confirm(K.deleteConfirm)) return;
     try {
       await api.recurring.delete(id);
       fetchData();
@@ -150,17 +157,10 @@ export const Recurring = () => {
   }
 
   const activeRules = rules.filter(r => r.is_active);
-  const totalMonthlyExpense = activeRules
-    .filter(r => r.rule_type === 'expense')
-    .reduce((sum, r) => {
-      let monthly = parseFloat(r.amount);
-      if (r.frequency === 'daily') monthly *= 30;
-      else if (r.frequency === 'weekly') monthly *= 4;
-      else if (r.frequency === 'biweekly') monthly *= 2;
-      else if (r.frequency === 'quarterly') monthly /= 3;
-      else if (r.frequency === 'yearly') monthly /= 12;
-      return sum + monthly;
-    }, 0);
+  const totalMonthlyExpense = sumInDisplay(
+    activeRules.filter(r => r.rule_type === 'expense').map(r => ({ ...r, _monthly: monthlyAmount(r) })),
+    '_monthly'
+  );
 
   const totalMonthlyIncome = activeRules
     .filter(r => r.rule_type === 'income')
@@ -179,16 +179,16 @@ export const Recurring = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Recurring Transactions</h1>
-          <p className="text-gray-500 mt-1">{activeRules.length} active recurring rules</p>
+          <h1 className="text-2xl font-bold text-gray-900">{K.title}</h1>
+          <p className="text-gray-500 mt-1">{fill(K.activeRulesCount, { count: activeRules.length })}</p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={triggerProcess}>
-            <Play className="w-4 h-4 mr-1" /> Process Now
+            <Play className="w-4 h-4 mr-1" /> {K.processNow}
           </Button>
           <Button onClick={() => { setEditingRule(null); setShowModal(true); }}>
             <Plus className="w-4 h-4 mr-2" />
-            New Recurring
+            {K.newRecurring}
           </Button>
         </div>
       </div>
@@ -196,21 +196,21 @@ export const Recurring = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="!p-4">
-          <p className="text-sm text-gray-500">Monthly Income</p>
-          <p className="text-xl font-bold text-success-600 mt-1">{formatCurrency(totalMonthlyIncome)}</p>
+          <p className="text-sm text-gray-500">{K.monthlyIncome}</p>
+          <p className="text-xl font-bold text-success-600 mt-1">{formatCurrency(totalMonthlyIncome, displayCurrency)}</p>
         </Card>
         <Card className="!p-4">
-          <p className="text-sm text-gray-500">Monthly Expense</p>
-          <p className="text-xl font-bold text-danger-600 mt-1">{formatCurrency(totalMonthlyExpense)}</p>
+          <p className="text-sm text-gray-500">{K.monthlyExpense}</p>
+          <p className="text-xl font-bold text-danger-600 mt-1">{formatCurrency(totalMonthlyExpense, displayCurrency)}</p>
         </Card>
         <Card className="!p-4">
-          <p className="text-sm text-gray-500">Net Recurring</p>
+          <p className="text-sm text-gray-500">{K.netRecurring}</p>
           <p className={`text-xl font-bold mt-1 ${totalMonthlyIncome - totalMonthlyExpense >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-            {formatCurrency(totalMonthlyIncome - totalMonthlyExpense)}
+            {formatCurrency(totalMonthlyIncome - totalMonthlyExpense, displayCurrency)}
           </p>
         </Card>
         <Card className="!p-4">
-          <p className="text-sm text-gray-500">Active Rules</p>
+          <p className="text-sm text-gray-500">{K.activeRules}</p>
           <p className="text-xl font-bold text-gray-900 mt-1">{activeRules.length}</p>
         </Card>
       </div>
@@ -221,7 +221,7 @@ export const Recurring = () => {
           <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-primary-600" />
-              <h3 className="font-semibold text-gray-900">Upcoming Transactions</h3>
+              <h3 className="font-semibold text-gray-900">{K.upcomingTransactions}</h3>
             </div>
           </CardHeader>
           <CardBody className="!p-0">
@@ -243,7 +243,7 @@ export const Recurring = () => {
                     <p className={`font-semibold ${
                       item.rule_type === 'income' ? 'text-success-600' : 'text-danger-600'
                     }`}>
-                      {item.rule_type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
+                      {item.rule_type === 'income' ? '+' : '-'}{formatCurrency(item.amount, item.currency)}
                     </p>
                     <p className="text-sm text-gray-500">{formatDate(item.date)}</p>
                   </div>
@@ -258,12 +258,12 @@ export const Recurring = () => {
       {rules.length === 0 ? (
         <EmptyState
           icon={<Repeat className="w-8 h-8 text-gray-400" />}
-          title="No recurring transactions"
-          description="Set up recurring income and expenses like salary, rent, or subscriptions"
+          title={K.noRecurring}
+          description={K.noRecurringDesc}
           action={
             <Button onClick={() => setShowModal(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              Create Recurring
+              {K.createRecurring}
             </Button>
           }
         />
@@ -293,7 +293,7 @@ export const Recurring = () => {
                           size="sm"
                           variant={rule.is_active ? (rule.rule_type === 'income' ? 'success' : 'danger') : 'default'}
                         >
-                          {rule.is_active ? rule.rule_type : 'Paused'}
+                          {rule.is_active ? (rule.rule_type === 'income' ? K.income : K.expense) : K.paused}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
@@ -306,7 +306,7 @@ export const Recurring = () => {
                       </div>
                       {rule.next_occurrence && (
                         <p className="text-sm text-gray-400 mt-1">
-                          Next: {formatDate(rule.next_occurrence)}
+                          {fill(K.next, { date: formatDate(rule.next_occurrence) })}
                         </p>
                       )}
                     </div>
@@ -316,7 +316,7 @@ export const Recurring = () => {
                       <p className={`text-xl font-bold ${
                         rule.rule_type === 'income' ? 'text-success-600' : 'text-danger-600'
                       }`}>
-                        {rule.rule_type === 'income' ? '+' : '-'}{formatCurrency(rule.amount)}
+                        {rule.rule_type === 'income' ? '+' : '-'}{formatCurrency(rule.amount, rule.currency)}
                       </p>
                     </div>
                     <div className="flex gap-1">
@@ -327,7 +327,7 @@ export const Recurring = () => {
                             ? 'text-warning-600 hover:bg-warning-50' 
                             : 'text-success-600 hover:bg-success-50'
                         }`}
-                        title={rule.is_active ? 'Pause' : 'Activate'}
+                        title={rule.is_active ? K.pause : K.activate}
                       >
                         {rule.is_active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                       </button>
@@ -349,7 +349,7 @@ export const Recurring = () => {
                   <BreakdownViewer
                     parentType="recurring"
                     parentId={rule.id}
-                    title="Rincian"
+                    title={K.details}
                     compact
                   />
                 </div>
@@ -373,6 +373,12 @@ export const Recurring = () => {
 };
 
 const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts }) => {
+  const { language } = useTranslation();
+  const K = batch1[language]?.recurring || batch1.id.recurring;
+  const frequencyOptions = frequencyValues.map((value) => ({
+    value,
+    label: K.freq[value] || value,
+  }));
   const [form, setForm] = useState({
     name: '',
     rule_type: 'expense',
@@ -420,11 +426,11 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
     e.preventDefault();
     // Validate required fields
     if (!form.account_id) {
-      alert('Please select an account');
+      alert(K.selectAccountAlert);
       return;
     }
     if (!form.amount || parseFloat(form.amount) <= 0) {
-      alert('Please enter a valid amount');
+      alert(K.validAmountAlert);
       return;
     }
     // The backend model takes 'type', 'description' and 'start_date'.
@@ -433,7 +439,7 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
     const payload = {
       type: form.rule_type,
       amount: parseFloat(form.amount),
-      description: form.name || `${form.rule_type} recurring`,
+      description: form.name || `${form.rule_type === 'income' ? K.incomeRecurring : K.expenseRecurring}`,
       frequency: form.frequency,
       start_date: form.start_date,
       category_id: form.category_id ? parseInt(form.category_id) : null,
@@ -448,11 +454,11 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={rule ? 'Edit Recurring' : 'New Recurring'} size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={rule ? K.editRecurring : K.newRecurring} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Name"
-          placeholder="e.g., Monthly Salary"
+          label={K.name}
+          placeholder={K.namePlaceholder}
           value={form.name}
           onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
           required
@@ -463,29 +469,29 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
             type="button"
             onClick={() => setForm(f => ({ ...f, rule_type: 'income' }))}
             className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-              form.rule_type === 'income' 
-                ? 'bg-success-100 text-success-700 border-2 border-success-500' 
+              form.rule_type === 'income'
+                ? 'bg-success-100 text-success-700 border-2 border-success-500'
                 : 'bg-gray-100 text-gray-600'
             }`}
           >
-            Income
+            {K.income}
           </button>
           <button
             type="button"
             onClick={() => setForm(f => ({ ...f, rule_type: 'expense' }))}
             className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-              form.rule_type === 'expense' 
-                ? 'bg-danger-100 text-danger-700 border-2 border-danger-500' 
+              form.rule_type === 'expense'
+                ? 'bg-danger-100 text-danger-700 border-2 border-danger-500'
                 : 'bg-gray-100 text-gray-600'
             }`}
           >
-            Expense
+            {K.expense}
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Amount"
+            label={K.amount}
             type="number"
             step="1000"
             placeholder="0"
@@ -494,7 +500,7 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
             required
           />
           <Select
-            label="Frequency"
+            label={K.frequency}
             options={frequencyOptions}
             value={form.frequency}
             onChange={(e) => setForm(f => ({ ...f, frequency: e.target.value }))}
@@ -503,14 +509,14 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
 
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Start Date"
+            label={K.startDate}
             type="date"
             value={form.start_date}
             onChange={(e) => setForm(f => ({ ...f, start_date: e.target.value }))}
             required
           />
           <Input
-            label="End Date (optional)"
+            label={K.endDateOptional}
             type="date"
             value={form.end_date}
             onChange={(e) => setForm(f => ({ ...f, end_date: e.target.value }))}
@@ -518,21 +524,21 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
         </div>
 
         <Select
-          label="Account"
+          label={K.account}
           options={accounts.map(a => ({ value: a.id, label: a.name }))}
           value={form.account_id}
           onChange={(e) => setForm(f => ({ ...f, account_id: e.target.value }))}
-          placeholder="Select account"
+          placeholder={K.selectAccount}
         />
 
         <Select
-          label="Category"
+          label={K.category}
           options={categories
             .filter(c => c.type === form.rule_type)
             .map(c => ({ value: c.id, label: c.name }))}
           value={form.category_id}
           onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
-          placeholder="Select category"
+          placeholder={K.selectCategory}
         />
 
         <div className="flex items-center gap-2">
@@ -543,15 +549,15 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
             onChange={(e) => setForm(f => ({ ...f, is_active: e.target.checked }))}
             className="w-4 h-4 rounded border-gray-300"
           />
-          <label htmlFor="is_active" className="text-sm text-gray-700">Active</label>
+          <label htmlFor="is_active" className="text-sm text-gray-700">{K.active}</label>
         </div>
 
         <div className="flex gap-3 pt-4">
           <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-            Cancel
+            {K.cancel}
           </Button>
           <Button type="submit" className="flex-1">
-            {rule ? 'Update' : 'Create'}
+            {rule ? K.update : K.create}
           </Button>
         </div>
       </form>

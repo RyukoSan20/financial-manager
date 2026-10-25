@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { useTranslation } from '../../i18n';
+import { batch2 } from '../../i18n/keys_batch2';
 
 const DEFAULTS = {
   email_notifications: true,
@@ -15,7 +16,8 @@ const DEFAULTS = {
 };
 
 const NotificationSettings = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const K = batch2[language]?.notification || batch2.id.notification;
   const [settings, setSettings] = useState(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -28,11 +30,11 @@ const NotificationSettings = () => {
       setSettings({ ...DEFAULTS, ...(data || {}) });
     } catch (e) {
       console.error('Load notification settings error:', e);
-      setError(e.message || 'Gagal memuat pengaturan notifikasi');
+      setError(e.message || K.load_error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [K]);
 
   useEffect(() => {
     load();
@@ -55,7 +57,7 @@ const NotificationSettings = () => {
       await load();
       setTimeout(() => setMessage(''), 3000);
     } catch (e) {
-      setError(e.message || 'Gagal menyimpan pengaturan notifikasi');
+      setError(e.message || K.save_error);
     } finally {
       setSaving(false);
     }
@@ -89,14 +91,14 @@ const NotificationSettings = () => {
           <div className="space-y-4">
             <ToggleItem
               title={t('notification_settings.email')}
-              description="Terima notifikasi via email"
+              description={K.desc_email}
               checked={settings.email_notifications}
               onChange={() => handleToggle('email_notifications')}
             />
 
             <ToggleItem
               title={t('notification_settings.push')}
-              description="Terima notifikasi di browser"
+              description={K.desc_push}
               checked={settings.push_notifications}
               onChange={() => handleToggle('push_notifications')}
             />
@@ -104,7 +106,7 @@ const NotificationSettings = () => {
         </div>
 
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h2 className="font-bold text-lg mb-4">Alert & Reminder</h2>
+          <h2 className="font-bold text-lg mb-4">{K.alerts_title}</h2>
 
           <div className="space-y-4">
             <ToggleItem
@@ -116,14 +118,14 @@ const NotificationSettings = () => {
 
             <ToggleItem
               title={t('notification_settings.budget')}
-              description="Peringatan saat budget hampir habis"
+              description={K.desc_budget}
               checked={settings.budget_alerts}
               onChange={() => handleToggle('budget_alerts')}
             />
 
             <div className="pt-4 border-t">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Frekuensi Reminder
+                {K.reminder_frequency}
               </label>
               <select
                 value={settings.reminder_frequency}
@@ -138,7 +140,7 @@ const NotificationSettings = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ingatkan berapa hari sebelumnya
+                {K.reminder_days_before}
               </label>
               <input
                 type="number"
@@ -160,14 +162,14 @@ const NotificationSettings = () => {
           <div className="space-y-4">
             <ToggleItem
               title={t('notification_settings.weekly_summary')}
-              description="Kirim ringkasan setiap minggu"
+              description={K.desc_weekly}
               checked={settings.weekly_summary}
               onChange={() => handleToggle('weekly_summary')}
             />
 
             <ToggleItem
               title={t('notification_settings.monthly_summary')}
-              description="Kirim ringkasan setiap bulan"
+              description={K.desc_monthly}
               checked={settings.monthly_summary}
               onChange={() => handleToggle('monthly_summary')}
             />

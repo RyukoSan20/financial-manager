@@ -21,6 +21,7 @@ It exits non-zero when something is missing, so it can be put in CI.
 """
 
 import os
+from pathlib import Path
 import re
 import sys
 
@@ -147,6 +148,254 @@ def check_module_level_t(root):
     return problems
 
 
+def _components_of(text):
+    """The component blocks in a file, as (start, end, name)."""
+    import re
+
+    pattern = re.compile(
+        r"(?:export const (\w+) = \([^)]*\)\s*=>\s*\{"
+        r"|const (\w+) = \([^)]*\)\s*=>\s*\{"
+        r"|function (\w+)\([^)]*\)\s*\{"
+        r"|export default function (\w+)\([^)]*\)\s*\{)"
+    )
+    marks = []
+    for m in pattern.finditer(text):
+        name = next(g for g in m.groups() if g)
+        depth = 0
+        i = m.end() - 1
+        started = False
+        while i < len(text):
+            c = text[i]
+            if c == "{":
+                depth += 1
+                started = True
+            elif c == "}":
+                depth -= 1
+                if started and depth == 0:
+                    break
+            i += 1
+        marks.append((m.start(), i, name))
+    return marks
+
+
+def _defines_k_at_component_level(body):
+    """
+    Does this component body hold a K of its own?
+
+    The check is on the indentation. A "const K = ..." that sits deeper
+    than the body of the component belongs to a function inside the
+    component, and it is out of reach of the markup. That is the shape
+    of the bug where a page renders blank: the K is written, the
+    markup reads it, and the two are not in the same place.
+    """
+    import re
+
+    lines = body.split("\n")
+    if not lines:
+        return False
+
+    # The indentation of the component's own first statement.
+    own_indent = None
+    for line in lines[1:]:
+        if not line.strip():
+            continue
+        own_indent = len(line) - len(line.lstrip())
+        break
+    if own_indent is None:
+        return False
+
+    for line in lines:
+        if not re.match(r"\s*const K\s*=", line):
+            continue
+        indent = len(line) - len(line.lstrip())
+        if indent <= own_indent:
+            return True
+    return False
+
+
+def _nested_function_bodies(body):
+    """
+    The bodies of the functions that are written inside a component.
+
+    A K that is declared inside one of these is not visible to the
+    markup of the component. The two places this happened were a
+    handleQuickAction and a mode toggle that was written as a plain
+    arrow with a body, so both shapes are looked for here.
+    """
+    import re
+
+    bodies = []
+    lines = body.split("\n")
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if not re.match(r"(?:const |let |var )?\w+\s*=\s*(?:async\s*)?\([^)]*\)\s*=>\s*\{", stripped):
+            continue
+        indent = len(line) - len(line.lstrip())
+        depth = 0
+        started = False
+        for follow in lines[index:]:
+            depth += follow.count("{") - follow.count("}")
+            if "{" in follow:
+                started = True
+            if started and depth <= 0:
+                bodies.append((indent, "\n".join(lines[index + 1:])))
+                break
+    return bodies
+
+
+def check_batch_keys_in_scope(root):
+    """
+    Every {K.name} needs a K that is in reach where it is used.
+
+    The batch locale files are read into a variable named K. A file
+    that uses {K.total} has to have that K in the same component, or
+    in one that surrounds it. When the K is in a sibling component the
+    page throws while it renders and the reader gets a blank screen,
+    which no build step catches.
+    """
+    import re
+
+    problems = []
+    for path in sorted(root.glob("**/*.jsx")) + sorted(root.glob("**/*.js")):
+        if "i18n" in path.parts:
+            continue
+        text = path.read_text(encoding="utf-8")
+        if "{K." not in text:
+            continue
+        rel = path.relative_to(root)
+        marks = _components_of(text)
+        module_has_k = bool(re.search(r"^const K\s*=", text, re.M))
+        for index, (start, end, name) in enumerate(marks):
+            body = text[start:end]
+            used = set(re.findall(r"\{K\.([A-Za-z_][A-Za-z0-9_]*)", body))
+            if not used:
+                continue
+
+            # A K that only exists inside a nested function is not
+            # visible to the markup, so it does not count.
+            nested = _nested_function_bodies(body)
+            own_lines = []
+            for nested_indent, nested_body in nested:
+                own_lines.extend(
+                    line for line in nested_body.split("\n")
+                    if len(line) - len(line.lstrip()) > nested_indent
+                )
+            body_without_nested = "\n".join(
+                line for line in body.split("\n") if line not in own_lines
+            )
+
+            local = _defines_k_at_component_level(body_without_nested)
+            outer = any(
+                outer_start <= start < outer_end
+                and _defines_k_at_component_level(text[outer_start:outer_end])
+                for outer_start, outer_end, _ in marks[:index]
+            )
+            if not (local or outer or module_has_k):
+                problems.append(
+                    f"{rel}: {name} uses K.{sorted(used)[0]} but there is no K in reach"
+                )
+    return problems
+
+def check_batch_values_exist(root):
+    """
+    Every K.name that a page reads has to be in the batch file.
+
+    A missing value reads as undefined in the markup. The page still
+    renders, but the label is gone. This gate reads the batch files
+    the way the browser does and checks each lookup against them.
+    """
+    import json
+    import re
+    import subprocess
+    import tempfile
+
+    batches = {}
+    i18n = root / "i18n"
+    for name in ("keys_batch1", "keys_batch2", "keys_batch3"):
+        path = i18n / f"{name}.js"
+        if not path.exists():
+            continue
+        batches[name] = {}
+        for lang in ("id", "en", "ja"):
+            with tempfile.NamedTemporaryFile(suffix=".cjs", delete=False) as tmp:
+                out = tmp.name
+            subprocess.run(
+                ["npx", "--no-install", "esbuild", f"src/i18n/{name}.js",
+                 "--bundle", "--format=cjs", f"--outfile={out}"],
+                cwd=str(root.parent), capture_output=True, text=True,
+            )
+            try:
+                raw = subprocess.run(
+                    ["node", "-e",
+                     f"const m = require('{out}').default;"
+                     f"console.log(JSON.stringify(m['{lang}']));"],
+                    capture_output=True, text=True,
+                )
+                batches[name][lang] = json.loads(raw.stdout)
+            except (json.JSONDecodeError, ValueError):
+                batches[name][lang] = {}
+            os.unlink(out)
+
+    def lookup(table, path):
+        current = table
+        for part in path.split("."):
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
+                return None
+        return current
+
+    problems = []
+    namespace_pattern = re.compile(
+        r"const (K\w*) = (\w+)\[language\]\?\.((?:[A-Za-z0-9_]+\??\.?)+)"
+    )
+    import_pattern = re.compile(
+        r"import \{ (\w+)(?:, fill)? \} from ['\"][^'\"]*keys_(batch\d)['\"]"
+    )
+
+    for path in sorted(root.glob("**/*.jsx")) + sorted(root.glob("**/*.js")):
+        if "i18n" in path.parts:
+            continue
+        text = path.read_text(encoding="utf-8")
+        if "{K" not in text:
+            continue
+        rel = path.relative_to(root)
+
+        imports = {}
+        for m in import_pattern.finditer(text):
+            imports[m.group(1)] = "keys_" + m.group(2)
+
+        sources = {}
+        for m in namespace_pattern.finditer(text):
+            kname, variable, chain = m.group(1), m.group(2), m.group(3)
+            if variable in imports:
+                namespace = ".".join(
+                    part for part in chain.replace("?.", ".").split(".") if part
+                )
+                sources[kname] = (imports[variable], namespace)
+
+        for kname, key in re.findall(r"\{(K\w*)\.([A-Za-z_][A-Za-z0-9_]*)", text):
+            if kname not in sources:
+                problems.append(f"{rel}: {kname} has no source")
+                continue
+            name, namespace = sources[kname]
+            for lang in ("id", "en", "ja"):
+                table = batches.get(name, {}).get(lang)
+                if table is None:
+                    continue
+                values = lookup(table, namespace)
+                if values is None:
+                    problems.append(
+                        f"{rel}: namespace '{namespace}' is not in {name}.{lang}"
+                    )
+                    continue
+                if isinstance(values, dict) and key not in values:
+                    problems.append(
+                        f"{rel}: {kname}.{key} is not in {name}.{lang}.{namespace}"
+                    )
+    return problems
+
+
 def main():
     tables = {}
     for lang in LANGS:
@@ -198,6 +447,24 @@ def main():
         return 1
     print("OK: every key the pages ask for exists in every language")
     print("OK: no translator is called outside a component")
+    
+    # Every {K.name} in a file needs a K in that same file.
+    batch_problems = check_batch_keys_in_scope(Path(SRC))
+    if batch_problems:
+        for b in batch_problems:
+            print(f"  {b}")
+        print(f"FAILED: {len(batch_problems)} problem(s)")
+        return 1
+    print("OK: every batch key used in a file has its source in the same file")
+
+    value_problems = check_batch_values_exist(Path(SRC))
+    if value_problems:
+        for v in value_problems:
+            print(f"  {v}")
+        print(f"FAILED: {len(value_problems)} problem(s)")
+        return 1
+    print("OK: every batch key a page reads is present in every language")
+
     return 0
 
 

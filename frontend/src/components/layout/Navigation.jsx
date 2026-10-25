@@ -40,6 +40,7 @@ import { NotificationBell } from '../notifications/NotificationBell';
 import { showNotification } from '../notifications/NotificationHelper';
 import AddTransactionPage from './AddTransactionPage';
 import { UserProfileSection } from './UserProfileSection';
+import { CurrencyBadge } from '../common/CurrencyBadge';
 
 const navItems = (t) => [
   { name: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
@@ -73,11 +74,12 @@ const bottomNavItems = (t) => [
 ];
 
 import api from '../../services/api';
+import { batch3 } from '../../i18n/keys_batch3';
 
 // Desktop Sidebar
 const Sidebar = () => {
   const location = useLocation();
-  const { t } = useTranslation();
+  const { t , language } = useTranslation();
   const items = navItems(t);
 
   return (
@@ -123,6 +125,10 @@ const Sidebar = () => {
       <div className="p-3 border-t border-gray-100 space-y-1 dark:border-gray-700">
         {/* Interactive profile section - routes to the Profile Summary page */}
         <div className="mb-1">
+          <div className="px-3 pb-3">
+            <CurrencyBadge className="w-full justify-between" />
+          </div>
+
           <UserProfileSection variant="sidebar" />
         </div>
         <Link
@@ -146,7 +152,8 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const { isDarkMode, toggleTheme } = useTheme();
-  const { t } = useTranslation();
+  const { t , language } = useTranslation();
+  const K = batch3[language]?.navigation;
   const items = navItems(t);
 
   return (
@@ -208,7 +215,7 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
             <div className="h-full flex flex-col">
               {/* Header */}
               <div className="h-16 flex items-center justify-between px-5 border-b border-gray-100">
-                <span className="font-semibold text-lg">Menu</span>
+                <span className="font-semibold text-lg">{K.menu}</span>
                 <button 
                   onClick={() => setMenuOpen(false)}
                   className="p-2 text-gray-400 hover:text-gray-600"
@@ -262,7 +269,7 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
                   onClick={() => { localStorage.clear(); window.location.href = '/login'; }}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-50">
                   <LogOut className="w-5 h-5" />
-                  <span className="font-medium">Sign Out</span>
+                  <span className="font-medium">{K.sign_out}</span>
                 </button>
               </div>
             </div>

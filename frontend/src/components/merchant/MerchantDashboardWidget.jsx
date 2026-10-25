@@ -2,8 +2,13 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, CreditCard, Banknote, ShoppingBag, RefreshCw } from 'lucide-react';
 import merchantApi from '../../services/merchantApi';
 import { formatCurrency } from '../../utils/format';
+import { useTranslation } from '../../i18n';
+import { batch2, fill } from '../../i18n/keys_batch2';
 
 const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
+  const { language } = useTranslation();
+  const K = batch2[language]?.merchant?.dashboard || batch2.id.merchant.dashboard;
+
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +35,7 @@ const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
   if (!merchant) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
-        <p className="text-gray-500 text-center">Belum ada toko terdaftar</p>
+        <p className="text-gray-500 text-center">{K.no_store}</p>
       </div>
     );
   }
@@ -54,12 +59,12 @@ const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
 
       {/* Today's Sales */}
       <div className="mb-4">
-        <p className="text-primary-200 text-sm">Penjualan Hari Ini</p>
+        <p className="text-primary-200 text-sm">{K.today_sales}</p>
         <p className="text-3xl font-bold">
-          {summary ? formatCurrency(summary.today_sales) : 'Rp 0'}
+          {summary ? formatCurrency(summary.today_sales) : formatCurrency(0)}
         </p>
         <p className="text-primary-200 text-sm">
-          {summary?.today_transactions || 0} transaksi
+          {fill(K.transactions_count, summary?.today_transactions || 0)}
         </p>
       </div>
 
@@ -68,19 +73,19 @@ const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
         <div className="bg-white/10 rounded-lg p-3">
           <div className="flex items-center gap-2 text-primary-200 text-sm">
             <SmartphoneIcon />
-            <span>QRIS</span>
+            <span>{K.qris}</span>
           </div>
           <p className="font-semibold">
-            {summary ? formatCurrency(summary.total_qris) : 'Rp 0'}
+            {summary ? formatCurrency(summary.total_qris) : formatCurrency(0)}
           </p>
         </div>
         <div className="bg-white/10 rounded-lg p-3">
           <div className="flex items-center gap-2 text-primary-200 text-sm">
             <BanknoteIcon />
-            <span>Cash</span>
+            <span>{K.cash}</span>
           </div>
           <p className="font-semibold">
-            {summary ? formatCurrency(summary.total_cash) : 'Rp 0'}
+            {summary ? formatCurrency(summary.total_cash) : formatCurrency(0)}
           </p>
         </div>
       </div>
@@ -89,22 +94,22 @@ const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
       <div className="bg-white/10 rounded-lg p-3">
         <div className="flex items-center gap-2 text-primary-200 text-sm">
           <TrendingUp size={16} />
-          <span>Profit Kotor</span>
+          <span>{K.gross_profit}</span>
         </div>
         <p className="font-semibold">
-          {summary ? formatCurrency(summary.gross_profit) : 'Rp 0'}
+          {summary ? formatCurrency(summary.gross_profit) : formatCurrency(0)}
         </p>
       </div>
 
       {/* Pending Settlement */}
       {summary?.pending_settlement && (
         <div className="mt-3 bg-yellow-500/20 rounded-lg p-3 border border-yellow-500/30">
-          <p className="text-yellow-200 text-sm">⚠️ Settlemen belum dilakukan</p>
+          <p className="text-yellow-200 text-sm">{K.pending_settlement}</p>
           <button
             onClick={onViewAll}
             className="mt-2 w-full py-2 bg-yellow-500 hover:bg-yellow-600 rounded-lg font-medium text-sm"
           >
-            Tutup Kasir Sekarang
+            {K.close_now}
           </button>
         </div>
       )}
