@@ -21,11 +21,11 @@ export const PixelProgress = ({
   };
 
   const variantClasses = {
-    default: 'bg-indigo-500',
+    default: 'bg-primary-500',
     success: 'bg-emerald-500',
     warning: 'bg-amber-500',
     danger: 'bg-red-500',
-    gradient: 'bg-gradient-to-r from-indigo-500 to-purple-500',
+    gradient: 'bg-gradient-to-r from-primary-500 to-purple-500',
   };
 
   // Auto color based on percentage
@@ -93,7 +93,7 @@ export const GoalProgress = ({
     <div className={`bg-white rounded-xl p-4 shadow-sm ${className}`}>
       <div className="flex items-center gap-3 mb-3">
         {Icon && (
-          <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary-600 flex items-center justify-center">
             <Icon size={20} />
           </div>
         )}

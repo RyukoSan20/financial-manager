@@ -56,7 +56,7 @@ const Appearance = () => {
     setFontScale,
     setBackgroundStyle,
     isDarkMode,
-    theme,
+    mode,
     setTheme,
   } = useTheme();
 
@@ -105,7 +105,7 @@ const Appearance = () => {
                   mark();
                 }}
                 className={`rounded-lg border-2 p-3 text-center transition ${
-                  theme === option.id
+                  mode === option.id
                     ? 'border-accent bg-accent-soft'
                     : 'border-gray-200 dark:border-gray-700'
                 }`}
@@ -283,7 +283,7 @@ const Appearance = () => {
               </span>
               <span
                 className="text-lg font-bold tabular-nums"
-                style={{ color: 'var(--scheme-accent)' }}
+                style={{ color: 'var(--scheme-accent-fg, var(--scheme-accent))' }}
               >
                 Rp12.450.000
               </span>

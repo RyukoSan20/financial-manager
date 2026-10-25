@@ -344,8 +344,8 @@ export const MarketPage = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
         <Card className={`${bgCard} border ${borderColor} p-4`}>
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100'}`}>
-              <BarChart3 className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-primary-900/50' : 'bg-primary-100'}`}>
+              <BarChart3 className={`w-6 h-6 ${isDarkMode ? 'text-primary-400' : 'text-primary-600'}`} />
             </div>
             <div>
               <p className={`text-sm ${textSecondary}`}>Saham IDX</p>
@@ -433,7 +433,7 @@ export const MarketPage = () => {
                       onClick={() => setSelectedSymbol(s.symbol)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                         selectedSymbol === s.symbol
-                          ? 'bg-blue-600 text-white shadow-md'
+                          ? 'bg-primary-600 text-white shadow-md'
                           : isDarkMode
                             ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -458,10 +458,10 @@ export const MarketPage = () => {
             {(() => {
               const ihsg = marketData?.indices?.find(i => i.name === 'IHSG');
               return ihsg ? (
-                <div className={`col-span-2 p-4 rounded-xl border transition-all hover:shadow-lg ${isDarkMode ? 'bg-gradient-to-br from-blue-900/80 to-indigo-900/80 border-blue-700' : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200'}`}>
+                <div className={`col-span-2 p-4 rounded-xl border transition-all hover:shadow-lg ${isDarkMode ? 'bg-gradient-to-br from-primary-900/80 to-primary-900/80 border-primary-700' : 'bg-gradient-to-br from-primary-50 to-primary-50 border-primary-200'}`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className={`text-sm font-medium ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>🇮🇩 IHSG</p>
+                      <p className={`text-sm font-medium ${isDarkMode ? 'text-primary-300' : 'text-primary-600'}`}>🇮🇩 IHSG</p>
                       <p className={`text-3xl font-bold ${textPrimary}`}>{ihsg.price?.toLocaleString()}</p>
                       <p className={`text-sm font-semibold ${ihsg.change_percent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {ihsg.change >= 0 ? '+' : ''}{ihsg.change?.toFixed(2)} ({ihsg.change_percent >= 0 ? '+' : ''}{ihsg.change_percent?.toFixed(2)}%)
@@ -556,7 +556,7 @@ export const MarketPage = () => {
                   onClick={() => setActiveTab(tab.key)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     activeTab === tab.key
-                      ? 'bg-blue-600 text-white shadow-md'
+                      ? 'bg-primary-600 text-white shadow-md'
                       : isDarkMode
                         ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -581,7 +581,7 @@ export const MarketPage = () => {
                   isDarkMode 
                     ? 'bg-gray-700 text-white placeholder-gray-400 border-gray-600' 
                     : 'bg-gray-50 text-gray-900 placeholder-gray-400 border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                } focus:outline-none focus:ring-2 focus:ring-primary-500`}
               />
             </div>
           </Card>
@@ -778,8 +778,8 @@ export const MarketPage = () => {
               return (
                 <Card key={idx} className={`${bgCard} border ${borderColor} p-5 hover:shadow-lg transition-shadow`}>
                   <div className="flex items-start gap-3">
-                    <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100'}`}>
-                      <Icon className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                    <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-primary-900/50' : 'bg-primary-100'}`}>
+                      <Icon className={`w-5 h-5 ${isDarkMode ? 'text-primary-400' : 'text-primary-600'}`} />
                     </div>
                     <div>
                       <h3 className={`font-semibold mb-2 ${textPrimary}`}>{item.title}</h3>

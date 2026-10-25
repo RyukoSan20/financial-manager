@@ -180,7 +180,7 @@ export default function CurrencyInput({
             bg-white dark:bg-gray-800
             text-gray-900 dark:text-white
             placeholder-gray-400 dark:placeholder-gray-500
-            focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+            focus:ring-2 focus:ring-primary-500 focus:border-primary-500
             disabled:bg-gray-100 dark:disabled:bg-gray-700
             disabled:cursor-not-allowed
             ${error ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
@@ -283,7 +283,7 @@ export function NumberInput({
           bg-white dark:bg-gray-800
           text-gray-900 dark:text-white
           placeholder-gray-400 dark:placeholder-gray-500
-          focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+          focus:ring-2 focus:ring-primary-500 focus:border-primary-500
           disabled:bg-gray-100 dark:disabled:bg-gray-700
           disabled:cursor-not-allowed
           ${error ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}

@@ -502,7 +502,7 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed left-4 bottom-24 z-50 w-14 h-14 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+        className="fixed left-4 bottom-24 z-50 w-14 h-14 bg-gradient-to-br from-purple-500 to-primary-500 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
         title="AI Assistant"
       >
         <Sparkles className="w-6 h-6 text-white" />
@@ -514,7 +514,7 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
   return (
     <div className={`fixed left-4 bottom-24 z-50 w-96 max-h-[600px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all ${isMinimized ? 'h-14' : 'h-[500px]'}`}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-500 to-blue-500 p-4 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-purple-500 to-primary-500 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Sparkles className="w-5 h-5 text-white" />
           <span className="font-semibold text-white">AI Assistant</span>
@@ -603,7 +603,7 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
                 <div
                   className={`max-w-[85%] px-4 py-2 rounded-2xl ${
                     msg.role === 'user'
-                      ? 'bg-purple-500 text-white rounded-br-md'
+                      ? 'bg-purple-600 text-white rounded-br-md'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-md'
                   }`}
                 >

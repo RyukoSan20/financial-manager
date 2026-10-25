@@ -8,13 +8,33 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/format';
 import { useSyncedPreference } from '../hooks/useSyncedPreference';
+import { chartPalette } from '../utils/appearance';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart as RePieChart, Pie, Cell,
   BarChart, Bar, Legend, ReferenceLine
 } from 'recharts';
 
-const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+/**
+ * The colours of the charts.
+ *
+ * The first is the accent the user picked, so a chart belongs to the
+ * scheme. The rest stay put, so two charts of the same thing look the
+ * same whatever the scheme is.
+ *
+ * It is read when the chart is drawn rather than when this file is
+ * loaded, because the scheme is not known until the appearance has been
+ * applied to the page.
+ */
+const COLORS = chartPalette;
+
+// The first colour of the chart is the accent the user picked, so the
+// chart belongs to the scheme. The rest stay put, so two charts of the
+// same thing look the same whatever the scheme is.
+//
+// It is read when the chart is drawn rather than when this file is
+// loaded, because the scheme is not known until the appearance has been
+// applied to the page.
 
 const PREFS_KEY = 'fm.analytics.layout.v2';
 
@@ -430,7 +450,7 @@ export const Analytics = () => {
                   <Legend />
                   <Area type="monotone" dataKey="Income" stroke="#22c55e" fill="#22c55e" fillOpacity={0.15} />
                   <Area type="monotone" dataKey="Expense" stroke="#ef4444" fill="#ef4444" fillOpacity={0.15} />
-                  <Area type="monotone" dataKey="Net" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.1} />
+                  <Area type="monotone" dataKey="Net" stroke={COLORS()[0]} fill={COLORS()[0]} fillOpacity={0.1} />
                 </AreaChart>
               </ResponsiveContainer>
               {cashFlow.trends && (
@@ -469,7 +489,7 @@ export const Analytics = () => {
                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       >
                         {expenseBreakdown.breakdown.map((_, i) => (
-                          <Cell key={`c-${i}`} fill={COLORS[i % COLORS.length]} />
+                          <Cell key={`c-${i}`} fill={COLORS()[i % COLORS().length]} />
                         ))}
                       </Pie>
                       <Tooltip formatter={(value) => formatCurrency(value)} />
@@ -481,7 +501,7 @@ export const Analytics = () => {
                     <div key={i} className="flex items-center justify-between gap-2 text-sm">
                       <span className="flex items-center gap-2 min-w-0">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ background: COLORS[i % COLORS.length] }} />
+                          style={{ background: COLORS()[i % COLORS().length] }} />
                         <span className="truncate">{b.name || 'Lainnya'}</span>
                       </span>
                       <span className="flex items-center gap-2 shrink-0">
@@ -515,7 +535,7 @@ export const Analytics = () => {
                   <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} />
                   <Tooltip formatter={(value) => formatCurrency(value)} />
                   <Legend />
-                  <Bar dataKey="budget" fill="#3b82f6" name="Anggaran" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="budget" fill={COLORS()[0]} name="Anggaran" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="actual" fill="#ef4444" name="Realisasi" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

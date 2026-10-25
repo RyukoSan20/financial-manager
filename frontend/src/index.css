@@ -759,6 +759,162 @@ html.dark {
   --text-muted: #9ca3af;
 }
 
+/* The other half of the safety net.
+
+   The rule above turns the light surfaces dark. A piece of text that
+   was written for a light surface is then dark text on a dark
+   background, which cannot be read at all: the heading of a page comes
+   out as the same colour as the page behind it.
+
+   So the greys are given their dark-mode value here as well. The greys
+   are the ones that carry the body text, and they are the ones most
+   often written without a `dark:` pair, because in the light version
+   they were fine.
+
+   These rules come after the Tailwind utilities on purpose. A class in
+   the markup has the same specificity as a class in a utility layer, so
+   the one that comes last wins, and this one has to. */
+html.dark .text-gray-900,
+html.dark .text-gray-800 {
+  color: var(--text-primary, #f3f4f6);
+}
+
+/* The soft accent panels, in the dark mode.
+
+   A panel that is a deep wash of the accent - `bg-primary-900/30` -
+   disappears on a dark surface, because a dark wash on a dark surface
+   is the same darkness twice. It is there to tell one panel from the
+   next, so it has to stay visible.
+
+   In the dark mode the wash is taken from the middle of the accent
+   instead, at a lower strength, which is what a faint tint on a dark
+   surface needs to be seen at all. The class keeps its name and its
+   meaning: the panel is still the accent, just lit rather than
+   shadowed. */
+html:not(.dark) :where(.bg-primary-900\/20) {
+  background-color: rgb(var(--scheme-500-rgb) / 0.1);
+}
+html:not(.dark) :where(.bg-primary-900\/30) {
+  background-color: rgb(var(--scheme-500-rgb) / 0.14);
+}
+html:not(.dark) :where(.bg-primary-900\/50) {
+  background-color: rgb(var(--scheme-500-rgb) / 0.2);
+}
+html:not(.dark) :where(.bg-primary-900\/80) {
+  background-color: rgb(var(--scheme-500-rgb) / 0.3);
+}
+html:not(.dark) :where(.bg-primary-900) {
+  background-color: rgb(var(--scheme-500-rgb) / 0.35);
+}
+
+.dark :where(.bg-primary-900\/20) {
+  background-color: rgb(var(--scheme-500-rgb) / 0.16);
+}
+
+.dark :where(.bg-primary-900\/30) {
+  background-color: rgb(var(--scheme-500-rgb) / 0.22);
+}
+
+.dark :where(.bg-primary-900\/50) {
+  background-color: rgb(var(--scheme-500-rgb) / 0.3);
+}
+
+.dark :where(.bg-primary-900\/80) {
+  background-color: rgb(var(--scheme-500-rgb) / 0.45);
+}
+
+.dark :where(.bg-primary-900) {
+  background-color: rgb(var(--scheme-700-rgb) / 0.9);
+}
+
+.dark :where(.from-primary-900\/50) {
+  --tw-gradient-from: rgb(var(--scheme-500-rgb) / 0.25) var(--tw-gradient-from-position);
+}
+
+.dark :where(.to-primary-900\/80) {
+  --tw-gradient-to: rgb(var(--scheme-500-rgb) / 0.12) var(--tw-gradient-to-position);
+}
+
+.dark :where(.to-primary-800\/40) {
+  --tw-gradient-to: rgb(var(--scheme-600-rgb) / 0.35) var(--tw-gradient-to-position);
+}
+
+html.dark .text-gray-700 {
+  color: var(--text-secondary, #d1d5db);
+}
+
+html.dark .text-gray-600 {
+  color: var(--text-muted, #9ca3af);
+}
+
+/* The faint grey of the tailwind defaults disappears on a dark
+   surface. In the dark mode the greys are moved up so that the quiet
+   parts of a page are still quiet, but still readable. */
+.dark .text-gray-400 {
+  color: #9ca3af;
+}
+.dark .text-gray-300 {
+  color: #d1d5db;
+}
+
+/* The accent as text, in the dark mode.
+
+   The dark steps of the accent are dark colours. On a dark surface
+   they cannot be read, so the text steps are walked back up the scale
+   until they clear the surface. The number still names the same
+   strength of the accent, it just names the step that works on this
+   background. */
+.dark :where(.text-primary-600) {
+  color: rgb(var(--scheme-400-rgb));
+}
+
+.dark :where(.text-primary-700) {
+  color: rgb(var(--scheme-300-rgb));
+}
+
+.dark :where(.text-primary-800) {
+  color: rgb(var(--scheme-200-rgb));
+}
+
+.dark :where(.text-primary-900) {
+  color: rgb(var(--scheme-100-rgb));
+}
+
+/* The light steps of the accent, as a background, in the dark mode.
+
+   `bg-primary-50` is a very pale wash, chosen for a light surface. On
+   a dark surface it is a bright patch, and the text that was written
+   for a dark accent on a pale wash is now dark on a pale wash in the
+   middle of a dark page.
+
+   The pale steps are walked up the scale, so the panel is a tint of
+   the accent rather than a hole in the page. The number still names a
+   light step of the accent - it is just the lightest one that works
+   on this background. */
+.dark :where(.bg-primary-50) {
+  background-color: rgb(var(--scheme-900-rgb) / 0.55);
+}
+
+.dark :where(.bg-primary-100) {
+  background-color: rgb(var(--scheme-800-rgb) / 0.5);
+}
+
+.dark :where(.bg-primary-200) {
+  background-color: rgb(var(--scheme-800-rgb) / 0.55);
+}
+
+/* The text that sits on those panels is written for the dark accent
+   in the light mode, and has to be written for the light accent in
+   the dark mode. */
+.dark .bg-primary-50 .text-primary-800,
+.dark .bg-primary-100 .text-primary-800,
+.dark .bg-primary-200 .text-primary-800,
+.dark .bg-primary-50 .text-primary-700,
+.dark .bg-primary-100 .text-primary-700,
+.dark .bg-primary-200 .text-primary-700 {
+  color: rgb(var(--scheme-200-rgb));
+}
+
 html:not(.dark) {
   --surface: #ffffff;
   --surface-raised: #f9fafb;
@@ -872,13 +1028,33 @@ html[data-theme='dark'] body {
   /* Filled in by applyAppearance(). The defaults keep the app looking
      right before the script runs. */
   --scheme-accent: #059669;
+  --scheme-accent-fg: #059669;
   --scheme-on-accent: #ffffff;
   --scheme-50: #ecfdf5;
   --scheme-100: #d1fae5;
   --scheme-200: #a7f3d0;
+  --scheme-300: #6ee7b7;
+  --scheme-400: #34d399;
   --scheme-500: #10b981;
   --scheme-600: #059669;
   --scheme-700: #047857;
+  --scheme-800: #065f46;
+  --scheme-900: #064e3b;
+
+  /* The same colours again, as channels, so that an opacity can be
+     applied to them: `bg-primary-900/40`. Tailwind needs them in this
+     form to fade a colour. */
+  --scheme-50-rgb: 236 253 245;
+  --scheme-100-rgb: 209 250 229;
+  --scheme-200-rgb: 167 243 208;
+  --scheme-300-rgb: 110 231 183;
+  --scheme-400-rgb: 52 211 153;
+  --scheme-500-rgb: 16 185 129;
+  --scheme-600-rgb: 5 150 105;
+  --scheme-700-rgb: 4 120 87;
+  --scheme-800-rgb: 6 95 70;
+  --scheme-900-rgb: 6 78 59;
+
   --background-image: none;
 }
 
@@ -961,12 +1137,23 @@ body {
 /* The accent, as a Tailwind colour. The classes are generated from
    the custom properties, so they follow the scheme. */
 .bg-accent { background-color: var(--scheme-accent); }
-.text-accent { color: var(--scheme-accent); }
+.text-accent { color: var(--scheme-accent-fg, var(--scheme-accent)); }
 .border-accent { border-color: var(--scheme-accent); }
 .bg-accent-soft { background-color: var(--scheme-100); }
 .text-accent-strong { color: var(--scheme-700); }
 .dark .bg-accent-soft { background-color: var(--scheme-900); }
 .dark .text-accent-strong { color: var(--scheme-300); }
+
+/* The accent on the soft accent.
+
+   The soft accent is the light step in the light mode and the dark
+   step in the dark mode, so the accent has to change with it: the
+   accent on the dark step is not readable, and the dark step of the
+   accent on the light step is barely readable either. */
+.dark .bg-accent-soft .text-accent,
+.dark .text-accent-on-soft {
+  color: var(--scheme-300);
+}
 
 /* Serif and mono have to override the body font everywhere. */
 [data-font='serif'] body,
@@ -1155,3 +1342,603 @@ body {
     font-size: clamp(0.875rem, calc((100cqw - 36px) / 7.4), 1.375rem);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   MAKING THE COLOURS READABLE
+
+   The colours that mean something - green for money in, red for money
+   out - are used all over the app. Tailwind chose its own steps for
+   them to look right as a large block of colour, not as small text on
+   a page, and a good number of them cannot be read on a white or a
+   dark surface.
+
+   Each one below is moved to the nearest step of the same colour that
+   can be read. The hue does not change, so a green stays a green and a
+   red stays a red; only the depth moves. The class name does not
+   change either, so no component has to know about this.
+
+   These come after the Tailwind utilities, because the rule has to
+   beat the plain utility - the plain one is the one that is wrong.
+
+   The dark mode rules are written differently, and the reason matters.
+   A component that says "text-gray-700 dark:text-gray-200" has
+   already decided what its text looks like in the dark mode, and that
+   decision is the right one. A blanket rule for the dark mode must
+   step aside for it. Writing the class inside ":where()" takes its
+   weight back to nothing, so that a component's own dark variant is
+   the one that applies and the blanket rule only fills in for the
+   components that have no variant of their own.
+   --------------------------------------------------------------------------- */
+
+/* The light mode wants the deeper step of each colour. */
+html:not(.dark) :where(.text-amber-300) {
+  color: #b45309;
+}
+html:not(.dark) :where(.text-amber-400) {
+  color: #b45309;
+}
+html:not(.dark) :where(.text-amber-500) {
+  color: #b45309;
+}
+html:not(.dark) :where(.text-blue-300) {
+  color: #2563eb;
+}
+html:not(.dark) :where(.text-blue-400) {
+  color: #2563eb;
+}
+html:not(.dark) :where(.text-blue-500) {
+  color: #2563eb;
+}
+html:not(.dark) :where(.text-cyan-300) {
+  color: #0e7490;
+}
+html:not(.dark) :where(.text-cyan-400) {
+  color: #0e7490;
+}
+html:not(.dark) :where(.text-cyan-500) {
+  color: #0e7490;
+}
+html:not(.dark) :where(.text-cyan-600) {
+  color: #0e7490;
+}
+html:not(.dark) :where(.text-emerald-300) {
+  color: #047857;
+}
+html:not(.dark) :where(.text-emerald-400) {
+  color: #047857;
+}
+html:not(.dark) :where(.text-emerald-500) {
+  color: #047857;
+}
+html:not(.dark) :where(.text-fuchsia-300) {
+  color: #c026d3;
+}
+html:not(.dark) :where(.text-fuchsia-400) {
+  color: #c026d3;
+}
+html:not(.dark) :where(.text-fuchsia-500) {
+  color: #c026d3;
+}
+html:not(.dark) :where(.text-gray-300) {
+  color: #6b7280;
+}
+html:not(.dark) :where(.text-gray-400) {
+  color: #6b7280;
+}
+html:not(.dark) :where(.text-green-300) {
+  color: #15803d;
+}
+html:not(.dark) :where(.text-green-400) {
+  color: #15803d;
+}
+html:not(.dark) :where(.text-green-500) {
+  color: #15803d;
+}
+html:not(.dark) :where(.text-green-600) {
+  color: #15803d;
+}
+html:not(.dark) :where(.text-indigo-300) {
+  color: #4f46e5;
+}
+html:not(.dark) :where(.text-indigo-400) {
+  color: #4f46e5;
+}
+html:not(.dark) :where(.text-indigo-500) {
+  color: #4f46e5;
+}
+html:not(.dark) :where(.text-lime-300) {
+  color: #4d7c0f;
+}
+html:not(.dark) :where(.text-lime-400) {
+  color: #4d7c0f;
+}
+html:not(.dark) :where(.text-lime-500) {
+  color: #4d7c0f;
+}
+html:not(.dark) :where(.text-lime-600) {
+  color: #4d7c0f;
+}
+html:not(.dark) :where(.text-orange-300) {
+  color: #c2410c;
+}
+html:not(.dark) :where(.text-orange-400) {
+  color: #c2410c;
+}
+html:not(.dark) :where(.text-orange-500) {
+  color: #c2410c;
+}
+html:not(.dark) :where(.text-orange-600) {
+  color: #c2410c;
+}
+html:not(.dark) :where(.text-pink-300) {
+  color: #db2777;
+}
+html:not(.dark) :where(.text-pink-400) {
+  color: #db2777;
+}
+html:not(.dark) :where(.text-pink-500) {
+  color: #db2777;
+}
+html:not(.dark) :where(.text-purple-300) {
+  color: #9333ea;
+}
+html:not(.dark) :where(.text-purple-400) {
+  color: #9333ea;
+}
+html:not(.dark) :where(.text-purple-500) {
+  color: #9333ea;
+}
+html:not(.dark) :where(.text-red-300) {
+  color: #dc2626;
+}
+html:not(.dark) :where(.text-red-400) {
+  color: #dc2626;
+}
+html:not(.dark) :where(.text-red-500) {
+  color: #dc2626;
+}
+html:not(.dark) :where(.text-rose-300) {
+  color: #e11d48;
+}
+html:not(.dark) :where(.text-rose-400) {
+  color: #e11d48;
+}
+html:not(.dark) :where(.text-rose-500) {
+  color: #e11d48;
+}
+html:not(.dark) :where(.text-sky-300) {
+  color: #0369a1;
+}
+html:not(.dark) :where(.text-sky-400) {
+  color: #0369a1;
+}
+html:not(.dark) :where(.text-sky-500) {
+  color: #0369a1;
+}
+html:not(.dark) :where(.text-sky-600) {
+  color: #0369a1;
+}
+html:not(.dark) :where(.text-teal-300) {
+  color: #0f766e;
+}
+html:not(.dark) :where(.text-teal-400) {
+  color: #0f766e;
+}
+html:not(.dark) :where(.text-teal-500) {
+  color: #0f766e;
+}
+html:not(.dark) :where(.text-teal-600) {
+  color: #0f766e;
+}
+html:not(.dark) :where(.text-violet-300) {
+  color: #7c3aed;
+}
+html:not(.dark) :where(.text-violet-400) {
+  color: #7c3aed;
+}
+html:not(.dark) :where(.text-violet-500) {
+  color: #7c3aed;
+}
+html:not(.dark) :where(.text-yellow-300) {
+  color: #a16207;
+}
+html:not(.dark) :where(.text-yellow-400) {
+  color: #a16207;
+}
+html:not(.dark) :where(.text-yellow-500) {
+  color: #a16207;
+}
+html:not(.dark) :where(.text-yellow-600) {
+  color: #a16207;
+}
+
+/* The dark mode wants the lighter step of each colour. */
+html.dark :where(.text-amber-600) {
+  color: #f59e0b;
+}
+html.dark :where(.text-amber-700) {
+  color: #f59e0b;
+}
+html.dark :where(.text-amber-800) {
+  color: #f59e0b;
+}
+html.dark :where(.text-amber-900) {
+  color: #f59e0b;
+}
+html.dark :where(.text-blue-500) {
+  color: #60a5fa;
+}
+html.dark :where(.text-blue-600) {
+  color: #60a5fa;
+}
+html.dark :where(.text-blue-700) {
+  color: #60a5fa;
+}
+html.dark :where(.text-blue-800) {
+  color: #60a5fa;
+}
+html.dark :where(.text-blue-900) {
+  color: #60a5fa;
+}
+html.dark :where(.text-cyan-600) {
+  color: #06b6d4;
+}
+html.dark :where(.text-cyan-700) {
+  color: #06b6d4;
+}
+html.dark :where(.text-cyan-800) {
+  color: #06b6d4;
+}
+html.dark :where(.text-cyan-900) {
+  color: #06b6d4;
+}
+html.dark :where(.text-emerald-600) {
+  color: #10b981;
+}
+html.dark :where(.text-emerald-700) {
+  color: #10b981;
+}
+html.dark :where(.text-emerald-800) {
+  color: #10b981;
+}
+html.dark :where(.text-emerald-900) {
+  color: #10b981;
+}
+html.dark :where(.text-fuchsia-500) {
+  color: #e879f9;
+}
+html.dark :where(.text-fuchsia-600) {
+  color: #e879f9;
+}
+html.dark :where(.text-fuchsia-700) {
+  color: #e879f9;
+}
+html.dark :where(.text-fuchsia-800) {
+  color: #e879f9;
+}
+html.dark :where(.text-fuchsia-900) {
+  color: #e879f9;
+}
+html.dark :where(.text-gray-500) {
+  color: #9ca3af;
+}
+html.dark :where(.text-gray-600) {
+  color: #9ca3af;
+}
+html.dark :where(.text-gray-700) {
+  color: #9ca3af;
+}
+html.dark :where(.text-gray-800) {
+  color: #9ca3af;
+}
+html.dark :where(.text-gray-900) {
+  color: #9ca3af;
+}
+html.dark :where(.text-green-600) {
+  color: #22c55e;
+}
+html.dark :where(.text-green-700) {
+  color: #22c55e;
+}
+html.dark :where(.text-green-800) {
+  color: #22c55e;
+}
+html.dark :where(.text-green-900) {
+  color: #22c55e;
+}
+html.dark :where(.text-indigo-500) {
+  color: #818cf8;
+}
+html.dark :where(.text-indigo-600) {
+  color: #818cf8;
+}
+html.dark :where(.text-indigo-700) {
+  color: #818cf8;
+}
+html.dark :where(.text-indigo-800) {
+  color: #818cf8;
+}
+html.dark :where(.text-indigo-900) {
+  color: #818cf8;
+}
+html.dark :where(.text-lime-700) {
+  color: #65a30d;
+}
+html.dark :where(.text-lime-800) {
+  color: #65a30d;
+}
+html.dark :where(.text-lime-900) {
+  color: #65a30d;
+}
+html.dark :where(.text-orange-600) {
+  color: #f97316;
+}
+html.dark :where(.text-orange-700) {
+  color: #f97316;
+}
+html.dark :where(.text-orange-800) {
+  color: #f97316;
+}
+html.dark :where(.text-orange-900) {
+  color: #f97316;
+}
+html.dark :where(.text-pink-500) {
+  color: #f472b6;
+}
+html.dark :where(.text-pink-600) {
+  color: #f472b6;
+}
+html.dark :where(.text-pink-700) {
+  color: #f472b6;
+}
+html.dark :where(.text-pink-800) {
+  color: #f472b6;
+}
+html.dark :where(.text-pink-900) {
+  color: #f472b6;
+}
+html.dark :where(.text-purple-500) {
+  color: #c084fc;
+}
+html.dark :where(.text-purple-600) {
+  color: #c084fc;
+}
+html.dark :where(.text-purple-700) {
+  color: #c084fc;
+}
+html.dark :where(.text-purple-800) {
+  color: #c084fc;
+}
+html.dark :where(.text-purple-900) {
+  color: #c084fc;
+}
+html.dark :where(.text-red-500) {
+  color: #f87171;
+}
+html.dark :where(.text-red-600) {
+  color: #f87171;
+}
+html.dark :where(.text-red-700) {
+  color: #f87171;
+}
+html.dark :where(.text-red-800) {
+  color: #f87171;
+}
+html.dark :where(.text-red-900) {
+  color: #f87171;
+}
+html.dark :where(.text-rose-500) {
+  color: #fb7185;
+}
+html.dark :where(.text-rose-600) {
+  color: #fb7185;
+}
+html.dark :where(.text-rose-700) {
+  color: #fb7185;
+}
+html.dark :where(.text-rose-800) {
+  color: #fb7185;
+}
+html.dark :where(.text-rose-900) {
+  color: #fb7185;
+}
+html.dark :where(.text-sky-600) {
+  color: #0ea5e9;
+}
+html.dark :where(.text-sky-700) {
+  color: #0ea5e9;
+}
+html.dark :where(.text-sky-800) {
+  color: #0ea5e9;
+}
+html.dark :where(.text-sky-900) {
+  color: #0ea5e9;
+}
+html.dark :where(.text-teal-600) {
+  color: #14b8a6;
+}
+html.dark :where(.text-teal-700) {
+  color: #14b8a6;
+}
+html.dark :where(.text-teal-800) {
+  color: #14b8a6;
+}
+html.dark :where(.text-teal-900) {
+  color: #14b8a6;
+}
+html.dark :where(.text-violet-500) {
+  color: #a78bfa;
+}
+html.dark :where(.text-violet-600) {
+  color: #a78bfa;
+}
+html.dark :where(.text-violet-700) {
+  color: #a78bfa;
+}
+html.dark :where(.text-violet-800) {
+  color: #a78bfa;
+}
+html.dark :where(.text-violet-900) {
+  color: #a78bfa;
+}
+html.dark :where(.text-yellow-700) {
+  color: #ca8a04;
+}
+html.dark :where(.text-yellow-800) {
+  color: #ca8a04;
+}
+html.dark :where(.text-yellow-900) {
+  color: #ca8a04;
+}
+
+/* A soft badge.
+
+   The badges are a pale wash of a colour with a step of the same
+   colour as the text on it. Tailwind's own steps are too close
+   together for that: the text lands under four and a half to one
+   against its own background. The text is moved further in, and the
+   background is moved a little further out, so that the two still read
+   as the same colour rather than as a colour with a warning on it.
+
+   The dark mode washes are deep ones, so that the badge sits on the
+   page rather than glowing out of it, and the text on them is the
+   light step of the same colour.
+
+   These are written with ":where()" for the same reason as the rules
+   above: a component that has its own dark variant of the colour keeps
+   it. */
+html:not(.dark) :where(.text-yellow-600)  { color: #854d0e; }
+html:not(.dark) :where(.bg-yellow-50)      { background-color: #fefce8; }
+html:not(.dark) :where(.text-green-600)   { color: #166534; }
+html:not(.dark) :where(.bg-green-50)       { background-color: #f0fdf4; }
+html:not(.dark) :where(.text-emerald-600) { color: #065f46; }
+html:not(.dark) :where(.bg-emerald-50)     { background-color: #ecfdf5; }
+html:not(.dark) :where(.text-amber-600)   { color: #92400e; }
+html:not(.dark) :where(.bg-amber-50)      { background-color: #fffbeb; }
+html:not(.dark) :where(.text-red-600)     { color: #991b1b; }
+html:not(.dark) :where(.bg-red-50)        { background-color: #fef2f2; }
+html:not(.dark) :where(.text-blue-600)    { color: #1e40af; }
+html:not(.dark) :where(.bg-blue-50)       { background-color: #eff6ff; }
+html:not(.dark) :where(.text-violet-600)  { color: #5b21b6; }
+html:not(.dark) :where(.bg-violet-50)     { background-color: #f5f3ff; }
+html:not(.dark) :where(.text-purple-600)  { color: #6b21a8; }
+html:not(.dark) :where(.bg-purple-50)     { background-color: #faf5ff; }
+html:not(.dark) :where(.text-orange-600)  { color: #9a3412; }
+html:not(.dark) :where(.bg-orange-50)     { background-color: #fff7ed; }
+html:not(.dark) :where(.text-cyan-600)    { color: #155e75; }
+html:not(.dark) :where(.bg-cyan-50)       { background-color: #ecfeff; }
+html:not(.dark) :where(.text-teal-600)    { color: #115e59; }
+html:not(.dark) :where(.bg-teal-50)       { background-color: #f0fdfa; }
+html:not(.dark) :where(.text-pink-600)    { color: #9d174d; }
+html:not(.dark) :where(.bg-pink-50)       { background-color: #fdf2f8; }
+html:not(.dark) :where(.text-indigo-600)  { color: #3730a3; }
+html:not(.dark) :where(.bg-indigo-50)     { background-color: #eef2ff; }
+html:not(.dark) :where(.text-rose-600)    { color: #9f1239; }
+html:not(.dark) :where(.bg-rose-50)       { background-color: #fff1f2; }
+html:not(.dark) :where(.text-sky-600)     { color: #075985; }
+html:not(.dark) :where(.bg-sky-50)        { background-color: #f0f9ff; }
+html:not(.dark) :where(.text-lime-600)    { color: #3f6212; }
+html:not(.dark) :where(.bg-lime-50)       { background-color: #f7fee7; }
+html:not(.dark) :where(.text-fuchsia-600) { color: #86198f; }
+html:not(.dark) :where(.bg-fuchsia-50)    { background-color: #fdf4ff; }
+
+html.dark :where(.text-yellow-600)  { color: #fde047; }
+html.dark :where(.bg-yellow-50)      { background-color: #422006; }
+html.dark :where(.text-green-600)   { color: #86efac; }
+html.dark :where(.bg-green-50)       { background-color: #052e16; }
+html.dark :where(.text-emerald-600) { color: #6ee7b7; }
+html.dark :where(.bg-emerald-50)     { background-color: #022c22; }
+html.dark :where(.text-amber-600)   { color: #fcd34d; }
+html.dark :where(.bg-amber-50)      { background-color: #451a03; }
+html.dark :where(.text-red-600)     { color: #fca5a5; }
+html.dark :where(.bg-red-50)        { background-color: #450a0a; }
+html.dark :where(.text-blue-600)    { color: #93c5fd; }
+html.dark :where(.bg-blue-50)       { background-color: #172554; }
+html.dark :where(.text-violet-600)  { color: #c4b5fd; }
+html.dark :where(.bg-violet-50)     { background-color: #2e1065; }
+html.dark :where(.text-purple-600)  { color: #d8b4fe; }
+html.dark :where(.bg-purple-50)     { background-color: #3b0764; }
+html.dark :where(.text-orange-600)  { color: #fdba74; }
+html.dark :where(.bg-orange-50)     { background-color: #431407; }
+html.dark :where(.text-cyan-600)    { color: #67e8f9; }
+html.dark :where(.bg-cyan-50)       { background-color: #164e63; }
+html.dark :where(.text-teal-600)    { color: #5eead4; }
+html.dark :where(.bg-teal-50)       { background-color: #042f2e; }
+html.dark :where(.text-pink-600)    { color: #f9a8d4; }
+html.dark :where(.bg-pink-50)       { background-color: #500724; }
+html.dark :where(.text-indigo-600)  { color: #a5b4fc; }
+html.dark :where(.bg-indigo-50)     { background-color: #1e1b4b; }
+html.dark :where(.text-rose-600)    { color: #fda4af; }
+html.dark :where(.bg-rose-50)       { background-color: #4c0519; }
+html.dark :where(.text-sky-600)     { color: #7dd3fc; }
+html.dark :where(.bg-sky-50)        { background-color: #0c4a6e; }
+html.dark :where(.text-lime-600)    { color: #bef264; }
+html.dark :where(.bg-lime-50)       { background-color: #365314; }
+html.dark :where(.text-fuchsia-600) { color: #f0abfc; }
+html.dark :where(.bg-fuchsia-50)    { background-color: #4a044e; }
+
+/* The app's own three meaning colours - success, danger and warning -
+   are used on their own soft backgrounds in the badges, so they are
+   handled the same way as the tailwind ones above. */
+html:not(.dark) :where(.text-success-600) { color: #166534; }
+html:not(.dark) :where(.bg-success-50)     { background-color: #f0fdf4; }
+html:not(.dark) :where(.text-danger-600)  { color: #991b1b; }
+html:not(.dark) :where(.bg-danger-50)      { background-color: #fef2f2; }
+html:not(.dark) :where(.text-warning-600) { color: #92400e; }
+html:not(.dark) :where(.bg-warning-50)     { background-color: #fffbeb; }
+html.dark :where(.text-success-600) { color: #86efac; }
+html.dark :where(.bg-success-50)     { background-color: #052e16; }
+html.dark :where(.text-danger-600)  { color: #fca5a5; }
+html.dark :where(.bg-danger-50)      { background-color: #450a0a; }
+html.dark :where(.text-warning-600) { color: #fcd34d; }
+html.dark :where(.bg-warning-50)     { background-color: #451a03; }
+
+/* The primary badge: the softest step of the scheme under a step of
+   the same colour as the text. This one follows the scheme through
+   the variables, so it works for whichever scheme is chosen. */
+html:not(.dark) :where(.bg-primary-50)     { background-color: rgb(var(--scheme-50-rgb, 239 246 255)); }
+html:not(.dark) :where(.text-primary-600)  { color: rgb(var(--scheme-800-rgb, 30 64 175)); }
+html.dark :where(.bg-primary-50)           { background-color: rgb(var(--scheme-900-rgb, 30 58 138) / 0.55); }
+html.dark :where(.text-primary-600)        { color: rgb(var(--scheme-300-rgb, 147 197 253)); }
+
+/* The soft background of the scheme under text of the scheme. */
+html:not(.dark) :where(.bg-primary-100)   { background-color: rgb(var(--scheme-100-rgb, 219 234 254)); }
+html:not(.dark) :where(.text-primary-700) { color: rgb(var(--scheme-800-rgb, 30 64 175)); }
+html.dark :where(.bg-primary-100)         { background-color: rgb(var(--scheme-800-rgb, 30 64 175) / 0.5); }
+html.dark :where(.text-primary-700)       { color: rgb(var(--scheme-200-rgb, 191 219 254)); }
+
+/* The deeper washes of the badge colours, with the text a step further
+   into the colour to match them. */
+html:not(.dark) :where(.text-yellow-800)  { color: #713f12; }
+html:not(.dark) :where(.text-green-800)   { color: #14532d; }
+html:not(.dark) :where(.text-red-800)     { color: #7f1d1d; }
+html:not(.dark) :where(.text-amber-800)   { color: #78350f; }
+html:not(.dark) :where(.text-blue-800)    { color: #1e3a8a; }
+html:not(.dark) :where(.text-emerald-800) { color: #064e3b; }
+html:not(.dark) :where(.text-orange-800)  { color: #7c2d12; }
+html:not(.dark) :where(.text-teal-800)    { color: #134e4a; }
+html:not(.dark) :where(.text-cyan-800)    { color: #164e63; }
+html:not(.dark) :where(.text-pink-800)    { color: #831843; }
+html:not(.dark) :where(.text-violet-800)  { color: #4c1d95; }
+html:not(.dark) :where(.text-purple-800)  { color: #581c87; }
+html:not(.dark) :where(.text-indigo-800)  { color: #312e81; }
+html:not(.dark) :where(.text-rose-800)    { color: #881337; }
+html:not(.dark) :where(.text-sky-800)     { color: #0c4a6e; }
+html:not(.dark) :where(.text-lime-800)    { color: #365314; }
+html:not(.dark) :where(.text-fuchsia-800) { color: #701a75; }
+
+/* The pale washes, in the dark mode. */
+html.dark :where(.bg-gray-100)    { background-color: #1f2937; }
+html.dark :where(.bg-gray-200)    { background-color: #374151; }
+html.dark :where(.bg-yellow-100)  { background-color: #422006; }
+html.dark :where(.bg-yellow-200)  { background-color: #713f12; }
+html.dark :where(.bg-green-100)   { background-color: #052e16; }
+html.dark :where(.bg-green-200)   { background-color: #14532d; }
+html.dark :where(.bg-red-100)     { background-color: #450a0a; }
+html.dark :where(.bg-red-200)     { background-color: #7f1d1d; }
+html.dark :where(.bg-amber-100)   { background-color: #451a03; }
+html.dark :where(.bg-amber-200)   { background-color: #78350f; }
+html.dark :where(.bg-blue-100)    { background-color: #172554; }
+html.dark :where(.bg-blue-200)    { background-color: #1e3a8a; }
+html.dark :where(.bg-emerald-100) { background-color: #022c22; }
+html.dark :where(.bg-emerald-200) { background-color: #065f46; }

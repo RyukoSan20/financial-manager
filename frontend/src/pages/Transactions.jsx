@@ -223,7 +223,7 @@ export const Transactions = () => {
         </div>
         <button
           onClick={() => window.location.href = '/add'}
-          className="p-3 bg-primary-500 text-white rounded-xl shadow-lg active:bg-primary-600"
+          className="p-3 bg-primary-600 text-white rounded-xl shadow-lg active:bg-primary-600"
         >
           <Plus className="w-5 h-5" />
         </button>
@@ -233,7 +233,7 @@ export const Transactions = () => {
       <div className="flex gap-2">
         <button
           onClick={() => setShowTextParser(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 active:bg-blue-100"
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary-50 text-primary-600 rounded-xl border border-primary-200 active:bg-primary-100"
         >
           <MessageSquare className="w-5 h-5" />
           <span className="font-medium">SMS</span>
@@ -301,7 +301,7 @@ export const Transactions = () => {
               }}
               className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${
                 filters.type === opt.value
-                  ? 'bg-primary-500 text-white'
+                  ? 'bg-primary-600 text-white'
                   : 'bg-gray-100 text-gray-600'
               }`}
             >
@@ -321,7 +321,7 @@ export const Transactions = () => {
           <p className="text-gray-500 text-center mb-6">Start tracking your finances by adding your first transaction</p>
           <button
             onClick={() => window.location.href = '/add'}
-            className="px-6 py-3 bg-primary-500 text-white rounded-xl font-medium shadow-lg active:bg-primary-600"
+            className="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium shadow-lg active:bg-primary-600"
           >
             Add Transaction
           </button>
@@ -394,7 +394,7 @@ export const Transactions = () => {
                             </button>
                             <button
                               onClick={() => saveEdit(tx.id)}
-                              className="flex-1 py-2 bg-primary-500 text-white rounded-lg flex items-center justify-center gap-2"
+                              className="flex-1 py-2 bg-primary-600 text-white rounded-lg flex items-center justify-center gap-2"
                             >
                               <Check className="w-4 h-4" /> Save
                             </button>

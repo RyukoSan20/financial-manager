@@ -122,7 +122,7 @@ export const ReceiptBreakdown = ({ breakdown, learning, compact = false }) => {
 
       {/* What the scanner had to learn from this receipt. */}
       {!compact && learning && (
-        <div className="border-t border-gray-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-gray-700 dark:bg-blue-900/30 dark:text-blue-200">
+        <div className="border-t border-gray-200 bg-primary-50 px-3 py-2 text-xs text-primary-800 dark:border-gray-700 dark:bg-primary-900/30 dark:text-primary-200">
           {learning.merchant?.created && (
             <div>
               <span className="font-semibold">Merchant baru:</span>{' '}

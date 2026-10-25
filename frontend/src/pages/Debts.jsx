@@ -161,12 +161,12 @@ export const Debts = () => {
 
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <DollarSign className="w-6 h-6 text-blue-600" />
+            <div className="p-3 bg-primary-100 rounded-lg">
+              <DollarSign className="w-6 h-6 text-primary-600" />
             </div>
             <div>
               <p className="text-sm text-gray-500">Total Pokok</p>
-              <p className="text-xl font-bold text-blue-600">{formatCurrency(totalPrincipal)}</p>
+              <p className="text-xl font-bold text-primary-600">{formatCurrency(totalPrincipal)}</p>
             </div>
           </div>
         </Card>
@@ -465,7 +465,7 @@ function PaymentModal({ debt, onClose, onSubmit }) {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
           <textarea
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             value={form.notes}
             onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
             rows={2}

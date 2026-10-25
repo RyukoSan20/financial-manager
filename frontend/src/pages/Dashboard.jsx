@@ -57,7 +57,6 @@ const TIMEFRAMES = [
 const CHART_COLORS = {
   income: '#22c55e',
   expense: '#ef4444',
-  savings: '#3b82f6',
   budget: '#f59e0b',
   safe: '#10b981',
   grid: '#e5e7eb',
@@ -68,6 +67,16 @@ const CHART_COLORS = {
     crosshair: '#6b7280',
   }
 };
+
+/**
+ * The savings series is a brand colour rather than a meaning, so it
+ * takes the accent of the scheme the user picked. It is read from the
+ * document because the scheme is applied to the page, not imported.
+ */
+function savingsColor() {
+  const v = document.documentElement.style.getPropertyValue('--scheme-500').trim();
+  return v || '#3b82f6';
+}
 
 // ============================================================================
 // CATEGORY COLORS
@@ -118,7 +127,7 @@ const ModeToggle = ({ mode, onToggle, isDark }) => (
     <button
       onClick={() => onToggle('basic')}
       className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${
-        mode === 'basic' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
+        mode === 'basic' ? 'bg-primary-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
       }`}
     >
       <TrendingUp className="w-3.5 h-3.5" />
@@ -567,11 +576,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
 
         // Savings area for advanced
         const savingsAreaSeries = chart.addSeries(AreaSeries, {
-          color: CHART_COLORS.savings + '40',
-          lineColor: CHART_COLORS.savings,
+          color: savingsColor() + '40',
+          lineColor: savingsColor(),
           lineWidth: 2,
-          topColor: CHART_COLORS.savings + '40',
-          bottomColor: CHART_COLORS.savings + '05',
+          topColor: savingsColor() + '40',
+          bottomColor: savingsColor() + '05',
           title: 'Tabungan',
           crosshairMarkerVisible: true,
         });
@@ -582,11 +591,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       } else {
         // BASIC: Net savings only with area
         const savingsSeries = chart.addSeries(AreaSeries, {
-          color: CHART_COLORS.savings + '60',
-          lineColor: CHART_COLORS.savings,
+          color: savingsColor() + '60',
+          lineColor: savingsColor(),
           lineWidth: 2,
-          topColor: CHART_COLORS.savings + '60',
-          bottomColor: CHART_COLORS.savings + '10',
+          topColor: savingsColor() + '60',
+          bottomColor: savingsColor() + '10',
           title: 'Net Savings',
           crosshairMarkerVisible: true,
         });
@@ -800,7 +809,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                 title={tf.description}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
                   timeframe === tf.key 
-                    ? 'bg-blue-600 text-white shadow-md' 
+                    ? 'bg-primary-600 text-white shadow-md' 
                     : `${textSecondary} hover:bg-gray-200 dark:hover:bg-gray-600`
                 }`}
               >
@@ -885,11 +894,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             label: 'Pemasukan',
             value: summary?.totalIncome || summary?.total_income,
             icon: TrendingUp,
-            gradient: 'from-blue-50 to-blue-100 dark:from-blue-900/50 dark:to-blue-800/40',
-            labelClass: 'text-blue-700 dark:text-blue-300',
-            valueClass: 'text-blue-800 dark:text-blue-100',
-            iconBg: 'bg-blue-200 dark:bg-blue-900',
-            iconClass: 'text-blue-700 dark:text-blue-300',
+            gradient: 'from-primary-50 to-primary-100 dark:from-primary-900/50 dark:to-primary-800/40',
+            labelClass: 'text-primary-700 dark:text-primary-300',
+            valueClass: 'text-primary-800 dark:text-primary-100',
+            iconBg: 'bg-primary-200 dark:bg-primary-900',
+            iconClass: 'text-primary-700 dark:text-primary-300',
           },
           {
             label: 'Pengeluaran',
@@ -1017,7 +1026,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                 <p>Per Hari</p>
               </div>
               <div>
-                <p className="font-bold text-lg text-blue-500">{formatCurrency((safeToSpend.amount / 4) || 0)}</p>
+                <p className="font-bold text-lg text-primary-500">{formatCurrency((safeToSpend.amount / 4) || 0)}</p>
                 <p>Per Minggu</p>
               </div>
               <div>
@@ -1035,7 +1044,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       <Card className={`p-4 ${bgCard} border ${borderColor}`}>
         <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
           <div className="flex items-center gap-2">
-            <TrendingUp className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+            <TrendingUp className={`w-5 h-5 ${isDark ? 'text-primary-400' : 'text-primary-600'}`} />
             <h3 className={`font-semibold ${textPrimary}`}>Tren Arus Kas</h3>
             <Badge variant="outline">{TIMEFRAMES.find(t => t.key === timeframe)?.description || '3 Bulan'}</Badge>
             {displayMode === 'advanced' && (
@@ -1059,7 +1068,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                 </>
               )}
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-blue-400" />
+                <div className="w-3 h-3 rounded-full bg-primary-400" />
                 <span className={textSecondary}>Tabungan</span>
               </div>
             </div>
@@ -1071,7 +1080,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   key={type}
                   onClick={() => setChartType(type)}
                   className={`px-2 py-1 text-xs rounded capitalize ${
-                    chartType === type ? 'bg-blue-600 text-white' : `${textSecondary} hover:bg-gray-200 dark:hover:bg-gray-600`
+                    chartType === type ? 'bg-primary-600 text-white' : `${textSecondary} hover:bg-gray-200 dark:hover:bg-gray-600`
                   }`}
                 >
                   {type}
@@ -1215,7 +1224,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         {/* Achievement Progress Bar */}
         <div className={`w-full rounded-full h-2 mb-4 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
           <div 
-            className="h-2 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all"
+            className="h-2 rounded-full bg-gradient-to-r from-purple-500 to-primary-500 transition-all"
             style={{ width: `${(achievements.length / ACHIEVEMENTS.length) * 100}%` }}
           />
         </div>
@@ -1267,7 +1276,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             <Card className={`p-4 ${bgCard} border ${borderColor}`}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <RefreshCw className="w-5 h-5 text-blue-500" />
+                  <RefreshCw className="w-5 h-5 text-primary-500" />
                   <h3 className={`font-semibold ${textPrimary}`}>🔄 Transaksi Berulang</h3>
                 </div>
                 <Badge variant="info">{recurringTransactions.length}</Badge>
@@ -1390,7 +1399,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-blue-500" />
+              <Target className="w-5 h-5 text-primary-500" />
               <h3 className={`font-semibold ${textPrimary}`}>🎯 Target Keuangan</h3>
             </div>
             <Button variant="ghost" size="sm" onClick={() => window.location.href = '/goals'}>
@@ -1412,7 +1421,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   <div className="mb-2">
                     <div className={`w-full rounded-full h-2 ${isDark ? 'bg-gray-600' : 'bg-gray-200'}`}>
                       <div 
-                        className="h-2 rounded-full bg-blue-500 transition-all"
+                        className="h-2 rounded-full bg-primary-500 transition-all"
                         style={{ width: `${Math.min(100, progress)}%` }}
                       />
                     </div>

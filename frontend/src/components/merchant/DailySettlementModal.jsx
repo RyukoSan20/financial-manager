@@ -67,7 +67,7 @@ const DailySettlementModal = ({ isOpen, onClose, merchant, onComplete }) => {
                   <span>QRIS</span>
                   <span>{formatCurrency(result.total_qris)}</span>
                 </div>
-                <div className="flex justify-between text-blue-600">
+                <div className="flex justify-between text-primary-600">
                   <span>Cash</span>
                   <span>{formatCurrency(result.total_cash)}</span>
                 </div>

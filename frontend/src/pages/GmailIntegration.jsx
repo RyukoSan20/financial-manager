@@ -97,9 +97,9 @@ const GmailIntegration = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-blue-50 rounded-xl p-4">
-              <h3 className="font-medium text-blue-800 mb-2">💡 Cara Kerja</h3>
-              <ul className="text-sm text-blue-700 space-y-1">
+            <div className="bg-primary-50 rounded-xl p-4">
+              <h3 className="font-medium text-primary-800 mb-2">💡 Cara Kerja</h3>
+              <ul className="text-sm text-primary-700 space-y-1">
                 <li>1. Hubungkan Gmail dengan OAuth Google</li>
                 <li>2. Kami scan email bank & e-wallet</li>
                 <li>3. Transaksi otomatis masuk ke dashboard</li>

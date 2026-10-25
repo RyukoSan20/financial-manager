@@ -421,7 +421,7 @@ const AddTransactionPage = () => {
   const getTypeColor = () => {
     if (type === "expense") return "bg-red-500";
     if (type === "income") return "bg-green-500";
-    return "bg-blue-500";
+    return "bg-primary-500";
   };
 
   const getCategoryIcon = (name) => {
@@ -442,7 +442,7 @@ const AddTransactionPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
     );
   }
@@ -456,7 +456,7 @@ const AddTransactionPage = () => {
           <p className="text-gray-600 mb-4">{loadError}</p>
           <button
             onClick={loadData}
-            className="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium"
+            className="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium"
           >
             🔄 Coba Lagi
           </button>
@@ -516,9 +516,9 @@ const AddTransactionPage = () => {
                 <span
                   key={i}
                   className={`px-3 py-1 rounded-full text-sm ${
-                    s.confidence === 'high' ? 'bg-green-100 text-green-700' :
-                    s.confidence === 'medium' ? 'bg-blue-100 text-blue-700' :
-                    'bg-gray-100 text-gray-600'
+                    s.confidence === 'high' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200' :
+                    s.confidence === 'medium' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200' :
+                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-200'
                   }`}
                 >
                   {s.label}
@@ -663,7 +663,7 @@ const AddTransactionPage = () => {
                 onClick={() => setDate(value)}
                 className={`px-4 py-2 rounded-full text-sm font-medium ${
                   date === value 
-                    ? "bg-blue-500 text-white" 
+                    ? "bg-primary-600 text-white" 
                     : "bg-white text-gray-600"
                 }`}
               >
@@ -703,7 +703,7 @@ const AddTransactionPage = () => {
           <button
             onClick={() => handleSave(true)}
             disabled={saving}
-            className="flex-1 py-4 rounded-xl border-2 border-blue-500 text-blue-500 font-semibold disabled:opacity-50"
+            className="flex-1 py-4 rounded-xl border-2 border-primary-500 text-primary-500 font-semibold disabled:opacity-50"
           >
             + Lagi
           </button>
@@ -741,7 +741,7 @@ const AddTransactionPage = () => {
                   key={cat.id}
                   onClick={() => { setCategoryId(cat.id); setShowCategorySheet(false); }}
                   className={`w-full p-4 rounded-xl flex items-center gap-3 ${
-                    categoryId === cat.id ? "bg-blue-50 border-2 border-blue-500" : "bg-gray-50"
+                    categoryId === cat.id ? "bg-primary-50 border-2 border-primary-500" : "bg-gray-50"
                   }`}
                 >
                   <span className="text-2xl">{getCategoryIcon(cat.name)}</span>
@@ -785,7 +785,7 @@ const AddTransactionPage = () => {
                     } ${
                       (type !== "transfer" && accountId === acc.id) || 
                       (type === "transfer" && (accountId === acc.id || toAccountId === acc.id))
-                        ? "bg-blue-50 border-2 border-blue-500" 
+                        ? "bg-primary-50 border-2 border-primary-500" 
                         : "bg-gray-50"
                     }`}
                   >
@@ -862,7 +862,7 @@ const AddTransactionPage = () => {
                     alert("Geolocation tidak tersedia di browser ini");
                   }
                 }}
-                className="w-full py-4 bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-2"
+                className="w-full py-4 bg-primary-600 text-white rounded-xl font-medium flex items-center justify-center gap-2"
               >
                 📍 Gunakan Lokasi Saat Ini
               </button>

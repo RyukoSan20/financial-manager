@@ -72,7 +72,7 @@ const ProfileSettings = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-blue-500 text-white p-4 sticky top-0 z-10">
+      <div className="bg-primary-600 text-white p-4 sticky top-0 z-10">
         <h1 className="text-xl font-bold">👤 Profil</h1>
       </div>
 
@@ -166,7 +166,7 @@ const ProfileSettings = () => {
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-3 bg-blue-500 text-white rounded-xl font-bold disabled:opacity-50"
+            className="w-full py-3 bg-primary-600 text-white rounded-xl font-bold disabled:opacity-50"
           >
             {saving ? 'Menyimpan...' : '💾 Simpan Perubahan'}
           </button>

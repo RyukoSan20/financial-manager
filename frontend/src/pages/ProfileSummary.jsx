@@ -33,7 +33,7 @@ const StatTile = ({ icon: Icon, label, value, tone = 'neutral', sublabel }) => {
     neutral: 'bg-gray-50 text-gray-700 border-gray-100',
     income: 'bg-emerald-50 text-emerald-700 border-emerald-100',
     expense: 'bg-rose-50 text-rose-700 border-rose-100',
-    primary: 'bg-blue-50 text-blue-700 border-blue-100',
+    primary: 'bg-primary-50 text-primary-700 border-primary-100',
   };
   return (
     <div className={`rounded-xl border p-3 ${tones[tone]}`}>
@@ -90,7 +90,7 @@ const ProfileSummary = () => {
           <p className="text-gray-700 dark:text-gray-300 mb-4">{error}</p>
           <button
             onClick={load}
-            className="px-4 py-2 bg-blue-700 text-white rounded-lg text-sm font-medium hover:bg-blue-800"
+            className="px-4 py-2 bg-primary-700 text-white rounded-lg text-sm font-medium hover:bg-primary-800"
           >
             Coba lagi
           </button>
@@ -106,7 +106,7 @@ const ProfileSummary = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
       {/* Header */}
-      <div className="bg-blue-700 text-white px-4 py-4 sticky top-0 z-10 shadow-sm">
+      <div className="bg-primary-700 text-white px-4 py-4 sticky top-0 z-10 shadow-sm">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -117,7 +117,7 @@ const ProfileSummary = () => {
           </button>
           <div>
             <h1 className="text-lg font-bold leading-tight">Ringkasan Profil</h1>
-            <p className="text-xs text-blue-100">Identitas &amp; riwayat aktivitas</p>
+            <p className="text-xs text-primary-100">Identitas &amp; riwayat aktivitas</p>
           </div>
         </div>
       </div>
@@ -130,7 +130,7 @@ const ProfileSummary = () => {
               <img
                 src={identity.avatar_url}
                 alt={identity.display_name}
-                className="w-16 h-16 rounded-full object-cover border-2 border-blue-100"
+                className="w-16 h-16 rounded-full object-cover border-2 border-primary-100"
                 onError={(e) => {
                   // Fall back to the initials avatar if the image URL breaks.
                   e.currentTarget.style.display = 'none';
@@ -139,7 +139,7 @@ const ProfileSummary = () => {
               />
             ) : null}
             <div
-              className="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center text-xl font-bold shrink-0"
+              className="w-16 h-16 rounded-full bg-primary-600 text-white flex items-center justify-center text-xl font-bold shrink-0"
               style={{ display: identity.avatar_url ? 'none' : 'flex' }}
             >
               {identity.initials}
@@ -158,7 +158,7 @@ const ProfileSummary = () => {
                 {identity.email}
               </p>
               {identity.username && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                <p className="text-xs text-gray-400 dark:text-gray-300 mt-0.5">
                   @{identity.username}
                 </p>
               )}

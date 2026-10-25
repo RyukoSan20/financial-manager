@@ -63,7 +63,7 @@ export const PixelCardHeader = ({
   <div className={`flex items-center justify-between mb-3 ${className}`}>
     <div className="flex items-center gap-3">
       {Icon && (
-        <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary-600 flex items-center justify-center">
           <Icon size={20} />
         </div>
       )}
@@ -118,7 +118,7 @@ export const StatCard = ({
   className = '',
 }) => {
   const iconColors = {
-    indigo: 'bg-indigo-100 text-indigo-600',
+    indigo: 'bg-primary-100 text-primary-600',
     green: 'bg-emerald-100 text-emerald-600',
     red: 'bg-red-100 text-red-600',
     yellow: 'bg-amber-100 text-amber-600',

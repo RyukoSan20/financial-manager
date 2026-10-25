@@ -297,7 +297,7 @@ const ShoppingPage = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="!p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">Total Budget</div>
-          <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+          <div className="text-xl font-bold text-primary-600 dark:text-primary-400">
             {formatCurrency(board?.total_budget || 0)}
           </div>
         </Card>
@@ -364,7 +364,7 @@ const ShoppingPage = () => {
               {/* Items */}
               <div className="space-y-2 min-h-[200px]">
                 {items.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
+                  <div className="text-center py-8 text-gray-400 dark:text-gray-300 text-sm">
                     Drop item di sini
                   </div>
                 ) : (
@@ -404,7 +404,7 @@ const ShoppingPage = () => {
                               href={item.product_url} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="text-xs text-blue-500 hover:underline mt-1 flex items-center gap-1"
+                              className="text-xs text-primary-500 hover:underline mt-1 flex items-center gap-1"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <ExternalLink className="w-3 h-3" />

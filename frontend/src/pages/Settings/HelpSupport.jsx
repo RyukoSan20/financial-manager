@@ -107,7 +107,7 @@ const HelpSupport = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-blue-500 text-white p-4 sticky top-0 z-10">
+      <div className="bg-primary-600 text-white p-4 sticky top-0 z-10">
         <h1 className="text-xl font-bold">❓ Help & Support</h1>
       </div>
 
@@ -119,7 +119,7 @@ const HelpSupport = () => {
           <div className="grid grid-cols-2 gap-3">
             <a
               href="mailto:support@my-financial-manager.online"
-              className="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100"
+              className="flex flex-col items-center p-4 bg-primary-50 rounded-lg hover:bg-primary-100"
             >
               <span className="text-2xl mb-2">📧</span>
               <span className="text-sm font-medium">Email</span>
@@ -200,7 +200,7 @@ const HelpSupport = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3 bg-blue-500 text-white rounded-xl font-bold disabled:opacity-50"
+              className="w-full py-3 bg-primary-600 text-white rounded-xl font-bold disabled:opacity-50"
             >
               {submitting ? 'Mengirim...' : '📤 Kirim Pesan'}
             </button>
@@ -228,7 +228,7 @@ const HelpSupport = () => {
                   </div>
                   <p className="text-sm text-gray-600 mt-1">{req.message}</p>
                   {req.response && (
-                    <div className="mt-2 p-2 bg-blue-50 rounded text-sm text-blue-800">
+                    <div className="mt-2 p-2 bg-primary-50 rounded text-sm text-primary-800">
                       <strong>Balasan:</strong> {req.response}
                     </div>
                   )}

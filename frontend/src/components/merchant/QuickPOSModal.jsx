@@ -80,7 +80,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-blue-600 text-white">
+        <div className="flex items-center justify-between px-4 py-3 bg-primary-600 text-white">
           <div className="flex items-center gap-2">
             <ShoppingCart size={20} />
             <span className="font-semibold">Kasir Cepat</span>
@@ -125,7 +125,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
                 onClick={() => setPaymentMethod('CASH')}
                 className={`flex flex-col items-center p-3 rounded-lg border-2 transition ${
                   paymentMethod === 'CASH'
-                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-600'
+                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-600'
                     : 'border-gray-200 dark:border-gray-600'
                 }`}
               >
@@ -137,7 +137,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
                 onClick={() => setPaymentMethod('QRIS')}
                 className={`flex flex-col items-center p-3 rounded-lg border-2 transition ${
                   paymentMethod === 'QRIS'
-                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-600'
+                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-600'
                     : 'border-gray-200 dark:border-gray-600'
                 }`}
               >
@@ -149,7 +149,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
                 onClick={() => setPaymentMethod('EDC')}
                 className={`flex flex-col items-center p-3 rounded-lg border-2 transition ${
                   paymentMethod === 'EDC'
-                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-600'
+                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-600'
                     : 'border-gray-200 dark:border-gray-600'
                 }`}
               >
@@ -188,7 +188,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
               value={amount ? parseInt(amount).toLocaleString('id-ID') : ''}
               onChange={handleInputChange}
               placeholder="0"
-              className="w-full px-4 py-3 text-2xl font-bold text-center border-2 border-blue-200 dark:border-blue-800 rounded-lg dark:bg-gray-700"
+              className="w-full px-4 py-3 text-2xl font-bold text-center border-2 border-primary-200 dark:border-primary-800 rounded-lg dark:bg-gray-700"
             />
           </div>
 
@@ -220,7 +220,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
             className={`w-full py-4 rounded-lg font-bold text-lg transition ${
               isSubmitting || !amount || parseInt(amount) <= 0
                 ? 'bg-gray-300 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-primary-600 hover:bg-primary-700 text-white'
             }`}
           >
             {isSubmitting ? 'Menyimpan...' : 'Simpan Penjualan'}

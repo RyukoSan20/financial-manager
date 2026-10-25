@@ -15,7 +15,7 @@ const colorMap = {
   success: 'bg-green-50 border-green-500 text-green-800',
   error: 'bg-red-50 border-red-500 text-red-800',
   warning: 'bg-yellow-50 border-yellow-500 text-yellow-800',
-  info: 'bg-blue-50 border-blue-500 text-blue-800',
+  info: 'bg-primary-50 border-primary-500 text-primary-800',
 };
 
 export const NotificationToast = () => {
@@ -109,7 +109,7 @@ export const NotificationBell = () => {
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-xs rounded-full flex items-center justify-center">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -159,7 +159,7 @@ export const NotificationBell = () => {
                           notif.type === 'success' ? 'bg-green-500' :
                           notif.type === 'error' ? 'bg-red-500' :
                           notif.type === 'warning' ? 'bg-yellow-500' :
-                          'bg-blue-500'
+                          'bg-primary-500'
                         }`} />
                       )}
                       <div className="flex-1">

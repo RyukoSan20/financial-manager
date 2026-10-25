@@ -44,14 +44,14 @@ const GmailCallback = () => {
             <p className="text-gray-600 mb-6">{error}</p>
             <button
               onClick={() => navigate("/gmail")}
-              className="w-full py-3 bg-blue-500 text-white rounded-xl font-medium"
+              className="w-full py-3 bg-primary-600 text-white rounded-xl font-medium"
             >
               Coba Lagi
             </button>
           </>
         ) : (
           <>
-            <div className="animate-spin w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <div className="animate-spin w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">Menyambungkan Gmail...</h1>
             <p className="text-gray-600 mb-4">{status}</p>
             <p className="text-sm text-gray-500">Mengalihkan ke halaman Gmail...</p>

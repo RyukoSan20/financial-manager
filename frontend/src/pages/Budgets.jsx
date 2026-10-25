@@ -316,20 +316,20 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts =
         />
 
         {/* Auto-Allocate Toggle */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="bg-primary-50 border border-primary-200 rounded-xl p-4">
           <div className="flex items-start gap-3">
             <input
               type="checkbox"
               id="auto_allocate"
               checked={form.auto_allocate}
               onChange={(e) => setForm(f => ({ ...f, auto_allocate: e.target.checked }))}
-              className="mt-1 w-5 h-5 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+              className="mt-1 w-5 h-5 rounded border-primary-300 text-primary-600 focus:ring-primary-500"
             />
             <div className="flex-1">
-              <label htmlFor="auto_allocate" className="font-medium text-blue-900 cursor-pointer">
+              <label htmlFor="auto_allocate" className="font-medium text-primary-900 cursor-pointer">
                 Auto-Allocate Monthly
               </label>
-              <p className="text-sm text-blue-700 mt-1">
+              <p className="text-sm text-primary-700 mt-1">
                 Automatically deduct budget amount from account at the start of each period
               </p>
             </div>

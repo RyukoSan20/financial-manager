@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   THEME_LIGHT,
   THEME_DARK,
@@ -11,6 +11,7 @@ import {
 } from '../utils/theme';
 import {
   applyAppearance,
+  applyAccentForeground,
   readAppearance,
   setColorScheme,
   setFontFamily,
@@ -52,6 +53,17 @@ export const ThemeProvider = ({ children }) => {
   // the settings on the server are newer than the ones we have.
   const [revision, setRevision] = useState(0);
 
+  // The revision the next change is based on.
+  //
+  // The state above is what is drawn, and it only moves when the app
+  // renders again. Two changes in quick succession - picking a colour
+  // and then picking the mode - would both read the same revision from
+  // the render that is on screen, so the second one would be turned
+  // away as stale and its change would be lost. This holds the
+  // revision that the next change is actually based on, and moves on
+  // as soon as a change is accepted.
+  const revisionRef = useRef(0);
+
   const isDarkMode = theme === THEME_DARK;
 
   // Apply on mount and on every change.
@@ -60,9 +72,21 @@ export const ThemeProvider = ({ children }) => {
   }, [theme]);
 
   // The look follows the appearance state.
+  //
+  // This comes before the accent foreground below, because that one
+  // reads the scheme off the document and the scheme is only written
+  // there by this effect.
   useEffect(() => {
     applyAppearance(appearance);
   }, [appearance]);
+
+  // The accent as the colour of text follows the mode, because the
+  // accent that works on a white page is too dark to read on a dark
+  // one. This is done here rather than in the stylesheet so that the
+  // one place that knows the mode is the one that decides.
+  useEffect(() => {
+    applyAccentForeground();
+  }, [theme, appearance.color_scheme]);
 
   // Follow the OS preference while the mode is 'system' (or unset).
   useEffect(() => {
@@ -109,6 +133,7 @@ export const ThemeProvider = ({ children }) => {
 
       if (typeof data.revision === 'number') {
         setRevision(data.revision);
+        revisionRef.current = data.revision;
       }
 
       // The appearance follows the server.
@@ -177,39 +202,73 @@ export const ThemeProvider = ({ children }) => {
   const pushToServer = useCallback(
     async (patch) => {
       if (!user) return null;
-      try {
+
+      // The change is sent with the revision it is based on. If the
+      // server has moved on - another device changed something, or a
+      // change of this device was sent a moment ago - the server hands
+      // back what it holds instead of applying the change. The change
+      // is then sent once more on top of that, so that the choice the
+      // user just made is never quietly lost.
+      const send = async (base) => {
         const data = await api.request('/settings/app', {
           method: 'PUT',
-          body: JSON.stringify({ ...patch, base_revision: revision }),
+          body: JSON.stringify({ ...patch, base_revision: base }),
         });
         if (!data) return null;
-
         if (typeof data.revision === 'number') {
           setRevision(data.revision);
+          revisionRef.current = data.revision;
+        }
+        return data;
+      };
+
+      try {
+        let data = await send(revisionRef.current);
+        if (!data) return null;
+
+        // Was the change turned away as out of date? The one that
+        // matters is the field the change was about.
+        const key = Object.keys(patch)[0];
+        if (key && key !== 'base_revision' && data[key] !== patch[key]) {
+          // The server was holding something different. The change is
+          // made again on top of what the server holds now.
+          const again = await send(data.revision);
+          if (again) {
+            data = again;
+          }
         }
 
-        // The server may have refused the change because another device
-        // changed something in the meantime. In that case it hands back
-        // what it holds, and the local copy is brought in line rather
-        // than leaving the two devices showing different things.
-        if (patch.color_scheme && data.color_scheme !== patch.color_scheme) {
+        // Whatever the server holds now is what is shown. If the
+        // change was accepted, this is the change itself; if it was
+        // turned away, this is the other device's version, and the
+        // two devices are made to agree rather than being left to
+        // show different things.
+        if (typeof data.color_scheme === 'string') {
           setColorScheme(data.color_scheme);
           setAppearance((prev) => ({ ...prev, color_scheme: data.color_scheme }));
         }
-        if (patch.font_family && data.font_family !== patch.font_family) {
+        if (typeof data.font_family === 'string') {
           setFontFamily(data.font_family);
           setAppearance((prev) => ({ ...prev, font_family: data.font_family }));
         }
-        if (patch.font_scale && data.font_scale !== patch.font_scale) {
+        if (typeof data.font_scale === 'string') {
           setFontScale(data.font_scale);
           setAppearance((prev) => ({ ...prev, font_scale: data.font_scale }));
         }
-        if (patch.background_style && data.background_style !== patch.background_style) {
+        if (typeof data.background_style === 'string') {
           setBackgroundStyle(data.background_style);
           setAppearance((prev) => ({
             ...prev,
             background_style: data.background_style,
           }));
+        }
+        if (typeof data.theme === 'string') {
+          writeStoredTheme(data.theme);
+          setModeState(data.theme);
+          const resolved =
+            data.theme === THEME_SYSTEM ? resolveTheme() : data.theme;
+          setThemeState(resolved);
+          applyTheme(resolved);
         }
         return data;
       } catch (e) {
@@ -218,7 +277,7 @@ export const ThemeProvider = ({ children }) => {
         return null;
       }
     },
-    [revision, user]
+    [user]
   );
 
   /**

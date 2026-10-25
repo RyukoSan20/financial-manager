@@ -193,7 +193,7 @@ export const LearnFromScan = ({ items, onLearned }) => {
   const selectedCount = Object.values(confirmed).filter(Boolean).length;
 
   return (
-    <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 p-3 text-sm text-blue-900 dark:text-blue-200">
+    <div className="rounded-lg border border-primary-200 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-800 p-3 text-sm text-primary-900 dark:text-primary-200">
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-2 text-left font-medium"
@@ -245,7 +245,7 @@ export const LearnFromScan = ({ items, onLearned }) => {
           <button
             onClick={handleLearn}
             disabled={busy || selectedCount === 0}
-            className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >
             {busy && <Loader2 className="w-3 h-3 animate-spin" />}
             Simpan {selectedCount} istilah

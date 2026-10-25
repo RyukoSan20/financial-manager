@@ -58,7 +58,7 @@ export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
       aria-label="Buka ringkasan profil"
     >
       {/* Avatar */}
-      <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center text-base font-bold shrink-0 overflow-hidden">
+      <div className="w-12 h-12 rounded-full bg-primary-600 text-white flex items-center justify-center text-base font-bold shrink-0 overflow-hidden">
         {avatarUrl ? (
           <img
             src={avatarUrl}
@@ -66,7 +66,7 @@ export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
             className="w-full h-full object-cover"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
-              e.currentTarget.parentElement?.classList.add('bg-blue-500');
+              e.currentTarget.parentElement?.classList.add('bg-primary-500');
             }}
           />
         ) : (
@@ -120,7 +120,7 @@ export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
         )}
       </div>
 
-      <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 group-hover:text-blue-500 transition-colors" />
+      <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 group-hover:text-primary-500 transition-colors" />
     </button>
   );
 };

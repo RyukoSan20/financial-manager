@@ -363,7 +363,7 @@ export const ScanNotification = () => {
                 closeSheet();
                 navigate('/transactions');
               }}
-              className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+              className="flex-1 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700"
             >
               Lihat Transaksi
             </button>

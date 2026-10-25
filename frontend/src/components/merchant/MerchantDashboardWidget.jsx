@@ -36,7 +36,7 @@ const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
   }
 
   return (
-    <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl shadow-lg text-white p-4">
+    <div className="bg-gradient-to-br from-primary-600 to-primary-800 rounded-xl shadow-lg text-white p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -54,11 +54,11 @@ const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
 
       {/* Today's Sales */}
       <div className="mb-4">
-        <p className="text-blue-200 text-sm">Penjualan Hari Ini</p>
+        <p className="text-primary-200 text-sm">Penjualan Hari Ini</p>
         <p className="text-3xl font-bold">
           {summary ? formatCurrency(summary.today_sales) : 'Rp 0'}
         </p>
-        <p className="text-blue-200 text-sm">
+        <p className="text-primary-200 text-sm">
           {summary?.today_transactions || 0} transaksi
         </p>
       </div>
@@ -66,7 +66,7 @@ const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
       {/* Payment Breakdown */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-white/10 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-blue-200 text-sm">
+          <div className="flex items-center gap-2 text-primary-200 text-sm">
             <SmartphoneIcon />
             <span>QRIS</span>
           </div>
@@ -75,7 +75,7 @@ const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
           </p>
         </div>
         <div className="bg-white/10 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-blue-200 text-sm">
+          <div className="flex items-center gap-2 text-primary-200 text-sm">
             <BanknoteIcon />
             <span>Cash</span>
           </div>
@@ -87,7 +87,7 @@ const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
 
       {/* Profit */}
       <div className="bg-white/10 rounded-lg p-3">
-        <div className="flex items-center gap-2 text-blue-200 text-sm">
+        <div className="flex items-center gap-2 text-primary-200 text-sm">
           <TrendingUp size={16} />
           <span>Profit Kotor</span>
         </div>

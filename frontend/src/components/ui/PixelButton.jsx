@@ -27,11 +27,11 @@ export const PixelButton = ({
   };
 
   const variantClasses = {
-    primary: 'bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white',
+    primary: 'bg-primary-600 hover:bg-primary-600 active:bg-primary-700 text-white',
     secondary: 'bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-800',
-    danger: 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white',
-    success: 'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white',
-    warning: 'bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white',
+    danger: 'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white',
+    success: 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white',
+    warning: 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white',
     ghost: 'bg-transparent hover:bg-gray-100 active:bg-gray-200 text-gray-700',
   };
 
@@ -109,11 +109,11 @@ export const PixelIconButton = ({
   };
 
   const variantClasses = {
-    primary: 'bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white',
+    primary: 'bg-primary-600 hover:bg-primary-600 active:bg-primary-700 text-white',
     secondary: 'bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700',
-    danger: 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white',
-    success: 'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white',
-    warning: 'bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white',
+    danger: 'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white',
+    success: 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white',
+    warning: 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white',
     ghost: 'bg-transparent hover:bg-gray-100 active:bg-gray-200 text-gray-700',
   };
 
@@ -168,7 +168,7 @@ export const PixelFAB = ({
   };
 
   const variantClasses = {
-    primary: 'bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white shadow-lg',
+    primary: 'bg-primary-600 hover:bg-primary-600 active:bg-primary-700 text-white shadow-lg',
     danger: 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white shadow-lg',
     success: 'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white shadow-lg',
   };

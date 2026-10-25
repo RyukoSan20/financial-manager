@@ -29,6 +29,12 @@ export const BACKGROUND_KEY = 'finmanager-background';
  * buttons, the active tab and the chart lines are drawn in, so the
  * scheme is what the app "feels" like.
  *
+ * The accent is the colour a filled button is drawn in, and the label
+ * on that button is white. Three of the shades are too light for that
+ * to be readable, so for those the accent is the darker step of the
+ * same colour rather than the middle one. The accent of each scheme
+ * clears 4.5 to 1 against white.
+ *
  * The names are finance-adjacent on purpose: emerald is the money
  * green, slate is the neutral one, and the rest are there for a user
  * who wants their own.
@@ -46,12 +52,11 @@ export const COLOR_SCHEMES = {
       300: '#6ee7b7',
       400: '#34d399',
       500: '#10b981',
-      600: '#059669',
-      700: '#047857',
-      800: '#065f46',
-      900: '#064e3b',
-    },
-    accent: '#059669',
+      600: '#047857',
+      700: '#065f46',
+      800: '#064e3b',
+      900: '#052e16',
+    },    accent: '#047857',
     onAccent: '#ffffff',
   },
   blue: {
@@ -103,12 +108,12 @@ export const COLOR_SCHEMES = {
       300: '#fcd34d',
       400: '#fbbf24',
       500: '#f59e0b',
-      600: '#d97706',
-      700: '#b45309',
-      800: '#92400e',
-      900: '#78350f',
+      600: '#b45309',
+      700: '#92400e',
+      800: '#78350f',
+      900: '#451a03',
     },
-    accent: '#d97706',
+    accent: '#b45309',
     onAccent: '#ffffff',
   },
   rose: {
@@ -127,7 +132,7 @@ export const COLOR_SCHEMES = {
       800: '#9f1239',
       900: '#881337',
     },
-    accent: '#e11d48',
+    accent: '#be123c',
     onAccent: '#ffffff',
   },
   slate: {
@@ -319,6 +324,42 @@ export function setBackgroundStyle(id) {
  * The custom properties go on the root element. The component classes
  * read them, so one call changes the whole app.
  */
+/**
+ * A colour as three channels, the way Tailwind wants it.
+ *
+ * "rgb(5, 150, 105)" rather than "#059669", so that an opacity can be
+ * applied to it: `rgb(5 150 105 / 40%)`.
+ */
+function hexToChannels(hex) {
+  const clean = String(hex).replace('#', '').trim();
+  const full =
+    clean.length === 3
+      ? clean
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : clean;
+  const int = parseInt(full, 16);
+  if (Number.isNaN(int)) return '0 0 0';
+  return `${(int >> 16) & 255} ${(int >> 8) & 255} ${int & 255}`;
+}
+
+export function applyAccentForeground() {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  const schemeId = root.getAttribute('data-scheme');
+  const scheme = COLOR_SCHEMES[schemeId] || COLOR_SCHEMES[DEFAULT_SCHEME];
+  const isDark = root.classList.contains('dark');
+
+  // In the light mode the accent is the deepest step that still reads
+  // on white; the same value has to be read on the soft background of
+  // the scheme as well, and the deepest step is the one that does that
+  // for every scheme. In the dark mode the background is dark and the
+  // text has to come up to the light step.
+  const fg = isDark ? scheme.shades[300] : scheme.shades[700];
+  root.style.setProperty('--scheme-accent-fg', fg);
+}
+
 export function applyAppearance(appearance = {}) {
   if (typeof document === 'undefined') return;
 
@@ -358,19 +399,38 @@ export function applyAppearance(appearance = {}) {
   // The shades, so a component can use any step of the accent. Every
   // step of the scale is set, including the ones the dark mode needs,
   // so a step never falls back to a stale value from another scheme.
-  Object.entries(scheme.shades).forEach(([step, value]) => {
+  const STEPS = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
+  STEPS.forEach((step) => {
+    const value = scheme.shades[step] || scheme.shades[500];
     root.style.setProperty(`--scheme-${step}`, value);
+    // The same colour again, as three channels.
+    //
+    // Tailwind can only fade a colour that is written as channels, so
+    // `bg-primary-900/40` - a dark panel at forty per cent - needs the
+    // channels. The hex value above stays for the hand-written rules in
+    // the stylesheet, which use it directly.
+    root.style.setProperty(`--scheme-${step}-rgb`, hexToChannels(value));
   });
-  ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900'].forEach(
-    (step) => {
-      if (!scheme.shades[step]) {
-        root.style.setProperty(`--scheme-${step}`, scheme.shades[500]);
-      }
-    }
-  );
 
   root.style.setProperty('--scheme-accent', scheme.accent);
   root.style.setProperty('--scheme-on-accent', scheme.onAccent);
+
+  // The accent as a foreground colour.
+  //
+  // The accent is the colour a filled button is drawn in, so it is
+  // dark enough for white text to be read on it. Used as the colour of
+  // text instead, it is a dark colour on a dark surface in the dark
+  // mode, which cannot be read.
+  //
+  // So the foreground accent is a separate value: dark enough for
+  // white text in the light mode, and the lighter step of the same
+  // colour in the dark mode. This is set as a custom property rather
+  // than as a class, because the stylesheet reads it directly.
+  // The accent as a colour of text is set by applyAccentForeground,
+  // which is the one that knows whether the page is dark. It is
+  // called at the end of this function so that the two cannot end up
+  // out of step.
+  applyAccentForeground();
 
   root.style.setProperty('--font-sans', font.stack);
   root.style.setProperty('--font-mono', font.numeric);
@@ -436,3 +496,44 @@ export function readAppearance() {
     background_style: getBackgroundStyle(),
   };
 }
+
+/**
+ * The colours for a chart.
+ *
+ * A chart needs several colours that are told apart from each other,
+ * so they cannot all be the accent colour. The first one is the accent
+ * itself, so the chart belongs to the scheme the user picked. The rest
+ * are fixed, because a set of colours that shifts with the scheme would
+ * make two charts of the same thing look like two different things.
+ *
+ * The accent is read from the document, so this has to be called after
+ * the appearance has been applied.
+ */
+export function chartPalette() {
+  const root = document.documentElement;
+  const accent = root.style.getPropertyValue('--scheme-500').trim() || '#3b82f6';
+  return [
+    accent,
+    '#22c55e',
+    '#f59e0b',
+    '#ef4444',
+    '#8b5cf6',
+    '#ec4899',
+    '#14b8a6',
+    '#f97316',
+  ];
+}
+
+/**
+ * The accent as the colour of text.
+ *
+ * The accent is the colour a filled button is drawn in, so it is dark
+ * enough for white text to be read on it. Used as the colour of text
+ * instead, that same value is a dark colour on a dark surface in the
+ * dark mode, which cannot be read at all.
+ *
+ * So the accent as text is the lighter step of the same colour in the
+ * dark mode, and the accent itself in the light mode. Both are set, and
+ * the stylesheet picks between them, so that the choice is made by the
+ * one place that knows what the mode is.
+ */

@@ -88,7 +88,7 @@ const MerchantManager = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -98,12 +98,12 @@ const MerchantManager = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <ShoppingBag className="w-8 h-8 text-indigo-600" />
+          <ShoppingBag className="w-8 h-8 text-primary-600" />
           <h1 className="text-2xl font-bold">Toko / Merchant</h1>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
         >
           <Plus size={20} />
           <span>Tambah Toko</span>
@@ -118,7 +118,7 @@ const MerchantManager = () => {
           <p className="text-gray-500 mb-4">Tambahkan toko pertama Anda untuk mulai mencatat penjualan</p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
           >
             + Tambah Toko
           </button>
@@ -155,7 +155,7 @@ const MerchantManager = () => {
                   </button>
                   <button
                     onClick={() => setShowSettlement(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2"
                   >
                     <Calendar size={18} />
                     <span>Tutup Kasir</span>
@@ -238,7 +238,7 @@ const MerchantManager = () => {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 bg-indigo-600 text-white">
+            <div className="flex items-center justify-between px-4 py-3 bg-primary-600 text-white">
               <div className="flex items-center gap-2">
                 <Plus size={20} />
                 <span className="font-semibold">Tambah Toko Baru</span>
@@ -302,7 +302,7 @@ const MerchantManager = () => {
               </div>
               <button
                 onClick={handleCreateMerchant}
-                className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
               >
                 Simpan Toko
               </button>

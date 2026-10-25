@@ -259,8 +259,8 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
             disabled={parsing}
             className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
               listening
-                ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/50'
-                : 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30'
+                ? 'bg-red-600 text-white animate-pulse shadow-lg shadow-red-600/50'
+                : 'bg-primary-600 text-white hover:bg-primary-600 shadow-lg shadow-primary-500/30'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
             aria-label={listening ? 'Hentikan merekam' : 'Mulai merekam'}
           >

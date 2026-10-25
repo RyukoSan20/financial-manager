@@ -69,7 +69,7 @@ const NotificationSettings = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-blue-500 text-white p-4 sticky top-0 z-10">
+      <div className="bg-primary-600 text-white p-4 sticky top-0 z-10">
         <h1 className="text-xl font-bold">🔔 Notifikasi</h1>
       </div>
 
@@ -175,7 +175,7 @@ const NotificationSettings = () => {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-3 bg-blue-500 text-white rounded-xl font-bold disabled:opacity-50"
+          className="w-full py-3 bg-primary-600 text-white rounded-xl font-bold disabled:opacity-50"
         >
           {saving ? 'Menyimpan...' : '💾 Simpan'}
         </button>
@@ -194,7 +194,7 @@ const ToggleItem = ({ title, description, checked, onChange }) => (
       onClick={onChange}
       aria-pressed={checked}
       className={`w-12 h-7 rounded-full transition-colors ${
-        checked ? 'bg-blue-500' : 'bg-gray-300'
+        checked ? 'bg-primary-500' : 'bg-gray-300'
       }`}
     >
       <div

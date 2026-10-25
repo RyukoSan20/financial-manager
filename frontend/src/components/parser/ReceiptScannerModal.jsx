@@ -474,7 +474,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
                 </Button>
                 <Button
                   onClick={capturePhoto}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-primary-600 hover:bg-primary-700"
                 >
                   <Camera className="w-4 h-4 mr-2" /> Capture
                 </Button>
@@ -486,7 +486,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={startCamera}
-                  className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                 >
                   <Smartphone className="w-8 h-8 text-gray-400" />
                   <span className="text-sm font-medium">Kamera</span>
@@ -494,7 +494,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
                 
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                 >
                   <FileImage className="w-8 h-8 text-gray-400" />
                   <span className="text-sm font-medium">Upload File</span>
@@ -517,13 +517,13 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
                 onDragLeave={handleDragLeave}
                 className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
                   isDragging
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-300 hover:border-blue-500 dark:border-gray-600'
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                    : 'border-gray-300 hover:border-primary-500 dark:border-gray-600'
                 }`}
               >
                 <Upload
                   className={`w-12 h-12 mx-auto mb-4 ${
-                    isDragging ? 'text-blue-500' : 'text-gray-400'
+                    isDragging ? 'text-primary-500' : 'text-gray-400'
                   }`}
                 />
                 <p className="text-gray-600 dark:text-gray-400">
@@ -572,9 +572,9 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
           {/* Processing Status */}
           {loading && (
-            <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-              <span className="text-blue-700 dark:text-blue-300">{processingStatus}</span>
+            <div className="flex items-center gap-3 p-4 bg-primary-50 dark:bg-primary-900/30 rounded-lg">
+              <Loader2 className="w-5 h-5 animate-spin text-primary-600" />
+              <span className="text-primary-700 dark:text-primary-300">{processingStatus}</span>
             </div>
           )}
 
@@ -611,7 +611,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               type="checkbox"
               checked={backgroundMode}
               onChange={(e) => setBackgroundMode(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             />
             <span className="text-xs text-gray-600 dark:text-gray-400">
               <span className="font-medium text-gray-800 dark:text-gray-200">

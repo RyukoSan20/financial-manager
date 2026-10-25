@@ -265,7 +265,7 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
   return (
     <div className="page">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl p-6 text-white mb-6">
+      <div className="bg-gradient-to-r from-purple-600 to-primary-600 rounded-2xl p-6 text-white mb-6">
         <div className="flex items-center gap-3 mb-2">
           <Sparkles className="w-8 h-8" />
           <h1 className="text-2xl font-bold">AI Financial Advisor</h1>
@@ -311,7 +311,7 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
               </p>
             </div>
             
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-blue-500">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-primary-500">
               <p className="text-sm text-gray-500 mb-1">📈 Savings Rate</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">
                 {formatPercent(summary?.savings_rate || 0, 1)}
@@ -552,7 +552,7 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
       )}
 
       {error && (
-        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-xl shadow-lg">
+        <div className="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-3 rounded-xl shadow-lg">
           {error}
         </div>
       )}

@@ -255,13 +255,13 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
               {/* Corner markers */}
               <div className="relative w-64 h-64">
-                <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-blue-500 rounded-tl-lg" />
-                <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-blue-500 rounded-tr-lg" />
-                <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-blue-500 rounded-bl-lg" />
-                <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-blue-500 rounded-br-lg" />
+                <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-primary-500 rounded-tl-lg" />
+                <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-primary-500 rounded-tr-lg" />
+                <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-primary-500 rounded-bl-lg" />
+                <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-primary-500 rounded-br-lg" />
 
                 {/* Scanning line animation */}
-                <div className="absolute left-4 right-4 h-0.5 bg-blue-500 animate-pulse top-0"
+                <div className="absolute left-4 right-4 h-0.5 bg-primary-500 animate-pulse top-0"
                   style={{
                     animation: 'scanline 2s ease-in-out infinite',
                   }}

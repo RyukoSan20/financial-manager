@@ -198,9 +198,9 @@ const FeedPage = () => {
 
   const getTabColorClasses = (tabId, isActive) => {
     const colors = {
-      yellow: isActive ? 'bg-yellow-500 text-white' : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900/40',
-      green: isActive ? 'bg-green-500 text-white' : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/40',
-      red: isActive ? 'bg-red-500 text-white' : 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40',
+      yellow: isActive ? 'bg-yellow-600 text-white' : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900/40',
+      green: isActive ? 'bg-green-600 text-white' : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/40',
+      red: isActive ? 'bg-red-600 text-white' : 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40',
       gray: isActive ? 'bg-gray-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
     };
     return colors[tabId.color] || colors.gray;
@@ -292,10 +292,10 @@ const FeedPage = () => {
               {tab.label}
               {count !== null && count > 0 && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                  tab.color === 'yellow' ? 'bg-yellow-200 text-yellow-800' :
-                  tab.color === 'green' ? 'bg-green-200 text-green-800' :
-                  tab.color === 'red' ? 'bg-red-200 text-red-800' :
-                  'bg-gray-200 text-gray-800'
+                  tab.color === 'yellow' ? 'bg-yellow-200 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200' :
+                  tab.color === 'green' ? 'bg-green-200 text-green-800 dark:bg-green-900/40 dark:text-green-200' :
+                  tab.color === 'red' ? 'bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-200' :
+                  'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100'
                 }`}>
                   {count}
                 </span>
@@ -307,14 +307,14 @@ const FeedPage = () => {
 
       {/* Active Filter Indicator */}
       {activeTab !== 'all' && (
-        <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <Filter className="w-4 h-4 text-blue-600" />
-          <span className="text-sm text-blue-700 dark:text-blue-300">
+        <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
+          <Filter className="w-4 h-4 text-primary-600" />
+          <span className="text-sm text-primary-700 dark:text-primary-300">
             Filter aktif: <strong>{tabs.find(t => t.id === activeTab)?.label}</strong>
           </span>
           <button 
             onClick={() => setActiveTab('all')}
-            className="ml-auto text-xs text-blue-600 hover:text-blue-800 dark:hover:text-blue-400"
+            className="ml-auto text-xs text-primary-600 hover:text-primary-800 dark:hover:text-primary-400"
           >
             Clear filter
           </button>
@@ -345,7 +345,7 @@ const FeedPage = () => {
         </div>
       ) : transactions.length === 0 ? (
         <Card className="!p-8 text-center">
-          <InboxIcon className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+          <InboxIcon className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-400 mb-4" />
           <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
             {activeTab === 'pending' 
               ? 'Tidak ada transaksi menunggu persetujuan' 
@@ -418,7 +418,7 @@ const FeedPage = () => {
                     {transaction.category_name && (
                       <>
                         <span>·</span>
-                        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs">
+                        <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded text-xs">
                           {transaction.category_name}
                         </span>
                       </>
@@ -438,7 +438,7 @@ const FeedPage = () => {
                         </div>
                       ))}
                       {transaction.items.length > 5 && (
-                        <div className="text-gray-500 dark:text-gray-500 text-center mt-1 text-xs">
+                        <div className="text-gray-500 dark:text-gray-400 text-center mt-1 text-xs">
                           +{transaction.items.length - 5} item lainnya
                         </div>
                       )}
@@ -548,11 +548,11 @@ const FeedPage = () => {
       )}
       
       {/* Quick Tips */}
-      <Card className="!p-4 mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-        <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
+      <Card className="!p-4 mt-6 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800">
+        <h3 className="font-medium text-primary-800 dark:text-primary-200 mb-2 flex items-center gap-2">
           💡 Tips
         </h3>
-        <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+        <ul className="text-sm text-primary-700 dark:text-primary-300 space-y-1">
           <li>• Gunakan tab untuk memfilter transaksi berdasarkan status</li>
           <li>• Transaksi dari scan receipt atau import email akan masuk sebagai "Menunggu"</li>
           <li>• Setujui transaksi untuk menambahkan ke laporan keuangan Anda</li>

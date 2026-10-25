@@ -70,7 +70,7 @@ const HealthCoach = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
     );
   }
@@ -93,7 +93,7 @@ const HealthCoach = () => {
       <h1 className="text-2xl font-bold mb-4">Health Coach</h1>
       
       {/* Score Card */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-6 text-white mb-4">
+      <div className="bg-gradient-to-r from-primary-500 to-purple-600 rounded-2xl p-6 text-white mb-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm opacity-80">Skor Kesehatan</p>
@@ -103,7 +103,7 @@ const HealthCoach = () => {
             </p>
           </div>
           <div className="text-center">
-            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${healthData?.grade ? 'bg-white/20' : 'bg-gray-400'}`}>
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${healthData?.grade ? 'bg-white/20' : 'bg-gray-600'}`}>
               {healthData?.grade || "?"}
             </div>
           </div>
@@ -145,7 +145,7 @@ const HealthCoach = () => {
             </div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-blue-500 rounded-full transition-all"
+                className="h-full bg-primary-500 rounded-full transition-all"
                 style={{ width: `${Math.min(savingsRatio, 100)}%` }}
               />
             </div>
@@ -253,7 +253,7 @@ const HealthCoach = () => {
       {/* Refresh Button */}
       <button
         onClick={loadHealthData}
-        className="w-full py-3 bg-blue-500 text-white rounded-xl font-medium mt-4"
+        className="w-full py-3 bg-primary-600 text-white rounded-xl font-medium mt-4"
       >
         🔄 Refresh Data
       </button>

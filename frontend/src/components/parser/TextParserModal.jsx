@@ -314,14 +314,14 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
       {step === 'input' && (
         <div className="space-y-4">
           {/* Quick Samples */}
-          <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
-            <p className="text-sm text-blue-800 dark:text-blue-300 mb-2 font-medium">💡 Contoh cepat:</p>
+          <div className="bg-primary-50 dark:bg-primary-900/30 rounded-lg p-3">
+            <p className="text-sm text-primary-800 dark:text-primary-300 mb-2 font-medium">💡 Contoh cepat:</p>
             <div className="flex flex-wrap gap-2">
               {sampleTexts.map((sample, i) => (
                 <button
                   key={i}
                   onClick={() => useSample(sample.text)}
-                  className="text-xs px-2 py-1 bg-white dark:bg-gray-700 rounded border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
+                  className="text-xs px-2 py-1 bg-white dark:bg-gray-700 rounded border border-primary-200 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors"
                 >
                   {sample.label}
                 </button>
@@ -341,7 +341,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
               className="w-full h-40 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                          placeholder-gray-400 dark:placeholder-gray-500 resize-none
-                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                         focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
 
@@ -404,8 +404,8 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
                 key={index}
                 className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
                   selectedResult === result 
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' 
-                    : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' 
+                    : 'border-gray-200 dark:border-gray-700 hover:border-primary-300'
                 }`}
                 onClick={() => setSelectedResult({ ...result, account_id: result.account_id || accounts[0]?.id || '' })}
               >
@@ -428,7 +428,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
                     
                     {/* Date */}
                     {result.date && (
-                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         📅 {result.date}
                       </p>
                     )}

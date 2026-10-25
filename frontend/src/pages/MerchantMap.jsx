@@ -165,7 +165,7 @@ const MerchantMap = () => {
         <div className="text-center p-8">
           <div className="text-4xl mb-4">⚠️</div>
           <p className="text-red-500 mb-4">{error}</p>
-          <button onClick={fetchData} className="px-4 py-2 bg-primary-500 text-white rounded-lg">
+          <button onClick={fetchData} className="px-4 py-2 bg-primary-600 text-white rounded-lg">
             🔄 Coba Lagi
           </button>
         </div>
@@ -188,7 +188,7 @@ const MerchantMap = () => {
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500">Total Kunjungan</p>
-            <p className="text-xl font-bold text-blue-500">{stats.total_visits}x</p>
+            <p className="text-xl font-bold text-blue-600">{stats.total_visits}x</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500">GPS Data</p>
@@ -229,7 +229,7 @@ const MerchantMap = () => {
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                 selectedCategory === cat
-                  ? "bg-primary-500 text-white shadow-sm"
+                  ? "bg-primary-600 text-white shadow-sm"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -303,7 +303,12 @@ const MerchantMap = () => {
                         transition: all 0.2s;
                         transform: ${isSelected ? 'scale(1.2)' : 'scale(1)'};
                       ">
-                        <span style="color: white; font-size: ${Math.max(10, size / 3)}px; font-weight: bold;">
+                        <span style="
+                          color: white;
+                          font-size: ${Math.max(10, size / 3)}px;
+                          font-weight: bold;
+                          text-shadow: 0 0 2px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.9);
+                        ">" 
                           ${marker.source === 'category' ? '📍' : '💰'}
                         </span>
                       </div>
@@ -387,7 +392,7 @@ const MerchantMap = () => {
           </MapContainer>
 
           {/* Legend */}
-          <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 backdrop-blur rounded-xl p-3 shadow-lg text-xs max-w-[180px]">
+          <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 dark:bg-gray-900/95 backdrop-blur rounded-xl p-3 shadow-lg text-xs max-w-[180px] text-gray-900 dark:text-gray-100">
             <p className="font-semibold mb-2">🗺️ Legend</p>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
@@ -504,7 +509,7 @@ const MerchantMap = () => {
                     </p>
                   </div>
                   <div className="text-right ml-4">
-                    <p className="font-bold text-red-500">{formatCurrency(marker.total_spent)}</p>
+                    <p className="font-bold text-red-600">{formatCurrency(marker.total_spent)}</p>
                     <p className="text-xs text-gray-400">
                       {marker.latitude.toFixed(4)}, {marker.longitude.toFixed(4)}
                     </p>

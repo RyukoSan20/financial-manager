@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { chartPalette } from '../utils/appearance';
 import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner, StatCard } from '../components/ui';
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp, TrendingDown, Clock, CheckCircle } from 'lucide-react';
 import { formatCurrency, formatPercent, formatDate } from '../utils/format';
@@ -6,7 +7,12 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 
-const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+// The accent the user picked is the first colour of the palette.
+//
+// It is read when the chart is drawn rather than when this file is
+// loaded, because the scheme is not known until the appearance has been
+// applied to the page.
+const COLORS = chartPalette;
 
 export const Goals = () => {
   const [goals, setGoals] = useState([]);
@@ -147,7 +153,7 @@ export const Goals = () => {
                   <div className="flex items-center gap-3">
                     <div 
                       className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-                      style={{ backgroundColor: goal.color || '#3b82f6' }}
+                      style={{ backgroundColor: goal.color || COLORS()[0] }}
                     >
                       <Target className="w-6 h-6" />
                     </div>
@@ -202,7 +208,7 @@ export const Goals = () => {
                         className="h-3 rounded-full transition-all"
                         style={{ 
                           width: `${Math.min(progress, 100)}%`,
-                          backgroundColor: goal.color || '#3b82f6'
+                          backgroundColor: goal.color || COLORS()[0]
                         }}
                       />
                     </div>
@@ -282,7 +288,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
     current_amount: '0',
     target_date: '',
     goal_type: 'savings',
-    color: '#3b82f6',
+    color: COLORS()[0],
   });
 
   // The parts the target has to cover, worked out before the goal is
@@ -327,7 +333,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
         current_amount: goal.current_amount?.toString() || '0',
         target_date: goal.target_date || '',
         goal_type: goal.goal_type || 'savings',
-        color: goal.color || '#3b82f6',
+        color: goal.color || COLORS()[0],
       });
     } else {
       setForm({
@@ -336,7 +342,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
         current_amount: '0',
         target_date: '',
         goal_type: 'savings',
-        color: '#3b82f6',
+        color: COLORS()[0],
       });
     }
   }, [goal]);
@@ -360,7 +366,9 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
     onSubmit(submitData);
   };
 
-  const colorOptions = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+  // The colour the user can pick for a goal. The accent they chose
+  // comes first, so it is the colour a goal gets by default.
+  const colorOptions = COLORS();
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={goal ? 'Edit Goal' : 'Create Goal'} size="md">

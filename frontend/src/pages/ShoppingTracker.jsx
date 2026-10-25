@@ -155,7 +155,7 @@ const ShoppingTracker = () => {
     const styles = {
       shopee: { bg: "bg-orange-50", text: "text-orange-600", border: "border-orange-200" },
       tokopedia: { bg: "bg-green-50", text: "text-green-600", border: "border-green-200" },
-      lazada: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
+      lazada: { bg: "bg-primary-50", text: "text-primary-600", border: "border-primary-200" },
       blibli: { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
       tiktok: { bg: "bg-pink-50", text: "text-pink-600", border: "border-pink-200" }
     };
@@ -165,15 +165,15 @@ const ShoppingTracker = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
-      <div className="bg-blue-500 text-white p-4 sticky top-0 z-10 shadow-md">
+      <div className="bg-primary-600 text-white p-4 sticky top-0 z-10 shadow-md">
         <h1 className="text-xl font-bold">🛒 Belanja</h1>
       </div>
       
       {/* Budget Card - PRIORITY FIRST! */}
-      <div className="p-4 bg-white m-4 rounded-xl shadow-sm border border-blue-100">
+      <div className="p-4 bg-white m-4 rounded-xl shadow-sm border border-primary-100">
         <div className="flex justify-between items-center mb-2">
           <span className="text-gray-600 font-medium">Budget Bulanan</span>
-          <span className="font-bold text-lg text-blue-600">{formatCurrency(budget)}</span>
+          <span className="font-bold text-lg text-primary-600">{formatCurrency(budget)}</span>
         </div>
         
         <div className="w-full bg-gray-100 rounded-full h-3 mb-2 overflow-hidden">
@@ -203,7 +203,7 @@ const ShoppingTracker = () => {
           />
           <button
             onClick={() => saveBudget(budgetInput)}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium"
           >
             Set
           </button>
@@ -230,14 +230,14 @@ const ShoppingTracker = () => {
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 ${
               activeTab === tab.id 
-                ? "bg-blue-500 text-white shadow-md" 
+                ? "bg-primary-600 text-white shadow-md" 
                 : "bg-white text-gray-600"
             }`}
           >
             {tab.label}
             {tab.count !== null && (
               <span className={`px-2 py-0.5 rounded-full text-xs ${
-                activeTab === tab.id ? "bg-blue-400" : "bg-gray-200"
+                activeTab === tab.id ? "bg-primary-600" : "bg-gray-200"
               }`}>
                 {tab.count}
               </span>
@@ -323,7 +323,7 @@ const ShoppingTracker = () => {
                             href={item.search_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-3 py-1 bg-blue-500 text-white rounded text-sm"
+                            className="px-3 py-1 bg-primary-600 text-white rounded text-sm"
                           >
                             Cek
                           </a>
@@ -347,7 +347,7 @@ const ShoppingTracker = () => {
       {/* Tab: AI Search */}
       {activeTab === "ai" && (
         <div className="px-4">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-primary-100">
             <h3 className="font-bold text-lg mb-2">🔍 AI Price Search</h3>
             <p className="text-sm text-gray-500 mb-4">
               Cari harga produk di marketplace. Hasil akan langsung bisa ditambahkan ke wishlist!
@@ -365,7 +365,7 @@ const ShoppingTracker = () => {
               <button
                 onClick={searchWithAI}
                 disabled={aiSearching || !aiQuery.trim()}
-                className="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium disabled:opacity-50 shadow-md"
+                className="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium disabled:opacity-50 shadow-md"
               >
                 {aiSearching ? "⏳" : "🔍"}
               </button>
@@ -409,13 +409,13 @@ const ShoppingTracker = () => {
                                 href={mp.search_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium"
+                                className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium"
                               >
                                 Buka
                               </a>
                               <button
                                 onClick={() => addToWishlist(mp)}
-                                className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium"
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium"
                               >
                                 + Wishlist
                               </button>
