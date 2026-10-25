@@ -57,6 +57,7 @@ export default {
     shopping: "Shopping",
     gmail: "Gmail Sync",
     merchant: "Merchant",
+    kanban: "Shopping Board",
     categoryExpenses: "Category Expenses",
   },
   
@@ -308,18 +309,6 @@ export default {
   },
 
   // Settings
-  settings: {
-    title: "Settings",
-    language: "Language",
-    theme: "Theme",
-    dark_mode: "Dark Mode",
-    light_mode: "Light Mode",
-    notifications: "Notifications",
-    export_data: "Export Data",
-    import_data: "Import Data",
-    delete_account: "Delete Account",
-    logout: "Logout",
-  },
 
   // Profile Summary
   profile: {
@@ -343,5 +332,101 @@ export default {
     transactions: "transactions",
     days_active: "active days",
     day_streak: "days",
+  },
+
+  // Category Expenses
+  category_expenses: {
+    title: "Expenses by Category",
+    categories: "Categories",
+    transactions: "Transactions",
+    avg: "Avg/Category",
+    no_expenses: "No expenses recorded",
+    no_expenses_desc: "Start tracking your expenses to see the breakdown by category",
+  },
+
+  // Settings page
+  settings: {
+    title: "Settings",
+    subtitle: "Manage your account settings",
+    sign_out: "Sign Out",
+    tabs: {
+      profile: "Profile",
+      appearance: "Appearance",
+      security: "Security",
+      preferences: "Preferences",
+      data: "Data",
+    },
+    appearance: {
+      title: "Appearance",
+      description: "Accent colour, font, text size, and background. Saved to your account, so they follow you to your other devices.",
+      cta: "Adjust appearance",
+    },
+    profile: {
+      title: "Profile Information",
+      email: "Email",
+      username: "Username",
+      full_name: "Full Name",
+      save: "Save Changes",
+      saved: "Profile updated successfully!",
+      failed: "Failed to update profile",
+      unknown_error: "Unknown error",
+    },
+    security: {
+      title: "Change Password",
+      current_password: "Current Password",
+      new_password: "New Password",
+      confirm_password: "Confirm New Password",
+      save: "Update Password",
+      saved: "Password changed successfully!",
+      failed: "Failed to change password",
+      mismatch: "Passwords do not match",
+      too_short: "Password must be at least 6 characters",
+    },
+    preferences: {
+      title: "Preferences",
+      saved: "Preferences saved!",
+      language: "Language / Bahasa / 言語",
+      selected: "Selected",
+      currency: "Default Currency",
+      save: "Save Preferences",
+      currency_names: {
+        IDR: "Indonesian Rupiah (Rp)",
+        USD: "US Dollar ($)",
+        JPY: "Japanese Yen (¥)",
+      },
+    },
+    data: {
+      title: "Data Management",
+      export: "Export Data",
+      exporting: "Exporting...",
+      exported: "Data exported successfully!",
+      export_failed: "Export failed",
+      transactions_exported: "Transactions exported successfully!",
+      danger_zone: "Danger Zone",
+      delete_all: "Delete All Data",
+      deleting: "Deleting...",
+      deleted: "✓ All data deleted successfully!",
+      delete_failed: "✗ Failed",
+      export_description: "Download all your financial data for backup",
+      export_json: "Export JSON (Full Backup)",
+      export_csv: "Export CSV (Transactions)",
+      delete_description: "Delete all your account data. This action cannot be undone.",
+      confirm_delete_warning: "⚠️ WARNING: All of your data will be permanently deleted!\n\nThis action CANNOT be undone.\n\nClick OK to continue or Cancel to stop.",
+      confirm_prompt: "Type the confirmation word to delete your data:",
+      confirm_word: "DELETE",
+      confirm_invalid: "Confirmation did not match. The deletion was cancelled.",
+      deleted_title: "Data Deleted",
+      deleted_message: "All of your data has been deleted from your account.",
+      delete_failed_title: "Could Not Delete",
+      confirm_delete: "Are you sure? This cannot be undone.",
+    },
+  },
+  // The profile card in the navigation
+  profile_card: {
+    transactions: "transactions",
+    active_days: "active days",
+    days: "days",
+    transactions_title: "Recorded transactions",
+    active_days_title: "Active days in the last 30 days",
   },
 };

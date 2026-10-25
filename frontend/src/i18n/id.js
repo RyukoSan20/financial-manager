@@ -309,18 +309,6 @@ export default {
   },
 
   // Settings
-  settings: {
-    title: "Pengaturan",
-    language: "Bahasa",
-    theme: "Tema",
-    dark_mode: "Mode Gelap",
-    light_mode: "Mode Terang",
-    notifications: "Notifikasi",
-    export_data: "Export Data",
-    import_data: "Import Data",
-    delete_account: "Hapus Akun",
-    logout: "Keluar",
-  },
 
   // Profile Summary
   profile: {
@@ -344,5 +332,101 @@ export default {
     transactions: "transaksi",
     days_active: "hari aktif",
     day_streak: "hari",
+  },
+
+  // Category Expenses
+  category_expenses: {
+    title: "Pengeluaran per Kategori",
+    categories: "Kategori",
+    transactions: "Transaksi",
+    avg: "Rata-rata/Kategori",
+    no_expenses: "Belum ada pengeluaran tercatat",
+    no_expenses_desc: "Mulai mencatat pengeluaran untuk melihat rincian per kategori",
+  },
+
+  // Settings page
+  settings: {
+    title: "Pengaturan",
+    subtitle: "Kelola pengaturan akun Anda",
+    sign_out: "Keluar",
+    tabs: {
+      profile: "Profil",
+      appearance: "Tampilan",
+      security: "Keamanan",
+      preferences: "Preferensi",
+      data: "Data",
+    },
+    appearance: {
+      title: "Tampilan",
+      description: "Warna aksen, font, ukuran teks, dan latar belakang. Tersimpan di akun Anda, jadi ikut ke perangkat lain.",
+      cta: "Atur tampilan",
+    },
+    profile: {
+      title: "Informasi Profil",
+      email: "Email",
+      username: "Nama Pengguna",
+      full_name: "Nama Lengkap",
+      save: "Simpan Perubahan",
+      saved: "Profil berhasil diperbarui!",
+      failed: "Gagal memperbarui profil",
+      unknown_error: "Kesalahan tidak diketahui",
+    },
+    security: {
+      title: "Ubah Password",
+      current_password: "Password Saat Ini",
+      new_password: "Password Baru",
+      confirm_password: "Konfirmasi Password Baru",
+      save: "Perbarui Password",
+      saved: "Password berhasil diubah!",
+      failed: "Gagal mengubah password",
+      mismatch: "Password tidak cocok",
+      too_short: "Password minimal 6 karakter",
+    },
+    preferences: {
+      title: "Preferensi",
+      saved: "Preferensi tersimpan!",
+      language: "Bahasa / Language / 言語",
+      selected: "Dipilih",
+      currency: "Mata Uang Default",
+      save: "Simpan Preferensi",
+      currency_names: {
+        IDR: "Rupiah Indonesia (Rp)",
+        USD: "Dolar Amerika Serikat ($)",
+        JPY: "Yen Jepang (¥)",
+      },
+    },
+    data: {
+      title: "Manajemen Data",
+      export: "Ekspor Data",
+      exporting: "Mengekspor...",
+      exported: "Data berhasil diekspor!",
+      export_failed: "Ekspor gagal",
+      transactions_exported: "Transaksi berhasil diekspor!",
+      danger_zone: "Zona Berbahaya",
+      delete_all: "Hapus Semua Data",
+      deleting: "Menghapus...",
+      deleted: "✓ Semua data berhasil dihapus!",
+      delete_failed: "✗ Gagal",
+      export_description: "Unduh semua data keuangan Anda untuk cadangan",
+      export_json: "Ekspor JSON (Cadangan Penuh)",
+      export_csv: "Ekspor CSV (Transaksi)",
+      delete_description: "Hapus semua data akun Anda. Tindakan ini tidak dapat dibatalkan.",
+      confirm_delete_warning: "⚠️ PERHATIAN: Semua data akan dihapus permanen!\n\nAksi ini TIDAK DAPAT dibatalkan.\n\nKlik OK untuk melanjutkan atau Cancel untuk membatalkan.",
+      confirm_prompt: "Ketik kata konfirmasi untuk menghapus data:",
+      confirm_word: "HAPUS",
+      confirm_invalid: "Konfirmasi tidak valid. Penghapusan dibatalkan.",
+      deleted_title: "Data Dihapus",
+      deleted_message: "Semua data berhasil dihapus dari akun Anda.",
+      delete_failed_title: "Gagal Menghapus",
+      confirm_delete: "Apakah Anda yakin? Tindakan ini tidak dapat dibatalkan.",
+    },
+  },
+  // The profile card in the navigation
+  profile_card: {
+    transactions: "transaksi",
+    active_days: "hari aktif",
+    days: "hari",
+    transactions_title: "Transaksi tercatat",
+    active_days_title: "Hari aktif 30 hari terakhir",
   },
 };

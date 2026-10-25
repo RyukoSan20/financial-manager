@@ -53,19 +53,38 @@ export const I18nProvider = ({ children }) => {
     }
   };
   
+  /**
+   * Look up a translation.
+   *
+   * When the key is not there in the language that is picked, the
+   * English one is tried, because a missing translation is a gap in
+   * the file rather than a reason to show the person a key like
+   * "nav.map" on the screen. The key itself is only ever shown when
+   * there is no English text either, because then there is nothing
+   * better to say and the key at least says what was looked for.
+   */
   const t = (key, fallback = '') => {
     const keys = key.split('.');
-    let value = translations[language];
-    
-    for (const k of keys) {
-      if (value && typeof value === 'object') {
-        value = value[k];
-      } else {
-        return fallback || key;
+
+    const lookup = (table) => {
+      let value = table;
+      for (const k of keys) {
+        if (value && typeof value === 'object' && k in value) {
+          value = value[k];
+        } else {
+          return undefined;
+        }
       }
-    }
-    
-    return value || fallback || key;
+      return typeof value === 'string' ? value : undefined;
+    };
+
+    const found = lookup(translations[language]);
+    if (found) return found;
+
+    const english = lookup(translations.en);
+    if (english) return english;
+
+    return fallback || key;
   };
   
   // Format currency based on language

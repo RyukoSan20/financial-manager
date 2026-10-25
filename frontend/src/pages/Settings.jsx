@@ -8,22 +8,23 @@ import api from '../services/api';
 
 export const Settings = () => {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('profile');
 
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'appearance', label: 'Tampilan', icon: Palette },
-    { id: 'security', label: 'Security', icon: Lock },
-    { id: 'preferences', label: 'Preferences', icon: Globe },
-    { id: 'data', label: 'Data', icon: Download },
+    { id: 'profile', label: t('settings.tabs.profile'), icon: User },
+    { id: 'appearance', label: t('settings.tabs.appearance'), icon: Palette },
+    { id: 'security', label: t('settings.tabs.security'), icon: Lock },
+    { id: 'preferences', label: t('settings.tabs.preferences'), icon: Globe },
+    { id: 'data', label: t('settings.tabs.data'), icon: Download },
   ];
 
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-500 mt-1">Manage your account settings</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('settings.title')}</h1>
+          <p className="text-gray-500 mt-1">{t('settings.subtitle')}</p>
         </div>
         <Button 
           variant="secondary" 
@@ -34,7 +35,7 @@ export const Settings = () => {
           className="flex items-center gap-2"
         >
           <LogOut className="w-4 h-4" />
-          Sign Out
+          {t('settings.sign_out')}
         </Button>
       </div>
 
@@ -79,30 +80,30 @@ export const Settings = () => {
  * reachable from here and from the settings list.
  */
 const AppearanceTab = () => {
-  const [activeTab, setActiveTab] = useState('profile');
+  const { t } = useTranslation();
 
   return (
     <Card className="p-6">
       <div className="flex items-center gap-3 mb-2">
         <Palette className="w-5 h-5 text-primary-600" />
-        <h2 className="text-lg font-semibold">Tampilan</h2>
+        <h2 className="text-lg font-semibold">{t('settings.appearance.title')}</h2>
       </div>
       <p className="text-sm text-gray-500 mb-4">
-        Warna aksen, font, ukuran teks, dan latar belakang. Tersimpan di
-        akun Anda, jadi ikut ke perangkat lain.
+        {t('settings.appearance.description')}
       </p>
       <Link
         to="/settings/appearance"
         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
       >
         <Palette className="w-4 h-4" />
-        Atur tampilan
+        {t('settings.appearance.cta')}
       </Link>
     </Card>
   );
 };
 
 const ProfileTab = ({ user }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [form, setForm] = useState({
@@ -126,14 +127,14 @@ const ProfileTab = ({ user }) => {
       });
       
       if (response) {
-        setMessage('Profile updated successfully!');
+        setMessage(t('settings.profile.saved'));
         // Update localStorage with new user data
         const updatedUser = { ...user, ...form };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         window.location.reload();
       }
     } catch (error) {
-      setMessage('Failed to update profile: ' + (error.message || 'Unknown error'));
+      setMessage(t('settings.profile.failed') + ': ' + (error.message || t('settings.profile.unknown_error')));
     } finally {
       setLoading(false);
     }
@@ -141,7 +142,7 @@ const ProfileTab = ({ user }) => {
 
   return (
     <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-6">Profile Information</h2>
+      <h2 className="text-lg font-semibold mb-6">{t('settings.profile.title')}</h2>
       {message && (
         <div className={`mb-4 p-3 rounded-lg ${message.includes('success') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
           {message}
@@ -149,25 +150,25 @@ const ProfileTab = ({ user }) => {
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Email"
+          label={t('settings.profile.email')}
           type="email"
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
           disabled
         />
         <Input
-          label="Username"
+          label={t('settings.profile.username')}
           value={form.username}
           onChange={(e) => setForm({ ...form, username: e.target.value })}
         />
         <Input
-          label="Full Name"
+          label={t('settings.profile.full_name')}
           value={form.full_name}
           onChange={(e) => setForm({ ...form, full_name: e.target.value })}
         />
         <Button type="submit" disabled={loading}>
           {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-          Save Changes
+          {t('settings.profile.save')}
         </Button>
       </form>
     </Card>
@@ -175,6 +176,7 @@ const ProfileTab = ({ user }) => {
 };
 
 const SecurityTab = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [form, setForm] = useState({
@@ -187,12 +189,12 @@ const SecurityTab = () => {
     e.preventDefault();
     
     if (form.new_password !== form.confirm_password) {
-      setMessage('Passwords do not match');
+      setMessage(t('settings.security.mismatch'));
       return;
     }
     
     if (form.new_password.length < 6) {
-      setMessage('Password must be at least 6 characters');
+      setMessage(t('settings.security.too_short'));
       return;
     }
 
@@ -209,11 +211,11 @@ const SecurityTab = () => {
       });
       
       if (response) {
-        setMessage('Password changed successfully!');
+        setMessage(t('settings.security.saved'));
         setForm({ current_password: '', new_password: '', confirm_password: '' });
       }
     } catch (error) {
-      setMessage('Failed to change password: ' + error.message);
+      setMessage(t('settings.security.failed') + ': ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -221,7 +223,7 @@ const SecurityTab = () => {
 
   return (
     <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-6">Change Password</h2>
+      <h2 className="text-lg font-semibold mb-6">{t('settings.security.title')}</h2>
       {message && (
         <div className={`mb-4 p-3 rounded-lg ${message.includes('success') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
           {message}
@@ -229,21 +231,21 @@ const SecurityTab = () => {
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Current Password"
+          label={t('settings.security.current_password')}
           type="password"
           value={form.current_password}
           onChange={(e) => setForm({ ...form, current_password: e.target.value })}
           required
         />
         <Input
-          label="New Password"
+          label={t('settings.security.new_password')}
           type="password"
           value={form.new_password}
           onChange={(e) => setForm({ ...form, new_password: e.target.value })}
           required
         />
         <Input
-          label="Confirm New Password"
+          label={t('settings.security.confirm_password')}
           type="password"
           value={form.confirm_password}
           onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
@@ -251,7 +253,7 @@ const SecurityTab = () => {
         />
         <Button type="submit" disabled={loading}>
           {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-          Update Password
+          {t('settings.security.save')}
         </Button>
       </form>
     </Card>
@@ -259,7 +261,7 @@ const SecurityTab = () => {
 };
 
 const PreferencesTab = ({ user }) => {
-  const { language, changeLanguage, languages } = useTranslation();
+  const { language, changeLanguage, languages, t } = useTranslation();
   const [currency, setCurrency] = useState(() => {
     // Get currency from user preference or derive from language
     const saved = localStorage.getItem('currency');
@@ -277,10 +279,12 @@ const PreferencesTab = ({ user }) => {
     setTimeout(() => setSaved(false), 3000);
   };
 
+  // Each language is named in that language, so a person who cannot
+  // read the current one can still find their own.
   const languageOptions = {
     'id': { label: '🇮🇩 Indonesia', name: 'Bahasa Indonesia', currency: 'IDR' },
     'en': { label: '🇺🇸 English', name: 'English', currency: 'USD' },
-    'ja': { label: '🇯🇵 日本語', name: 'Japanese', currency: 'JPY' },
+    'ja': { label: '🇯🇵 日本語', name: '日本語', currency: 'JPY' },
   };
 
   // When language changes, update currency to match
@@ -293,10 +297,10 @@ const PreferencesTab = ({ user }) => {
 
   return (
     <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-6">Preferences</h2>
+      <h2 className="text-lg font-semibold mb-6">{t('settings.preferences.title')}</h2>
       {saved && (
         <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700">
-          Preferences saved!
+          {t('settings.preferences.saved')}
         </div>
       )}
       <div className="space-y-6">
@@ -304,7 +308,7 @@ const PreferencesTab = ({ user }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <Globe className="w-4 h-4 inline mr-2" />
-            Language / Bahasa / 言語
+            {t('settings.preferences.language')}
           </label>
           <div className="grid grid-cols-3 gap-3">
             {Object.entries(languageOptions).map(([code, { label, name }]) => (
@@ -323,27 +327,28 @@ const PreferencesTab = ({ user }) => {
             ))}
           </div>
           <p className="mt-2 text-sm text-gray-500">
-            Selected: <strong>{languageOptions[language]?.name || 'English'}</strong>
+            {t('settings.preferences.selected')}: <strong>{languageOptions[language]?.name || 'English'}</strong>
           </p>
         </div>
 
         <Select
-          label="Default Currency"
+          label={t('settings.preferences.currency')}
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
           options={[
-            { value: 'IDR', label: 'Indonesian Rupiah (Rp)' },
-            { value: 'USD', label: 'US Dollar ($)' },
-            { value: 'JPY', label: 'Japanese Yen (¥)' },
+            { value: 'IDR', label: t('settings.preferences.currency_names.IDR') },
+            { value: 'USD', label: t('settings.preferences.currency_names.USD') },
+            { value: 'JPY', label: t('settings.preferences.currency_names.JPY') },
           ]}
         />
-        <Button onClick={handleSave}>Save Preferences</Button>
+        <Button onClick={handleSave}>{t('settings.preferences.save')}</Button>
       </div>
     </Card>
   );
 };
 
 const DataTab = ({ logout }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -365,7 +370,7 @@ const DataTab = ({ logout }) => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      setMessage('Data exported successfully!');
+      setMessage(t('settings.data.exported'));
     } catch (error) {
       console.error('Export error:', error);
       setMessage('Export failed: ' + (error.message || 'Unknown error'));
@@ -392,10 +397,10 @@ const DataTab = ({ logout }) => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      setMessage('Transactions exported successfully!');
+      setMessage(t('settings.data.transactions_exported'));
     } catch (error) {
       console.error('CSV export error:', error);
-      setMessage('Export failed: ' + (error.message || 'Unknown error'));
+      setMessage(t('settings.data.export_failed') + ': ' + (error.message || t('settings.profile.unknown_error')));
     } finally {
       setLoading(false);
     }
@@ -403,15 +408,18 @@ const DataTab = ({ logout }) => {
 
   const handleDelete = async () => {
     // First confirmation
-    if (!window.confirm('⚠️ PERHATIAN: Semua data akan dihapus permanen!\n\nAksi ini TIDAK DAPAT dibatalkan.\n\nKlik OK untuk melanjutkan atau Cancel untuk membatalkan.')) {
+    if (!window.confirm(t('settings.data.confirm_delete_warning'))) {
       return;
     }
     
-    // Second confirmation with explicit action
-    const confirmationText = window.prompt('Ketik "HAPUS" untuk konfirmasi penghapusan data:');
-    if (confirmationText !== 'HAPUS') {
+    // Second confirmation with explicit action. The word to type is
+    // given in the language of the page, so it is one the person can
+    // actually read and copy.
+    const word = t('settings.data.confirm_word');
+    const confirmationText = window.prompt(t('settings.data.confirm_prompt') + ' ("' + word + '")');
+    if ((confirmationText || '').trim().toUpperCase() !== word.toUpperCase()) {
       if (confirmationText !== null) {
-        alert('Konfirmasi tidak valid. Penghapusan dibatalkan.');
+        alert(t('settings.data.confirm_invalid'));
       }
       return;
     }
@@ -421,14 +429,14 @@ const DataTab = ({ logout }) => {
 
     try {
       await api.data.deleteAll();
-      setMessage('✓ Semua data berhasil dihapus!');
+      setMessage(t('settings.data.deleted'));
       
       // Show notification
       window.dispatchEvent(new CustomEvent('app-notification', {
         detail: {
           type: 'success',
-          title: 'Data Dihapus',
-          message: 'Semua data berhasil dihapus dari akun Anda.'
+          title: t('settings.data.deleted_title'),
+          message: t('settings.data.deleted_message')
         }
       }));
       
@@ -441,14 +449,14 @@ const DataTab = ({ logout }) => {
       }, 2000);
     } catch (error) {
       console.error('Delete error:', error);
-      const errorMsg = error.message || 'Tidak dapat menghapus data';
-      setMessage('✗ Gagal: ' + errorMsg);
+      const errorMsg = error.message || t('settings.data.delete_failed');
+      setMessage(t('settings.data.delete_failed') + ': ' + errorMsg);
       
       // Show notification
       window.dispatchEvent(new CustomEvent('app-notification', {
         detail: {
           type: 'error',
-          title: 'Gagal Menghapus',
+          title: t('settings.data.delete_failed_title'),
           message: errorMsg
         }
       }));
@@ -459,7 +467,7 @@ const DataTab = ({ logout }) => {
 
   return (
     <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-6">Data Management</h2>
+      <h2 className="text-lg font-semibold mb-6">{t('settings.data.title')}</h2>
       {message && (
         <div className={`mb-4 p-3 rounded-lg ${message.includes('success') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
           {message}
@@ -467,30 +475,30 @@ const DataTab = ({ logout }) => {
       )}
       <div className="space-y-6">
         <div>
-          <h3 className="font-medium mb-2">Export Data</h3>
+          <h3 className="font-medium mb-2">{t('settings.data.export')}</h3>
           <p className="text-sm text-gray-500 mb-3">
-            Download all your financial data for backup
+            {t('settings.data.export_description')}
           </p>
           <div className="flex gap-3">
             <Button onClick={handleExportJSON} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
-              Export JSON (Full Backup)
+              {t('settings.data.export_json')}
             </Button>
             <Button variant="secondary" onClick={handleExportCSV} disabled={loading}>
               <Download className="w-4 h-4 mr-2" />
-              Export CSV (Transactions)
+              {t('settings.data.export_csv')}
             </Button>
           </div>
         </div>
 
         <div className="border-t pt-6">
-          <h3 className="font-medium mb-2 text-danger-600">Danger Zone</h3>
+          <h3 className="font-medium mb-2 text-danger-600">{t('settings.data.danger_zone')}</h3>
           <p className="text-sm text-gray-500 mb-3">
-            Delete all your account data. This action cannot be undone.
+            {t('settings.data.delete_description')}
           </p>
           <Button variant="danger" onClick={handleDelete} disabled={loading}>
             <Trash2 className="w-4 h-4 mr-2" />
-            Delete All Data
+            {t('settings.data.delete_all')}
           </Button>
         </div>
       </div>

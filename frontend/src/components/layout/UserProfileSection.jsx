@@ -11,8 +11,10 @@ import { useNavigate } from 'react-router-dom';
 import { User as UserIcon, ChevronRight, Loader2, History, Mail, CalendarDays, Activity } from 'lucide-react';
 import { api } from '../../services/api';
 import { formatCurrency } from '../../utils/format';
+import { useTranslation } from '../../i18n';
 
 export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -85,17 +87,17 @@ export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
         {/* Profile History - live counters from the API */}
         {summary && (
           <div className="flex items-center gap-2.5 mt-1.5 text-[10px] text-gray-500 dark:text-gray-400">
-            <span className="inline-flex items-center gap-0.5" title="Transaksi tercatat">
+            <span className="inline-flex items-center gap-0.5" title={t('profile_card.transactions_title')}>
               <Activity className="w-2.5 h-2.5" />
-              {txCount} transaksi
+              {txCount} {t('profile_card.transactions')}
             </span>
-            <span className="inline-flex items-center gap-0.5" title="Hari aktif 30 hari terakhir">
+            <span className="inline-flex items-center gap-0.5" title={t('profile_card.active_days_title')}>
               <History className="w-2.5 h-2.5" />
-              {activeDays} hari aktif
+              {activeDays} {t('profile_card.active_days')}
             </span>
             {streak > 0 && (
               <span className="inline-flex items-center gap-0.5 text-orange-500 font-medium">
-                🔥 {streak} hari
+                🔥 {streak} {t('profile_card.days')}
               </span>
             )}
           </div>

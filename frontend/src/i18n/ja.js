@@ -52,6 +52,13 @@ export default {
     more: "その他",
     scan_receipt: "レシートスキャン",
     add: "追加",
+    map: "支出マップ",
+    healthCoach: "健康管理工作",
+    shopping: "ショッピング",
+    kanban: "ショッピングボード",
+    gmail: "Gmail同期",
+    merchant: "店舗・ULO",
+    categoryExpenses: "カテゴリ別支出",
   },
   
   // Dashboard
@@ -302,18 +309,6 @@ export default {
   },
 
   // Settings
-  settings: {
-    title: "設定",
-    language: "言語",
-    theme: "テーマ",
-    dark_mode: "ダークモード",
-    light_mode: "ライトモード",
-    notifications: "通知",
-    export_data: "データをエクスポート",
-    import_data: "データをインポート",
-    delete_account: "アカウントを削除",
-    logout: "ログアウト",
-  },
 
   // Profile Summary
   profile: {
@@ -337,5 +332,101 @@ export default {
     transactions: "取引",
     days_active: "アクティブ日",
     day_streak: "日",
+  },
+
+  // Category Expenses
+  category_expenses: {
+    title: "カテゴリ別支出",
+    categories: "カテゴリ",
+    transactions: "取引",
+    avg: "カテゴリ平均",
+    no_expenses: "支出が記録されていません",
+    no_expenses_desc: "支出を記録するとカテゴリ別の内訳が表示されます",
+  },
+
+  // Settings page
+  settings: {
+    title: "設定",
+    subtitle: "アカウント設定を管理します",
+    sign_out: "サインアウト",
+    tabs: {
+      profile: "プロフィール",
+      appearance: "表示",
+      security: "セキュリティ",
+      preferences: "環境設定",
+      data: "データ",
+    },
+    appearance: {
+      title: "表示",
+      description: "アクセントカラー、フォント、文字サイズ、背景。アカウントに保存されるため、他の端末にも引き継がれます。",
+      cta: "表示を調整",
+    },
+    profile: {
+      title: "プロフィール情報",
+      email: "メールアドレス",
+      username: "ユーザー名",
+      full_name: "氏名",
+      save: "変更を保存",
+      saved: "プロフィールを更新しました！",
+      failed: "プロフィールの更新に失敗しました",
+      unknown_error: "不明なエラー",
+    },
+    security: {
+      title: "パスワードの変更",
+      current_password: "現在のパスワード",
+      new_password: "新しいパスワード",
+      confirm_password: "新しいパスワード（確認）",
+      save: "パスワードを更新",
+      saved: "パスワードを変更しました！",
+      failed: "パスワードの変更に失敗しました",
+      mismatch: "パスワードが一致しません",
+      too_short: "パスワードは6文字以上で入力してください",
+    },
+    preferences: {
+      title: "環境設定",
+      saved: "環境設定を保存しました！",
+      language: "言語 / Language / Bahasa",
+      selected: "選択中",
+      currency: "デフォルト通貨",
+      save: "環境設定を保存",
+      currency_names: {
+        IDR: "インドネシアルピー (Rp)",
+        USD: "米ドル ($)",
+        JPY: "日本円 (¥)",
+      },
+    },
+    data: {
+      title: "データ管理",
+      export: "データをエクスポート",
+      exporting: "エクスポート中...",
+      exported: "データをエクスポートしました！",
+      export_failed: "エクスポートに失敗しました",
+      transactions_exported: "取引をエクスポートしました！",
+      danger_zone: "危険な操作",
+      delete_all: "すべてのデータを削除",
+      deleting: "削除中...",
+      deleted: "✓ すべてのデータを削除しました！",
+      delete_failed: "✗ 失敗",
+      export_description: "すべての財務データをダウンロードしてバックアップしてください",
+      export_json: "JSONでエクスポート（完全バックアップ）",
+      export_csv: "CSVでエクスポート（取引）",
+      delete_description: "アカウントのすべてのデータを削除します。この操作は取り消せません。",
+      confirm_delete_warning: "⚠️ 注意: すべてのデータが完全に削除されます！\n\nこの操作は元に戻せません。\n\n続行するにはOK、中止するにはキャンセルをクリックしてください。",
+      confirm_prompt: "データを削除するには確認用の語を入力してください:",
+      confirm_word: "削除",
+      confirm_invalid: "確認が一致しませんでした。削除は中止されました。",
+      deleted_title: "データを削除しました",
+      deleted_message: "アカウントのすべてのデータが削除されました。",
+      delete_failed_title: "削除できませんでした",
+      confirm_delete: "本当に実行しますか？この操作は取り消せません。",
+    },
+  },
+  // The profile card in the navigation
+  profile_card: {
+    transactions: "件",
+    active_days: "稼働日",
+    days: "日",
+    transactions_title: "記録された取引",
+    active_days_title: "過去30日の稼働日",
   },
 };
