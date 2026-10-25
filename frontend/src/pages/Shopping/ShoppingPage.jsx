@@ -7,20 +7,22 @@ import {
   Plus, MoreVertical, Edit2, Trash2, ExternalLink, Star,
   X, GripVertical, RefreshCw, DollarSign, TrendingUp, Filter
 } from 'lucide-react';
+import { useTranslation } from '../../i18n';
 
 // Pipeline stages configuration
 const STAGES = [
-  { id: 'wishlist', label: 'Wishlist', icon: '💭', color: 'gray' },
-  { id: 'to_buy', label: 'Mau Beli', icon: '🛒', color: 'blue' },
-  { id: 'ordered', label: 'Dipesan', icon: '📦', color: 'purple' },
-  { id: 'shipped', label: 'Dikirim', icon: '🚚', color: 'orange' },
-  { id: 'received', label: 'Diterima', icon: '✅', color: 'green' },
-  { id: 'cancelled', label: 'Dibatalkan', icon: '❌', color: 'red' },
+  { id: 'wishlist', labelKey: 'shopping.stage_wishlist', icon: '💭', color: 'gray' },
+  { id: 'to_buy', labelKey: 'shopping.stage_to_buy', icon: '🛒', color: 'blue' },
+  { id: 'ordered', labelKey: 'shopping.stage_ordered', icon: '📦', color: 'purple' },
+  { id: 'shipped', labelKey: 'shopping.stage_shipped', icon: '🚚', color: 'orange' },
+  { id: 'received', labelKey: 'shopping.stage_received', icon: '✅', color: 'green' },
+  { id: 'cancelled', labelKey: 'shopping.stage_cancelled', icon: '❌', color: 'red' },
 ];
 
 const MARKETPLACES = ['shopee', 'tokopedia', 'lazada', 'blibli', 'tiktok', 'bukalapak', 'lainnya'];
 
 const ShoppingPage = () => {
+  const { t } = useTranslation();
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,7 +52,7 @@ const ShoppingPage = () => {
       setBoard(response.data || response);
     } catch (err) {
       console.error('Failed to fetch board:', err);
-      setError('Gagal memuat board');
+      setError(t('shopping.load_error'));
     } finally {
       setLoading(false);
     }
@@ -110,7 +112,7 @@ const ShoppingPage = () => {
       fetchBoard();
     } catch (err) {
       console.error('Failed to move item:', err);
-      alert('Gagal memindahkan item');
+      alert(t('shopping.move_error'));
     }
     
     setDraggedItem(null);
@@ -139,7 +141,7 @@ const ShoppingPage = () => {
       fetchBoard();
     } catch (err) {
       console.error('Failed to add item:', err);
-      alert('Gagal menambahkan item');
+      alert(t('shopping.add_error'));
     } finally {
       setSaving(false);
     }
@@ -168,21 +170,21 @@ const ShoppingPage = () => {
       fetchBoard();
     } catch (err) {
       console.error('Failed to update item:', err);
-      alert('Gagal mengupdate item');
+      alert(t('shopping.update_error'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteItem = async (itemId) => {
-    if (!confirm('Yakin ingin menghapus item ini?')) return;
+    if (!confirm(t('shopping.delete_confirm'))) return;
     
     try {
       await api.request(`/shopping/items/${itemId}`, { method: 'DELETE' });
       fetchBoard();
     } catch (err) {
       console.error('Failed to delete item:', err);
-      alert('Gagal menghapus item');
+      alert(t('shopping.delete_error'));
     }
   };
 
@@ -195,7 +197,7 @@ const ShoppingPage = () => {
       fetchBoard();
     } catch (err) {
       console.error('Failed to move item:', err);
-      alert('Gagal memindahkan item');
+      alert(t('shopping.move_error'));
     }
   };
 
@@ -231,18 +233,18 @@ const ShoppingPage = () => {
     
     // Previous stages
     if (currentIndex > 0) {
-      actions.push({ stage: STAGES[currentIndex - 1], label: `← ${STAGES[currentIndex - 1].label}` });
+      actions.push({ stage: STAGES[currentIndex - 1], label: `← ${t(STAGES[currentIndex - 1].labelKey)}` });
     }
     // Next stages
     if (currentIndex < STAGES.length - 1 && item.stage !== 'cancelled') {
       if (item.stage === 'wishlist') {
-        actions.push({ stage: STAGES[2], label: `Pesan →` }); // Skip to ordered
+        actions.push({ stage: STAGES[2], label: t('shopping.action_order') }); // Skip to ordered
       } else if (item.stage === 'to_buy') {
-        actions.push({ stage: STAGES[2], label: `Pesan →` });
+        actions.push({ stage: STAGES[2], label: t('shopping.action_order') });
       } else if (item.stage === 'ordered') {
-        actions.push({ stage: STAGES[3], label: `Tandai Dikirim →` });
+        actions.push({ stage: STAGES[3], label: t('shopping.action_mark_shipped') });
       } else if (item.stage === 'shipped') {
-        actions.push({ stage: STAGES[4], label: `Tandai Diterima →` });
+        actions.push({ stage: STAGES[4], label: t('shopping.action_mark_received') });
       }
     }
     
@@ -253,7 +255,7 @@ const ShoppingPage = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <Spinner size="lg" />
-        <span className="ml-4 text-gray-500">Memuat board...</span>
+        <span className="ml-4 text-gray-500">{t('shopping.loading')}</span>
       </div>
     );
   }
@@ -264,7 +266,7 @@ const ShoppingPage = () => {
         <p className="text-red-500 mb-4">{error}</p>
         <Button onClick={fetchBoard}>
           <RefreshCw className="w-4 h-4 mr-2" />
-          Coba Lagi
+          {t('shopping.retry')}
         </Button>
       </Card>
     );
@@ -276,10 +278,10 @@ const ShoppingPage = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            🛒 Shopping Board
+            🛒 {t('shopping.title')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Kelola belanjaan dengan pipeline Kanban
+            {t('shopping.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -288,7 +290,7 @@ const ShoppingPage = () => {
           </Button>
           <Button onClick={() => setShowAddModal(true)}>
             <Plus className="w-4 h-4 mr-2" />
-            Tambah Item
+            {t('shopping.add_item')}
           </Button>
         </div>
       </div>
@@ -296,25 +298,25 @@ const ShoppingPage = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="!p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Budget</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('shopping.total_budget')}</div>
           <div className="text-xl font-bold text-primary-600 dark:text-primary-400">
             {formatCurrency(board?.total_budget || 0)}
           </div>
         </Card>
         <Card className="!p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Spent</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('shopping.total_spent')}</div>
           <div className="text-xl font-bold text-green-600 dark:text-green-400">
             {formatCurrency(board?.total_spent || 0)}
           </div>
         </Card>
         <Card className="!p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Sisa Budget</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('shopping.remaining_budget')}</div>
           <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
             {formatCurrency(board?.remaining_budget || 0)}
           </div>
         </Card>
         <Card className="!p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Items</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('shopping.total_items')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-white">
             {board?.stages?.reduce((sum, s) => sum + s.count, 0) || 0}
           </div>
@@ -343,7 +345,7 @@ const ShoppingPage = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-xl">{stage.icon}</span>
                   <h3 className="font-semibold text-gray-900 dark:text-white">
-                    {stage.label}
+                    {t(stage.labelKey)}
                   </h3>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                     stage.color === 'gray' ? 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300' :
@@ -365,7 +367,7 @@ const ShoppingPage = () => {
               <div className="space-y-2 min-h-[200px]">
                 {items.length === 0 ? (
                   <div className="text-center py-8 text-gray-400 dark:text-gray-300 text-sm">
-                    Drop item di sini
+                    {t('shopping.drop_here')}
                   </div>
                 ) : (
                   items.map((item) => (
@@ -408,7 +410,7 @@ const ShoppingPage = () => {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <ExternalLink className="w-3 h-3" />
-                              Buka Link
+                              {t('shopping.open_link')}
                             </a>
                           )}
                         </div>
@@ -422,14 +424,14 @@ const ShoppingPage = () => {
                               className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2"
                             >
                               <Edit2 className="w-4 h-4" />
-                              Edit
+                              {t('common.edit')}
                             </button>
                             <button
                               onClick={() => handleDeleteItem(item.id)}
                               className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-red-500 flex items-center gap-2"
                             >
                               <Trash2 className="w-4 h-4" />
-                              Hapus
+                              {t('common.delete')}
                             </button>
                           </div>
                         </div>
@@ -462,7 +464,7 @@ const ShoppingPage = () => {
       <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); resetForm(); }}>
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">Tambah Item Baru</h2>
+            <h2 className="text-xl font-bold">{t('shopping.add_item_title')}</h2>
             <button onClick={() => { setShowAddModal(false); resetForm(); }} className="p-1">
               <X className="w-5 h-5" />
             </button>
@@ -471,13 +473,13 @@ const ShoppingPage = () => {
           <form onSubmit={handleAddItem} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Nama Item *
+                {t('shopping.item_name')}
               </label>
               <Input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Contoh: iPhone 15 Pro"
+                placeholder={t('shopping.item_name_placeholder')}
                 required
               />
             </div>
@@ -485,7 +487,7 @@ const ShoppingPage = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Harga (Rp)
+                  {t('shopping.price')}
                 </label>
                 <Input
                   type="number"
@@ -497,7 +499,7 @@ const ShoppingPage = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Jumlah
+                  {t('shopping.quantity')}
                 </label>
                 <Input
                   type="number"
@@ -510,7 +512,7 @@ const ShoppingPage = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Stage
+                {t('shopping.stage_label')}
               </label>
               <select
                 value={formData.stage}
@@ -519,7 +521,7 @@ const ShoppingPage = () => {
               >
                 {STAGES.filter(s => s.id !== 'received' && s.id !== 'cancelled').map((stage) => (
                   <option key={stage.id} value={stage.id}>
-                    {stage.icon} {stage.label}
+                    {stage.icon} {t(stage.labelKey)}
                   </option>
                 ))}
               </select>
@@ -527,14 +529,14 @@ const ShoppingPage = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Marketplace
+                {t('shopping.marketplace')}
               </label>
               <select
                 value={formData.marketplace}
                 onChange={(e) => setFormData({ ...formData, marketplace: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
-                <option value="">Pilih marketplace</option>
+                <option value="">{t('shopping.select_marketplace')}</option>
                 {MARKETPLACES.map((mp) => (
                   <option key={mp} value={mp}>
                     {mp.charAt(0).toUpperCase() + mp.slice(1)}
@@ -545,7 +547,7 @@ const ShoppingPage = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Link Produk
+                {t('shopping.product_link')}
               </label>
               <Input
                 type="url"
@@ -557,12 +559,12 @@ const ShoppingPage = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Catatan
+                {t('shopping.notes')}
               </label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Catatan tambahan..."
+                placeholder={t('shopping.notes_placeholder')}
                 rows={3}
                 className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none"
               />
@@ -575,10 +577,10 @@ const ShoppingPage = () => {
                 onClick={() => { setShowAddModal(false); resetForm(); }}
                 className="flex-1"
               >
-                Batal
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={saving} className="flex-1">
-                {saving ? <Spinner size="sm" /> : 'Tambah'}
+                {saving ? <Spinner size="sm" /> : t('shopping.add')}
               </Button>
             </div>
           </form>
@@ -589,7 +591,7 @@ const ShoppingPage = () => {
       <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditingItem(null); resetForm(); }}>
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">Edit Item</h2>
+            <h2 className="text-xl font-bold">{t('shopping.edit_item')}</h2>
             <button onClick={() => { setShowEditModal(false); setEditingItem(null); resetForm(); }} className="p-1">
               <X className="w-5 h-5" />
             </button>
@@ -598,7 +600,7 @@ const ShoppingPage = () => {
           <form onSubmit={handleEditItem} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Nama Item *
+                {t('shopping.item_name')}
               </label>
               <Input
                 type="text"
@@ -611,7 +613,7 @@ const ShoppingPage = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Harga (Rp)
+                  {t('shopping.price')}
                 </label>
                 <Input
                   type="number"
@@ -622,7 +624,7 @@ const ShoppingPage = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Jumlah
+                  {t('shopping.quantity')}
                 </label>
                 <Input
                   type="number"
@@ -635,14 +637,14 @@ const ShoppingPage = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Marketplace
+                {t('shopping.marketplace')}
               </label>
               <select
                 value={formData.marketplace}
                 onChange={(e) => setFormData({ ...formData, marketplace: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
-                <option value="">Pilih marketplace</option>
+                <option value="">{t('shopping.select_marketplace')}</option>
                 {MARKETPLACES.map((mp) => (
                   <option key={mp} value={mp}>
                     {mp.charAt(0).toUpperCase() + mp.slice(1)}
@@ -653,7 +655,7 @@ const ShoppingPage = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Link Produk
+                {t('shopping.product_link')}
               </label>
               <Input
                 type="url"
@@ -665,7 +667,7 @@ const ShoppingPage = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Catatan
+                {t('shopping.notes')}
               </label>
               <textarea
                 value={formData.notes}
@@ -682,10 +684,10 @@ const ShoppingPage = () => {
                 onClick={() => { setShowEditModal(false); setEditingItem(null); resetForm(); }}
                 className="flex-1"
               >
-                Batal
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={saving} className="flex-1">
-                {saving ? <Spinner size="sm" /> : 'Simpan'}
+                {saving ? <Spinner size="sm" /> : t('common.save')}
               </Button>
             </div>
           </form>

@@ -1,8 +1,10 @@
 // Profile Settings Page - backed by GET/PUT /api/me
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
+import { useTranslation } from '../../i18n';
 
 const ProfileSettings = () => {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState({
     username: '',
     email: '',
@@ -52,7 +54,7 @@ const ProfileSettings = () => {
           avatar_url: profile.avatar_url
         })
       });
-      setMessage('Profil berhasil disimpan!');
+      setMessage(t('profile_settings.saved'));
       await loadProfile();
       setTimeout(() => setMessage(''), 3000);
     } catch (e) {
@@ -65,7 +67,7 @@ const ProfileSettings = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">Memuat...</div>
+        <div className="text-gray-500">{t('profile_settings.loading')}</div>
       </div>
     );
   }
@@ -73,7 +75,7 @@ const ProfileSettings = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="bg-primary-600 text-white p-4 sticky top-0 z-10">
-        <h1 className="text-xl font-bold">👤 Profil</h1>
+        <h1 className="text-xl font-bold">{t('profile_settings.title')}</h1>
       </div>
 
       <div className="p-4 max-w-lg mx-auto">
@@ -90,7 +92,7 @@ const ProfileSettings = () => {
 
         <form onSubmit={handleSave} className="space-y-4">
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <h2 className="font-bold text-lg mb-4">Informasi Akun</h2>
+            <h2 className="font-bold text-lg mb-4">{t('profile_settings.subtitle')}</h2>
 
             <div className="space-y-4">
               <div>
@@ -102,13 +104,13 @@ const ProfileSettings = () => {
                   value={profile.username}
                   onChange={(e) => setProfile({ ...profile, username: e.target.value })}
                   className="w-full p-3 border rounded-lg"
-                  placeholder="username"
+                  placeholder={t('profile_settings.username')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
+                  {t('profile_settings.email')}
                 </label>
                 <input
                   type="email"
@@ -118,7 +120,7 @@ const ProfileSettings = () => {
                   placeholder="email@example.com"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Email tidak dapat diubah. Hubungi support jika perlu.
+                  {t('profile_settings.email_locked')}
                 </p>
               </div>
 
@@ -131,7 +133,7 @@ const ProfileSettings = () => {
                   value={profile.full_name}
                   onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                   className="w-full p-3 border rounded-lg"
-                  placeholder="Nama lengkap"
+                  placeholder={t('profile_settings.full_name')}
                 />
               </div>
 
@@ -157,7 +159,7 @@ const ProfileSettings = () => {
                   value={profile.avatar_url}
                   onChange={(e) => setProfile({ ...profile, avatar_url: e.target.value })}
                   className="w-full p-3 border rounded-lg"
-                  placeholder="https://..."
+                  placeholder={t('profile_settings.website')}
                 />
               </div>
             </div>

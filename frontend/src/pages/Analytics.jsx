@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/format';
 import { useSyncedPreference } from '../hooks/useSyncedPreference';
+import { useTranslation } from '../i18n';
 import { chartPalette } from '../utils/appearance';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -50,57 +51,57 @@ const PREFS_SERVER_KEY = 'analytics_layout';
 const WIDGETS = {
   health: {
     id: 'health',
-    label: 'Skor Kesehatan Keuangan',
-    hint: 'Ringkasan kondisi keuangan Anda dalam satu angka: tabungan, dana darurat, utang, dan progres target.',
+    labelKey: 'analytics.widget_health_label',
+    hintKey: 'analytics.widget_health_hint',
     icon: Activity,
     minWidth: 'full',
   },
   cashflow: {
     id: 'cashflow',
-    label: 'Arus Kas Bulanan',
-    hint: 'Menunjukkan apakah uang Anda bertambah atau berkurang tiap bulan, dan trennya ke mana.',
+    labelKey: 'analytics.widget_cashflow_label',
+    hintKey: 'analytics.widget_cashflow_hint',
     icon: TrendingUp,
     minWidth: 'full',
   },
   categories: {
     id: 'categories',
-    label: 'Pengeluaran per Kategori',
-    hint: 'Ke mana saja uang Anda pergi. Besaran persentase menunjukkan kategori mana yang paling besar dan mana yang paling kecil.',
+    labelKey: 'analytics.widget_categories_label',
+    hintKey: 'analytics.widget_categories_hint',
     icon: PieChart,
     minWidth: 'half',
   },
   budget: {
     id: 'budget',
-    label: 'Anggaran vs Realisasi',
-    hint: 'Membandingkan jatah budget dengan pengeluaran nyata, jadi Anda tahu mana yang hampir habis.',
+    labelKey: 'analytics.widget_budget_label',
+    hintKey: 'analytics.widget_budget_hint',
     icon: Target,
     minWidth: 'half',
   },
   topexpenses: {
     id: 'topexpenses',
-    label: 'Pengeluaran Terbesar',
-    hint: 'Transaksi pengeluaran terbesar yang paling banyak memakan saldo Anda.',
+    labelKey: 'analytics.widget_topexpenses_label',
+    hintKey: 'analytics.widget_topexpenses_hint',
     icon: Layers,
     minWidth: 'half',
   },
   patterns: {
     id: 'patterns',
-    label: 'Pola Pengeluaran',
-    hint: 'Kapan Anda cenderung belanja: hari apa dalam seminggu dan tanggal berapa dalam bulan.',
+    labelKey: 'analytics.widget_patterns_label',
+    hintKey: 'analytics.widget_patterns_hint',
     icon: Calendar,
     minWidth: 'half',
   },
   recurring: {
     id: 'recurring',
-    label: 'Biaya Berulang',
-    hint: 'Tagihan rutin per bulan. Berguna untuk memotong biaya yang tidak lagi Anda perlukan.',
+    labelKey: 'analytics.widget_recurring_label',
+    hintKey: 'analytics.widget_recurring_hint',
     icon: RotateCcw,
     minWidth: 'half',
   },
   monthly: {
     id: 'monthly',
-    label: 'Bulan ke Bulan',
-    hint: 'Tabel perbandingan tiap bulan beserta perubahan percentualnya.',
+    labelKey: 'analytics.widget_monthly_label',
+    hintKey: 'analytics.widget_monthly_hint',
     icon: BarChart3,
     minWidth: 'full',
   },
@@ -119,29 +120,29 @@ const DEFAULT_LAYOUT = ['health', 'cashflow', 'categories', 'budget', 'topexpens
 const LAYOUT_PRESETS = {
   ringkasan: {
     id: 'ringkasan',
-    label: 'Ringkasan Harian',
-    description: 'Kesehatan dan arus kas saja. Enam widget yang paling sering dicek.',
+    labelKey: 'analytics.preset_ringkasan_label',
+    descriptionKey: 'analytics.preset_ringkasan_description',
     order: ['health', 'cashflow', 'topexpenses', 'budget', 'categories', 'recurring'],
     hidden: ['patterns', 'monthly'],
   },
   lengkap: {
     id: 'lengkap',
-    label: 'Lengkap',
-    description: 'Semua bagian, dari kesehatan sampai pola belanja.',
+    labelKey: 'analytics.preset_lengkap_label',
+    descriptionKey: 'analytics.preset_lengkap_description',
     order: DEFAULT_LAYOUT,
     hidden: [],
   },
   pengeluaran: {
     id: 'pengeluaran',
-    label: 'Fokus Pengeluaran',
-    description: 'Ke mana uang pergi. Kategori, terbesar, pola, dan budget.',
+    labelKey: 'analytics.preset_pengeluaran_label',
+    descriptionKey: 'analytics.preset_pengeluaran_description',
     order: ['categories', 'topexpenses', 'patterns', 'budget', 'monthly', 'cashflow'],
     hidden: ['health', 'recurring'],
   },
   tabungan: {
     id: 'tabungan',
-    label: 'Fokus Tabungan',
-    description: 'Progres menabung. Menuju target dan arus kas.',
+    labelKey: 'analytics.preset_tabungan_label',
+    descriptionKey: 'analytics.preset_tabungan_description',
     order: ['health', 'cashflow', 'monthly', 'budget', 'recurring', 'categories'],
     hidden: ['topexpenses', 'patterns'],
   },
@@ -209,6 +210,7 @@ const savePrefs = (prefs) => {
 };
 
 export const Analytics = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -257,13 +259,13 @@ export const Analytics = () => {
         else setters[i](null);
       });
       const failed = results.filter((r) => r.status === 'rejected').length;
-      if (failed === results.length) setError('Tidak dapat memuat data analisis.');
+      if (failed === results.length) setError(t('analytics.load_error'));
     } catch (err) {
-      setError('Tidak dapat memuat data analisis.');
+      setError(t('analytics.load_error'));
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, t]);
 
   useEffect(() => {
     fetchData();
@@ -330,10 +332,10 @@ export const Analytics = () => {
   };
 
   const getScoreLabel = (score) => {
-    if (score >= 80) return { label: 'Sangat Baik', color: 'success' };
-    if (score >= 60) return { label: 'Baik', color: 'warning' };
-    if (score >= 40) return { label: 'Cukup', color: 'warning' };
-    return { label: 'Perlu Perbaikan', color: 'danger' };
+    if (score >= 80) return { label: t('analytics.score_excellent'), color: 'success' };
+    if (score >= 60) return { label: t('analytics.score_good'), color: 'warning' };
+    if (score >= 40) return { label: t('analytics.score_fair'), color: 'warning' };
+    return { label: t('analytics.score_poor'), color: 'danger' };
   };
 
   // The backend names the fields overall_score / description. Older builds
@@ -351,16 +353,16 @@ export const Analytics = () => {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Icon size={16} className="text-primary-600 shrink-0" />
-              <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{meta.label}</h3>
+              <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{t(meta.labelKey)}</h3>
             </div>
             {isOpen && (
-              <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{meta.hint}</p>
+              <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{t(meta.hintKey)}</p>
             )}
           </div>
           <button
             type="button"
             onClick={() => setExplain((e) => ({ ...e, [id]: !e[id] }))}
-            title="Penjelasan metrik"
+            title={t('analytics.metric_explanation')}
             className="text-gray-400 hover:text-primary-600 transition-colors shrink-0"
           >
             <Info size={15} />
@@ -380,7 +382,7 @@ export const Analytics = () => {
             <div className="bg-gradient-to-r from-primary-600 to-primary-500 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-primary-100 text-sm font-medium">Skor Kesehatan Keuangan</p>
+                  <p className="text-primary-100 text-sm font-medium">{t('analytics.widget_health_label')}</p>
                   <p className="text-5xl font-bold text-white mt-2">{healthScore}/100</p>
                   <Badge variant={getScoreLabel(healthScore).color} className="mt-2">
                     {getScoreLabel(healthScore).label}
@@ -421,10 +423,10 @@ export const Analytics = () => {
               </div>
               {health.metrics && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100">
-                  <Metric label="Total saldo" value={formatCurrency(health.metrics.total_balance)} />
-                  <Metric label="Tingkat tabungan" value={`${Number(health.metrics.saving_rate || 0).toFixed(1)}%`} />
-                  <Metric label="Total utang" value={formatCurrency(health.metrics.total_debt)} />
-                  <Metric label="Target aktif" value={String(health.metrics.active_goals ?? 0)} />
+                  <Metric label={t('analytics.metric_total_balance')} value={formatCurrency(health.metrics.total_balance)} />
+                  <Metric label={t('analytics.metric_saving_rate')} value={`${Number(health.metrics.saving_rate || 0).toFixed(1)}%`} />
+                  <Metric label={t('analytics.metric_total_debt')} value={formatCurrency(health.metrics.total_debt)} />
+                  <Metric label={t('analytics.metric_active_goals')} value={String(health.metrics.active_goals ?? 0)} />
                 </div>
               )}
             </CardBody>
@@ -445,23 +447,23 @@ export const Analytics = () => {
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} />
+                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}${t('analytics.million')}`} />
                   <Tooltip formatter={(value) => formatCurrency(value)} />
                   <Legend />
-                  <Area type="monotone" dataKey="Income" stroke="#22c55e" fill="#22c55e" fillOpacity={0.15} />
-                  <Area type="monotone" dataKey="Expense" stroke="#ef4444" fill="#ef4444" fillOpacity={0.15} />
-                  <Area type="monotone" dataKey="Net" stroke={COLORS()[0]} fill={COLORS()[0]} fillOpacity={0.1} />
+                  <Area type="monotone" dataKey="Income" name={t('analytics.chart_income')} stroke="#22c55e" fill="#22c55e" fillOpacity={0.15} />
+                  <Area type="monotone" dataKey="Expense" name={t('analytics.chart_expense')} stroke="#ef4444" fill="#ef4444" fillOpacity={0.15} />
+                  <Area type="monotone" dataKey="Net" name={t('analytics.chart_net')} stroke={COLORS()[0]} fill={COLORS()[0]} fillOpacity={0.1} />
                 </AreaChart>
               </ResponsiveContainer>
               {cashFlow.trends && (
                 <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-100">
                   <Metric
-                    label="Perubahan pemasukan"
+                    label={t('analytics.change_income')}
                     value={`${Number(cashFlow.trends.income_change_pct || 0).toFixed(1)}%`}
                     trend={cashFlow.trends.income_trend}
                   />
                   <Metric
-                    label="Perubahan pengeluaran"
+                    label={t('analytics.change_expense')}
                     value={`${Number(cashFlow.trends.expense_change_pct || 0).toFixed(1)}%`}
                     trend={cashFlow.trends.expense_trend}
                   />
@@ -482,7 +484,7 @@ export const Analytics = () => {
                     <RePieChart>
                       <Pie
                         data={expenseBreakdown.breakdown.map((b) => ({
-                          name: b.name || 'Lainnya',
+                          name: b.name || t('category.lainnya'),
                           value: parseFloat(b.total) || 0,
                         }))}
                         cx="50%" cy="50%" outerRadius={85} dataKey="value"
@@ -502,7 +504,7 @@ export const Analytics = () => {
                       <span className="flex items-center gap-2 min-w-0">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0"
                           style={{ background: COLORS()[i % COLORS().length] }} />
-                        <span className="truncate">{b.name || 'Lainnya'}</span>
+                        <span className="truncate">{b.name || t('category.lainnya')}</span>
                       </span>
                       <span className="flex items-center gap-2 shrink-0">
                         <span className="font-medium">{formatCurrency(b.total)}</span>
@@ -525,27 +527,27 @@ export const Analytics = () => {
             <CardBody>
               <ResponsiveContainer width="100%" height={230}>
                 <BarChart data={budgetComparison.comparisons.map((c) => ({
-                  category: (c.category_name || 'Lainnya').length > 14
-                    ? `${c.category_name.slice(0, 13)}…` : (c.category_name || 'Lainnya'),
+                  category: (c.category_name || t('category.lainnya')).length > 14
+                    ? `${c.category_name.slice(0, 13)}…` : (c.category_name || t('category.lainnya')),
                   budget: parseFloat(c.budget_amount) || 0,
                   actual: parseFloat(c.actual_spent) || 0,
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="category" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}${t('analytics.million')}`} />
                   <Tooltip formatter={(value) => formatCurrency(value)} />
                   <Legend />
-                  <Bar dataKey="budget" fill={COLORS()[0]} name="Anggaran" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="actual" fill="#ef4444" name="Realisasi" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="budget" fill={COLORS()[0]} name={t('analytics.chart_budget')} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="actual" fill="#ef4444" name={t('analytics.chart_actual')} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
               {budgetComparison.summary && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100">
-                  <Metric label="Total anggaran" value={formatCurrency(budgetComparison.summary.total_budget)} />
-                  <Metric label="Total realisasi" value={formatCurrency(budgetComparison.summary.total_actual)} />
-                  <Metric label="Sisa anggaran" value={formatCurrency(budgetComparison.summary.total_remaining)} />
+                  <Metric label={t('analytics.total_budget')} value={formatCurrency(budgetComparison.summary.total_budget)} />
+                  <Metric label={t('analytics.total_actual')} value={formatCurrency(budgetComparison.summary.total_actual)} />
+                  <Metric label={t('analytics.budget_remaining')} value={formatCurrency(budgetComparison.summary.total_remaining)} />
                   <Metric
-                    label="Porsi terpakai"
+                    label={t('analytics.used_portion')}
                     value={`${Number(budgetComparison.summary.overall_utilization || 0).toFixed(0)}%`}
                   />
                 </div>
@@ -560,17 +562,17 @@ export const Analytics = () => {
           <Widget id="topexpenses">
             <CardBody className="p-0">
               <ul className="divide-y divide-gray-100">
-                {topExpenses.expenses.map((t) => (
-                  <li key={t.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                {topExpenses.expenses.map((tx) => (
+                  <li key={tx.id} className="px-5 py-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{t.description || 'Tanpa deskripsi'}</p>
+                      <p className="text-sm font-medium truncate">{tx.description || t('analytics.no_description')}</p>
                       <p className="text-xs text-gray-500 truncate">
-                        {t.category || 'Tanpa kategori'}
-                        {t.account ? ` · ${t.account}` : ''}
+                        {tx.category || t('analytics.no_category')}
+                        {tx.account ? ` · ${tx.account}` : ''}
                       </p>
                     </div>
                     <span className="text-sm font-semibold text-danger-600 shrink-0">
-                      {formatCurrency(t.amount)}
+                      {formatCurrency(tx.amount)}
                     </span>
                   </li>
                 ))}
@@ -590,7 +592,7 @@ export const Analytics = () => {
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}${t('analytics.million')}`} />
                   <Tooltip formatter={(value) => formatCurrency(value)} />
                   <Bar dataKey="total" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -601,7 +603,7 @@ export const Analytics = () => {
                     <div key={p.period} className="p-3 rounded-lg bg-gray-50">
                       <p className="text-xs text-gray-500">{p.label}</p>
                       <p className="text-sm font-bold mt-0.5">{formatCurrency(p.total)}</p>
-                      <p className="text-xs text-gray-400">{p.count} transaksi</p>
+                      <p className="text-xs text-gray-400">{t('analytics.transaction_count').replace('%s', p.count)}</p>
                     </div>
                   ))}
                 </div>
@@ -616,13 +618,13 @@ export const Analytics = () => {
           <Widget id="recurring">
             <CardBody>
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <Metric label="Per bulan" value={formatCurrency(recurring.total_monthly_recurring)} />
-                <Metric label="Per tahun" value={formatCurrency(recurring.yearly_recurring)} />
+                <Metric label={t('analytics.per_month')} value={formatCurrency(recurring.total_monthly_recurring)} />
+                <Metric label={t('analytics.per_year')} value={formatCurrency(recurring.yearly_recurring)} />
               </div>
               <ul className="space-y-2">
                 {recurring.items.map((r) => (
                   <li key={r.id} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="truncate">{r.description || 'Tanpa deskripsi'}</span>
+                    <span className="truncate">{r.description || t('analytics.no_description')}</span>
                     <span className="shrink-0 text-gray-500">
                       {formatCurrency(r.amount)} <span className="text-xs">/ {r.frequency}</span>
                     </span>
@@ -642,11 +644,11 @@ export const Analytics = () => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100">
-                      <th className="px-5 py-3 text-left font-medium text-gray-600">Bulan</th>
-                      <th className="px-5 py-3 text-right font-medium text-gray-600">Pemasukan</th>
-                      <th className="px-5 py-3 text-right font-medium text-gray-600">Pengeluaran</th>
-                      <th className="px-5 py-3 text-right font-medium text-gray-600">Net</th>
-                      <th className="px-5 py-3 text-right font-medium text-gray-600">Perubahan</th>
+                      <th className="px-5 py-3 text-left font-medium text-gray-600">{t('analytics.table_month')}</th>
+                      <th className="px-5 py-3 text-right font-medium text-gray-600">{t('analytics.chart_income')}</th>
+                      <th className="px-5 py-3 text-right font-medium text-gray-600">{t('analytics.chart_expense')}</th>
+                      <th className="px-5 py-3 text-right font-medium text-gray-600">{t('analytics.table_net')}</th>
+                      <th className="px-5 py-3 text-right font-medium text-gray-600">{t('analytics.table_change')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -695,17 +697,17 @@ export const Analytics = () => {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analisis</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('nav.analytics')}</h1>
           <p className="text-gray-500 mt-1 text-sm">
-            Ringkasan kondisi keuangan Anda. Setiap bagian bisa disembunyikan atau diurutkan ulang.
+            {t('analytics.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Select
             options={[
-              { value: '3', label: '3 bulan' },
-              { value: '6', label: '6 bulan' },
-              { value: '12', label: '12 bulan' },
+              { value: '3', label: t('analytics.month_option').replace('%s', '3') },
+              { value: '6', label: t('analytics.month_option').replace('%s', '6') },
+              { value: '12', label: t('analytics.month_option').replace('%s', '12') },
             ]}
             value={period}
             onChange={(e) => updatePrefs({ ...prefs, period: e.target.value })}
@@ -717,7 +719,7 @@ export const Analytics = () => {
             onClick={() => setCustomizing((c) => !c)}
           >
             <Settings2 size={14} className="mr-1.5" />
-            Atur tampilan
+            {t('analytics.customize')}
           </Button>
         </div>
       </div>
@@ -734,12 +736,12 @@ export const Analytics = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             {
-              label: 'Saldo',
+              label: t('analytics.stat_balance'),
               value: formatCurrency(health.total_balance || 0),
               tone: 'text-gray-900 dark:text-gray-100',
             },
             {
-              label: 'Tingkat tabungan',
+              label: t('analytics.stat_saving_rate'),
               value: `${(health.savings_rate || 0).toFixed(1)}%`,
               tone:
                 (health.savings_rate || 0) >= 20
@@ -747,7 +749,7 @@ export const Analytics = () => {
                   : 'text-warning-600 dark:text-warning-400',
             },
             {
-              label: 'Total utang',
+              label: t('analytics.stat_total_debt'),
               value: formatCurrency(health.total_debt || 0),
               tone:
                 (health.total_debt || 0) > 0
@@ -755,7 +757,7 @@ export const Analytics = () => {
                   : 'text-gray-900 dark:text-gray-100',
             },
             {
-              label: 'Target aktif',
+              label: t('analytics.stat_active_goals'),
               value: String(health.active_goals || 0),
               tone: 'text-primary-600 dark:text-primary-400',
             },
@@ -782,20 +784,20 @@ export const Analytics = () => {
         <Card className="border-primary-200">
           <CardHeader className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-gray-900 text-sm">Susun halaman</h3>
+              <h3 className="font-semibold text-gray-900 text-sm">{t('analytics.compose_page')}</h3>
               <p className="text-xs text-gray-500 mt-0.5">
-                Sembunyikan bagian yang tidak Anda perlukan, atau pindahkan urutannya.
+                {t('analytics.compose_desc')}
               </p>
             </div>
             <Button variant="ghost" size="sm" onClick={resetLayout}>
-              <RotateCcw size={13} className="mr-1" /> Reset
+              <RotateCcw size={13} className="mr-1" /> {t('analytics.reset')}
             </Button>
           </CardHeader>
           <CardBody>
             {/* The ready-made layouts */}
             <div className="mb-4">
               <div className="text-xs font-medium text-gray-500 mb-2">
-                Susunan siap pakai
+                {t('analytics.ready_layouts')}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {Object.values(LAYOUT_PRESETS).map((preset) => {
@@ -821,16 +823,16 @@ export const Analytics = () => {
                     >
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-semibold text-gray-900">
-                          {preset.label}
+                          {t(preset.labelKey)}
                         </span>
                         {active && (
                           <span className="text-[10px] text-primary-600 font-medium">
-                            aktif
+                            {t('analytics.active_badge')}
                           </span>
                         )}
                       </div>
                       <div className="text-[10px] text-gray-500 mt-0.5 leading-snug">
-                        {preset.description}
+                        {t(preset.descriptionKey)}
                       </div>
                     </button>
                   );
@@ -839,7 +841,7 @@ export const Analytics = () => {
             </div>
 
             <div className="text-xs font-medium text-gray-500 mb-1">
-              Atur satu per satu
+              {t('analytics.customize_individually')}
             </div>
           </CardBody>
           <CardBody className="p-0">
@@ -851,8 +853,8 @@ export const Analytics = () => {
                   <li key={id} className="px-5 py-3 flex items-center gap-3">
                     <GripVertical size={15} className="text-gray-300 shrink-0" />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium truncate">{meta.label}</span>
-                      <span className="block text-xs text-gray-500 truncate">{meta.hint}</span>
+                      <span className="block text-sm font-medium truncate">{t(meta.labelKey)}</span>
+                      <span className="block text-xs text-gray-500 truncate">{t(meta.hintKey)}</span>
                     </span>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
@@ -874,7 +876,7 @@ export const Analytics = () => {
                       <button
                         type="button"
                         onClick={() => toggleHidden(id)}
-                        title={hidden ? 'Tampilkan' : 'Sembunyikan'}
+                        title={hidden ? t('analytics.show') : t('analytics.hide')}
                         className={`px-2 py-1 ${hidden ? 'text-gray-400' : 'text-primary-600'}`}
                       >
                         {hidden ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -901,9 +903,9 @@ export const Analytics = () => {
         <Card>
           <CardBody className="text-center text-gray-500 py-12">
             <Sparkles size={20} className="mx-auto mb-2 text-gray-400" />
-            <p className="text-sm mb-3">Semua bagian disembunyikan.</p>
+            <p className="text-sm mb-3">{t('analytics.all_hidden')}</p>
             <Button variant="outline" size="sm" onClick={resetLayout}>
-              Tampilkan semua bagian
+              {t('analytics.show_all_sections')}
             </Button>
           </CardBody>
         </Card>

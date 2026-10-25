@@ -42,8 +42,8 @@ export const BACKGROUND_KEY = 'finmanager-background';
 export const COLOR_SCHEMES = {
   emerald: {
     id: 'emerald',
-    label: 'Emerald (Uang Hijau)',
-    description: 'Hijau uang. Tenang dan terbaca.',
+    labelKey: 'appearance.emerald_label',
+    descriptionKey: 'appearance.emerald_description',
     // 50 to 900, in the emerald family.
     shades: {
       50: '#ecfdf5',
@@ -61,8 +61,8 @@ export const COLOR_SCHEMES = {
   },
   blue: {
     id: 'blue',
-    label: 'Blue (Korporat)',
-    description: 'Biru korporat. Tenang dan profesional.',
+    labelKey: 'appearance.blue_label',
+    descriptionKey: 'appearance.blue_description',
     shades: {
       50: '#eff6ff',
       100: '#dbeafe',
@@ -80,8 +80,8 @@ export const COLOR_SCHEMES = {
   },
   violet: {
     id: 'violet',
-    label: 'Violet (Kreatif)',
-    description: 'Ungu. Untuk yang ingin tampil beda.',
+    labelKey: 'appearance.violet_label',
+    descriptionKey: 'appearance.violet_description',
     shades: {
       50: '#f5f3ff',
       100: '#ede9fe',
@@ -99,8 +99,8 @@ export const COLOR_SCHEMES = {
   },
   amber: {
     id: 'amber',
-    label: 'Amber (Hangat)',
-    description: 'Kuning hangat. Terasa hangat dan оптиis.',
+    labelKey: 'appearance.amber_label',
+    descriptionKey: 'appearance.amber_description',
     shades: {
       50: '#fffbeb',
       100: '#fef3c7',
@@ -118,8 +118,8 @@ export const COLOR_SCHEMES = {
   },
   rose: {
     id: 'rose',
-    label: 'Rose (Hangat)',
-    description: 'Merah muda. Berani dan hangat.',
+    labelKey: 'appearance.rose_label',
+    descriptionKey: 'appearance.rose_description',
     shades: {
       50: '#fff1f2',
       100: '#ffe4e6',
@@ -137,8 +137,8 @@ export const COLOR_SCHEMES = {
   },
   slate: {
     id: 'slate',
-    label: 'Slate (Netral)',
-    description: 'Abu-abu. Netral dan tidak ramai.',
+    labelKey: 'appearance.slate_label',
+    descriptionKey: 'appearance.slate_description',
     shades: {
       50: '#f8fafc',
       100: '#f1f5f9',
@@ -170,30 +170,30 @@ export const DEFAULT_SCHEME = 'emerald';
 export const FONT_FAMILIES = {
   sans: {
     id: 'sans',
-    label: 'Sans (Standar)',
-    description: 'Paling netral dan mudah dibaca.',
+    labelKey: 'appearance.sans_label',
+    descriptionKey: 'appearance.sans_description',
     stack:
       "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
     numeric: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
   },
   serif: {
     id: 'serif',
-    label: 'Serif (Klasik)',
-    description: 'Serif, terasa resmi seperti laporan keuangan.',
+    labelKey: 'appearance.serif_label',
+    descriptionKey: 'appearance.serif_description',
     stack: "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif",
     numeric: "'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace",
   },
   mono: {
     id: 'mono',
-    label: 'Mono (Data)',
-    description: 'Semua monospasi. Cocok untuk yang baca angka.',
+    labelKey: 'appearance.mono_label',
+    descriptionKey: 'appearance.mono_description',
     stack: "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace",
     numeric: "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace",
   },
   rounded: {
     id: 'rounded',
-    label: 'Rounded (Lembut)',
-    description: 'Sudut bulat, terasa ramah.',
+    labelKey: 'appearance.rounded_label',
+    descriptionKey: 'appearance.rounded_description',
     stack: "'Nunito', 'Quicksand', system-ui, -apple-system, 'Segoe UI', sans-serif",
     numeric: "ui-rounded, 'SF Pro Rounded', 'Nunito', Menlo, monospace",
   },
@@ -230,18 +230,18 @@ export const BACKGROUNDS = {
   plain: { id: 'plain', label: 'Polos', description: 'Warna polos, tenang.' },
   grid: {
     id: 'grid',
-    label: 'Grid Keuangan',
-    description: 'Kertas grafik, seperti di layar saham.',
+    labelKey: 'appearance.grid_label',
+    descriptionKey: 'appearance.grid_description',
   },
   rings: {
     id: 'rings',
-    label: 'Cahaya',
-    description: 'Cahaya lembut di belakang konten.',
+    labelKey: 'appearance.rings_label',
+    descriptionKey: 'appearance.rings_description',
   },
   mesh: {
     id: 'mesh',
-    label: 'Gradien',
-    description: 'Lapisan cahaya, lebih kaya.',
+    labelKey: 'appearance.mesh_label',
+    descriptionKey: 'appearance.mesh_description',
   },
 };
 

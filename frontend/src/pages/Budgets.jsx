@@ -4,8 +4,10 @@ import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp } from 'lucide-react
 import { formatCurrency, formatDate } from '../utils/format';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
+import { useTranslation } from '../i18n';
 
 export const Budgets = () => {
+  const { t } = useTranslation();
   const [budgets, setBudgets] = useState([]);
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -51,18 +53,18 @@ export const Budgets = () => {
       fetchData();
     } catch (err) {
       console.error('Failed to save budget:', err);
-      alert('Failed to save budget: ' + (err.message || JSON.stringify(err) || 'Unknown error'));
+      alert(t('budgets.save_error').replace('%s', err.message || JSON.stringify(err) || 'Unknown error'));
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this budget?')) return;
+    if (!confirm(t('budgets.delete_confirm'))) return;
     try {
       await api.budgets.delete(id);
       fetchData();
     } catch (err) {
       console.error('Failed to delete budget:', err);
-      alert('Failed to delete budget: ' + (err.message || 'Unknown error'));
+      alert(t('budgets.delete_error').replace('%s', err.message || 'Unknown error'));
     }
   };
 
@@ -79,14 +81,14 @@ export const Budgets = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Budgets</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('budgets.title')}</h1>
           <p className="text-gray-500 mt-1">
-            {budgets.length} active budgets
+            {t('budgets.active_count').replace('%s', budgets.length)}
           </p>
         </div>
         <Button onClick={() => { setEditingBudget(null); setShowModal(true); }}>
           <Plus className="w-4 h-4 mr-2" />
-          Add Budget
+          {t('budgets.add')}
         </Button>
       </div>
 
@@ -94,25 +96,25 @@ export const Budgets = () => {
       {budgets.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="!p-4">
-            <p className="text-sm text-gray-500">Total Budget</p>
+            <p className="text-sm text-gray-500">{t('budgets.total_budget')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1">
               {formatCurrency(budgets.reduce((sum, b) => sum + parseFloat(b.amount), 0))}
             </p>
           </Card>
           <Card className="!p-4">
-            <p className="text-sm text-gray-500">Total Spent</p>
+            <p className="text-sm text-gray-500">{t('budgets.total_spent')}</p>
             <p className="text-xl font-bold text-danger-600 mt-1">
               {formatCurrency(budgets.reduce((sum, b) => sum + parseFloat(b.spent || 0), 0))}
             </p>
           </Card>
           <Card className="!p-4">
-            <p className="text-sm text-gray-500">Total Remaining</p>
+            <p className="text-sm text-gray-500">{t('budgets.total_remaining')}</p>
             <p className="text-xl font-bold text-success-600 mt-1">
               {formatCurrency(budgets.reduce((sum, b) => sum + (parseFloat(b.amount) - parseFloat(b.spent || 0)), 0))}
             </p>
           </Card>
           <Card className="!p-4">
-            <p className="text-sm text-gray-500">Avg. Utilization</p>
+            <p className="text-sm text-gray-500">{t('budgets.avg_utilization')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1">
               {Math.round(budgets.reduce((sum, b) => sum + (parseFloat(b.spent || 0) / parseFloat(b.amount) * 100), 0) / budgets.length)}%
             </p>
@@ -124,12 +126,12 @@ export const Budgets = () => {
       {budgets.length === 0 ? (
         <EmptyState
           icon={<Target className="w-8 h-8 text-gray-400" />}
-          title="No budgets yet"
-          description="Create budgets to track your spending against your goals"
+          title={t('budgets.empty_title')}
+          description={t('budgets.empty_desc')}
           action={
             <Button onClick={() => setShowModal(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              Create Budget
+              {t('budgets.create')}
             </Button>
           }
         />
@@ -153,10 +155,10 @@ export const Budgets = () => {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">
-                        {category?.name || budget.name || 'Budget'}
+                        {category?.name || budget.name || t('budgets.default_name')}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {budget.period === 'monthly' ? 'Monthly' : budget.period === 'weekly' ? 'Weekly' : 'Yearly'}
+                        {budget.period === 'monthly' ? t('budgets.period_monthly') : budget.period === 'weekly' ? t('budgets.period_weekly') : t('budgets.period_yearly')}
                       </p>
                     </div>
                   </div>
@@ -185,15 +187,15 @@ export const Budgets = () => {
                   
                   <div className="flex items-center justify-between text-sm">
                     <div>
-                      <span className="text-gray-500">Spent: </span>
+                      <span className="text-gray-500">{t('budgets.spent_label')}</span>
                       <span className="font-medium text-gray-900">{formatCurrency(budget.spent || 0)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Budget: </span>
+                      <span className="text-gray-500">{t('budgets.budget_label')}</span>
                       <span className="font-medium text-gray-900">{formatCurrency(budget.amount)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Left: </span>
+                      <span className="text-gray-500">{t('budgets.left_label')}</span>
                       <span className={`font-medium ${remaining >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
                         {formatCurrency(remaining)}
                       </span>
@@ -203,7 +205,7 @@ export const Budgets = () => {
                   <BreakdownViewer
                     parentType="budget"
                     parentId={budget.id}
-                    title="Rincian"
+                    title={t('budgets.breakdown_title')}
                     compact
                   />
                 </div>
@@ -227,6 +229,7 @@ export const Budgets = () => {
 };
 
 const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts = [] }) => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     name: '',
     category_id: '',
@@ -264,8 +267,8 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts =
   const handleSubmit = (e) => {
     e.preventDefault();
     // Get category name for budget name if category selected
-    const categoryName = categories?.find(c => c.id === parseInt(form.category_id))?.name || 'General';
-    const budgetName = form.name || `${categoryName} Budget`;
+    const categoryName = categories?.find(c => c.id === parseInt(form.category_id))?.name || t('budgets.general_category');
+    const budgetName = form.name || `${categoryName} ${t('budgets.default_name')}`;
     onSubmit({
       ...form,
       name: budgetName,
@@ -276,19 +279,19 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts =
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={budget ? 'Edit Budget' : 'Create Budget'} size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={budget ? t('budgets.edit') : t('budgets.create')} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <Select
-          label="Category"
+          label={t('transaction.category')}
           options={categories.filter(c => c.type === 'expense').map(c => ({ value: c.id, label: c.name }))}
           value={form.category_id}
           onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
-          placeholder="Select category"
+          placeholder={t('budgets.select_category')}
           required
         />
 
         <Input
-          label="Budget Amount"
+          label={t('budgets.amount')}
           type="number"
           step="1000"
           placeholder="0"
@@ -298,18 +301,18 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts =
         />
 
         <Select
-          label="Period"
+          label={t('budgets.period')}
           options={[
-            { value: 'weekly', label: 'Weekly' },
-            { value: 'monthly', label: 'Monthly' },
-            { value: 'yearly', label: 'Yearly' },
+            { value: 'weekly', label: t('budgets.period_weekly') },
+            { value: 'monthly', label: t('budgets.period_monthly') },
+            { value: 'yearly', label: t('budgets.period_yearly') },
           ]}
           value={form.period}
           onChange={(e) => setForm(f => ({ ...f, period: e.target.value }))}
         />
 
         <Input
-          label="Start Date"
+          label={t('budgets.start_date')}
           type="date"
           value={form.start_date}
           onChange={(e) => setForm(f => ({ ...f, start_date: e.target.value }))}
@@ -327,10 +330,10 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts =
             />
             <div className="flex-1">
               <label htmlFor="auto_allocate" className="font-medium text-primary-900 cursor-pointer">
-                Auto-Allocate Monthly
+                {t('budgets.auto_allocate')}
               </label>
               <p className="text-sm text-primary-700 mt-1">
-                Automatically deduct budget amount from account at the start of each period
+                {t('budgets.auto_allocate_desc')}
               </p>
             </div>
           </div>
@@ -338,11 +341,11 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts =
           {form.auto_allocate && (
             <div className="mt-3 pl-8">
               <Select
-                label="Deduct From Account"
+                label={t('budgets.deduct_from_account')}
                 options={accounts.map(a => ({ value: a.id, label: `${a.name} (${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(a.balance)})` }))}
                 value={form.allocation_account_id}
                 onChange={(e) => setForm(f => ({ ...f, allocation_account_id: e.target.value }))}
-                placeholder="Select account"
+                placeholder={t('budgets.select_account')}
               />
             </div>
           )}
@@ -350,10 +353,10 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts =
 
         <div className="flex gap-3 pt-4">
           <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" className="flex-1">
-            {budget ? 'Update' : 'Create'} Budget
+            {budget ? t('budgets.update') : t('budgets.create')}
           </Button>
         </div>
       </form>

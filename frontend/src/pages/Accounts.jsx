@@ -3,6 +3,7 @@ import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner } from '
 import { Plus, Wallet, Banknote, CreditCard, Smartphone, RefreshCw, Trash2, Edit2, PiggyBank } from 'lucide-react';
 import api from '../services/api';
 import { showNotification } from '../components/notifications/NotificationHelper';
+import { useTranslation } from '../i18n';
 
 const accountTypeOptions = [
   { value: 'bank', label: 'Bank Account', icon: Banknote },
@@ -18,6 +19,7 @@ const getAccountIcon = (type) => {
 };
 
 export const Accounts = () => {
+  const { t } = useTranslation();
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -123,7 +125,7 @@ export const Accounts = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
           <p className="text-gray-500 mt-1">
-            {accounts.length} accounts • Total: {summary?.total_balance ? 
+            {accounts.length} {t('accounts.count')} • {t('accounts.total')}: {summary?.total_balance ? 
               new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(summary.total_balance)
               : '-'}
           </p>
@@ -138,7 +140,7 @@ export const Accounts = () => {
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="!p-4 text-center">
-            <p className="text-sm text-gray-500">Total Balance</p>
+            <p className="text-sm text-gray-500">{t('accounts.total_balance')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1">
               {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(summary.total_balance)}
             </p>

@@ -20,12 +20,12 @@ import { useTheme } from '../contexts/ThemeContext';
 // ACHIEVEMENTS CONFIGURATION - DIPULIHKAN DAN DIENHANCE
 // ============================================================================
 const ACHIEVEMENTS = [
-  { id: 'budget_master', name: 'Budget Guardian', icon: Shield, color: '#22c55e', description: 'Pengeluaran di bawah budget', requirement: 'Pengeluaran < 80% budget' },
-  { id: 'savings_streak', name: 'Master Hemat', icon: Trophy, color: '#f59e0b', description: 'Tabungan naik 3 bulan berturut-turut', requirement: 'Net savings positif 3x' },
-  { id: 'first_goal', name: 'Goal Getter', icon: Target, color: '#3b82f6', description: 'Capai target pertama', requirement: 'Selesaikan 1 goal' },
-  { id: 'surplus', name: 'Surplus Star', icon: Zap, color: '#8b5cf6', description: 'Tabungan naik 50%', requirement: 'Net savings > 50% income' },
-  { id: 'early_bird', name: 'Early Bird', icon: Clock, color: '#06b6d4', description: 'Transaksi sebelum jam 9 pagi', requirement: 'Transaksi < 09:00' },
-  { id: 'diverse_saver', name: 'Diversified Saver', icon: PieChartIcon, color: '#ec4899', description: 'Investasi di 3 kategori berbeda', requirement: '3+ kategori investasi' },
+  { id: 'budget_master', name: 'Budget Guardian', icon: Shield, color: '#22c55e', descriptionKey: 'dashboard.achievement_budget_master_description', requirementKey: 'dashboard.achievement_budget_master_requirement' },
+  { id: 'savings_streak', name: 'Master Hemat', icon: Trophy, color: '#f59e0b', descriptionKey: 'dashboard.achievement_savings_streak_description', requirementKey: 'dashboard.achievement_savings_streak_requirement' },
+  { id: 'first_goal', name: 'Goal Getter', icon: Target, color: '#3b82f6', descriptionKey: 'dashboard.achievement_first_goal_description', requirementKey: 'dashboard.achievement_first_goal_requirement' },
+  { id: 'surplus', name: 'Surplus Star', icon: Zap, color: '#8b5cf6', descriptionKey: 'dashboard.achievement_surplus_description', requirementKey: 'dashboard.achievement_surplus_requirement' },
+  { id: 'early_bird', name: 'Early Bird', icon: Clock, color: '#06b6d4', descriptionKey: 'dashboard.achievement_early_bird_description', requirementKey: 'dashboard.achievement_early_bird_requirement' },
+  { id: 'diverse_saver', name: 'Diversified Saver', icon: PieChartIcon, color: '#ec4899', descriptionKey: 'dashboard.achievement_diverse_saver_description', requirementKey: 'dashboard.achievement_diverse_saver_requirement' },
 ];
 
 const ACHIEVEMENT_ICONS = {
@@ -41,14 +41,14 @@ const ACHIEVEMENT_ICONS = {
 // TIMEFRAME CONFIGURATION - STOCKBIT STYLE
 // ============================================================================
 const TIMEFRAMES = [
-  { key: '1D', label: '1D', description: '24 Jam', granularity: 'hourly', dataPoints: 24, range: 1 },
-  { key: '1W', label: '1W', description: '1 Minggu', granularity: 'daily', dataPoints: 7, range: 7 },
-  { key: '1M', label: '1M', description: '1 Bulan', granularity: 'daily', dataPoints: 30, range: 30 },
-  { key: '3M', label: '3M', description: '3 Bulan', granularity: 'weekly', dataPoints: 13, range: 90 },
-  { key: 'YTD', label: 'YTD', description: 'Tahun Ini', granularity: 'monthly', dataPoints: 12, range: 365 },
-  { key: '1Y', label: '1Y', description: '1 Tahun', granularity: 'monthly', dataPoints: 12, range: 365 },
-  { key: '3Y', label: '3Y', description: '3 Tahun', granularity: 'monthly', dataPoints: 36, range: 1095 },
-  { key: '5Y', label: '5Y', description: '5 Tahun', granularity: 'monthly', dataPoints: 60, range: 1825 },
+  { key: '1D', label: '1D', descriptionKey: 'dashboard.range_1d', granularity: 'hourly', dataPoints: 24, range: 1 },
+  { key: '1W', label: '1W', descriptionKey: 'dashboard.range_1w', granularity: 'daily', dataPoints: 7, range: 7 },
+  { key: '1M', label: '1M', descriptionKey: 'dashboard.one_month', granularity: 'daily', dataPoints: 30, range: 30 },
+  { key: '3M', label: '3M', descriptionKey: 'dashboard.three_months', granularity: 'weekly', dataPoints: 13, range: 90 },
+  { key: 'YTD', label: 'YTD', descriptionKey: 'dashboard.range_ytd', granularity: 'monthly', dataPoints: 12, range: 365 },
+  { key: '1Y', label: '1Y', descriptionKey: 'dashboard.range_1y', granularity: 'monthly', dataPoints: 12, range: 365 },
+  { key: '3Y', label: '3Y', descriptionKey: 'dashboard.range_3y', granularity: 'monthly', dataPoints: 36, range: 1095 },
+  { key: '5Y', label: '5Y', descriptionKey: 'dashboard.range_5y', granularity: 'monthly', dataPoints: 60, range: 1825 },
 ];
 
 // ============================================================================
@@ -105,13 +105,15 @@ const CATEGORY_COLORS = {
 // ============================================================================
 
 // Dark Mode Toggle Slider
-const DarkModeToggle = ({ isDark, onToggle }) => (
+const DarkModeToggle = ({ isDark, onToggle }) => {
+  const { t } = useTranslation();
+  return (
   <button
     onClick={onToggle}
     className={`relative w-14 h-7 rounded-full transition-colors duration-300 ${
       isDark ? 'bg-gray-700' : 'bg-gray-300'
     }`}
-    aria-label="Toggle dark mode"
+    aria-label={t('dashboard.toggle_dark_mode')}
   >
     <span className={`absolute top-0.5 w-6 h-6 rounded-full shadow-md flex items-center justify-center transition-all duration-300 ${
       isDark ? 'left-7 bg-yellow-400' : 'left-0.5 bg-white'
@@ -120,6 +122,7 @@ const DarkModeToggle = ({ isDark, onToggle }) => (
     </span>
   </button>
 );
+};
 
 // Mode Toggle (Basic/Advanced)
 const ModeToggle = ({ mode, onToggle, isDark }) => (
@@ -161,6 +164,7 @@ const MarketCard = ({ name, value, change, positive, isDark }) => (
 
 // Achievement Badge Component
 const AchievementBadge = ({ achievement, earned, isDark }) => {
+  const { t } = useTranslation();
   const Icon = ACHIEVEMENT_ICONS[achievement.id] || Award;
   return (
     <div 
@@ -173,7 +177,7 @@ const AchievementBadge = ({ achievement, earned, isDark }) => {
         background: `linear-gradient(135deg, ${achievement.color}20, ${achievement.color}10)`,
         border: `1px solid ${achievement.color}40`
       } : { border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}` }}
-      title={`${achievement.name}: ${achievement.description}\nSyarat: ${achievement.requirement}`}
+      title={`${achievement.name}: ${t(achievement.descriptionKey)}\n${t('dashboard.achievement_requirement')}: ${t(achievement.requirementKey)}`}
     >
       <div 
         className="w-12 h-12 rounded-full flex items-center justify-center mb-2"
@@ -193,6 +197,7 @@ const AchievementBadge = ({ achievement, earned, isDark }) => {
 
 // Category Breakdown Component
 const CategoryBreakdown = ({ categories, type, isDark, maxItems = 5 }) => {
+  const { t } = useTranslation();
   const entries = Object.entries(categories || {});
   const total = entries.reduce((sum, [, data]) => sum + (data.total || 0), 0);
   const sortedCategories = entries.sort((a, b) => b[1].total - a[1].total).slice(0, maxItems);
@@ -200,7 +205,7 @@ const CategoryBreakdown = ({ categories, type, isDark, maxItems = 5 }) => {
   return (
     <div className="space-y-2">
       <h4 className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-        {type === 'income' ? '💰 Rincian Pemasukan' : '💸 Rincian Pengeluaran'}
+        {type === 'income' ? '💰 ' + t('dashboard.income_detail') : '💸 ' + t('dashboard.expense_detail')}
       </h4>
       {sortedCategories.length > 0 ? (
         <>
@@ -241,7 +246,7 @@ const CategoryBreakdown = ({ categories, type, isDark, maxItems = 5 }) => {
           )}
         </>
       ) : (
-        <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Tidak ada data</p>
+        <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('common.noData')}</p>
       )}
     </div>
   );
@@ -570,7 +575,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         const expenseSeries = chart.addSeries(LineSeries, {
           color: CHART_COLORS.expense, 
           lineWidth: 2, 
-          title: 'Pengeluaran',
+          title: t('dashboard.expense'),
           crosshairMarkerVisible: true,
         });
 
@@ -581,7 +586,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           lineWidth: 2,
           topColor: savingsColor() + '40',
           bottomColor: savingsColor() + '05',
-          title: 'Tabungan',
+          title: t('dashboard.savings'),
           crosshairMarkerVisible: true,
         });
 
@@ -745,7 +750,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
 
   const getStatusText = (status) => {
     const texts = { 
-      safe: '💚 Aman', 
+      safe: '💚 ' + t('dashboard.status_safe'), 
       caution: '🟡 Hati-hati', 
       warning: '🟠 Peringatan', 
       danger: '🔴 Bahaya!', 
@@ -806,7 +811,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               <button
                 key={tf.key}
                 onClick={() => setTimeframe(tf.key)}
-                title={tf.description}
+                title={t(tf.descriptionKey)}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
                   timeframe === tf.key 
                     ? 'bg-primary-600 text-white shadow-md' 
@@ -841,14 +846,14 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             <div>
               <p className="font-bold text-lg">{getStatusText(spendingRatio.status)}</p>
               <p className="text-sm opacity-80">
-                {spendingRatio.status === 'danger' ? '⚠️ Anggaran Bulan Ini Jebol!' :
-                 spendingRatio.status === 'warning' ? 'Pengeluaran mendekati batas!' : 'Pengeluaran masih dalam batas aman'}
+                {spendingRatio.status === 'danger' ? '⚠️ ' + t('dashboard.budget_exceeded') :
+                 spendingRatio.status === 'warning' ? t('dashboard.spending_near_limit') : t('dashboard.spending_within_limit')}
               </p>
             </div>
           </div>
           <div className="text-right">
             <p className="text-3xl font-bold">{formatPercent(spendingRatio.percent, 0)}</p>
-            <p className="text-sm opacity-80">Rasio Pengeluaran</p>
+            <p className="text-sm opacity-80">{t('dashboard.spent_ratio')}</p>
           </div>
         </div>
         <div className="mt-4">
@@ -876,7 +881,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         {[
           {
-            label: 'Total Saldo',
+            label: t('dashboard.total_balance'),
             value: summary?.total_balance,
             icon: Wallet,
             gradient: 'from-green-50 to-green-100 dark:from-green-900/50 dark:to-green-800/40',
@@ -891,7 +896,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             iconClass: 'text-green-700 dark:text-green-300',
           },
           {
-            label: 'Pemasukan',
+            label: t('dashboard.total_income'),
             value: summary?.totalIncome || summary?.total_income,
             icon: TrendingUp,
             gradient: 'from-primary-50 to-primary-100 dark:from-primary-900/50 dark:to-primary-800/40',
@@ -901,7 +906,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             iconClass: 'text-primary-700 dark:text-primary-300',
           },
           {
-            label: 'Pengeluaran',
+            label: t('dashboard.total_expense'),
             value: summary?.totalExpense || summary?.total_expense,
             icon: TrendingDown,
             gradient: 'from-red-50 to-red-100 dark:from-red-900/50 dark:to-red-800/40',
@@ -911,7 +916,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             iconClass: 'text-red-700 dark:text-red-300',
           },
           {
-            label: 'Arus Kas',
+            label: t('dashboard.cash_flow'),
             value: summary?.netSavings || summary?.net_cash_flow,
             icon: Activity,
             gradient: 'from-purple-50 to-purple-100 dark:from-purple-900/50 dark:to-purple-800/40',
@@ -980,7 +985,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <PiggyBank className="w-5 h-5 text-pink-500" />
-                <h3 className={`font-semibold ${textPrimary}`}>Anggaran Bulan Ini</h3>
+                <h3 className={`font-semibold ${textPrimary}`}>{t('dashboard.budget_this_month')}</h3>
               </div>
               <Badge variant={safeToSpend.status === 'safe' ? 'success' : safeToSpend.status === 'warning' ? 'warning' : 'danger'}>
                 {safeToSpend.percent.toFixed(0)}% sisa
@@ -988,7 +993,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             </div>
             <div className="mb-4">
               <div className="flex justify-between text-sm mb-1">
-                <span className={textSecondary}>Terpakai</span>
+                <span className={textSecondary}>{t('dashboard.used')}</span>
                 <span className={`font-medium ${textPrimary}`}>{formatCurrency(summary?.total_spent || 0)}</span>
               </div>
               <SpendingProgressBar 
@@ -998,13 +1003,13 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                 isDark={isDark}
               />
               <div className="flex justify-between text-sm mt-1">
-                <span className={textSecondary}>Budget</span>
+                <span className={textSecondary}>{t('dashboard.manage_budget')}</span>
                 <span className={`font-medium ${textPrimary}`}>{formatCurrency(summary?.total_budget || 0)}</span>
               </div>
             </div>
             <div className="text-center">
               <p className={`text-3xl font-bold ${textPrimary}`}>{formatCurrency(safeToSpend.amount)}</p>
-              <p className={`text-sm ${textSecondary}`}>Sisa Budget</p>
+              <p className={`text-sm ${textSecondary}`}>{t('dashboard.budget_remaining')}</p>
             </div>
           </Card>
 
@@ -1013,25 +1018,25 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Shield className="w-5 h-5 text-green-500" />
-                <h3 className={`font-semibold ${textPrimary}`}>Safe-to-Spend</h3>
+                <h3 className={`font-semibold ${textPrimary}`}>{t('dashboard.safe_to_spend')}</h3>
               </div>
             </div>
             <div className="text-center mb-4">
               <p className={`text-4xl font-bold ${textPrimary}`}>{formatCurrency(safeToSpend.amount)}</p>
-              <p className={`text-sm ${textSecondary}`}>Batas pengeluaran harian aman</p>
+              <p className={`text-sm ${textSecondary}`}>{t('dashboard.safe_to_spend_caption')}</p>
             </div>
             <div className={`grid grid-cols-3 gap-2 text-center text-xs ${textSecondary}`}>
               <div>
                 <p className="font-bold text-lg text-green-500">{formatCurrency((safeToSpend.amount / 30) || 0)}</p>
-                <p>Per Hari</p>
+                <p>{t('dashboard.per_day')}</p>
               </div>
               <div>
                 <p className="font-bold text-lg text-primary-500">{formatCurrency((safeToSpend.amount / 4) || 0)}</p>
-                <p>Per Minggu</p>
+                <p>{t('dashboard.per_week')}</p>
               </div>
               <div>
                 <p className="font-bold text-lg text-purple-500">{formatCurrency(safeToSpend.amount)}</p>
-                <p>Total</p>
+                <p>{t('common.total')}</p>
               </div>
             </div>
           </Card>
@@ -1045,10 +1050,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
           <div className="flex items-center gap-2">
             <TrendingUp className={`w-5 h-5 ${isDark ? 'text-primary-400' : 'text-primary-600'}`} />
-            <h3 className={`font-semibold ${textPrimary}`}>Tren Arus Kas</h3>
-            <Badge variant="outline">{TIMEFRAMES.find(t => t.key === timeframe)?.description || '3 Bulan'}</Badge>
+            <h3 className={`font-semibold ${textPrimary}`}>{t('dashboard.cash_flow_trend')}</h3>
+            <Badge variant="outline">{(() => { const tf = TIMEFRAMES.find(x => x.key === timeframe); return tf ? t(tf.descriptionKey) : t('dashboard.three_months'); })()}</Badge>
             {displayMode === 'advanced' && (
-              <Badge variant="secondary">Advanced</Badge>
+              <Badge variant="secondary">{t('dashboard.advanced')}</Badge>
             )}
           </div>
           
@@ -1059,17 +1064,17 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                 <>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded-full bg-green-500" />
-                    <span className={textSecondary}>Pemasukan</span>
+                    <span className={textSecondary}>{t('dashboard.income')}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded-full bg-red-500" />
-                    <span className={textSecondary}>Pengeluaran</span>
+                    <span className={textSecondary}>{t('dashboard.expense')}</span>
                   </div>
                 </>
               )}
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-full bg-primary-400" />
-                <span className={textSecondary}>Tabungan</span>
+                <span className={textSecondary}>{t('dashboard.savings')}</span>
               </div>
             </div>
             
@@ -1092,19 +1097,19 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         
         {/* Account Filter */}
         <div className="mb-4 flex items-center gap-3 flex-wrap">
-          <label className={`text-sm ${textSecondary}`}>Akun:</label>
+          <label className={`text-sm ${textSecondary}`}>{t('dashboard.account')}:</label>
           <select
             value={selectedAccount}
             onChange={(e) => setSelectedAccount(e.target.value)}
             className={`px-3 py-1.5 text-sm rounded-lg border ${borderColor} ${bgCard} ${textPrimary}`}
           >
-            <option value="all">Semua Akun</option>
+            <option value="all">{t('dashboard.all_accounts')}</option>
             {accounts.map(acc => (
               <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance || 0)})</option>
             ))}
           </select>
           
-          <label className={`text-sm ${textSecondary}`}>Periode:</label>
+          <label className={`text-sm ${textSecondary}`}>{t('dashboard.period')}:</label>
           <span className={`text-sm font-medium ${textPrimary}`}>
             {cashFlowMeta?.startDate || '-'} s/d {cashFlowMeta?.endDate || '-'}
           </span>
@@ -1114,15 +1119,15 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         {chartLoading ? (
           <div className={`h-[350px] flex items-center justify-center ${textSecondary}`}>
             <Spinner size="lg" />
-            <span className="ml-2">Memuat chart...</span>
+            <span className="ml-2">{t('dashboard.loading_chart')}</span>
           </div>
         ) : cashFlowSeries.length > 0 ? (
           <div ref={cashFlowChartRef} className="w-full" style={{ height: displayMode === 'advanced' ? 450 : 350 }} />
         ) : (
           <div className={`h-[350px] flex flex-col items-center justify-center ${textSecondary}`}>
             <BarChart3 className="w-12 h-12 mb-2 opacity-50" />
-            <p>Tidak ada data untuk periode ini</p>
-            <p className="text-xs mt-1">Pilih timeframe lain atau tambahkan transaksi</p>
+            <p>{t('dashboard.no_data_this_period')}</p>
+            <p className="text-xs mt-1">{t('dashboard.no_data_this_period_hint')}</p>
           </div>
         )}
         
@@ -1130,27 +1135,27 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         {displayMode === 'advanced' && cashFlowMeta?.totalDataPoints > 0 && (
           <div className={`mt-4 pt-4 border-t ${borderColor} grid grid-cols-4 md:grid-cols-6 gap-4 text-sm text-center`}>
             <div>
-              <p className={textSecondary}>Periode</p>
+              <p className={textSecondary}>{t('dashboard.period')}</p>
               <p className={`font-semibold ${textPrimary}`}>{cashFlowMeta.periodDays || 0} hari</p>
             </div>
             <div>
-              <p className={textSecondary}>Granularity</p>
+              <p className={textSecondary}>{t('dashboard.granularity')}</p>
               <p className={`font-semibold capitalize ${textPrimary}`}>{cashFlowMeta.granularity}</p>
             </div>
             <div>
-              <p className={textSecondary}>Data Points</p>
+              <p className={textSecondary}>{t('dashboard.data_points')}</p>
               <p className={`font-semibold ${textPrimary}`}>{cashFlowMeta.totalDataPoints}</p>
             </div>
             <div>
-              <p className={textSecondary}>Avg Harian</p>
+              <p className={textSecondary}>{t('dashboard.avg_daily')}</p>
               <p className={`font-semibold ${textPrimary}`}>{formatCurrency(cashFlowMeta.averageDailyExpense || 0)}</p>
             </div>
             <div>
-              <p className={textSecondary}>Total Income</p>
+              <p className={textSecondary}>{t('dashboard.income')}</p>
               <p className="font-semibold text-green-500">{formatCurrency(cashFlowMeta.totalIncome || 0)}</p>
             </div>
             <div>
-              <p className={textSecondary}>Total Expense</p>
+              <p className={textSecondary}>{t('dashboard.expense')}</p>
               <p className="font-semibold text-red-500">{formatCurrency(cashFlowMeta.totalExpense || 0)}</p>
             </div>
           </div>
@@ -1164,7 +1169,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Category Breakdown */}
           <Card className={`p-4 ${bgCard} border ${borderColor}`}>
-            <h3 className={`font-semibold mb-4 ${textPrimary}`}>📊 Rincian Kategori</h3>
+            <h3 className={`font-semibold mb-4 ${textPrimary}`}>📊 {t('dashboard.category_detail')}</h3>
             <div className="grid grid-cols-2 gap-4">
               <CategoryBreakdown categories={categorySummary.income} type="income" isDark={isDark} maxItems={5} />
               <CategoryBreakdown categories={categorySummary.expense} type="expense" isDark={isDark} maxItems={5} />
@@ -1174,7 +1179,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           {/* Market Overview */}
           <Card className={`p-4 ${bgCard} border ${borderColor}`}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className={`font-semibold ${textPrimary}`}>📈 Overview Pasar</h3>
+              <h3 className={`font-semibold ${textPrimary}`}>📈 {t('dashboard.market_overview')}</h3>
               {realtimeUpdate && (
                 <span className="flex items-center gap-1 text-xs text-green-500">
                   <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -1215,10 +1220,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Award className="w-5 h-5 text-purple-500" />
-            <h3 className={`font-semibold ${textPrimary}`}>🏆 Pencapaian</h3>
+            <h3 className={`font-semibold ${textPrimary}`}>🏆 {t('dashboard.achievements')}</h3>
             <Badge variant="secondary">{achievements.length}/{ACHIEVEMENTS.length}</Badge>
           </div>
-          <p className={`text-xs ${textSecondary}`}>{achievements.length} dari {ACHIEVEMENTS.length} achievement tercapai</p>
+          <p className={`text-xs ${textSecondary}`}>{achievements.length} / {ACHIEVEMENTS.length} {t('dashboard.achievements_reached')}</p>
         </div>
         
         {/* Achievement Progress Bar */}
@@ -1253,7 +1258,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-orange-500" />
-                  <h3 className={`font-semibold ${textPrimary}`}>💳 Hutang</h3>
+                  <h3 className={`font-semibold ${textPrimary}`}>💳 {t('dashboard.debts')}</h3>
                 </div>
                 <Badge variant="warning">{debts.length} hutang</Badge>
               </div>
@@ -1277,7 +1282,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <RefreshCw className="w-5 h-5 text-primary-500" />
-                  <h3 className={`font-semibold ${textPrimary}`}>🔄 Transaksi Berulang</h3>
+                  <h3 className={`font-semibold ${textPrimary}`}>🔄 {t('dashboard.recurring')}</h3>
                 </div>
                 <Badge variant="info">{recurringTransactions.length}</Badge>
               </div>
@@ -1306,9 +1311,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         {/* Recent Transactions */}
         <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`font-semibold ${textPrimary}`}>Transaksi Terbaru</h3>
+            <h3 className={`font-semibold ${textPrimary}`}>{t('dashboard.recent_transactions')}</h3>
             <Button variant="ghost" size="sm" onClick={() => window.location.href = '/transactions'}>
-              Lihat Semua →
+              {t('dashboard.view_all')} →
             </Button>
           </div>
           {transactions.length > 0 ? (
@@ -1323,8 +1328,8 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                       }
                     </div>
                     <div>
-                      <p className={`font-medium ${textPrimary}`}>{tx.description || 'Transaksi'}</p>
-                      <p className={`text-sm ${textSecondary}`}>{tx.category_name || tx.category || 'Lainnya'}</p>
+                      <p className={`font-medium ${textPrimary}`}>{tx.description || t('dashboard.transaction')}</p>
+                      <p className={`text-sm ${textSecondary}`}>{tx.category_name || tx.category || t('common.other')}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -1339,9 +1344,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           ) : (
             <div className={`text-center py-8 ${textSecondary}`}>
               <Wallet className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>Belum ada transaksi</p>
+              <p>{t('dashboard.no_transactions')}</p>
               <Button variant="outline" size="sm" className="mt-2" onClick={onAddTransaction}>
-                Tambah Transaksi
+                {t('dashboard.add_transaction')}
               </Button>
             </div>
           )}
@@ -1350,7 +1355,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         {/* Feed Review */}
         <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`font-semibold ${textPrimary}`}>📝 Review Transaksi</h3>
+            <h3 className={`font-semibold ${textPrimary}`}>📝 {t('dashboard.feed_review')}</h3>
             {feedStats?.pending_count > 0 && <Badge variant="warning">{feedStats.pending_count} tertunda</Badge>}
           </div>
           {feedStats?.pending_count > 0 ? (
@@ -1359,33 +1364,33 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                 <div className="flex items-center gap-3">
                   <Bell className="w-5 h-5 text-yellow-600" />
                   <div>
-                    <p className={`font-medium ${isDark ? 'text-yellow-200' : 'text-yellow-800'}`}>{feedStats.pending_count} transaksi menunggu review</p>
+                    <p className={`font-medium ${isDark ? 'text-yellow-200' : 'text-yellow-800'}`}>{feedStats.pending_count} {t('dashboard.pending_review_count')}</p>
                   </div>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => window.location.href = '/feed'} className="w-full">
-                Tinjau Sekarang
+                {t('dashboard.review_now')}
               </Button>
             </div>
           ) : (
             <div className={`text-center py-8 ${textSecondary}`}>
               <CheckCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>Tidak ada transaksi tertunda</p>
+              <p>{t('dashboard.no_pending')}</p>
             </div>
           )}
           {feedStats && (
             <div className={`mt-4 pt-4 border-t ${borderColor} grid grid-cols-3 gap-2 text-center`}>
               <div>
                 <p className="text-2xl font-bold text-green-600">{feedStats.approved_today || 0}</p>
-                <p className={`text-xs ${textSecondary}`}>Disetujui</p>
+                <p className={`text-xs ${textSecondary}`}>{t('dashboard.approved')}</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-red-600">{feedStats.rejected_today || 0}</p>
-                <p className={`text-xs ${textSecondary}`}>Ditolak</p>
+                <p className={`text-xs ${textSecondary}`}>{t('dashboard.rejected')}</p>
               </div>
               <div>
                 <p className={`text-2xl font-bold ${textPrimary}`}>{feedStats.pending_count || 0}</p>
-                <p className={`text-xs ${textSecondary}`}>Tertunda</p>
+                <p className={`text-xs ${textSecondary}`}>{t('dashboard.pending')}</p>
               </div>
             </div>
           )}
@@ -1400,10 +1405,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-primary-500" />
-              <h3 className={`font-semibold ${textPrimary}`}>🎯 Target Keuangan</h3>
+              <h3 className={`font-semibold ${textPrimary}`}>🎯 {t('dashboard.financial_goals')}</h3>
             </div>
             <Button variant="ghost" size="sm" onClick={() => window.location.href = '/goals'}>
-              Lihat Semua →
+              {t('dashboard.view_all')} →
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1414,7 +1419,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className={`font-medium ${textPrimary}`}>{goal.name}</p>
-                      <p className={`text-xs ${textSecondary}`}>{goal.category || 'Tabungan'}</p>
+                      <p className={`text-xs ${textSecondary}`}>{goal.category || t('dashboard.savings')}</p>
                     </div>
                     {goal.is_completed && <Badge variant="success">✓</Badge>}
                   </div>

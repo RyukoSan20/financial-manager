@@ -4,8 +4,10 @@ import { Plus, CreditCard, RefreshCw, Trash2, Edit2, Calendar, DollarSign, Alert
 import { formatCurrency, formatDate } from '../utils/format';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
+import { useTranslation } from '../i18n';
 
 export const Debts = () => {
+  const { t } = useTranslation();
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,7 +30,7 @@ export const Debts = () => {
       setDebts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to fetch debts:', err);
-      setError('Gagal mengambil data utang: ' + (err.message || 'Unknown error'));
+      setError(t('debts.load_error').replace('%s', err.message || 'Unknown error'));
       setDebts([]);
     } finally {
       setLoading(false);
@@ -57,7 +59,7 @@ export const Debts = () => {
       setRefreshKey(k => k + 1); // Force re-render
     } catch (err) {
       console.error('Failed to save debt:', err);
-      alert('Gagal menyimpan utang: ' + (err.message || 'Unknown error'));
+      alert(t('debts.save_error').replace('%s', err.message || 'Unknown error'));
     }
   };
 
@@ -76,21 +78,21 @@ export const Debts = () => {
       // Also trigger global refresh
       window.dispatchEvent(new Event('transactionUpdated'));
       
-      alert('Pembayaran berhasil dicatat!');
+      alert(t('debts.payment_success'));
     } catch (err) {
       console.error('Payment failed:', err);
-      alert('Gagal mencatat pembayaran: ' + (err.message || 'Unknown error'));
+      alert(t('debts.payment_error').replace('%s', err.message || 'Unknown error'));
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Hapus utang ini?')) return;
+    if (!confirm(t('debts.delete_confirm'))) return;
     try {
       await api.debts.delete(id);
       setRefreshKey(k => k + 1); // Force re-render
     } catch (err) {
       console.error(err);
-      alert('Gagal menghapus: ' + (err.message || 'Unknown error'));
+      alert(t('debts.delete_error').replace('%s', err.message || 'Unknown error'));
     }
   };
 
@@ -110,7 +112,7 @@ export const Debts = () => {
           <p className="text-gray-600 mb-4">{error}</p>
           <Button onClick={fetchData}>
             <RefreshCw className="w-4 h-4 mr-2" />
-            Coba Lagi
+            {t('debts.retry')}
           </Button>
         </Card>
       </div>
@@ -130,17 +132,17 @@ export const Debts = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Utang & Pinjaman</h1>
-          <p className="text-gray-500">Kelola semua utang dan pembayaran</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('debts.title')}</h1>
+          <p className="text-gray-500">{t('debts.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={fetchData} variant="outline">
             <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
+            {t('debts.refresh')}
           </Button>
           <Button onClick={() => { setEditingDebt(null); setShowModal(true); }}>
             <Plus className="w-4 h-4 mr-2" />
-            Tambah Utang
+            {t('debts.add')}
           </Button>
         </div>
       </div>
@@ -153,7 +155,7 @@ export const Debts = () => {
               <CreditCard className="w-6 h-6 text-red-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Sisa Utang</p>
+              <p className="text-sm text-gray-500">{t('debts.total_remaining')}</p>
               <p className="text-xl font-bold text-red-600">{formatCurrency(totalDebt)}</p>
             </div>
           </div>
@@ -165,7 +167,7 @@ export const Debts = () => {
               <DollarSign className="w-6 h-6 text-primary-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Pokok</p>
+              <p className="text-sm text-gray-500">{t('debts.total_principal')}</p>
               <p className="text-xl font-bold text-primary-600">{formatCurrency(totalPrincipal)}</p>
             </div>
           </div>
@@ -177,7 +179,7 @@ export const Debts = () => {
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Terbayar</p>
+              <p className="text-sm text-gray-500">{t('debts.total_paid')}</p>
               <p className="text-xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
             </div>
           </div>
@@ -189,7 +191,7 @@ export const Debts = () => {
               <Calendar className="w-6 h-6 text-yellow-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Angsuran/Bulan</p>
+              <p className="text-sm text-gray-500">{t('debts.monthly_payment')}</p>
               <p className="text-xl font-bold text-yellow-600">{formatCurrency(totalMonthly)}</p>
             </div>
           </div>
@@ -198,18 +200,18 @@ export const Debts = () => {
 
       {/* Status Badges */}
       <div className="flex gap-4">
-        <Badge variant="danger">{activeDebts} Aktif</Badge>
-        <Badge variant="success">{paidOffDebts} Lunas</Badge>
+        <Badge variant="danger">{t('debts.active_count').replace('%s', activeDebts)}</Badge>
+        <Badge variant="success">{t('debts.paid_off_count').replace('%s', paidOffDebts)}</Badge>
       </div>
 
       {/* Debt List */}
       {debts.length === 0 ? (
         <Card className="text-center py-12">
           <CreditCard className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500 mb-4">Belum ada data utang</p>
+          <p className="text-gray-500 mb-4">{t('debts.empty')}</p>
           <Button onClick={() => { setEditingDebt(null); setShowModal(true); }}>
             <Plus className="w-4 h-4 mr-2" />
-            Tambah Utang Pertama
+            {t('debts.add_first')}
           </Button>
         </Card>
       ) : (
@@ -221,33 +223,33 @@ export const Debts = () => {
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className="text-lg font-semibold">{debt.name}</h3>
                     <Badge variant={debt.status === 'paid_off' ? 'success' : debt.status === 'upcoming' ? 'warning' : 'default'}>
-                      {debt.status === 'paid_off' ? 'LUNAS' : debt.status === 'upcoming' ? 'Jatuh Tempo' : 'Aktif'}
+                      {debt.status === 'paid_off' ? t('debts.status_paid_off') : debt.status === 'upcoming' ? t('debts.status_due') : t('debts.status_active')}
                     </Badge>
                   </div>
                   
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
-                      <p className="text-gray-500">Pokok</p>
+                      <p className="text-gray-500">{t('debts.principal')}</p>
                       <p className="font-medium">{formatCurrency(debt.principal)}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Sisa</p>
+                      <p className="text-gray-500">{t('debts.remaining')}</p>
                       <p className="font-medium text-red-600">{formatCurrency(debt.current_balance)}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Terbayar</p>
+                      <p className="text-gray-500">{t('debts.paid')}</p>
                       <p className="font-medium text-green-600">{formatCurrency(debt.total_paid || 0)}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Angsuran</p>
-                      <p className="font-medium">{formatCurrency(debt.monthly_payment)}/bln</p>
+                      <p className="text-gray-500">{t('debts.installment')}</p>
+                      <p className="font-medium">{formatCurrency(debt.monthly_payment)}{t('debts.per_month_suffix')}</p>
                     </div>
                   </div>
 
                   {/* Progress Bar */}
                   <div className="mt-4">
                     <div className="flex justify-between text-sm mb-1">
-                      <span>Progres Pelunasan</span>
+                      <span>{t('debts.repayment_progress')}</span>
                       <span className="font-medium">{debt.progress_percent?.toFixed(1) || 0}%</span>
                     </div>
                     <ProgressBar value={debt.progress_percent || 0} />
@@ -256,13 +258,13 @@ export const Debts = () => {
                   {/* Details */}
                   <div className="grid grid-cols-3 gap-4 mt-4 text-sm text-gray-500">
                     <div>
-                      <p>Bunga: {Number(debt.interest_rate * 100 || 0).toFixed(2).replace(/\.00$/, '')}%</p>
+                      <p>{t('debts.interest').replace('%s', Number(debt.interest_rate * 100 || 0).toFixed(2).replace(/\.00$/, ''))}</p>
                     </div>
                     <div>
-                      <p>Sisa: {debt.remaining_months || 0} bulan</p>
+                      <p>{t('debts.remaining_months').replace('%s', debt.remaining_months || 0)}</p>
                     </div>
                     <div>
-                      <p>Jatuh Tempo: {debt.next_payment_date ? formatDate(debt.next_payment_date) : '-'}</p>
+                      <p>{t('debts.due_date').replace('%s', debt.next_payment_date ? formatDate(debt.next_payment_date) : '-')}</p>
                     </div>
                   </div>
 
@@ -270,7 +272,7 @@ export const Debts = () => {
                     <BreakdownViewer
                       parentType="debt"
                       parentId={debt.id}
-                      title="Rincian"
+                      title={t('debts.breakdown_title')}
                       compact
                     />
                   </div>
@@ -290,7 +292,7 @@ export const Debts = () => {
                     variant="outline"
                     onClick={() => { setSelectedDebt(debt); setShowPaymentModal(true); fetchAmortization(debt.id); }}
                   >
-                    Bayar
+                    {t('debts.pay')}
                   </Button>
                   <Button 
                     size="sm" 
@@ -329,6 +331,7 @@ export const Debts = () => {
 
 // Add/Edit Debt Modal Component
 function DebtModal({ debt, onClose, onSubmit }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     name: debt?.name || '',
     description: debt?.description || '',
@@ -355,18 +358,18 @@ function DebtModal({ debt, onClose, onSubmit }) {
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={debt ? 'Edit Utang' : 'Tambah Utang'}>
+    <Modal isOpen={true} onClose={onClose} title={debt ? t('debts.edit') : t('debts.add')}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Nama Utang"
+          label={t('debts.name')}
           value={form.name}
           onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
           required
-          placeholder="Contoh: Pinjaman BCA KKB"
+          placeholder={t('debts.name_placeholder')}
         />
         
         <Input
-          label="Jumlah Pokok"
+          label={t('debts.principal_amount')}
           type="number"
           value={form.principal}
           onChange={(e) => setForm(f => ({ ...f, principal: e.target.value }))}
@@ -375,7 +378,7 @@ function DebtModal({ debt, onClose, onSubmit }) {
         />
         
         <Input
-          label="Bunga (% per tahun)"
+          label={t('debts.interest_rate_label')}
           type="number"
           value={form.interest_rate}
           onChange={(e) => setForm(f => ({ ...f, interest_rate: e.target.value }))}
@@ -383,7 +386,7 @@ function DebtModal({ debt, onClose, onSubmit }) {
         />
         
         <Input
-          label="Tenor (bulan)"
+          label={t('debts.tenor')}
           type="number"
           value={form.tenor_months}
           onChange={(e) => setForm(f => ({ ...f, tenor_months: e.target.value }))}
@@ -391,22 +394,22 @@ function DebtModal({ debt, onClose, onSubmit }) {
         />
         
         <Input
-          label="Tanggal Mulai"
+          label={t('debts.start_date')}
           type="date"
           value={form.start_date}
           onChange={(e) => setForm(f => ({ ...f, start_date: e.target.value }))}
         />
         
         <Input
-          label="Nama Pemberi Pinjaman"
+          label={t('debts.lender_name')}
           value={form.lender_name}
           onChange={(e) => setForm(f => ({ ...f, lender_name: e.target.value }))}
-          placeholder="Contoh: Bank BCA"
+          placeholder={t('debts.lender_placeholder')}
         />
         
         <div className="flex gap-2 justify-end pt-4">
-          <Button type="button" variant="outline" onClick={onClose}>Batal</Button>
-          <Button type="submit">{debt ? 'Simpan' : 'Tambah'}</Button>
+          <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit">{debt ? t('common.save') : t('debts.add')}</Button>
         </div>
       </form>
     </Modal>
@@ -415,6 +418,7 @@ function DebtModal({ debt, onClose, onSubmit }) {
 
 // Payment Modal Component
 function PaymentModal({ debt, onClose, onSubmit }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     amount: debt.monthly_payment?.toString() || debt.current_balance?.toString() || '',
     payment_date: new Date().toISOString().split('T')[0],
@@ -431,23 +435,23 @@ function PaymentModal({ debt, onClose, onSubmit }) {
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={`Bayar Utang: ${debt.name}`}>
+    <Modal isOpen={true} onClose={onClose} title={t('debts.pay_title').replace('%s', debt.name)}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-gray-500">Sisa Utang</p>
+              <p className="text-gray-500">{t('debts.remaining_debt')}</p>
               <p className="font-bold text-red-600">{formatCurrency(debt.current_balance)}</p>
             </div>
             <div>
-              <p className="text-gray-500">Angsuran/Bulan</p>
+              <p className="text-gray-500">{t('debts.monthly_payment')}</p>
               <p className="font-bold">{formatCurrency(debt.monthly_payment)}</p>
             </div>
           </div>
         </div>
         
         <Input
-          label="Jumlah Pembayaran"
+          label={t('debts.payment_amount')}
           type="number"
           value={form.amount}
           onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))}
@@ -456,26 +460,26 @@ function PaymentModal({ debt, onClose, onSubmit }) {
         />
         
         <Input
-          label="Tanggal Pembayaran"
+          label={t('debts.payment_date')}
           type="date"
           value={form.payment_date}
           onChange={(e) => setForm(f => ({ ...f, payment_date: e.target.value }))}
         />
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('debts.notes')}</label>
           <textarea
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             value={form.notes}
             onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
             rows={2}
-            placeholder="Opsional"
+            placeholder={t('debts.optional')}
           />
         </div>
         
         <div className="flex gap-2 justify-end pt-4">
-          <Button type="button" variant="outline" onClick={onClose}>Batal</Button>
-          <Button type="submit" variant="success">Bayar Sekarang</Button>
+          <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit" variant="success">{t('debts.pay_now')}</Button>
         </div>
       </form>
     </Modal>

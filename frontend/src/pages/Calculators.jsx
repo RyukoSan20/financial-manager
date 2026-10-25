@@ -5,26 +5,28 @@ import {
   Target, PiggyBank, CreditCard, ArrowRightLeft, RefreshCw
 } from 'lucide-react';
 import { formatCurrency } from '../utils/format';
+import { useTranslation } from '../i18n';
 
 export const Calculators = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('discount');
   
   const tabs = [
-    { id: 'discount', label: 'Discount', icon: Percent },
-    { id: 'tax', label: 'Tax & Tip', icon: DollarSign },
-    { id: 'loan', label: 'Loan', icon: CreditCard },
-    { id: 'compound', label: 'Interest', icon: TrendingUp },
-    { id: 'savings', label: 'Savings Goal', icon: Target },
-    { id: 'income', label: 'Income Converter', icon: ArrowRightLeft },
-    { id: 'budget', label: 'Budget', icon: PiggyBank },
+    { id: 'discount', label: t('calculators.tab_discount'), icon: Percent },
+    { id: 'tax', label: t('calculators.tab_tax'), icon: DollarSign },
+    { id: 'loan', label: t('calculators.tab_loan'), icon: CreditCard },
+    { id: 'compound', label: t('calculators.tab_interest'), icon: TrendingUp },
+    { id: 'savings', label: t('calculators.tab_savings'), icon: Target },
+    { id: 'income', label: t('calculators.tab_income'), icon: ArrowRightLeft },
+    { id: 'budget', label: t('calculators.tab_budget'), icon: PiggyBank },
   ];
 
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Financial Calculators</h1>
-        <p className="text-gray-500 mt-1">Quick calculations for everyday finances</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('calculators.title')}</h1>
+        <p className="text-gray-500 mt-1">{t('calculators.subtitle')}</p>
       </div>
 
       {/* Tabs */}
@@ -62,6 +64,7 @@ export const Calculators = () => {
 
 // Discount Calculator
 const DiscountCalculator = () => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ price: '', discount: '' });
   const [result, setResult] = useState(null);
 
@@ -81,17 +84,17 @@ const DiscountCalculator = () => {
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <Card>
-        <h3 className="font-semibold text-gray-900 mb-4">Calculate Discount</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">{t('calculators.discount_title')}</h3>
         <div className="space-y-4">
           <Input
-            label="Original Price"
+            label={t('calculators.discount_original_price')}
             type="number"
             placeholder="100000"
             value={form.price}
             onChange={(e) => setForm(f => ({ ...f, price: e.target.value }))}
           />
           <Input
-            label="Discount (%)"
+            label={t('calculators.discount_percent')}
             type="number"
             placeholder="20"
             value={form.discount}
@@ -104,17 +107,17 @@ const DiscountCalculator = () => {
         {result ? (
           <div className="space-y-4">
             <div className="text-center p-6 bg-gray-50 rounded-xl">
-              <p className="text-sm text-gray-500">You Save</p>
+              <p className="text-sm text-gray-500">{t('calculators.discount_you_save')}</p>
               <p className="text-3xl font-bold text-success-600">{formatCurrency(result.savings)}</p>
             </div>
             <div className="text-center p-6 bg-primary-50 rounded-xl">
-              <p className="text-sm text-gray-500">Final Price</p>
+              <p className="text-sm text-gray-500">{t('calculators.discount_final_price')}</p>
               <p className="text-4xl font-bold text-primary-600">{formatCurrency(result.final)}</p>
             </div>
           </div>
         ) : (
           <div className="text-center text-gray-500 py-12">
-            Enter values to calculate
+            {t('calculators.enter_values')}
           </div>
         )}
       </Card>
@@ -124,6 +127,7 @@ const DiscountCalculator = () => {
 
 // Tax & Tip Calculator
 const TaxCalculator = () => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ subtotal: '', taxRate: '11', tipPercent: '10' });
   const [result, setResult] = useState(null);
 
@@ -145,24 +149,24 @@ const TaxCalculator = () => {
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <Card>
-        <h3 className="font-semibold text-gray-900 mb-4">Calculate Tax & Tip</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">{t('calculators.tax_title')}</h3>
         <div className="space-y-4">
           <Input
-            label="Subtotal"
+            label={t('calculators.tax_subtotal')}
             type="number"
             placeholder="100000"
             value={form.subtotal}
             onChange={(e) => setForm(f => ({ ...f, subtotal: e.target.value }))}
           />
           <Input
-            label={`Tax Rate (%)`}
+            label={t('calculators.tax_rate')}
             type="number"
             placeholder="11"
             value={form.taxRate}
             onChange={(e) => setForm(f => ({ ...f, taxRate: e.target.value }))}
           />
           <Input
-            label="Tip (%)"
+            label={t('calculators.tax_tip')}
             type="number"
             placeholder="10"
             value={form.tipPercent}
@@ -175,25 +179,25 @@ const TaxCalculator = () => {
         {result ? (
           <div className="space-y-3">
             <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Subtotal</span>
+              <span className="text-gray-600">{t('calculators.tax_subtotal')}</span>
               <span className="font-medium">{formatCurrency(result.subtotal)}</span>
             </div>
             <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Tax ({form.taxRate}%)</span>
+              <span className="text-gray-600">{t('calculators.tax_line').replace('%s', form.taxRate)}</span>
               <span className="font-medium">{formatCurrency(result.tax)}</span>
             </div>
             <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Tip ({form.tipPercent}%)</span>
+              <span className="text-gray-600">{t('calculators.tip_line').replace('%s', form.tipPercent)}</span>
               <span className="font-medium">{formatCurrency(result.tip)}</span>
             </div>
             <div className="flex justify-between py-3 bg-primary-50 -mx-4 px-4 rounded-lg">
-              <span className="font-semibold text-primary-700">Total</span>
+              <span className="font-semibold text-primary-700">{t('calculators.total')}</span>
               <span className="font-bold text-xl text-primary-700">{formatCurrency(result.total)}</span>
             </div>
           </div>
         ) : (
           <div className="text-center text-gray-500 py-12">
-            Enter values to calculate
+            {t('calculators.enter_values')}
           </div>
         )}
       </Card>
@@ -203,6 +207,7 @@ const TaxCalculator = () => {
 
 // Loan Calculator
 const LoanCalculator = () => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ principal: '10000000', rate: '12', years: '2' });
   const [result, setResult] = useState(null);
 
@@ -226,17 +231,17 @@ const LoanCalculator = () => {
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <Card>
-        <h3 className="font-semibold text-gray-900 mb-4">Loan Calculator</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">{t('calculators.loan_title')}</h3>
         <div className="space-y-4">
           <Input
-            label="Loan Amount"
+            label={t('calculators.loan_amount')}
             type="number"
             placeholder="10000000"
             value={form.principal}
             onChange={(e) => setForm(f => ({ ...f, principal: e.target.value }))}
           />
           <Input
-            label="Interest Rate (% per year)"
+            label={t('calculators.loan_rate')}
             type="number"
             step="0.1"
             placeholder="12"
@@ -244,7 +249,7 @@ const LoanCalculator = () => {
             onChange={(e) => setForm(f => ({ ...f, rate: e.target.value }))}
           />
           <Input
-            label="Loan Term (years)"
+            label={t('calculators.loan_term')}
             type="number"
             placeholder="2"
             value={form.years}
@@ -257,23 +262,23 @@ const LoanCalculator = () => {
         {result ? (
           <div className="space-y-4">
             <div className="text-center p-6 bg-primary-50 rounded-xl">
-              <p className="text-sm text-gray-500">Monthly Payment</p>
+              <p className="text-sm text-gray-500">{t('calculators.loan_monthly_payment')}</p>
               <p className="text-4xl font-bold text-primary-600">{formatCurrency(result.monthlyPayment)}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-gray-50 rounded-lg text-center">
-                <p className="text-sm text-gray-500">Total Payment</p>
+                <p className="text-sm text-gray-500">{t('calculators.loan_total_payment')}</p>
                 <p className="text-lg font-bold text-gray-900">{formatCurrency(result.totalPayment)}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-lg text-center">
-                <p className="text-sm text-gray-500">Total Interest</p>
+                <p className="text-sm text-gray-500">{t('calculators.loan_total_interest')}</p>
                 <p className="text-lg font-bold text-warning-600">{formatCurrency(result.totalInterest)}</p>
               </div>
             </div>
           </div>
         ) : (
           <div className="text-center text-gray-500 py-12">
-            Enter values to calculate
+            {t('calculators.enter_values')}
           </div>
         )}
       </Card>
@@ -283,6 +288,7 @@ const LoanCalculator = () => {
 
 // Compound Interest Calculator
 const CompoundCalculator = () => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ principal: '10000000', rate: '8', years: '5', compounds: '12' });
   const [result, setResult] = useState(null);
 
@@ -304,17 +310,17 @@ const CompoundCalculator = () => {
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <Card>
-        <h3 className="font-semibold text-gray-900 mb-4">Compound Interest</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">{t('calculators.compound_title')}</h3>
         <div className="space-y-4">
           <Input
-            label="Initial Investment"
+            label={t('calculators.compound_initial')}
             type="number"
             placeholder="10000000"
             value={form.principal}
             onChange={(e) => setForm(f => ({ ...f, principal: e.target.value }))}
           />
           <Input
-            label="Annual Interest Rate (%)"
+            label={t('calculators.compound_rate')}
             type="number"
             step="0.1"
             placeholder="8"
@@ -322,19 +328,19 @@ const CompoundCalculator = () => {
             onChange={(e) => setForm(f => ({ ...f, rate: e.target.value }))}
           />
           <Input
-            label="Time Period (years)"
+            label={t('calculators.compound_period')}
             type="number"
             placeholder="5"
             value={form.years}
             onChange={(e) => setForm(f => ({ ...f, years: e.target.value }))}
           />
           <Select
-            label="Compounding Frequency"
+            label={t('calculators.compound_frequency')}
             options={[
-              { value: '1', label: 'Annually' },
-              { value: '4', label: 'Quarterly' },
-              { value: '12', label: 'Monthly' },
-              { value: '365', label: 'Daily' },
+              { value: '1', label: t('calculators.compound_annually') },
+              { value: '4', label: t('calculators.compound_quarterly') },
+              { value: '12', label: t('calculators.compound_monthly') },
+              { value: '365', label: t('calculators.compound_daily') },
             ]}
             value={form.compounds}
             onChange={(e) => setForm(f => ({ ...f, compounds: e.target.value }))}
@@ -346,21 +352,21 @@ const CompoundCalculator = () => {
         {result ? (
           <div className="space-y-4">
             <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-500">Initial Investment</p>
+              <p className="text-sm text-gray-500">{t('calculators.compound_initial')}</p>
               <p className="text-lg font-bold text-gray-900">{formatCurrency(result.P)}</p>
             </div>
             <div className="text-center p-6 bg-success-50 rounded-xl">
-              <p className="text-sm text-gray-500">Future Value</p>
+              <p className="text-sm text-gray-500">{t('calculators.compound_future_value')}</p>
               <p className="text-4xl font-bold text-success-600">{formatCurrency(result.A)}</p>
             </div>
             <div className="text-center p-4 bg-primary-50 rounded-lg">
-              <p className="text-sm text-gray-500">Interest Earned</p>
+              <p className="text-sm text-gray-500">{t('calculators.compound_interest_earned')}</p>
               <p className="text-xl font-bold text-primary-600">{formatCurrency(result.interest)}</p>
             </div>
           </div>
         ) : (
           <div className="text-center text-gray-500 py-12">
-            Enter values to calculate
+            {t('calculators.enter_values')}
           </div>
         )}
       </Card>
@@ -370,6 +376,7 @@ const CompoundCalculator = () => {
 
 // Savings Goal Calculator
 const SavingsGoalCalculator = () => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ goal: '15000000', current: '5000000', monthly: '1000000', rate: '6' });
   const [result, setResult] = useState(null);
 
@@ -404,31 +411,31 @@ const SavingsGoalCalculator = () => {
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <Card>
-        <h3 className="font-semibold text-gray-900 mb-4">Savings Goal</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">{t('calculators.savings_title')}</h3>
         <div className="space-y-4">
           <Input
-            label="Savings Goal"
+            label={t('calculators.savings_goal')}
             type="number"
             placeholder="15000000"
             value={form.goal}
             onChange={(e) => setForm(f => ({ ...f, goal: e.target.value }))}
           />
           <Input
-            label="Current Savings"
+            label={t('calculators.savings_current')}
             type="number"
             placeholder="5000000"
             value={form.current}
             onChange={(e) => setForm(f => ({ ...f, current: e.target.value }))}
           />
           <Input
-            label="Monthly Savings"
+            label={t('calculators.savings_monthly')}
             type="number"
             placeholder="1000000"
             value={form.monthly}
             onChange={(e) => setForm(f => ({ ...f, monthly: e.target.value }))}
           />
           <Input
-            label="Expected Return (% per year)"
+            label={t('calculators.savings_expected_return')}
             type="number"
             step="0.1"
             placeholder="6"
@@ -442,24 +449,25 @@ const SavingsGoalCalculator = () => {
         {result ? (
           <div className="space-y-4">
             <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-500">Remaining Amount</p>
+              <p className="text-sm text-gray-500">{t('calculators.savings_remaining')}</p>
               <p className="text-2xl font-bold text-danger-600">{formatCurrency(result.remaining)}</p>
             </div>
             <div className="text-center p-6 bg-primary-50 rounded-xl">
-              <p className="text-sm text-gray-500">Time to Reach Goal</p>
+              <p className="text-sm text-gray-500">{t('calculators.savings_time_to_goal')}</p>
               <p className="text-3xl font-bold text-primary-600">
-                {result.years > 0 && `${result.years} years `}
-                {result.leftoverMonths > 0 && `${result.leftoverMonths} months`}
+                {t('calculators.savings_duration')
+                  .replace('%s', result.years)
+                  .replace('%s', result.leftoverMonths)}
               </p>
             </div>
             <div className="text-center p-4 bg-success-50 rounded-lg">
-              <p className="text-sm text-gray-500">Target Date</p>
+              <p className="text-sm text-gray-500">{t('calculators.savings_target_date')}</p>
               <p className="text-lg font-bold text-success-600">{result.targetDate}</p>
             </div>
           </div>
         ) : (
           <div className="text-center text-gray-500 py-12">
-            Enter values to calculate
+            {t('calculators.enter_values')}
           </div>
         )}
       </Card>
@@ -469,6 +477,7 @@ const SavingsGoalCalculator = () => {
 
 // Income Converter
 const IncomeConverter = () => {
+  const { t } = useTranslation();
   const [annual, setAnnual] = useState('120000000');
   const [result, setResult] = useState(null);
 
@@ -489,10 +498,10 @@ const IncomeConverter = () => {
 
   return (
     <Card>
-      <h3 className="font-semibold text-gray-900 mb-4">Income Converter</h3>
+      <h3 className="font-semibold text-gray-900 mb-4">{t('calculators.income_title')}</h3>
       <div className="space-y-6">
         <Input
-          label="Annual Income"
+          label={t('calculators.income_annual')}
           type="number"
           placeholder="120000000"
           value={annual}
@@ -502,10 +511,10 @@ const IncomeConverter = () => {
         {result && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Yearly', value: result.yearly },
-              { label: 'Monthly', value: result.monthly },
-              { label: 'Weekly', value: result.weekly },
-              { label: 'Daily', value: result.daily },
+              { label: t('calculators.income_yearly'), value: result.yearly },
+              { label: t('calculators.income_monthly'), value: result.monthly },
+              { label: t('calculators.income_weekly'), value: result.weekly },
+              { label: t('calculators.income_daily'), value: result.daily },
             ].map(item => (
               <div key={item.label} className="p-4 bg-gray-50 rounded-lg text-center">
                 <p className="text-sm text-gray-500 mb-1">{item.label}</p>
@@ -521,6 +530,7 @@ const IncomeConverter = () => {
 
 // Budget Calculator
 const BudgetCalculator = () => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ income: '15000000', savingsRate: '20', bills: '3000000' });
   const [result, setResult] = useState(null);
 
@@ -540,25 +550,25 @@ const BudgetCalculator = () => {
 
   return (
     <Card>
-      <h3 className="font-semibold text-gray-900 mb-4">Budget Calculator</h3>
+      <h3 className="font-semibold text-gray-900 mb-4">{t('calculators.budget_title')}</h3>
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-4">
           <Input
-            label="Monthly Income"
+            label={t('calculators.budget_monthly_income')}
             type="number"
             placeholder="15000000"
             value={form.income}
             onChange={(e) => setForm(f => ({ ...f, income: e.target.value }))}
           />
           <Input
-            label="Savings Rate (%)"
+            label={t('calculators.budget_savings_rate')}
             type="number"
             placeholder="20"
             value={form.savingsRate}
             onChange={(e) => setForm(f => ({ ...f, savingsRate: e.target.value }))}
           />
           <Input
-            label="Bills & Fixed Expenses"
+            label={t('calculators.budget_bills')}
             type="number"
             placeholder="3000000"
             value={form.bills}
@@ -569,19 +579,19 @@ const BudgetCalculator = () => {
         {result && (
           <div className="space-y-3">
             <div className="p-4 bg-success-50 rounded-lg flex justify-between items-center">
-              <span className="text-gray-700">Savings (50-60 rule)</span>
+              <span className="text-gray-700">{t('calculators.budget_savings_rule')}</span>
               <span className="text-xl font-bold text-success-600">{formatCurrency(result.savings)}</span>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg flex justify-between items-center">
-              <span className="text-gray-700">Bills & Fixed</span>
+              <span className="text-gray-700">{t('calculators.budget_bills_fixed')}</span>
               <span className="text-xl font-bold text-gray-900">{formatCurrency(result.bills)}</span>
             </div>
             <div className="p-4 bg-primary-50 rounded-lg flex justify-between items-center">
-              <span className="text-gray-700">Discretionary Spending</span>
+              <span className="text-gray-700">{t('calculators.budget_discretionary')}</span>
               <span className="text-xl font-bold text-primary-600">{formatCurrency(result.discretionary)}</span>
             </div>
             <p className="text-sm text-gray-500 text-center mt-2">
-              Based on 50/30/20 budget rule: 50% needs, 30% wants, 20% savings
+              {t('calculators.budget_rule_note')}
             </p>
           </div>
         )}

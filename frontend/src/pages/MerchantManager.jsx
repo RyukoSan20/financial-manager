@@ -3,8 +3,10 @@ import { Plus, Edit2, Trash2, ShoppingBag, Smartphone, Banknote, TrendingUp, Cal
 import merchantApi from '../services/merchantApi';
 import { QuickPOSModal, MerchantDashboardWidget, DailySettlementModal } from '../components/merchant';
 import { formatCurrency } from '../utils/format';
+import { useTranslation } from '../i18n';
 
 const MerchantManager = () => {
+  const { t } = useTranslation();
   const [merchants, setMerchants] = useState([]);
   const [selectedMerchant, setSelectedMerchant] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,7 @@ const MerchantManager = () => {
 
   const handleCreateMerchant = async () => {
     if (!newMerchant.store_name) {
-      alert('Nama toko harus diisi');
+      alert(t('merchant_manager.name_required'));
       return;
     }
 
@@ -52,12 +54,12 @@ const MerchantManager = () => {
       setNewMerchant({ store_name: '', business_type: 'grocery', store_phone: '', store_address: '', qris_enabled: false });
     } catch (err) {
       console.error('Failed to create merchant:', err);
-      alert('Gagal membuat toko');
+      alert(t('merchant_manager.create_failed'));
     }
   };
 
   const handleDeleteMerchant = async (id) => {
-    if (!confirm('Yakin ingin menghapus toko ini?')) return;
+    if (!confirm(t('merchant_manager.delete_confirm'))) return;
 
     try {
       await merchantApi.deleteMerchant(id);
@@ -67,7 +69,7 @@ const MerchantManager = () => {
       }
     } catch (err) {
       console.error('Failed to delete merchant:', err);
-      alert('Gagal menghapus toko');
+      alert(t('merchant_manager.delete_failed'));
     }
   };
 
@@ -76,13 +78,13 @@ const MerchantManager = () => {
   };
 
   const businessTypes = [
-    { value: 'grocery', label: 'Toko Kelontong' },
-    { value: 'food_stall', label: 'Warung Makan' },
-    { value: 'coffee_shop', label: 'Kedai Kopi' },
-    { value: 'mini_market', label: 'Minimarket' },
-    { value: 'pharmacy', label: 'Apotek' },
-    { value: 'restaurant', label: 'Restaurant' },
-    { value: 'other', label: 'Lainnya' }
+    { value: 'grocery', label: t('merchant_manager.type_grocery') },
+    { value: 'food_stall', label: t('merchant_manager.type_food_stall') },
+    { value: 'coffee_shop', label: t('merchant_manager.type_coffee_shop') },
+    { value: 'mini_market', label: t('merchant_manager.type_mini_market') },
+    { value: 'pharmacy', label: t('merchant_manager.type_pharmacy') },
+    { value: 'restaurant', label: t('merchant_manager.type_restaurant') },
+    { value: 'other', label: t('category.lainnya') }
   ];
 
   if (loading) {
@@ -99,14 +101,14 @@ const MerchantManager = () => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <ShoppingBag className="w-8 h-8 text-primary-600" />
-          <h1 className="text-2xl font-bold">Toko / Merchant</h1>
+          <h1 className="text-2xl font-bold">{t('nav.merchant')}</h1>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
         >
           <Plus size={20} />
-          <span>Tambah Toko</span>
+          <span>{t('merchant_manager.add_store')}</span>
         </button>
       </div>
 
@@ -114,13 +116,13 @@ const MerchantManager = () => {
         // Empty State
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-8 text-center">
           <ShoppingBag className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Belum Ada Toko</h2>
-          <p className="text-gray-500 mb-4">Tambahkan toko pertama Anda untuk mulai mencatat penjualan</p>
+          <h2 className="text-xl font-semibold mb-2">{t('merchant_manager.empty_title')}</h2>
+          <p className="text-gray-500 mb-4">{t('merchant_manager.empty_desc')}</p>
           <button
             onClick={() => setShowCreateModal(true)}
             className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
           >
-            + Tambah Toko
+            + {t('merchant_manager.add_store')}
           </button>
         </div>
       ) : (
@@ -129,7 +131,7 @@ const MerchantManager = () => {
           {/* Merchant Selector */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Pilih Toko
+              {t('merchant_manager.select_store')}
             </label>
             <div className="flex gap-2">
               <select
@@ -151,14 +153,14 @@ const MerchantManager = () => {
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
                   >
                     <Banknote size={18} />
-                    <span>Kasir</span>
+                    <span>{t('merchant_manager.cashier')}</span>
                   </button>
                   <button
                     onClick={() => setShowSettlement(true)}
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2"
                   >
                     <Calendar size={18} />
-                    <span>Tutup Kasir</span>
+                    <span>{t('merchant_manager.close_cashier')}</span>
                   </button>
                 </>
               )}
@@ -176,35 +178,35 @@ const MerchantManager = () => {
           {/* Merchant Details */}
           {selectedMerchant && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
-              <h2 className="font-semibold mb-4">Detail Toko</h2>
+              <h2 className="font-semibold mb-4">{t('merchant_manager.store_details')}</h2>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Nama Toko</span>
+                  <span className="text-gray-500">{t('merchant_manager.store_name')}</span>
                   <span className="font-medium">{selectedMerchant.store_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Jenis Usaha</span>
+                  <span className="text-gray-500">{t('merchant_manager.business_type')}</span>
                   <span className="font-medium">
                     {businessTypes.find(t => t.value === selectedMerchant.business_type)?.label || selectedMerchant.business_type}
                   </span>
                 </div>
                 {selectedMerchant.store_phone && (
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Telepon</span>
+                    <span className="text-gray-500">{t('merchant_manager.phone')}</span>
                     <span className="font-medium">{selectedMerchant.store_phone}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
                   <span className="text-gray-500">QRIS</span>
                   <span className={`font-medium ${selectedMerchant.qris_enabled ? 'text-green-600' : 'text-gray-400'}`}>
-                    {selectedMerchant.qris_enabled ? '✓ Aktif' : '✗ Nonaktif'}
+                    {selectedMerchant.qris_enabled ? t('merchant_manager.active') : t('merchant_manager.inactive')}
                   </span>
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t flex gap-2">
                 <button className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center gap-2">
                   <Edit2 size={16} />
-                  <span>Edit</span>
+                  <span>{t('common.edit')}</span>
                 </button>
                 <button
                   onClick={() => handleDeleteMerchant(selectedMerchant.id)}
@@ -241,7 +243,7 @@ const MerchantManager = () => {
             <div className="flex items-center justify-between px-4 py-3 bg-primary-600 text-white">
               <div className="flex items-center gap-2">
                 <Plus size={20} />
-                <span className="font-semibold">Tambah Toko Baru</span>
+                <span className="font-semibold">{t('merchant_manager.add_store_new')}</span>
               </div>
               <button onClick={() => setShowCreateModal(false)} className="p-1 hover:bg-white/20 rounded">
                 ✕
@@ -249,17 +251,17 @@ const MerchantManager = () => {
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Nama Toko *</label>
+                <label className="block text-sm font-medium mb-1">{t('merchant_manager.store_name_required')}</label>
                 <input
                   type="text"
                   value={newMerchant.store_name}
                   onChange={(e) => setNewMerchant({...newMerchant, store_name: e.target.value})}
-                  placeholder="Contoh: Warung Kopi Pak Rahman"
+                  placeholder={t('merchant_manager.store_name_placeholder')}
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Jenis Usaha</label>
+                <label className="block text-sm font-medium mb-1">{t('merchant_manager.business_type')}</label>
                 <select
                   value={newMerchant.business_type}
                   onChange={(e) => setNewMerchant({...newMerchant, business_type: e.target.value})}
@@ -271,21 +273,21 @@ const MerchantManager = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Telepon</label>
+                <label className="block text-sm font-medium mb-1">{t('merchant_manager.phone')}</label>
                 <input
                   type="text"
                   value={newMerchant.store_phone}
                   onChange={(e) => setNewMerchant({...newMerchant, store_phone: e.target.value})}
-                  placeholder="08xxxxxxxxxx"
+                  placeholder={t('merchant_manager.phone_placeholder')}
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Alamat</label>
+                <label className="block text-sm font-medium mb-1">{t('merchant_manager.address')}</label>
                 <textarea
                   value={newMerchant.store_address}
                   onChange={(e) => setNewMerchant({...newMerchant, store_address: e.target.value})}
-                  placeholder="Alamat toko..."
+                  placeholder={t('merchant_manager.address_placeholder')}
                   rows={2}
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
                 />
@@ -298,13 +300,13 @@ const MerchantManager = () => {
                   onChange={(e) => setNewMerchant({...newMerchant, qris_enabled: e.target.checked})}
                   className="w-4 h-4"
                 />
-                <label htmlFor="qris" className="text-sm">Aktifkan QRIS</label>
+                <label htmlFor="qris" className="text-sm">{t('merchant_manager.enable_qris')}</label>
               </div>
               <button
                 onClick={handleCreateMerchant}
                 className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
               >
-                Simpan Toko
+                {t('merchant_manager.save_store')}
               </button>
             </div>
           </div>

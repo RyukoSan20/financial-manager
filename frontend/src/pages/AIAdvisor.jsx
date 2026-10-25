@@ -11,6 +11,7 @@ import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { formatCurrency, formatPercent } from '../utils/format';
+import { useTranslation } from '../i18n';
 import { 
   Send, Sparkles, RefreshCw, TrendingUp, TrendingDown, 
   Wallet, PiggyBank, Target, AlertTriangle, CheckCircle,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 const AIAdvisor = () => {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const [advice, setAdvice] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -32,12 +34,12 @@ const AIAdvisor = () => {
 
   // Pre-built prompts
   const quickPrompts = [
-    { icon: "📊", label: "Analisis Budget", prompt: "Analisis budget saya dan berikan rekomendasi" },
-    { icon: "🎯", label: "Goal Progress", prompt: "Bagaimana progress goal saya?" },
-    { icon: "💰", label: "Tabungan", prompt: "Berikan tips untuk menabung lebih banyak" },
-    { icon: "📉", label: "Kurangi Pengeluaran", prompt: "Cara mengurangi pengeluaran yang tidak perlu" },
-    { icon: "📈", label: "Investasi", prompt: "Rekomendasi investasi untuk pemula" },
-    { icon: "🛡️", label: "Emergency Fund", prompt: "Bagaimana membangun emergency fund yang adequate" },
+    { icon: "📊", label: t('ai_advisor.prompt_budget_label'), prompt: t('ai_advisor.prompt_budget') },
+    { icon: "🎯", label: t('ai_advisor.prompt_goal_label'), prompt: t('ai_advisor.prompt_goal') },
+    { icon: "💰", label: t('ai_advisor.prompt_saving_label'), prompt: t('ai_advisor.prompt_saving') },
+    { icon: "📉", label: t('ai_advisor.prompt_expense_label'), prompt: t('ai_advisor.prompt_expense') },
+    { icon: "📈", label: t('ai_advisor.prompt_invest_label'), prompt: t('ai_advisor.prompt_invest') },
+    { icon: "🛡️", label: t('ai_advisor.prompt_emergency_label'), prompt: t('ai_advisor.prompt_emergency') },
   ];
 
   useEffect(() => {
@@ -159,76 +161,23 @@ const AIAdvisor = () => {
     const msg = userMsg.toLowerCase();
     
     if (msg.includes('budget') || msg.includes('analisis')) {
-      return `📊 **Analisis Budget Anda:**
-
-Berdasarkan data Anda:
-- Total Saldo: ${formatCurrency(summary?.total_balance || 0)}
-- Total Income: ${formatCurrency(summary?.total_income || 0)}
-- Total Expense: ${formatCurrency(summary?.total_expense || 0)}
-- Net Cash Flow: ${formatCurrency(summary?.net_cash_flow || 0)}
-
-${summary?.savings_rate > 0 ? '✅ Net savings Anda positif! Pertahankan ini.' : '⚠️ Pengeluaran Anda lebih besar dari income. Coba kurangi pengeluaran non-esensial.'}
-
-**Tips:**
-1. Catat setiap pengeluaran harian
-2. Sisihkan minimal 20% income untuk tabungan
-3. Gunakan metode 50/30/20 (kebutuhan/harga diri/tabungan)`;
+      return `${t('ai_advisor.local_budget_title')}\n\n${t('ai_advisor.local_based_on')}\n${t('ai_advisor.local_total_balance').replace('%value%', formatCurrency(summary?.total_balance || 0))}\n${t('ai_advisor.local_total_income').replace('%value%', formatCurrency(summary?.total_income || 0))}\n${t('ai_advisor.local_total_expense').replace('%value%', formatCurrency(summary?.total_expense || 0))}\n${t('ai_advisor.local_net_cash_flow').replace('%value%', formatCurrency(summary?.net_cash_flow || 0))}\n\n${summary?.savings_rate > 0 ? t('ai_advisor.local_savings_positive') : t('ai_advisor.local_savings_negative')}\n\n${t('ai_advisor.local_tips')}\n${t('ai_advisor.local_tip_record')}\n${t('ai_advisor.local_tip_save20')}\n${t('ai_advisor.local_tip_502030')}`;
     }
     
     if (msg.includes('goal') || msg.includes('target')) {
       const goals = summary?.active_goals || 0;
-      return `🎯 **Progress Goal Anda:**
-
-${goals > 0 ? `Anda memiliki ${goals} goal aktif.` : 'Belum ada goal yang aktif.'}
-
-**Tips Membuat Goal:**
-1. Gunakan SMART: Specific, Measurable, Achievable, Relevant, Time-bound
-2. Pecah goal besar menjadi milestone kecil
-3. Otomatisisasi tabungan untuk goal
-4. Review progress setiap bulan`;
+      return `${t('ai_advisor.local_goal_title')}\n\n${goals > 0 ? t('ai_advisor.local_goal_active').replace('%count%', goals) : t('ai_advisor.local_goal_none')}\n\n${t('ai_advisor.local_goal_tips')}\n${t('ai_advisor.local_goal_tip1')}\n${t('ai_advisor.local_goal_tip2')}\n${t('ai_advisor.local_goal_tip3')}\n${t('ai_advisor.local_goal_tip4')}`;
     }
     
     if (msg.includes('tabung') || msg.includes('saving')) {
-      return `💰 **Tips Menabung:**
-
-1. **Pay Yourself First** - Tabung sebelum belanja
-2. **Otomatisasi** - Set standing instruction untuk transfer otomatis
-3. **50/30/20 Rule**:
-   - 50% Kebutuhan (housing, food, transport)
-   - 30% Keinginan (entertainment, hobbies)
-   - 20% Tabungan & Investasi
-
-4. **Lawan Hedonic Adaptation** - Jangan naikkan standard hidup saat income naik
-5. **Emergency Fund First** - 3-6 bulan expenses sebelum investasi`;
+      return `${t('ai_advisor.local_saving_title')}\n\n${t('ai_advisor.local_saving_tip1')}\n${t('ai_advisor.local_saving_tip2')}\n${t('ai_advisor.local_saving_tip3')}\n${t('ai_advisor.local_saving_rule1')}\n${t('ai_advisor.local_saving_rule2')}\n${t('ai_advisor.local_saving_rule3')}\n\n${t('ai_advisor.local_saving_tip4')}\n${t('ai_advisor.local_saving_tip5')}`;
     }
     
     if (msg.includes('invest') || msg.includes('investasi')) {
-      return `📈 **Rekomendasi Investasi untuk Pemula:**
-
-**Urutan yang Disarankan:**
-1. ✅ Emergency Fund 3-6 bulan dulu
-2. 💰 Rebanthin / ETF ( IHSG / Nasdaq)
-3. 📊 Reksa Dana Index
-4. 🏠 Properti (jika sudah mature)
-
-**Risk Profile:**
-- Conservative: 70% Bonds, 30% Stocks
-- Moderate: 50% Stocks, 50% Bonds
-- Aggressive: 80% Stocks, 20% Bonds
-
-**Disclaimer:** Ini bukan nasihat keuangan. Konsultasikan dengan financial planner profesional.`;
+      return `${t('ai_advisor.local_invest_title')}\n\n${t('ai_advisor.local_invest_order')}\n${t('ai_advisor.local_invest_step1')}\n${t('ai_advisor.local_invest_step2')}\n${t('ai_advisor.local_invest_step3')}\n${t('ai_advisor.local_invest_step4')}\n\n${t('ai_advisor.local_risk_profile')}\n${t('ai_advisor.local_risk_conservative')}\n${t('ai_advisor.local_risk_moderate')}\n${t('ai_advisor.local_risk_aggressive')}\n\n${t('ai_advisor.local_disclaimer')}`;
     }
     
-    return `💡 **Hai! Saya AI Advisor Anda.**
-
-Saya bisa membantu Anda dengan:
-- 📊 Analisis keuangan personal
-- 🎯 Goal setting dan tracking
-- 💰 Tips menabung dan investasi
-- 📉 Cara mengurangi pengeluaran
-- 🛡️ Membangun emergency fund
-
-Tanyakan apa saja yang ingin Anda ketahui!`;
+    return `${t('ai_advisor.local_greeting_title')}\n\n${t('ai_advisor.local_greeting_intro')}\n${t('ai_advisor.local_greeting_item1')}\n${t('ai_advisor.local_greeting_item2')}\n${t('ai_advisor.local_greeting_item3')}\n${t('ai_advisor.local_greeting_item4')}\n${t('ai_advisor.local_greeting_item5')}\n\n${t('ai_advisor.local_greeting_end')}`;
   };
 
   const getPriorityConfig = (priority) => {
@@ -255,7 +204,7 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <Sparkles className="w-12 h-12 mx-auto text-purple-500 animate-pulse" />
-            <p className="mt-4 text-gray-500">Memuat AI Advisor...</p>
+            <p className="mt-4 text-gray-500">{t('ai_advisor.loading')}</p>
           </div>
         </div>
       </div>
@@ -270,7 +219,7 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
           <Sparkles className="w-8 h-8" />
           <h1 className="text-2xl font-bold">AI Financial Advisor</h1>
         </div>
-        <p className="text-purple-100">Analisis & insights keuangan berbasis AI</p>
+        <p className="text-purple-100">{t('ai_advisor.subtitle')}</p>
       </div>
 
       {/* Tabs */}
@@ -305,28 +254,28 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-green-500">
-              <p className="text-sm text-gray-500 mb-1">💵 Total Saldo</p>
+              <p className="text-sm text-gray-500 mb-1">{t('ai_advisor.total_balance')}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">
                 {formatCurrency(summary?.total_balance || 0)}
               </p>
             </div>
             
             <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-primary-500">
-              <p className="text-sm text-gray-500 mb-1">📈 Savings Rate</p>
+              <p className="text-sm text-gray-500 mb-1">{t('ai_advisor.savings_rate')}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">
                 {formatPercent(summary?.savings_rate || 0, 1)}
               </p>
             </div>
             
             <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-purple-500">
-              <p className="text-sm text-gray-500 mb-1">🎯 Goals Aktif</p>
+              <p className="text-sm text-gray-500 mb-1">{t('ai_advisor.active_goals')}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">
                 {summary?.active_goals || 0}
               </p>
             </div>
             
             <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-red-500">
-              <p className="text-sm text-gray-500 mb-1">💳 Total Utang</p>
+              <p className="text-sm text-gray-500 mb-1">{t('ai_advisor.total_debt')}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">
                 {formatCurrency(summary?.total_debt || 0)}
               </p>
@@ -335,7 +284,7 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
 
           {/* Quick Actions */}
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-3">⚡ Tanya AI</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-3">{t('ai_advisor.ask_ai')}</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {quickPrompts.map((prompt, i) => (
                 <button
@@ -355,7 +304,7 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
 
           {/* AI Advice */}
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-3">💡 Saran AI</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-3">{t('ai_advisor.advice_title')}</h3>
             {advice.length > 0 ? (
               <div className="space-y-3">
                 {advice.map((item, i) => {
@@ -432,7 +381,7 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
             ) : (
               <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center">
                 <Sparkles className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-500">Belum ada saran dari AI</p>
+                <p className="text-gray-500">{t('ai_advisor.no_advice')}</p>
                 <p className="text-sm text-gray-400 mt-1">
                   Saran akan muncul setelah AI menganalisis data Anda
                 </p>
@@ -459,7 +408,7 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
             {messages.length === 0 && (
               <div className="text-center py-8">
                 <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-500">Mulai percakapan dengan AI Advisor</p>
+                <p className="text-gray-500">{t('ai_advisor.chat_empty')}</p>
                 <p className="text-sm text-gray-400 mt-1">
                   Tanyakan tentang keuangan, budgeting, atau investasi
                 </p>
@@ -532,7 +481,7 @@ Tanyakan apa saja yang ingin Anda ketahui!`;
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                placeholder="Tanyakan tentang keuangan..."
+                placeholder={t('ai_advisor.placeholder')}
                 className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl 
                            bg-white dark:bg-gray-900 text-gray-900 dark:text-white
                            placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"

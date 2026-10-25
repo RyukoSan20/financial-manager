@@ -1,9 +1,11 @@
 // Gmail Integration Page - Beautiful UI
 import { useState, useEffect } from "react";
+import { useTranslation } from '../i18n';
 
 const GmailIntegration = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState({ connected: false, message: "Memuat..." });
+  const [status, setStatus] = useState({ connected: false, message: t('gmail_integration.loading') });
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -20,7 +22,7 @@ const GmailIntegration = () => {
       });
       if (res.ok) setStatus(await res.json());
     } catch (e) {
-      setStatus({ connected: false, message: "Gmail belum terhubung" });
+      setStatus({ connected: false, message: t('gmail_integration.not_connected_status') });
     }
   };
 
@@ -33,16 +35,16 @@ const GmailIntegration = () => {
       });
       const data = await res.json();
       if (data.auth_url) window.location.href = data.auth_url;
-      else setError("OAuth URL tidak tersedia");
+      else setError(t('gmail_integration.oauth_unavailable'));
     } catch (e) {
-      setError("Gagal connect Gmail");
+      setError(t('gmail_integration.connect_failed'));
     } finally {
       setLoading(false);
     }
   };
 
   const disconnectGmail = async () => {
-    if (!confirm("Putuskan koneksi Gmail?")) return;
+    if (!confirm(t('gmail_integration.disconnect_confirm'))) return;
     
     try {
       const token = localStorage.getItem("token");
@@ -50,17 +52,17 @@ const GmailIntegration = () => {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
-      setStatus({ connected: false, message: "Gmail berhasil diputuskan" });
+      setStatus({ connected: false, message: t('gmail_integration.disconnected') });
     } catch (e) {
-      setError("Gagal disconnect");
+      setError(t('gmail_integration.disconnect_failed'));
     }
   };
 
   return (
     <div className="p-4 max-w-lg mx-auto pb-20">
-      <h1 className="text-2xl font-bold mb-2">Gmail Integration</h1>
+      <h1 className="text-2xl font-bold mb-2">{t('gmail_integration.title')}</h1>
       <p className="text-gray-600 mb-6">
-        Import otomatis transaksi dari email bank & e-wallet
+        {t('gmail_integration.subtitle')}
       </p>
 
       {/* Gmail Connection Card */}
@@ -71,7 +73,7 @@ const GmailIntegration = () => {
           </div>
           <div className="flex-1">
             <h2 className="font-semibold text-lg">
-              {status.connected ? "✅ Gmail Terhubung" : "Gmail Belum Terhubung"}
+              {status.connected ? t('gmail_integration.connected_title') : t('gmail_integration.not_connected_title')}
             </h2>
             <p className="text-sm text-gray-500">{status.message}</p>
           </div>
@@ -80,35 +82,35 @@ const GmailIntegration = () => {
         {status.connected ? (
           <div className="space-y-3">
             <div className="bg-green-50 rounded-xl p-4 mb-4">
-              <h3 className="font-medium text-green-800 mb-2">✨ Fitur Aktif</h3>
+              <h3 className="font-medium text-green-800 mb-2">{t('gmail_integration.features_active')}</h3>
               <ul className="text-sm text-green-700 space-y-1">
-                <li>✓ Pemindaian email otomatis</li>
-                <li>✓ Import transaksi bank</li>
-                <li>✓ Import e-wallet</li>
-                <li>✓ Background sync setiap jam</li>
+                <li>{t('gmail_integration.feature_auto_scan')}</li>
+                <li>{t('gmail_integration.feature_bank_import')}</li>
+                <li>{t('gmail_integration.feature_ewallet_import')}</li>
+                <li>{t('gmail_integration.feature_hourly_sync')}</li>
               </ul>
             </div>
             <button
               onClick={disconnectGmail}
               className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200"
             >
-              Putuskan Koneksi
+              {t('gmail_integration.disconnect_button')}
             </button>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="bg-primary-50 rounded-xl p-4">
-              <h3 className="font-medium text-primary-800 mb-2">💡 Cara Kerja</h3>
+              <h3 className="font-medium text-primary-800 mb-2">{t('gmail_integration.how_it_works')}</h3>
               <ul className="text-sm text-primary-700 space-y-1">
-                <li>1. Hubungkan Gmail dengan OAuth Google</li>
-                <li>2. Kami scan email bank & e-wallet</li>
-                <li>3. Transaksi otomatis masuk ke dashboard</li>
-                <li>4. Tidak ada email yang dikirim/dihapus</li>
+                <li>{t('gmail_integration.step1')}</li>
+                <li>{t('gmail_integration.step2')}</li>
+                <li>{t('gmail_integration.step3')}</li>
+                <li>{t('gmail_integration.step4')}</li>
               </ul>
             </div>
             
             <div className="bg-gray-50 rounded-xl p-4">
-              <h3 className="font-medium text-gray-800 mb-2">Mendukung:</h3>
+              <h3 className="font-medium text-gray-800 mb-2">{t('gmail_integration.supports')}</h3>
               <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
                 <span>🏦 BCA</span>
                 <span>🏦 Mandiri</span>
@@ -129,14 +131,14 @@ const GmailIntegration = () => {
               {loading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Menghubungkan...
+                  {t('gmail_integration.connecting')}
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M12.545,10.622c-0.141,0-0.283-0.009-0.422-0.027l-3.328,0.917c0.157,0.473,0.474,0.879,0.905,1.146l2.707-1.481L12.545,10.622z"/>
                   </svg>
-                  Hubungkan Gmail
+                  {t('gmail_integration.connect_button')}
                 </>
               )}
             </button>
@@ -147,13 +149,13 @@ const GmailIntegration = () => {
       {/* Security Info */}
       <div className="bg-white rounded-xl p-4 shadow-sm">
         <h3 className="font-semibold mb-2 flex items-center gap-2">
-          🔒 Keamanan
+          {t('gmail_integration.security')}
         </h3>
         <ul className="text-sm text-gray-600 space-y-1">
-          <li>• Scope: Hanya baca (read-only)</li>
-          <li>• Tidak ada email yang dikirim atau dihapus</li>
-          <li>• Token tersimpan dengan enkripsi</li>
-          <li>• Bisa putuskan kapan saja</li>
+          <li>{t('gmail_integration.security_scope')}</li>
+          <li>{t('gmail_integration.security_no_email')}</li>
+          <li>{t('gmail_integration.security_token')}</li>
+          <li>{t('gmail_integration.security_disconnect')}</li>
         </ul>
       </div>
 

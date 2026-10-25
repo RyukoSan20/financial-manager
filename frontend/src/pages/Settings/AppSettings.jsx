@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { THEME_DARK, THEME_LIGHT, THEME_SYSTEM } from '../../utils/theme';
+import { useTranslation } from '../../i18n';
 
 const DEFAULTS = {
   theme: 'system',
@@ -17,6 +18,7 @@ const DEFAULTS = {
 };
 
 const AppSettings = () => {
+  const { t } = useTranslation();
   const { theme: activeTheme, setTheme } = useTheme();
   const [settings, setSettings] = useState(DEFAULTS);
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,7 @@ const AppSettings = () => {
         method: 'PUT',
         body: JSON.stringify(settings)
       });
-      setMessage('Pengaturan aplikasi disimpan!');
+      setMessage(t('app_settings.saved'));
       setTimeout(() => setMessage(''), 3000);
     } catch (e) {
       setError(e.message || 'Gagal menyimpan pengaturan aplikasi');
@@ -92,7 +94,7 @@ const AppSettings = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">Memuat...</div>
+        <div className="text-gray-500">{t('app_settings.loading')}</div>
       </div>
     );
   }
@@ -100,7 +102,7 @@ const AppSettings = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="bg-primary-600 text-white p-4 sticky top-0 z-10">
-        <h1 className="text-xl font-bold">⚙️ Pengaturan Aplikasi</h1>
+        <h1 className="text-xl font-bold">{t('app_settings.title')}</h1>
       </div>
 
       <div className="p-4 max-w-lg mx-auto space-y-4">
@@ -112,11 +114,11 @@ const AppSettings = () => {
         )}
 
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h2 className="font-bold text-lg mb-4">Tampilan</h2>
+          <h2 className="font-bold text-lg mb-4">{t('app_settings.appearance')}</h2>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tema</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('app_settings.theme')}</label>
               <div className="flex gap-2">
                 {['light', 'dark', 'system'].map(t => (
                   <button
@@ -143,7 +145,7 @@ const AppSettings = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Bahasa</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('app_settings.language')}</label>
               <select
                 value={settings.language}
                 onChange={(e) => setSettings({ ...settings, language: e.target.value })}
@@ -157,11 +159,11 @@ const AppSettings = () => {
         </div>
 
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h2 className="font-bold text-lg mb-4">Regional</h2>
+          <h2 className="font-bold text-lg mb-4">{t('app_settings.regional')}</h2>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mata Uang</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('app_settings.currency')}</label>
               <select
                 value={settings.currency}
                 onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
@@ -174,7 +176,7 @@ const AppSettings = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Format Tanggal</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('app_settings.date_format')}</label>
               <select
                 value={settings.date_format}
                 onChange={(e) => setSettings({ ...settings, date_format: e.target.value })}
@@ -187,19 +189,19 @@ const AppSettings = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Minggu dimulai</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('app_settings.week_starts')}</label>
               <select
                 value={settings.start_of_week}
                 onChange={(e) => setSettings({ ...settings, start_of_week: e.target.value })}
                 className="w-full p-3 border rounded-lg"
               >
-                <option value="monday">Senin</option>
-                <option value="sunday">Minggu</option>
+                <option value="monday">{t('app_settings.monday')}</option>
+                <option value="sunday">{t('app_settings.sunday')}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Zona Waktu</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('app_settings.timezone')}</label>
               <select
                 value={settings.timezone}
                 onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
@@ -214,18 +216,18 @@ const AppSettings = () => {
         </div>
 
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h2 className="font-bold text-lg mb-4">Keamanan</h2>
+          <h2 className="font-bold text-lg mb-4">{t('app_settings.security')}</h2>
 
           <div className="space-y-4">
             <ToggleItem
-              title="Backup Otomatis"
+              title={t('app_settings.auto_backup')}
               description="Backup data setiap hari"
               checked={settings.auto_backup}
               onChange={() => setSettings({ ...settings, auto_backup: !settings.auto_backup })}
             />
 
             <ToggleItem
-              title="Login Biometrik"
+              title={t('app_settings.biometric')}
               description="Gunakan sidik jari/face ID"
               checked={settings.biometric_login}
               onChange={() =>
@@ -240,7 +242,7 @@ const AppSettings = () => {
           disabled={saving}
           className="w-full py-3 bg-primary-600 text-white rounded-xl font-bold disabled:opacity-50"
         >
-          {saving ? 'Menyimpan...' : '💾 Simpan Pengaturan'}
+          {saving ? t('app_settings.saving') : '💾 ' + t('app_settings.save_settings')}
         </button>
       </div>
     </div>

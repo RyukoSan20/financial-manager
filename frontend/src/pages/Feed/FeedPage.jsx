@@ -7,8 +7,10 @@ import {
   Receipt, AlertCircle, RefreshCw, Filter, InboxIcon
 } from 'lucide-react';
 import api from '../../services/api';
+import { useTranslation } from '../../i18n';
 
 const FeedPage = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("pending");
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +45,7 @@ const FeedPage = () => {
       setLastFetch(Date.now());
     } catch (err) {
       console.error("Failed to fetch transactions:", err);
-      setError(err.message || 'Gagal memuat transaksi');
+      setError(err.message || t('feed.errorFetch'));
       setTransactions([]);
     } finally {
       setLoading(false);
@@ -98,7 +100,7 @@ const FeedPage = () => {
       fetchStats();
     } catch (err) {
       console.error("Failed to approve:", err);
-      alert('Gagal menyetujui transaksi: ' + (err.message || 'Unknown error'));
+      alert(t('feed.errorApprove') + ': ' + (err.message || t('common.error')));
     } finally {
       setProcessingIds(prev => {
         const next = new Set(prev);
@@ -120,7 +122,7 @@ const FeedPage = () => {
       fetchStats();
     } catch (err) {
       console.error("Failed to reject:", err);
-      alert('Gagal menolak transaksi: ' + (err.message || 'Unknown error'));
+      alert(t('feed.errorReject') + ': ' + (err.message || t('common.error')));
     } finally {
       setProcessingIds(prev => {
         const next = new Set(prev);
@@ -149,9 +151,9 @@ const FeedPage = () => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', label: 'Menunggu' },
-      approved: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', label: 'Disetujui' },
-      rejected: { color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', label: 'Ditolak' }
+      pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', label: t('feed.pending') },
+      approved: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', label: t('feed.approved') },
+      rejected: { color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', label: t('feed.rejected') }
     };
     const config = statusConfig[status] || statusConfig.pending;
     return (
@@ -163,15 +165,15 @@ const FeedPage = () => {
 
   const getSourceLabel = (source) => {
     const labels = {
-      camera_scan: 'Kamera',
-      email_forward: 'Email',
-      whatsapp: 'WhatsApp',
-      manual: 'Manual',
-      ocr_receipt: 'OCR Scan',
+      camera_scan: t('feed.sourceCamera'),
+      email_forward: t('feed.sourceEmail'),
+      whatsapp: t('feed.sourceWhatsapp'),
+      manual: t('feed.sourceManual'),
+      ocr_receipt: t('feed.sourceOCR'),
       ocr: 'OCR',
       api: 'API',
     };
-    return labels[source] || source || 'Manual';
+    return labels[source] || source || t('feed.sourceManual');
   };
 
   const getTabCount = (tab) => {
@@ -190,10 +192,10 @@ const FeedPage = () => {
   };
 
   const tabs = [
-    { id: 'pending', label: 'Menunggu', icon: Clock, color: 'yellow' },
-    { id: 'approved', label: 'Disetujui', icon: CheckCircle, color: 'green' },
-    { id: 'rejected', label: 'Ditolak', icon: XCircle, color: 'red' },
-    { id: 'all', label: 'Semua', icon: InboxIcon, color: 'gray' },
+    { id: 'pending', label: t('feed.pending'), icon: Clock, color: 'yellow' },
+    { id: 'approved', label: t('feed.approved'), icon: CheckCircle, color: 'green' },
+    { id: 'rejected', label: t('feed.rejected'), icon: XCircle, color: 'red' },
+    { id: 'all', label: t('feed.all'), icon: InboxIcon, color: 'gray' },
   ];
 
   const getTabColorClasses = (tabId, isActive) => {
@@ -211,8 +213,8 @@ const FeedPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Feed & Review</h1>
-          <p className="text-gray-500 dark:text-gray-400">Tinjau dan setujui transaksi masuk</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('feed.title')}</h1>
+          <p className="text-gray-500 dark:text-gray-400">{t('feed.subtitle')}</p>
         </div>
         <Button 
           variant="outline" 
@@ -221,7 +223,7 @@ const FeedPage = () => {
           className="flex items-center gap-2"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('feed.refresh')}
         </Button>
       </div>
 
@@ -236,7 +238,7 @@ const FeedPage = () => {
           <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
             {stats?.pending_count ?? 0}
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Menunggu</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('feed.pending')}</div>
         </Card>
         <Card className="!p-4 relative overflow-hidden">
           {loadingStats && (
@@ -247,7 +249,7 @@ const FeedPage = () => {
           <div className="text-2xl font-bold text-green-600 dark:text-green-400">
             {stats?.approved_today ?? 0}
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Disetujui Hari Ini</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('feed.approvedToday')}</div>
         </Card>
         <Card className="!p-4 relative overflow-hidden">
           {loadingStats && (
@@ -258,7 +260,7 @@ const FeedPage = () => {
           <div className="text-2xl font-bold text-red-600 dark:text-red-400">
             {stats?.rejected_today ?? 0}
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Ditolak Hari Ini</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('feed.rejectedToday')}</div>
         </Card>
         <Card className="!p-4 relative overflow-hidden">
           {loadingStats && (
@@ -269,7 +271,7 @@ const FeedPage = () => {
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
             {formatCurrency(stats?.total_pending_amount ?? 0)}
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Tertunda</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('feed.totalPending')}</div>
         </Card>
       </div>
 
@@ -310,13 +312,13 @@ const FeedPage = () => {
         <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
           <Filter className="w-4 h-4 text-primary-600" />
           <span className="text-sm text-primary-700 dark:text-primary-300">
-            Filter aktif: <strong>{tabs.find(t => t.id === activeTab)?.label}</strong>
+            {t('feed.filter_active')} <strong>{tabs.find(tab => tab.id === activeTab)?.label}</strong>
           </span>
           <button 
             onClick={() => setActiveTab('all')}
             className="ml-auto text-xs text-primary-600 hover:text-primary-800 dark:hover:text-primary-400"
           >
-            Clear filter
+            {t('feed.clear_filter')}
           </button>
         </div>
       )}
@@ -331,7 +333,7 @@ const FeedPage = () => {
             </div>
             <Button variant="outline" size="sm" onClick={handleRefresh}>
               <RefreshCw className="w-4 h-4 mr-1" />
-              Coba Lagi
+              {t('feed.retry')}
             </Button>
           </div>
         </Card>
@@ -341,33 +343,33 @@ const FeedPage = () => {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-12">
           <Spinner size="lg" />
-          <p className="mt-4 text-gray-500 dark:text-gray-400">Memuat transaksi...</p>
+          <p className="mt-4 text-gray-500 dark:text-gray-400">{t('feed.loading')}</p>
         </div>
       ) : transactions.length === 0 ? (
         <Card className="!p-8 text-center">
           <InboxIcon className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-400 mb-4" />
           <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
             {activeTab === 'pending' 
-              ? 'Tidak ada transaksi menunggu persetujuan' 
+              ? t('feed.empty_pending') 
               : activeTab === 'approved'
-              ? 'Belum ada transaksi yang disetujui'
+              ? t('feed.empty_approved')
               : activeTab === 'rejected'
-              ? 'Belum ada transaksi yang ditolak'
-              : 'Belum ada transaksi'}
+              ? t('feed.empty_rejected')
+              : t('feed.empty')}
           </p>
           <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
             {activeTab === 'pending' 
-              ? 'Transaksi dari scan receipt atau import email akan muncul di sini untuk ditinjau.' 
-              : 'Transaksi akan muncul setelah Anda menyetujui atau menolak transaksi masuk.'}
+              ? t('feed.empty_desc_pending') 
+              : t('feed.empty_desc_other')}
           </p>
           <div className="flex gap-2 justify-center">
             <Button variant="outline" onClick={() => setActiveTab('pending')}>
               <Clock className="w-4 h-4 mr-2" />
-              Lihat Menunggu
+              {t('feed.view_pending')}
             </Button>
             <Button variant="outline" onClick={handleRefresh}>
               <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
+              {t('feed.refresh')}
             </Button>
           </div>
         </Card>
@@ -375,8 +377,8 @@ const FeedPage = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {transactions.length} transaksi
-              {activeTab !== 'all' && ` · Filter: ${tabs.find(t => t.id === activeTab)?.label}`}
+              {t('feed.transaction_count').replace('%count%', transactions.length)}
+              {activeTab !== 'all' && ` · ${t('feed.filter_label').replace('%label%', tabs.find(tab => tab.id === activeTab)?.label)}`}
             </p>
           </div>
           
@@ -387,7 +389,7 @@ const FeedPage = () => {
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <Receipt className="w-4 h-4 text-gray-400" />
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {transaction.merchant_name || transaction.description || 'Transaksi'}
+                      {transaction.merchant_name || transaction.description || t('feed.transaction')}
                     </span>
                     {getStatusBadge(transaction.status)}
                   </div>
@@ -411,7 +413,7 @@ const FeedPage = () => {
                       <>
                         <span>·</span>
                         <span className="text-xs">
-                          {Math.round(transaction.confidence_score * 100)}% confidence
+                          {t('feed.confidence').replace('%value%', Math.round(transaction.confidence_score * 100))}
                         </span>
                       </>
                     )}
@@ -429,7 +431,7 @@ const FeedPage = () => {
                   {transaction.items && transaction.items.length > 0 && (
                     <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 text-sm mb-2">
                       <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Item ({transaction.items.length})
+                        {t('feed.item_count').replace('%count%', transaction.items.length)}
                       </div>
                       {transaction.items.slice(0, 5).map((item, idx) => (
                         <div key={idx} className="flex justify-between text-gray-600 dark:text-gray-400 py-0.5">
@@ -439,7 +441,7 @@ const FeedPage = () => {
                       ))}
                       {transaction.items.length > 5 && (
                         <div className="text-gray-500 dark:text-gray-400 text-center mt-1 text-xs">
-                          +{transaction.items.length - 5} item lainnya
+                          {t('feed.more_items').replace('%count%', transaction.items.length - 5)}
                         </div>
                       )}
                     </div>
@@ -480,7 +482,7 @@ const FeedPage = () => {
                     ) : (
                       <>
                         <CheckCircle className="w-4 h-4 mr-2" />
-                        Setujui
+                        {t('feed.approve')}
                       </>
                     )}
                   </Button>
@@ -495,7 +497,7 @@ const FeedPage = () => {
                     ) : (
                       <>
                         <XCircle className="w-4 h-4 mr-2" />
-                        Tolak
+                        {t('feed.reject')}
                       </>
                     )}
                   </Button>
@@ -507,7 +509,7 @@ const FeedPage = () => {
                 <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                   <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
                     <CheckCircle className="w-4 h-4" />
-                    <span>Disetujui</span>
+                    <span>{t('feed.approved')}</span>
                     {transaction.updated_at && (
                       <span className="text-gray-400">
                         · {formatDate(transaction.updated_at)}
@@ -521,7 +523,7 @@ const FeedPage = () => {
                 <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                   <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
                     <XCircle className="w-4 h-4" />
-                    <span>Ditolak</span>
+                    <span>{t('feed.rejected')}</span>
                     {transaction.updated_at && (
                       <span className="text-gray-400">
                         · {formatDate(transaction.updated_at)}
@@ -538,9 +540,9 @@ const FeedPage = () => {
             <div className="text-center py-4">
               <Button variant="outline" onClick={() => {
                 // Could implement pagination here
-                alert('Pagination coming soon!')
+                alert(t('feed.pagination_soon'))
               }}>
-                Load More
+                {t('feed.load_more')}
               </Button>
             </div>
           )}
@@ -550,13 +552,13 @@ const FeedPage = () => {
       {/* Quick Tips */}
       <Card className="!p-4 mt-6 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800">
         <h3 className="font-medium text-primary-800 dark:text-primary-200 mb-2 flex items-center gap-2">
-          💡 Tips
+          {t('feed.tips_title')}
         </h3>
         <ul className="text-sm text-primary-700 dark:text-primary-300 space-y-1">
-          <li>• Gunakan tab untuk memfilter transaksi berdasarkan status</li>
-          <li>• Transaksi dari scan receipt atau import email akan masuk sebagai "Menunggu"</li>
-          <li>• Setujui transaksi untuk menambahkan ke laporan keuangan Anda</li>
-          <li>• Tolak transaksi yang tidak valid untuk menghapusnya dari antrian</li>
+          <li>{t('feed.tip_filter')}</li>
+          <li>{t('feed.tip_pending')}</li>
+          <li>{t('feed.tip_approve')}</li>
+          <li>{t('feed.tip_reject')}</li>
         </ul>
       </Card>
     </div>

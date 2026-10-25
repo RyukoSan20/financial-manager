@@ -13,23 +13,25 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatCurrency } from '../utils/format';
+import { useTranslation } from '../i18n';
 
-const MERCHANT_TYPES = [
-  { value: '', label: 'Semua jenis' },
-  { value: 'minimarket', label: 'Minimarket' },
-  { value: 'supermarket', label: 'Supermarket' },
-  { value: 'apotek', label: 'Apotek' },
-  { value: 'restoran', label: 'Restoran' },
-  { value: 'cafe', label: 'Kafe' },
-  { value: 'elektronik', label: 'Elektronik' },
-  { value: 'rumah tangga', label: 'Rumah tangga' },
-  { value: 'lainnya', label: 'Lainnya' },
+const MERCHANT_TYPE_KEYS = [
+  { value: '', key: 'type_all' },
+  { value: 'minimarket', key: 'type_minimarket' },
+  { value: 'supermarket', key: 'type_supermarket' },
+  { value: 'apotek', key: 'type_apotek' },
+  { value: 'restoran', key: 'type_restoran' },
+  { value: 'cafe', key: 'type_kafe' },
+  { value: 'elektronik', key: 'type_elektronik' },
+  { value: 'rumah tangga', key: 'type_rumah_tangga' },
+  { value: 'lainnya', key: 'type_lainnya' },
 ];
 
 const DEFAULT_MERCHANT_ICON = '🏪';
 const DEFAULT_PRODUCT_ICON = '📦';
 
 export const CatalogPage = () => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState('merchants');
   const [merchants, setMerchants] = useState([]);
   const [products, setProducts] = useState([]);
@@ -53,7 +55,7 @@ export const CatalogPage = () => {
       setMerchants(shopList || []);
       setProducts(productList || []);
     } catch (e) {
-      setError(e.message || 'Gagal memuat katalog');
+      setError(e.message || t('catalog_page.load_error'));
     } finally {
       setLoading(false);
     }
@@ -97,7 +99,7 @@ export const CatalogPage = () => {
       );
       setEditing(null);
     } catch (e) {
-      setError(e.message || 'Gagal menyimpan toko');
+      setError(e.message || t('catalog_page.save_store_error'));
     }
   };
 
@@ -112,18 +114,15 @@ export const CatalogPage = () => {
       );
       setEditing(null);
     } catch (e) {
-      setError(e.message || 'Gagal menyimpan produk');
+      setError(e.message || t('catalog_page.save_product_error'));
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
       <div className="bg-accent text-white p-4 sticky top-0 z-10">
-        <h1 className="text-xl font-bold">📦 Katalog</h1>
-        <p className="text-xs opacity-90 mt-1">
-          Toko dan produk yang dipelajari dari struk. Ikon dan kategori bisa
-          Anda pilih sendiri.
-        </p>
+        <h1 className="text-xl font-bold">{t('catalog_page.title')}</h1>
+        <p className="text-xs opacity-90 mt-1">{t('catalog_page.subtitle')}</p>
       </div>
 
       <div className="p-4 max-w-3xl mx-auto space-y-4">
@@ -144,7 +143,7 @@ export const CatalogPage = () => {
             }`}
           >
             <Store className="w-4 h-4" />
-            Toko ({merchants.length})
+            {t('catalog_page.stores').replace('%count%', merchants.length)}
           </button>
           <button
             onClick={() => setTab('products')}
@@ -155,7 +154,7 @@ export const CatalogPage = () => {
             }`}
           >
             <Package className="w-4 h-4" />
-            Produk ({products.length})
+            {t('catalog_page.products').replace('%count%', products.length)}
           </button>
         </div>
 
@@ -166,7 +165,7 @@ export const CatalogPage = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={tab === 'merchants' ? 'Cari toko...' : 'Cari produk...'}
+            placeholder={tab === 'merchants' ? t('catalog_page.search_store') : t('catalog_page.search_product')}
             className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
           />
         </div>
@@ -178,22 +177,22 @@ export const CatalogPage = () => {
             onChange={(e) => setTypeFilter(e.target.value)}
             className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
           >
-            {MERCHANT_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
+            {MERCHANT_TYPE_KEYS.map((type) => (
+              <option key={type.value} value={type.value}>
+                {t(`catalog_page.${type.key}`)}
               </option>
             ))}
           </select>
         )}
 
         {loading ? (
-          <div className="text-center py-10 text-gray-400 text-sm">Memuat...</div>
+          <div className="text-center py-10 text-gray-400 text-sm">{t('common.loading')}</div>
         ) : tab === 'merchants' ? (
           <div className="space-y-2">
             {filteredMerchants.length === 0 && (
               <EmptyState
-                title="Belum ada toko"
-                text="Toko muncul otomatis setelah struk pertama Anda discan."
+                title={t('catalog_page.no_stores')}
+                text={t('catalog_page.no_stores_desc')}
               />
             )}
             {filteredMerchants.map((merchant) => (
@@ -209,8 +208,8 @@ export const CatalogPage = () => {
           <div className="space-y-2">
             {filteredProducts.length === 0 && (
               <EmptyState
-                title="Belum ada produk"
-                text="Produk muncul otomatis setelah struk pertama Anda discan."
+                title={t('catalog_page.no_products')}
+                text={t('catalog_page.no_products_desc')}
               />
             )}
             {filteredProducts.map((product) => (
@@ -239,6 +238,7 @@ const EmptyState = ({ title, text }) => (
 );
 
 const MerchantRow = ({ merchant, iconGroups, onSave }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [icon, setIcon] = useState(merchant.icon || DEFAULT_MERCHANT_ICON);
   const [type, setType] = useState(merchant.merchant_type || '');
@@ -260,8 +260,8 @@ const MerchantRow = ({ merchant, iconGroups, onSave }) => {
             {merchant.name}
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            {merchant.merchant_type || 'Tanpa kategori'} · {merchant.product_count}{' '}
-            produk · {merchant.scan_count} kali
+            {merchant.merchant_type || t('catalog_page.no_category')} · {merchant.product_count}{' '}
+            {t('catalog_page.product_count')} · {merchant.scan_count} {t('catalog_page.times')}
           </div>
         </div>
         <ChevronRight
@@ -275,16 +275,16 @@ const MerchantRow = ({ merchant, iconGroups, onSave }) => {
         <div className="px-3 pb-3 space-y-3 border-t border-gray-100 dark:border-gray-700 pt-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
-              Kategori toko
+              {t('catalog_page.store_category')}
             </label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
             >
-              {MERCHANT_TYPES.filter((t) => t.value).map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
+              {MERCHANT_TYPE_KEYS.filter((type) => type.value).map((type) => (
+                <option key={type.value} value={type.value}>
+                  {t(`catalog_page.${type.key}`)}
                 </option>
               ))}
             </select>
@@ -301,7 +301,7 @@ const MerchantRow = ({ merchant, iconGroups, onSave }) => {
             onClick={() => onSave({ icon, merchant_type: type || null })}
             className="w-full py-2 rounded-lg bg-accent text-white text-sm font-medium"
           >
-            Simpan
+            {t('common.save')}
           </button>
         </div>
       )}
@@ -310,6 +310,7 @@ const MerchantRow = ({ merchant, iconGroups, onSave }) => {
 };
 
 const ProductRow = ({ product, iconGroups, onSave }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [icon, setIcon] = useState(product.icon || DEFAULT_PRODUCT_ICON);
   const [name, setName] = useState(product.canonical_name || product.name);
@@ -333,12 +334,12 @@ const ProductRow = ({ product, iconGroups, onSave }) => {
             {product.canonical_name || product.name}
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            {product.category || 'Tanpa kategori'}
+            {product.category || t('catalog_page.no_category')}
             {product.typical_price
               ? ` · ${formatCurrency(product.typical_price)}`
               : ''}
             {product.purchase_count > 0
-              ? ` · ${product.purchase_count}x dibeli`
+              ? ` · ${t('catalog_page.bought').replace('%count%', product.purchase_count)}`
               : ''}
           </div>
         </div>
@@ -353,7 +354,7 @@ const ProductRow = ({ product, iconGroups, onSave }) => {
         <div className="px-3 pb-3 space-y-3 border-t border-gray-100 dark:border-gray-700 pt-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
-              Nama yang ditampilkan
+              {t('catalog_page.display_name')}
             </label>
             <input
               type="text"
@@ -365,13 +366,13 @@ const ProductRow = ({ product, iconGroups, onSave }) => {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
-              Kategori
+              {t('catalog_page.category')}
             </label>
             <input
               type="text"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="Contoh: Minuman, Makanan, Kebutuhan Rumah"
+              placeholder={t('catalog_page.category_placeholder')}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
             />
           </div>
@@ -393,7 +394,7 @@ const ProductRow = ({ product, iconGroups, onSave }) => {
             }
             className="w-full py-2 rounded-lg bg-accent text-white text-sm font-medium"
           >
-            Simpan
+            {t('common.save')}
           </button>
         </div>
       )}
@@ -409,6 +410,7 @@ const ProductRow = ({ product, iconGroups, onSave }) => {
  * backend, so the web app and the scanner describe things the same way.
  */
 const IconPicker = ({ groups, value, onChange, suggestSource }) => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [suggestions, setSuggestions] = useState([]);
 
@@ -448,14 +450,14 @@ const IconPicker = ({ groups, value, onChange, suggestSource }) => {
   return (
     <div>
       <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
-        Ikon
+        {t('catalog_page.icon')}
       </label>
 
       {suggestions.length > 0 && !search && (
         <div className="mb-2">
           <div className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 mb-1">
             <Sparkles className="w-3 h-3" />
-            Disarankan
+            {t('catalog_page.suggested')}
           </div>
           <div className="flex gap-1.5 flex-wrap">
             {suggestions.map((icon) => (
@@ -482,7 +484,7 @@ const IconPicker = ({ groups, value, onChange, suggestSource }) => {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cari ikon..."
+          placeholder={t('catalog_page.search_icon')}
           className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
         />
       </div>
@@ -490,7 +492,7 @@ const IconPicker = ({ groups, value, onChange, suggestSource }) => {
       <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 p-2">
         {filtered.length === 0 ? (
           <div className="text-xs text-gray-400 text-center py-3">
-            Tidak ada ikon yang cocok
+            {t('catalog_page.no_icon_match')}
           </div>
         ) : (
           <div className="flex gap-1.5 flex-wrap">

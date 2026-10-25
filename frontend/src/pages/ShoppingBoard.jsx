@@ -6,6 +6,7 @@ import { useShoppingBoard } from '../features/shopping/useShoppingBoard';
 import ActionSheet from '../features/shopping/components/ActionSheet';
 import ExpenseReport from '../features/shopping/components/ExpenseReport';
 import KanbanBoard from '../features/shopping/components/KanbanBoard';
+import { useTranslation } from '../i18n';
 
 function useDebounced(value, ms) {
   const [v, setV] = useState(value);
@@ -21,6 +22,7 @@ function useDebounced(value, ms) {
  *   <Route path="/shopping/board" element={<ProtectedRoute><ShoppingBoard /></ProtectedRoute>} />
  */
 export default function ShoppingBoard() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState('board');
   const [month, setMonth] = useState('');
   const [query, setQuery] = useState('');
@@ -42,12 +44,12 @@ export default function ShoppingBoard() {
         });
       })
       .catch((e) => {
-        if (!off) setRefs((r) => ({ ...r, error: e?.message || 'Daftar akun dan kategori gagal dimuat. Muat ulang halaman.' }));
+        if (!off) setRefs((r) => ({ ...r, error: e?.message || t('shopping_board.refs_error') }));
       });
     return () => {
       off = true;
     };
-  }, []);
+  }, [t]);
 
   const [sheet, setSheet] = useState(null); // { mode: 'purchase' | 'shipped' | 'received', item }
   const [toast, setToast] = useState('');
@@ -64,11 +66,11 @@ export default function ShoppingBoard() {
     if (mode === 'purchase') {
       try {
         const res = await purchaseItem(item.id, body);
-        setToast(res.already_purchased ? 'Item ini sudah dicatat sebelumnya.' : 'Pembelian dicatat sebagai pengeluaran.');
+        setToast(res.already_purchased ? t('shopping_board.already_purchased') : t('shopping_board.purchase_recorded'));
         setSheet(null);
         return { ok: true };
       } catch (e) {
-        return { ok: false, error: e?.message || 'Pembelian gagal dicatat. Periksa koneksi lalu coba lagi.' };
+        return { ok: false, error: e?.message || t('shopping_board.purchase_failed') };
       }
     }
     const res = await moveItem(item, mode, body);
@@ -81,11 +83,11 @@ export default function ShoppingBoard() {
   return (
     <main className="sb-page">
       <header className="sb-header">
-        <h1>Belanja</h1>
-        <div className="sb-tabs" role="tablist" aria-label="Tampilan">
+        <h1>{t('nav.shopping')}</h1>
+        <div className="sb-tabs" role="tablist" aria-label={t('shopping_board.view_label')}>
           {[
-            ['board', 'Papan'],
-            ['report', 'Laporan'],
+            ['board', t('shopping_board.board_tab')],
+            ['report', t('shopping_board.report_tab')],
           ].map(([key, label]) => (
             <button
               key={key}
@@ -106,35 +108,35 @@ export default function ShoppingBoard() {
         <>
           <div className="sb-filters">
             <label className="sb-field">
-              <span>Cari item</span>
+              <span>{t('shopping_board.search_item')}</span>
               <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} maxLength={100} />
             </label>
             <label className="sb-field">
-              <span>Bulan pembelian</span>
+              <span>{t('shopping_board.purchase_month')}</span>
               <div className="sb-inline">
                 <input type="month" value={month} max={wibMonth()} onChange={(e) => setMonth(e.target.value)} />
                 {month && (
                   <button className="sb-btn" onClick={() => setMonth('')}>
-                    Semua bulan
+                    {t('shopping_board.all_months')}
                   </button>
                 )}
               </div>
             </label>
           </div>
 
-          {status === 'loading' && <p className="sb-empty" role="status">Memuat papan belanja…</p>}
+          {status === 'loading' && <p className="sb-empty" role="status">{t('shopping_board.loading')}</p>}
 
           {status === 'error' && (
             <div className="sb-error" role="alert">
               <p>{error}</p>
               <button className="sb-btn" onClick={reload}>
-                Coba lagi
+                {t('shopping_board.retry')}
               </button>
             </div>
           )}
 
           {isEmpty && (
-            <p className="sb-empty">Belum ada item. Tambahkan barang ke daftar belanja, lalu seret kartunya antar tahap.</p>
+            <p className="sb-empty">{t('shopping_board.empty')}</p>
           )}
 
           {status === 'ready' && (

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatCurrency } from '../utils/format';
+import { useTranslation } from '../i18n';
 
 const StatTile = ({ icon: Icon, label, value, tone = 'neutral', sublabel }) => {
   const tones = {
@@ -48,6 +49,7 @@ const StatTile = ({ icon: Icon, label, value, tone = 'neutral', sublabel }) => {
 };
 
 const ProfileSummary = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ const ProfileSummary = () => {
       setData(summary);
     } catch (e) {
       console.error('Profile summary error:', e);
-      setError(e.message || 'Gagal memuat profil');
+      setError(e.message || t('profile.load_error'));
     } finally {
       setLoading(false);
     }
@@ -76,7 +78,7 @@ const ProfileSummary = () => {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
           <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Memuat profil...</span>
+          <span>{t('profile.loading')}</span>
         </div>
       </div>
     );
@@ -92,7 +94,7 @@ const ProfileSummary = () => {
             onClick={load}
             className="px-4 py-2 bg-primary-700 text-white rounded-lg text-sm font-medium hover:bg-primary-800"
           >
-            Coba lagi
+            {t('profile.retry')}
           </button>
         </div>
       </div>
@@ -111,13 +113,13 @@ const ProfileSummary = () => {
           <button
             onClick={() => navigate(-1)}
             className="p-2 -ml-2 rounded-lg hover:bg-white/10"
-            aria-label="Kembali"
+            aria-label={t('common.back')}
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-lg font-bold leading-tight">Ringkasan Profil</h1>
-            <p className="text-xs text-primary-100">Identitas &amp; riwayat aktivitas</p>
+            <h1 className="text-lg font-bold leading-tight">{t('profile.summary_title')}</h1>
+            <p className="text-xs text-primary-100">{t('profile.summary_subtitle')}</p>
           </div>
         </div>
       </div>
@@ -179,13 +181,13 @@ const ProfileSummary = () => {
             {identity.member_since && (
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                 <CalendarDays className="w-4 h-4 text-gray-400" />
-                Bergabung sejak {identity.member_since.display}
+                {t('profile.member_since')} {identity.member_since.display}
               </div>
             )}
             {identity.last_login && (
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                 <History className="w-4 h-4 text-gray-400" />
-                Login terakhir {new Date(identity.last_login).toLocaleString('id-ID')}
+                {t('profile.last_login')} {new Date(identity.last_login).toLocaleString('id-ID')}
               </div>
             )}
           </div>
@@ -195,38 +197,38 @@ const ProfileSummary = () => {
         <section className="grid grid-cols-2 gap-3">
           <StatTile
             icon={TrendingUp}
-            label="Total Pemasukan"
+            label={t('profile.total_income')}
             value={formatCurrency(stats.total_income)}
             tone="income"
           />
           <StatTile
             icon={TrendingDown}
-            label="Total Pengeluaran"
+            label={t('profile.total_expense')}
             value={formatCurrency(stats.total_expense)}
             tone="expense"
           />
           <StatTile
             icon={Wallet}
-            label="Saldo Akun"
+            label={t('profile.account_balance')}
             value={formatCurrency(stats.account_balance)}
             tone="primary"
-            sublabel={`${stats.account_count} akun`}
+            sublabel={t('profile.account_count').replace('%count%', stats.account_count)}
           />
           <StatTile
             icon={Receipt}
-            label="Total Transaksi"
+            label={t('profile.total_transactions')}
             value={stats.transaction_count}
-            sublabel={`${stats.receipt_scan_count} struk discan`}
+            sublabel={t('profile.receipts_scanned').replace('%count%', stats.receipt_scan_count)}
           />
           <StatTile
             icon={Flame}
-            label="Aktif Berturut"
-            value={`${stats.current_streak} hari`}
-            sublabel={`${stats.active_days} hari aktif (30 hari terakhir)`}
+            label={t('profile.active_streak')}
+            value={`${stats.current_streak} ${t('profile.day_streak')}`}
+            sublabel={t('profile.active_days_30').replace('%count%', stats.active_days)}
           />
           <StatTile
             icon={UserIcon}
-            label="Mata Uang"
+            label={t('profile.currency')}
             value={identity.default_currency}
             sublabel={identity.timezone}
           />
@@ -237,14 +239,14 @@ const ProfileSummary = () => {
           <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
             <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <History className="w-4 h-4 text-gray-400" />
-              Riwayat Aktivitas
+              {t('profile.history')}
             </h3>
-            <span className="text-xs text-gray-400">30 hari terakhir</span>
+            <span className="text-xs text-gray-400">{t('profile.last_30_days')}</span>
           </div>
 
           {history.length === 0 ? (
             <p className="p-6 text-center text-sm text-gray-400">
-              Belum ada aktivitas transaksi dalam 30 hari terakhir.
+              {t('profile.no_activity')}
             </p>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -260,7 +262,7 @@ const ProfileSummary = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {h.total_count} transaksi
+                      {t('profile.transaction_count').replace('%count%', h.total_count)}
                     </p>
                     <div className="flex items-center gap-3 text-xs mt-0.5">
                       {h.income > 0 && (
@@ -297,20 +299,20 @@ const ProfileSummary = () => {
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
               <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-gray-400" />
-                Transaksi Terbaru
+                {t('profile.recent_transactions')}
               </h3>
             </div>
             <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-              {recent_transactions.map((t) => (
-                <li key={t.id} className="px-4 py-3 flex items-center gap-3">
+              {recent_transactions.map((tx) => (
+                <li key={tx.id} className="px-4 py-3 flex items-center gap-3">
                   <div
                     className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                      t.type === 'income'
+                      tx.type === 'income'
                         ? 'bg-emerald-50 text-emerald-600'
                         : 'bg-rose-50 text-rose-600'
                     }`}
                   >
-                    {t.type === 'income' ? (
+                    {tx.type === 'income' ? (
                       <TrendingUp className="w-4 h-4" />
                     ) : (
                       <TrendingDown className="w-4 h-4" />
@@ -318,17 +320,17 @@ const ProfileSummary = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-gray-800 dark:text-gray-200 truncate">
-                      {t.merchant_name || t.description || (t.type === 'income' ? 'Pemasukan' : 'Pengeluaran')}
+                      {tx.merchant_name || tx.description || (tx.type === 'income' ? t('transaction.income') : t('transaction.expense'))}
                     </p>
-                    <p className="text-xs text-gray-400">{t.date}</p>
+                    <p className="text-xs text-gray-400">{tx.date}</p>
                   </div>
                   <p
                     className={`text-sm font-semibold shrink-0 ${
-                      t.type === 'income' ? 'text-emerald-600' : 'text-gray-700 dark:text-gray-200'
+                      tx.type === 'income' ? 'text-emerald-600' : 'text-gray-700 dark:text-gray-200'
                     }`}
                   >
-                    {t.type === 'income' ? '+' : '-'}
-                    {formatCurrency(t.amount)}
+                    {tx.type === 'income' ? '+' : '-'}
+                    {formatCurrency(tx.amount)}
                   </p>
                 </li>
               ))}
@@ -342,7 +344,7 @@ const ProfileSummary = () => {
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
               <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <Camera className="w-4 h-4 text-gray-400" />
-                Riwayat Login
+                {t('profile.login_history')}
               </h3>
             </div>
             <ul className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -369,7 +371,7 @@ const ProfileSummary = () => {
           className="w-full flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700"
         >
           <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-            Edit profil &amp; informasi akun
+            {t('profile.edit_profile')}
           </span>
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </button>

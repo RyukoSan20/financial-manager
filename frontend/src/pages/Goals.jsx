@@ -6,6 +6,7 @@ import { formatCurrency, formatPercent, formatDate } from '../utils/format';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
+import { useTranslation } from '../i18n';
 
 // The accent the user picked is the first colour of the palette.
 //
@@ -15,6 +16,7 @@ import { BreakdownViewer } from '../components/common/BreakdownViewer';
 const COLORS = chartPalette;
 
 export const Goals = () => {
+  const { t } = useTranslation();
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -51,7 +53,7 @@ export const Goals = () => {
       fetchData();
     } catch (err) {
       console.error('Failed to save goal:', err);
-      alert('Gagal menyimpan target: ' + (err.message || 'Unknown error'));
+      alert(t('goals.save_error').replace('%s', err.message || 'Unknown error'));
     }
   };
 
@@ -68,7 +70,7 @@ export const Goals = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this goal?')) return;
+    if (!confirm(t('goals.delete_confirm'))) return;
     try {
       await api.goals.delete(id);
       fetchData();
@@ -94,12 +96,12 @@ export const Goals = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Financial Goals</h1>
-          <p className="text-gray-500 mt-1">{activeGoals} active goals</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('goals.title')}</h1>
+          <p className="text-gray-500 mt-1">{t('goals.active_count').replace('%s', activeGoals)}</p>
         </div>
         <Button onClick={() => { setEditingGoal(null); setShowModal(true); }}>
           <Plus className="w-4 h-4 mr-2" />
-          New Goal
+          {t('goals.new_goal')}
         </Button>
       </div>
 
@@ -107,19 +109,19 @@ export const Goals = () => {
       {goals.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="!p-4">
-            <p className="text-sm text-gray-500">Total Target</p>
+            <p className="text-sm text-gray-500">{t('goals.total_target')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalTarget)}</p>
           </Card>
           <Card className="!p-4">
-            <p className="text-sm text-gray-500">Total Saved</p>
+            <p className="text-sm text-gray-500">{t('goals.total_saved')}</p>
             <p className="text-xl font-bold text-success-600 mt-1">{formatCurrency(totalCurrent)}</p>
           </Card>
           <Card className="!p-4">
-            <p className="text-sm text-gray-500">Remaining</p>
+            <p className="text-sm text-gray-500">{t('goals.remaining')}</p>
             <p className="text-xl font-bold text-warning-600 mt-1">{formatCurrency(totalTarget - totalCurrent)}</p>
           </Card>
           <Card className="!p-4">
-            <p className="text-sm text-gray-500">Overall Progress</p>
+            <p className="text-sm text-gray-500">{t('goals.overall_progress')}</p>
             <p className="text-xl font-bold text-primary-600 mt-1">
               {totalTarget > 0 ? formatPercent((totalCurrent / totalTarget) * 100) : '0%'}
             </p>
@@ -131,12 +133,12 @@ export const Goals = () => {
       {goals.length === 0 ? (
         <EmptyState
           icon={<Target className="w-8 h-8 text-gray-400" />}
-          title="No financial goals yet"
-          description="Set your first savings goal to track your progress"
+          title={t('goals.empty_title')}
+          description={t('goals.empty_desc')}
           action={
             <Button onClick={() => setShowModal(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              Create Goal
+              {t('goals.create_goal')}
             </Button>
           }
         />
@@ -164,18 +166,18 @@ export const Goals = () => {
                           size="sm" 
                           variant={goal.status === 'active' ? 'success' : goal.status === 'completed' ? 'primary' : 'default'}
                         >
-                          {goal.status}
+                          {t(`goals.status_${goal.status}`)}
                         </Badge>
                         {goal.priority && (
-                          <Badge size="sm" variant="warning">{goal.priority}</Badge>
+                          <Badge size="sm" variant="warning">{t(`goals.priority_${goal.priority}`)}</Badge>
                         )}
                         {isOnTrack ? (
                           <span className="text-xs text-success-600 flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" /> On Track
+                            <TrendingUp className="w-3 h-3" /> {t('goals.on_track')}
                           </span>
                         ) : (
                           <span className="text-xs text-danger-600 flex items-center gap-1">
-                            <TrendingDown className="w-3 h-3" /> Behind
+                            <TrendingDown className="w-3 h-3" /> {t('goals.behind')}
                           </span>
                         )}
                       </div>
@@ -200,7 +202,7 @@ export const Goals = () => {
                 <div className="grid lg:grid-cols-3 gap-4">
                   <div className="lg:col-span-2 space-y-3">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-500">Progress</span>
+                      <span className="text-gray-500">{t('goals.progress')}</span>
                       <span className="font-semibold">{formatPercent(progress)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3">
@@ -214,10 +216,10 @@ export const Goals = () => {
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">
-                        {formatCurrency(goal.current_amount)} saved
+                        {t('goals.saved_amount').replace('%s', formatCurrency(goal.current_amount))}
                       </span>
                       <span className="text-gray-500">
-                        {formatCurrency(goal.target_amount)} target
+                        {t('goals.target_label').replace('%s', formatCurrency(goal.target_amount))}
                       </span>
                     </div>
                   </div>
@@ -225,12 +227,12 @@ export const Goals = () => {
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Remaining</span>
+                        <span className="text-gray-500">{t('goals.remaining')}</span>
                         <span className="font-medium text-gray-900">{formatCurrency(remaining)}</span>
                       </div>
                       {goal.required_monthly_saving && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">Monthly target</span>
+                          <span className="text-gray-500">{t('goals.monthly_target')}</span>
                           <span className="font-medium text-primary-600">
                             {formatCurrency(goal.required_monthly_saving)}
                           </span>
@@ -238,7 +240,7 @@ export const Goals = () => {
                       )}
                       {goal.target_date && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">Target date</span>
+                          <span className="text-gray-500">{t('goals.target_date')}</span>
                           <span className="font-medium text-gray-900">{formatDate(goal.target_date)}</span>
                         </div>
                       )}
@@ -246,13 +248,13 @@ export const Goals = () => {
                         size="sm" 
                         className="w-full mt-2"
                         onClick={() => {
-                          const amount = prompt('Enter contribution amount:');
+                          const amount = prompt(t('goals.contribution_prompt'));
                           if (amount && !isNaN(amount)) {
                             handleContribution(goal.id, parseFloat(amount));
                           }
                         }}
                       >
-                        <Plus className="w-4 h-4 mr-1" /> Add Savings
+                        <Plus className="w-4 h-4 mr-1" /> {t('goals.add_savings')}
                       </Button>
                     </div>
                   </div>
@@ -260,7 +262,7 @@ export const Goals = () => {
                   <BreakdownViewer
                     parentType="goal"
                     parentId={goal.id}
-                    title="Rincian biaya"
+                    title={t('goals.breakdown_title')}
                     compact
                   />
                 </div>
@@ -282,6 +284,7 @@ export const Goals = () => {
 };
 
 const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     name: '',
     target_amount: '',
@@ -305,7 +308,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
   const handlePreview = async () => {
     const amount = parseFloat(form.target_amount);
     if (!amount || amount <= 0) {
-      setPreviewError('Isi nominal target dulu');
+      setPreviewError(t('goals.preview_fill_target'));
       return;
     }
     setPreviewing(true);
@@ -319,7 +322,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
       });
       setPreview(res);
     } catch (err) {
-      setPreviewError('Gagal membuat rincian. Target tetap bisa disimpan.');
+      setPreviewError(t('goals.preview_error'));
     } finally {
       setPreviewing(false);
     }
@@ -371,11 +374,11 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
   const colorOptions = COLORS();
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={goal ? 'Edit Goal' : 'Create Goal'} size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={goal ? t('goals.edit_goal') : t('goals.create_goal')} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Goal Name"
-          placeholder="e.g., Emergency Fund"
+          label={t('goals.goal_name')}
+          placeholder={t('goals.goal_name_placeholder')}
           value={form.name}
           onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
           required
@@ -383,7 +386,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
 
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Target Amount"
+            label={t('goals.target_amount')}
             type="number"
             step="1000"
             placeholder="0"
@@ -392,7 +395,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
             required
           />
           <Input
-            label="Current Amount"
+            label={t('goals.current_amount')}
             type="number"
             step="1000"
             placeholder="0"
@@ -402,7 +405,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
         </div>
 
         <Input
-          label="Target Date"
+          label={t('goals.target_date')}
           type="date"
           value={form.target_date}
           onChange={(e) => setForm(f => ({ ...f, target_date: e.target.value }))}
@@ -411,7 +414,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
         <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
-              Rincian biaya
+              {t('goals.breakdown_title')}
             </p>
             <button
               type="button"
@@ -419,7 +422,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
               disabled={previewing}
               className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
             >
-              {previewing ? 'Menyusun...' : 'Susun rincian'}
+              {previewing ? t('goals.preview_building') : t('goals.preview_build')}
             </button>
           </div>
 
@@ -437,7 +440,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
                 </p>
                 {preview.used_model === false && (
                   <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                    Mode model sedang penuh, memakai pola bawaan
+                    {t('goals.model_busy')}
                   </span>
                 )}
               </div>
@@ -457,7 +460,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
                 ))}
               </ul>
               <div className="flex items-center justify-between pt-1.5 text-sm font-semibold">
-                <span className="text-gray-700 dark:text-gray-200">Total</span>
+                <span className="text-gray-700 dark:text-gray-200">{t('goals.total')}</span>
                 <span>{formatCurrency(preview.total)}</span>
               </div>
             </div>
@@ -465,7 +468,7 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t('goals.color')}</label>
           <div className="flex gap-2">
             {colorOptions.map((color) => (
               <button
@@ -481,21 +484,21 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
 
         <div className="grid grid-cols-2 gap-4">
           <Select
-            label="Priority"
+            label={t('goals.priority')}
             options={[
-              { value: 'low', label: 'Low' },
-              { value: 'medium', label: 'Medium' },
-              { value: 'high', label: 'High' },
+              { value: 'low', label: t('goals.priority_low') },
+              { value: 'medium', label: t('goals.priority_medium') },
+              { value: 'high', label: t('goals.priority_high') },
             ]}
             value={form.priority}
             onChange={(e) => setForm(f => ({ ...f, priority: e.target.value }))}
           />
           <Select
-            label="Status"
+            label={t('goals.status')}
             options={[
-              { value: 'active', label: 'Active' },
-              { value: 'completed', label: 'Completed' },
-              { value: 'paused', label: 'Paused' },
+              { value: 'active', label: t('goals.status_active') },
+              { value: 'completed', label: t('goals.status_completed') },
+              { value: 'paused', label: t('goals.status_paused') },
             ]}
             value={form.status}
             onChange={(e) => setForm(f => ({ ...f, status: e.target.value }))}
@@ -504,10 +507,10 @@ const GoalModal = ({ isOpen, onClose, onSubmit, goal }) => {
 
         <div className="flex gap-3 pt-4">
           <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" className="flex-1">
-            {goal ? 'Update' : 'Create'} Goal
+            {goal ? t('goals.update_goal') : t('goals.create_goal')}
           </Button>
         </div>
       </form>

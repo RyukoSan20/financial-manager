@@ -1,6 +1,7 @@
 // Notifications Settings Page - backed by GET/PUT /api/settings/notifications
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
+import { useTranslation } from '../../i18n';
 
 const DEFAULTS = {
   email_notifications: true,
@@ -14,6 +15,7 @@ const DEFAULTS = {
 };
 
 const NotificationSettings = () => {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,7 +51,7 @@ const NotificationSettings = () => {
         method: 'PUT',
         body: JSON.stringify(settings)
       });
-      setMessage('Pengaturan notifikasi disimpan!');
+      setMessage(t('notification_settings.saved'));
       await load();
       setTimeout(() => setMessage(''), 3000);
     } catch (e) {
@@ -62,7 +64,7 @@ const NotificationSettings = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">Memuat...</div>
+        <div className="text-gray-500">{t('notification_settings.loading')}</div>
       </div>
     );
   }
@@ -70,7 +72,7 @@ const NotificationSettings = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="bg-primary-600 text-white p-4 sticky top-0 z-10">
-        <h1 className="text-xl font-bold">🔔 Notifikasi</h1>
+        <h1 className="text-xl font-bold">{t('notification_settings.title')}</h1>
       </div>
 
       <div className="p-4 max-w-lg mx-auto space-y-4">
@@ -82,18 +84,18 @@ const NotificationSettings = () => {
         )}
 
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h2 className="font-bold text-lg mb-4">Pengaturan Notifikasi</h2>
+          <h2 className="font-bold text-lg mb-4">{t('notification_settings.subtitle')}</h2>
 
           <div className="space-y-4">
             <ToggleItem
-              title="Notifikasi Email"
+              title={t('notification_settings.email')}
               description="Terima notifikasi via email"
               checked={settings.email_notifications}
               onChange={() => handleToggle('email_notifications')}
             />
 
             <ToggleItem
-              title="Push Notification"
+              title={t('notification_settings.push')}
               description="Terima notifikasi di browser"
               checked={settings.push_notifications}
               onChange={() => handleToggle('push_notifications')}
@@ -106,14 +108,14 @@ const NotificationSettings = () => {
 
           <div className="space-y-4">
             <ToggleItem
-              title="Alert Transaksi"
-              description="Notifikasi untuk transaksi besar"
+              title={t('notification_settings.transaction')}
+              description={t('notification_settings.large_transaction')}
               checked={settings.transaction_alerts}
               onChange={() => handleToggle('transaction_alerts')}
             />
 
             <ToggleItem
-              title="Alert Budget"
+              title={t('notification_settings.budget')}
               description="Peringatan saat budget hampir habis"
               checked={settings.budget_alerts}
               onChange={() => handleToggle('budget_alerts')}
@@ -128,9 +130,9 @@ const NotificationSettings = () => {
                 onChange={(e) => setSettings({ ...settings, reminder_frequency: e.target.value })}
                 className="w-full p-3 border rounded-lg"
               >
-                <option value="daily">Harian</option>
-                <option value="weekly">Mingguan</option>
-                <option value="monthly">Bulanan</option>
+                <option value="daily">{t('notification_settings.daily')}</option>
+                <option value="weekly">{t('notification_settings.weekly')}</option>
+                <option value="monthly">{t('notification_settings.monthly')}</option>
               </select>
             </div>
 
@@ -153,18 +155,18 @@ const NotificationSettings = () => {
         </div>
 
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h2 className="font-bold text-lg mb-4">Laporan</h2>
+          <h2 className="font-bold text-lg mb-4">{t('notification_settings.report')}</h2>
 
           <div className="space-y-4">
             <ToggleItem
-              title="Ringkasan Mingguan"
+              title={t('notification_settings.weekly_summary')}
               description="Kirim ringkasan setiap minggu"
               checked={settings.weekly_summary}
               onChange={() => handleToggle('weekly_summary')}
             />
 
             <ToggleItem
-              title="Ringkasan Bulanan"
+              title={t('notification_settings.monthly_summary')}
               description="Kirim ringkasan setiap bulan"
               checked={settings.monthly_summary}
               onChange={() => handleToggle('monthly_summary')}
@@ -177,7 +179,7 @@ const NotificationSettings = () => {
           disabled={saving}
           className="w-full py-3 bg-primary-600 text-white rounded-xl font-bold disabled:opacity-50"
         >
-          {saving ? 'Menyimpan...' : '💾 Simpan'}
+          {saving ? t('notification_settings.saving') : '💾 ' + t('notification_settings.save')}
         </button>
       </div>
     </div>

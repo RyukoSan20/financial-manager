@@ -64,6 +64,11 @@ export const I18nProvider = ({ children }) => {
    * better to say and the key at least says what was looked for.
    */
   const t = (key, fallback = '') => {
+    // A key can be missing when it is built at run time, for example
+    // when a list of options is read from a configuration. Returning
+    // the fallback keeps the page on screen; throwing would leave a
+    // blank page behind.
+    if (typeof key !== 'string' || !key) return fallback || '';
     const keys = key.split('.');
 
     const lookup = (table) => {
@@ -84,7 +89,16 @@ export const I18nProvider = ({ children }) => {
     const english = lookup(translations.en);
     if (english) return english;
 
-    return fallback || key;
+    if (fallback) return fallback;
+
+    // A key with no translation anywhere is a bug, but showing
+    // "nav.map" on the screen is worse than showing the last part
+    // of the key, which at least reads as a word. The audit script
+    // reports the missing key either way.
+    const leaf = keys[keys.length - 1];
+    return leaf
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/^./, c => c.toUpperCase());
   };
   
   // Format currency based on language

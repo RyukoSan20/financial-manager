@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from "react-leaflet";
 import { api } from "../services/api";
 import { formatCurrency } from "../utils/format";
+import { useTranslation } from "../i18n";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -57,6 +58,8 @@ const FlyTo = ({ center, zoom }) => {
 };
 
 const MerchantMap = () => {
+  const { t } = useTranslation();
+
   // Data states
   const [markers, setMarkers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -126,11 +129,11 @@ const MerchantMap = () => {
       }
     } catch (err) {
       console.error("Map fetch error:", err);
-      setError("Gagal memuat data peta");
+      setError(t("merchant_map.load_error"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchData();
@@ -153,7 +156,7 @@ const MerchantMap = () => {
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Memuat data peta...</p>
+          <p className="text-gray-500">{t("merchant_map.loading")}</p>
         </div>
       </div>
     );
@@ -166,7 +169,7 @@ const MerchantMap = () => {
           <div className="text-4xl mb-4">⚠️</div>
           <p className="text-red-500 mb-4">{error}</p>
           <button onClick={fetchData} className="px-4 py-2 bg-primary-600 text-white rounded-lg">
-            🔄 Coba Lagi
+            {t("merchant_map.retry")}
           </button>
         </div>
       </div>
@@ -179,21 +182,21 @@ const MerchantMap = () => {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">Total Lokasi</p>
+            <p className="text-xs text-gray-500">{t("merchant_map.total_locations")}</p>
             <p className="text-xl font-bold text-gray-900">{stats.total_locations}</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">Total Pengeluaran</p>
+            <p className="text-xs text-gray-500">{t("merchant_map.total_spent")}</p>
             <p className="text-xl font-bold text-red-500">{formatCurrency(stats.total_spent)}</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">Total Kunjungan</p>
+            <p className="text-xs text-gray-500">{t("merchant_map.total_visits")}</p>
             <p className="text-xl font-bold text-blue-600">{stats.total_visits}x</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">GPS Data</p>
+            <p className="text-xs text-gray-500">{t("merchant_map.gps_data")}</p>
             <p className="text-xl font-bold text-green-500">
-              {(stats.sources?.gps || 0) + (stats.sources?.gps_tx || 0)} lokasi
+              {(stats.sources?.gps || 0) + (stats.sources?.gps_tx || 0)}{t("merchant_map.locations_suffix")}
             </p>
           </div>
         </div>
@@ -205,7 +208,7 @@ const MerchantMap = () => {
         <div className="relative">
           <input
             type="text"
-            placeholder="🔍 Cari lokasi, kategori, atau address..."
+            placeholder={t("merchant_map.search_placeholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-3 pl-10 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
@@ -233,26 +236,26 @@ const MerchantMap = () => {
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {cat === "all" ? "🌐 Semua" : cat}
+              {cat === "all" ? t("merchant_map.all_categories") : cat}
             </button>
           ))}
         </div>
 
         {/* Results count */}
         <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>Menampilkan {filteredMarkers.length} dari {markers.length} lokasi</span>
+          <span>{t("merchant_map.showing").replace("%s", filteredMarkers.length).replace("%s", markers.length)}</span>
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode("markers")}
               className={`px-3 py-1 rounded-lg ${viewMode === "markers" ? "bg-primary-100 text-primary-600" : "bg-gray-50"}`}
             >
-              📍 Markers
+              {t("merchant_map.markers")}
             </button>
             <button
               onClick={() => setViewMode("heatmap")}
               className={`px-3 py-1 rounded-lg ${viewMode === "heatmap" ? "bg-primary-100 text-primary-600" : "bg-gray-50"}`}
             >
-              🌡️ Heatmap
+              {t("merchant_map.heatmap")}
             </button>
           </div>
         </div>
@@ -322,29 +325,29 @@ const MerchantMap = () => {
                       <h4 className="font-bold text-base mb-2">{marker.name}</h4>
                       <div className="space-y-1 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-gray-500">💰 Total:</span>
+                          <span className="text-gray-500">{t("merchant_map.total")}</span>
                           <span className="font-semibold text-red-600">{formatCurrency(marker.total_spent)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500">📍 Kunjungan:</span>
+                          <span className="text-gray-500">{t("merchant_map.visits")}</span>
                           <span className="font-semibold">{marker.visit_count}x</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500">📊 Rata-rata:</span>
+                          <span className="text-gray-500">{t("merchant_map.average")}</span>
                           <span className="font-semibold">{formatCurrency(marker.avg_transaction)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500">🏷️ Kategori:</span>
+                          <span className="text-gray-500">{t("merchant_map.category")}</span>
                           <span className="font-semibold">{marker.category}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500">📌 Source:</span>
+                          <span className="text-gray-500">{t("merchant_map.source")}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${
                             marker.source === 'gps' || marker.source === 'gps_tx'
                               ? 'bg-green-100 text-green-700'
                               : 'bg-blue-100 text-blue-700'
                           }`}>
-                            {marker.source === 'gps' ? 'GPS' : marker.source === 'gps_tx' ? 'GPS Tx' : 'Category'}
+                            {marker.source === 'gps' ? t("merchant_map.source_gps") : marker.source === 'gps_tx' ? t("merchant_map.source_gps_tx") : t("merchant_map.source_category")}
                           </span>
                         </div>
                         {marker.address && (
@@ -383,7 +386,7 @@ const MerchantMap = () => {
                     <div className="min-w-[200px]">
                       <h4 className="font-bold">{marker.name}</h4>
                       <p className="text-sm">💰 {formatCurrency(marker.total_spent)}</p>
-                      <p className="text-xs text-gray-500">{marker.visit_count}x kunjungan</p>
+                      <p className="text-xs text-gray-500">{t("merchant_map.visits_count").replace("%s", marker.visit_count)}</p>
                     </div>
                   </Popup>
                 </CircleMarker>
@@ -393,37 +396,37 @@ const MerchantMap = () => {
 
           {/* Legend */}
           <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 dark:bg-gray-900/95 backdrop-blur rounded-xl p-3 shadow-lg text-xs max-w-[180px] text-gray-900 dark:text-gray-100">
-            <p className="font-semibold mb-2">🗺️ Legend</p>
+            <p className="font-semibold mb-2">{t("merchant_map.legend")}</p>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span>Makanan & Minuman</span>
+                <span>{t("category.makanan")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                <span>Transportasi</span>
+                <span>{t("category.transport")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-pink-500"></div>
-                <span>Belanja</span>
+                <span>{t("category.belanja")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span>GPS/Real Location</span>
+                <span>{t("merchant_map.gps_real_location")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-blue-400"></div>
-                <span>GPS Transaction</span>
+                <span>{t("merchant_map.gps_transaction")}</span>
               </div>
             </div>
-            <p className="text-[10px] text-gray-400 mt-2">Ukuran = Total pengeluaran</p>
+            <p className="text-[10px] text-gray-400 mt-2">{t("merchant_map.size_legend")}</p>
           </div>
 
           {/* Refresh Button */}
           <button
             onClick={fetchData}
             className="absolute top-4 right-4 z-[1000] bg-white p-2 rounded-full shadow-lg hover:bg-gray-50"
-            title="Refresh data"
+            title={t("merchant_map.refresh_title")}
           >
             🔄
           </button>
@@ -434,42 +437,42 @@ const MerchantMap = () => {
       {selectedLocation && (
         <div className="bg-white rounded-xl p-4 shadow-sm border-2 border-primary-500">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-lg">📍 Detail Lokasi</h3>
+            <h3 className="font-bold text-lg">{t("merchant_map.detail_title")}</h3>
             <button onClick={clearSelection} className="text-gray-400 hover:text-gray-600">✕</button>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-500">Nama</p>
+              <p className="text-sm text-gray-500">{t("merchant_map.name")}</p>
               <p className="font-semibold">{selectedLocation.name}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Kategori</p>
+              <p className="text-sm text-gray-500">{t("merchant_map.category_label")}</p>
               <p className="font-semibold">{selectedLocation.category}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Pengeluaran</p>
+              <p className="text-sm text-gray-500">{t("merchant_map.total_spent")}</p>
               <p className="font-bold text-red-500 text-lg">{formatCurrency(selectedLocation.total_spent)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Frekuensi</p>
-              <p className="font-semibold">{selectedLocation.visit_count}x kunjungan</p>
+              <p className="text-sm text-gray-500">{t("merchant_map.frequency")}</p>
+              <p className="font-semibold">{t("merchant_map.visits_count").replace("%s", selectedLocation.visit_count)}</p>
             </div>
             <div className="col-span-2">
-              <p className="text-sm text-gray-500">Koordinat</p>
+              <p className="text-sm text-gray-500">{t("merchant_map.coordinates")}</p>
               <p className="font-mono text-sm">{selectedLocation.latitude.toFixed(6)}, {selectedLocation.longitude.toFixed(6)}</p>
             </div>
             {selectedLocation.address && (
               <div className="col-span-2">
-                <p className="text-sm text-gray-500">Address</p>
+                <p className="text-sm text-gray-500">{t("merchant_map.address")}</p>
                 <p className="text-sm">{selectedLocation.address}</p>
               </div>
             )}
             <div className="col-span-2">
-              <p className="text-sm text-gray-500">Data Source</p>
+              <p className="text-sm text-gray-500">{t("merchant_map.data_source")}</p>
               <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                 selectedLocation.source === 'category' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
               }`}>
-                {selectedLocation.source === 'category' ? '📊 Category (Jakarta Area)' : '📍 GPS / Real Location'}
+                {selectedLocation.source === 'category' ? t("merchant_map.source_category_jakarta") : t("merchant_map.gps_real_location")}
               </span>
             </div>
           </div>
@@ -479,12 +482,12 @@ const MerchantMap = () => {
       {/* Location List */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="p-4 border-b">
-          <h3 className="font-semibold">📋 Semua Lokasi ({filteredMarkers.length})</h3>
+          <h3 className="font-semibold">{t("merchant_map.all_locations").replace("%s", filteredMarkers.length)}</h3>
         </div>
         <div className="divide-y max-h-[400px] overflow-y-auto">
           {filteredMarkers.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
-              Tidak ada lokasi yang cocok dengan filter
+              {t("merchant_map.no_match")}
             </div>
           ) : (
             filteredMarkers.slice(0, 50).map((marker, idx) => (
@@ -521,7 +524,7 @@ const MerchantMap = () => {
         </div>
         {filteredMarkers.length > 50 && (
           <div className="p-3 text-center text-sm text-gray-500 bg-gray-50">
-            Menampilkan 50 dari {filteredMarkers.length} lokasi
+            {t("merchant_map.showing_50").replace("%s", filteredMarkers.length)}
           </div>
         )}
       </div>

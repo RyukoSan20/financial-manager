@@ -9,15 +9,16 @@ import {
 import { formatNumber } from '../utils/format';
 import { apiUrl } from '../config/url';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from '../i18n';
 
 // Dark Mode Toggle Component
-const ThemeToggle = ({ isDark, onToggle }) => (
+const ThemeToggle = ({ isDark, onToggle, label }) => (
   <button
     onClick={onToggle}
     className={`relative w-14 h-7 rounded-full transition-all duration-300 ${
       isDark ? 'bg-gray-700' : 'bg-gray-300'
     }`}
-    aria-label="Toggle theme"
+    aria-label={label}
   >
     <span className={`absolute top-0.5 w-6 h-6 rounded-full shadow-md flex items-center justify-center transition-all duration-300 ${
       isDark ? 'left-7 bg-yellow-400' : 'left-0.5 bg-white'
@@ -56,6 +57,7 @@ const MarketCard = ({ name, value, change, changeValue, positive, unit = '', isD
 };
 
 export const MarketPage = () => {
+  const { t } = useTranslation();
   // Dark mode comes from the global ThemeContext so the page always matches
   // the toggle in the navigation and the user's saved preference.
   const { isDarkMode, toggleTheme } = useTheme();
@@ -112,7 +114,7 @@ export const MarketPage = () => {
       setMarketError(null);
     } catch (err) {
       console.error('Failed to fetch market data:', err);
-      setMarketError(err?.message || 'Gagal memuat data pasar');
+      setMarketError(err?.message || t('market_page.loading'));
     } finally {
       setLoading(false);
     }
@@ -173,13 +175,13 @@ export const MarketPage = () => {
 
   // Symbol options for TradingView
   const symbolOptions = [
-    { group: '💱 Forex', symbols: [
+    { group: t('market_page.group_forex'), symbols: [
       { symbol: 'FX_IDC:USDIDR', name: 'USD/IDR' },
       { symbol: 'FX:EURUSD', name: 'EUR/USD' },
       { symbol: 'FX:GBPUSD', name: 'GBP/USD' },
       { symbol: 'FX:USDJPY', name: 'USD/JPY' },
     ]},
-    { group: '🇮🇩 Saham IDX', symbols: [
+    { group: t('market_page.group_idx'), symbols: [
       { symbol: 'IDX:BBCA', name: 'BBCA' },
       { symbol: 'IDX:BBRI', name: 'BBRI' },
       { symbol: 'IDX:BMRI', name: 'BMRI' },
@@ -187,13 +189,13 @@ export const MarketPage = () => {
       { symbol: 'IDX:ASII', name: 'ASII' },
       { symbol: 'IDX:UNVR', name: 'UNVR' },
     ]},
-    { group: '🇺🇸 Saham US', symbols: [
+    { group: t('market_page.group_us'), symbols: [
       { symbol: 'NASDAQ:AAPL', name: 'AAPL' },
       { symbol: 'NASDAQ:MSFT', name: 'MSFT' },
       { symbol: 'NASDAQ:GOOGL', name: 'GOOGL' },
       { symbol: 'NASDAQ:TSLA', name: 'TSLA' },
     ]},
-    { group: '₿ Crypto', symbols: [
+    { group: t('market_page.group_crypto'), symbols: [
       { symbol: 'BINANCE:BTCUSDT', name: 'BTC' },
       { symbol: 'BINANCE:ETHUSDT', name: 'ETH' },
     ]},
@@ -236,24 +238,24 @@ export const MarketPage = () => {
   // Learning content
   const learningContent = [
     {
-      title: '📊 Cara Baca Candlestick',
+      title: t('market_page.learn_candlestick_title'),
       icon: BarChart3,
-      content: 'Candlestick menunjukkan Open, High, Low, Close (OHLC). Body hijau = harga naik, merah = turun.',
+      content: t('market_page.learn_candlestick_body'),
     },
     {
-      title: '📈 Indikator RSI',
+      title: t('market_page.learn_rsi_title'),
       icon: Activity,
-      content: 'RSI > 70 = overbought (jenuh beli), RSI < 30 = oversold (jenuh jual).',
+      content: t('market_page.learn_rsi_body'),
     },
     {
-      title: '💰 Dollar Cost Averaging',
+      title: t('market_page.learn_dca_title'),
       icon: DollarSign,
-      content: 'Strategi investasi rutin dengan jumlah tetap untuk kurangi risiko timing.',
+      content: t('market_page.learn_dca_body'),
     },
     {
-      title: '🎯 Support & Resistance',
+      title: t('market_page.learn_sr_title'),
       icon: PieChart,
-      content: 'Support = level beli, Resistance = level jual. Pecah resistance = trend naik.',
+      content: t('market_page.learn_sr_body'),
     },
   ];
 
@@ -271,7 +273,7 @@ export const MarketPage = () => {
     return (
       <div className={`min-h-screen ${bgPrimary} flex items-center justify-center`}>
         <Spinner size="lg" />
-        <span className={`ml-3 ${textSecondary}`}>Memuat data pasar...</span>
+        <span className={`ml-3 ${textSecondary}`}>{t('market_page.loading')}</span>
       </div>
     );
   }
@@ -284,26 +286,26 @@ export const MarketPage = () => {
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span className="text-sm">
-              Gagal memuat data pasar: {marketError}. Menampilkan data terakhir yang tersedia.
+              {t('market_page.error_banner').replace('%error%', marketError)}
             </span>
           </div>
           <button
             onClick={fetchMarketData}
             className="text-sm underline hover:no-underline shrink-0"
           >
-            Coba lagi
+            {t('market_page.retry')}
           </button>
         </div>
       )}
       {/* Header */}
       <div className={`flex flex-wrap justify-between items-center gap-4 mb-6`}>
         <div>
-          <h1 className={`text-2xl font-bold ${textPrimary}`}>Market Intelligence</h1>
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>{t('market_page.title')}</h1>
           <p className={`text-sm ${textSecondary} mt-1`}>
-            {marketData?.updated ? `Updated: ${new Date(marketData.updated).toLocaleTimeString()}` : ''}
+            {marketData?.updated ? `${t('market_page.updated')}${new Date(marketData.updated).toLocaleTimeString()}` : ''}
             <span className="ml-2 text-green-500 flex items-center gap-1">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              {marketData?.source || 'Real-Time'}
+              {marketData?.source || t('market_page.realtime_source')}
             </span>
           </p>
         </div>
@@ -311,7 +313,7 @@ export const MarketPage = () => {
           {/* Theme Toggle */}
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${bgCard} border ${borderColor}`}>
             <Sun className={`w-4 h-4 ${textSecondary}`} />
-            <ThemeToggle isDark={isDarkMode} onToggle={toggleDarkMode} />
+            <ThemeToggle isDark={isDarkMode} onToggle={toggleDarkMode} label={t('market_page.toggle_theme')} />
             <Moon className={`w-4 h-4 ${textSecondary}`} />
           </div>
           
@@ -319,19 +321,19 @@ export const MarketPage = () => {
             onClick={() => setViewMode('learn')}
             className={`${isDarkMode ? 'border-gray-600 text-gray-300' : 'border-gray-300'}`}>
             <BookOpen className="w-4 h-4 mr-2" />
-            Belajar
+            {t('market_page.learn')}
           </Button>
           <Button size="sm" variant={viewMode === 'table' ? 'primary' : 'outline'}
             onClick={() => setViewMode('table')}
             className={`${isDarkMode ? 'border-gray-600 text-gray-300' : 'border-gray-300'}`}>
             <BarChart3 className="w-4 h-4 mr-2" />
-            Tabel
+            {t('market_page.table')}
           </Button>
           <Button size="sm" variant={viewMode === 'realtime' ? 'primary' : 'outline'}
             onClick={() => setViewMode('realtime')}
             className={`${isDarkMode ? 'border-gray-600 text-gray-300' : 'border-gray-300'}`}>
             <Activity className="w-4 h-4 mr-2" />
-            Chart
+            {t('market_page.chart')}
           </Button>
           <Button size="sm" variant="outline" onClick={fetchMarketData}
             className={`${isDarkMode ? 'border-gray-600 text-gray-300' : 'border-gray-300'}`}>
@@ -348,7 +350,7 @@ export const MarketPage = () => {
               <BarChart3 className={`w-6 h-6 ${isDarkMode ? 'text-primary-400' : 'text-primary-600'}`} />
             </div>
             <div>
-              <p className={`text-sm ${textSecondary}`}>Saham IDX</p>
+              <p className={`text-sm ${textSecondary}`}>{t('market_page.idx_stocks')}</p>
               <p className={`text-2xl font-bold ${textPrimary}`}>{marketData?.idx_stocks?.total || 0}</p>
             </div>
           </div>
@@ -359,7 +361,7 @@ export const MarketPage = () => {
               <TrendingUp className={`w-6 h-6 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
             </div>
             <div>
-              <p className={`text-sm ${textSecondary}`}>Saham US</p>
+              <p className={`text-sm ${textSecondary}`}>{t('market_page.us_stocks')}</p>
               <p className={`text-2xl font-bold ${textPrimary}`}>{marketData?.us_stocks?.total || 0}</p>
             </div>
           </div>
@@ -370,7 +372,7 @@ export const MarketPage = () => {
               <Bitcoin className={`w-6 h-6 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} />
             </div>
             <div>
-              <p className={`text-sm ${textSecondary}`}>Crypto</p>
+              <p className={`text-sm ${textSecondary}`}>{t('market_page.crypto')}</p>
               <p className={`text-2xl font-bold ${textPrimary}`}>{marketData?.crypto?.total || 0}</p>
             </div>
           </div>
@@ -381,7 +383,7 @@ export const MarketPage = () => {
               <Landmark className={`w-6 h-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
             </div>
             <div>
-              <p className={`text-sm ${textSecondary}`}>Forex</p>
+              <p className={`text-sm ${textSecondary}`}>{t('market_page.forex')}</p>
               <p className={`text-2xl font-bold ${textPrimary}`}>{marketData?.forex?.total || 0}</p>
             </div>
           </div>
@@ -392,7 +394,7 @@ export const MarketPage = () => {
               <Globe className={`w-6 h-6 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />
             </div>
             <div>
-              <p className={`text-sm ${textSecondary}`}>Indices</p>
+              <p className={`text-sm ${textSecondary}`}>{t('market_page.indices')}</p>
               <p className={`text-2xl font-bold ${textPrimary}`}>{marketData?.indices?.length || 0}</p>
             </div>
           </div>
@@ -402,7 +404,7 @@ export const MarketPage = () => {
       {/* Global Indices Header */}
       {viewMode === 'realtime' && marketData?.indices && marketData.indices.length > 0 && (
         <Card className={`${bgCard} border ${borderColor} p-4 mb-6`}>
-          <h3 className={`font-semibold mb-3 ${textPrimary}`}>🌏 Global Indices</h3>
+          <h3 className={`font-semibold mb-3 ${textPrimary}`}>{t('market_page.global_indices')}</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
             {marketData.indices.map((idx) => (
               <div key={idx.symbol} className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
@@ -423,7 +425,7 @@ export const MarketPage = () => {
           {/* Symbol Selector */}
           <Card className={`${bgCard} border ${borderColor} p-4`}>
             <div className="flex flex-wrap gap-2 items-center">
-              <span className={`text-sm ${textSecondary} mr-2 font-medium`}>Chart:</span>
+              <span className={`text-sm ${textSecondary} mr-2 font-medium`}>{t('market_page.chart_label')}</span>
               {symbolOptions.map(group => (
                 <div key={group.group} className="flex flex-wrap gap-1">
                   <span className={`text-xs ${textMuted} w-full font-medium`}>{group.group}</span>
@@ -472,9 +474,9 @@ export const MarketPage = () => {
                     </div>
                   </div>
                   <div className={`mt-2 flex gap-4 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    <span>Open: {ihsg.open?.toLocaleString()}</span>
-                    <span>High: {ihsg.high?.toLocaleString()}</span>
-                    <span>Low: {ihsg.low?.toLocaleString()}</span>
+                    <span>{t('market_page.open')}: {ihsg.open?.toLocaleString()}</span>
+                    <span>{t('market_page.high')}: {ihsg.high?.toLocaleString()}</span>
+                    <span>{t('market_page.low')}: {ihsg.low?.toLocaleString()}</span>
                   </div>
                 </div>
               ) : null;
@@ -495,7 +497,7 @@ export const MarketPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className={`${bgCard} border ${borderColor} p-4`}>
               <h3 className={`font-semibold text-green-500 mb-3 flex items-center gap-2 ${textPrimary}`}>
-                <ArrowUpRight className="w-5 h-5" /> Top Gainers
+                <ArrowUpRight className="w-5 h-5" /> {t('market_page.top_gainers')}
               </h3>
               <div className="space-y-2">
                 {[...getFilteredStocks(marketData?.idx_stocks?.quotes, 'idx')]
@@ -516,7 +518,7 @@ export const MarketPage = () => {
 
             <Card className={`${bgCard} border ${borderColor} p-4`}>
               <h3 className={`font-semibold text-red-500 mb-3 flex items-center gap-2 ${textPrimary}`}>
-                <ArrowDownRight className="w-5 h-5" /> Top Losers
+                <ArrowDownRight className="w-5 h-5" /> {t('market_page.top_losers')}
               </h3>
               <div className="space-y-2">
                 {[...getFilteredStocks(marketData?.idx_stocks?.quotes, 'idx')]
@@ -545,11 +547,11 @@ export const MarketPage = () => {
           <Card className={`${bgCard} border ${borderColor} p-4`}>
             <div className="flex flex-wrap gap-2">
               {[
-                { key: 'forex', label: '💱 Forex' },
-                { key: 'idx', label: '📊 IDX' },
-                { key: 'us', label: '🇺🇸 US' },
-                { key: 'crypto', label: '₿ Crypto' },
-                { key: 'commodities', label: '🪙 Commodities' },
+                { key: 'forex', label: t('market_page.group_forex') },
+                { key: 'idx', label: t('market_page.tab_idx') },
+                { key: 'us', label: t('market_page.tab_us') },
+                { key: 'crypto', label: t('market_page.group_crypto') },
+                { key: 'commodities', label: t('market_page.tab_commodities') },
               ].map(tab => (
                 <button
                   key={tab.key}
@@ -574,7 +576,7 @@ export const MarketPage = () => {
               <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
               <input
                 type="text"
-                placeholder="Cari..."
+                placeholder={t('market_page.search_placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${borderColor} ${
@@ -590,19 +592,19 @@ export const MarketPage = () => {
           {activeTab === 'idx' && (
             <Card className={`${bgCard} border ${borderColor} overflow-hidden`}>
               <div className={`p-4 border-b ${borderColor}`}>
-                <h3 className={`font-semibold ${textPrimary}`}>🇮🇩 Saham Indonesia (IDX)</h3>
+                <h3 className={`font-semibold ${textPrimary}`}>{t('market_page.indonesia_stocks')}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
                     <tr>
-                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>Saham</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Harga</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Open</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>High</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Low</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Change</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Volume</th>
+                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>{t('market_page.stock')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.price')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.open')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.high')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.low')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.change')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.volume')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -632,16 +634,16 @@ export const MarketPage = () => {
           {activeTab === 'us' && (
             <Card className={`${bgCard} border ${borderColor} overflow-hidden`}>
               <div className={`p-4 border-b ${borderColor}`}>
-                <h3 className={`font-semibold ${textPrimary}`}>🇺🇸 Saham Amerika (US)</h3>
+                <h3 className={`font-semibold ${textPrimary}`}>{t('market_page.us_stocks_table')}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
                     <tr>
-                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>Saham</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Harga</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Change</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Volume</th>
+                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>{t('market_page.stock')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.price')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.change')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.volume')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -668,15 +670,15 @@ export const MarketPage = () => {
           {activeTab === 'forex' && (
             <Card className={`${bgCard} border ${borderColor} overflow-hidden`}>
               <div className={`p-4 border-b ${borderColor}`}>
-                <h3 className={`font-semibold ${textPrimary}`}>💱 Forex</h3>
+                <h3 className={`font-semibold ${textPrimary}`}>{t('market_page.forex_title')}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
                     <tr>
-                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>Pair</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Harga</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Change</th>
+                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>{t('market_page.pair')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.price')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.change')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -699,16 +701,16 @@ export const MarketPage = () => {
           {activeTab === 'crypto' && (
             <Card className={`${bgCard} border ${borderColor} overflow-hidden`}>
               <div className={`p-4 border-b ${borderColor}`}>
-                <h3 className={`font-semibold ${textPrimary}`}>₿ Cryptocurrency</h3>
+                <h3 className={`font-semibold ${textPrimary}`}>{t('market_page.crypto_title')}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
                     <tr>
-                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>Coin</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Harga</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>24h Change</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Volume</th>
+                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>{t('market_page.coin')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.price')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.change_24h')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.volume')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -732,15 +734,15 @@ export const MarketPage = () => {
           {activeTab === 'commodities' && (
             <Card className={`${bgCard} border ${borderColor} overflow-hidden`}>
               <div className={`p-4 border-b ${borderColor}`}>
-                <h3 className={`font-semibold ${textPrimary}`}>🪙 Komoditas</h3>
+                <h3 className={`font-semibold ${textPrimary}`}>{t('market_page.commodities_title')}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
                     <tr>
-                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>Komoditas</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Harga</th>
-                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>Change</th>
+                      <th className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary}`}>{t('market_page.commodity')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.price')}</th>
+                      <th className={`px-4 py-3 text-right text-sm font-semibold ${textSecondary}`}>{t('market_page.change')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -768,8 +770,8 @@ export const MarketPage = () => {
       {viewMode === 'learn' && (
         <div className="space-y-6">
           <Card className={`${bgCard} border ${borderColor} p-6`}>
-            <h2 className={`text-xl font-bold mb-2 ${textPrimary}`}>📚 Panduan Trading untuk Pemula</h2>
-            <p className={textSecondary}>Pelajari dasar-dasar analisis teknikal dan manajemen risiko.</p>
+            <h2 className={`text-xl font-bold mb-2 ${textPrimary}`}>{t('market_page.guide_title')}</h2>
+            <p className={textSecondary}>{t('market_page.guide_desc')}</p>
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -793,15 +795,15 @@ export const MarketPage = () => {
 
           {/* Quick Tips */}
           <Card className={`${bgCard} border ${borderColor} p-6`}>
-            <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}>💡 Tips Penting</h3>
+            <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}>{t('market_page.key_tips')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-yellow-900/30 border border-yellow-700' : 'bg-yellow-50 border border-yellow-200'}`}>
-                <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>⚠️ Jangan Investasi uang kebutuhan</h4>
-                <p className={`text-sm ${textSecondary}`}>Gunakan hanya uang dingin. Sisihkan 20-30% dari penghasilan.</p>
+                <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>{t('market_page.tip_need_money_title')}</h4>
+                <p className={`text-sm ${textSecondary}`}>{t('market_page.tip_need_money_body')}</p>
               </div>
               <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-green-900/30 border border-green-700' : 'bg-green-50 border border-green-200'}`}>
-                <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>✅ Mulai dari yang kecil</h4>
-                <p className={`text-sm ${textSecondary}`}>Tidak perlu modal besar. Mulai dengan Rp 100-500rb.</p>
+                <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>{t('market_page.tip_small_title')}</h4>
+                <p className={`text-sm ${textSecondary}`}>{t('market_page.tip_small_body')}</p>
               </div>
             </div>
           </Card>

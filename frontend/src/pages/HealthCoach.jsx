@@ -1,8 +1,10 @@
 // Health Coach Page - AI Financial Health Assessment
 import { useState, useEffect } from "react";
 import { api } from "../services/api";
+import { useTranslation } from '../i18n';
 
 const HealthCoach = () => {
+  const { t } = useTranslation();
   const [healthData, setHealthData] = useState(null);
   const [auditData, setAuditData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,7 @@ const HealthCoach = () => {
   if (error) {
     return (
       <div className="p-4 bg-red-50 text-red-700 rounded-lg">
-        Error: {error}
+        {t('common.error')}: {error}
       </div>
     );
   }
@@ -90,16 +92,16 @@ const HealthCoach = () => {
 
   return (
     <div className="p-4 max-w-lg mx-auto pb-20">
-      <h1 className="text-2xl font-bold mb-4">Health Coach</h1>
+      <h1 className="text-2xl font-bold mb-4">{t('nav.healthCoach')}</h1>
       
       {/* Score Card */}
       <div className="bg-gradient-to-r from-primary-500 to-purple-600 rounded-2xl p-6 text-white mb-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm opacity-80">Skor Kesehatan</p>
+            <p className="text-sm opacity-80">{t('health_coach.score')}</p>
             <p className="text-4xl font-bold">{healthData?.score || 0}</p>
             <p className="text-sm opacity-80 mt-1">
-              Grade: <span className="font-bold">{healthData?.grade || "-"}</span>
+              {t('health_coach.grade')} <span className="font-bold">{healthData?.grade || "-"}</span>
             </p>
           </div>
           <div className="text-center">
@@ -112,19 +114,19 @@ const HealthCoach = () => {
         {/* Summary Stats */}
         <div className="mt-4 pt-4 border-t border-white/20 grid grid-cols-2 gap-4">
           <div>
-            <p className="text-xs opacity-70">Penghasilan Bulanan</p>
+            <p className="text-xs opacity-70">{t('health_coach.monthly_income')}</p>
             <p className="font-semibold">{formatCurrency(summary.monthly_income)}</p>
           </div>
           <div>
-            <p className="text-xs opacity-70">Pengeluaran Bulanan</p>
+            <p className="text-xs opacity-70">{t('health_coach.monthly_expense')}</p>
             <p className="font-semibold">{formatCurrency(summary.monthly_expense)}</p>
           </div>
           <div>
-            <p className="text-xs opacity-70">Total Cash</p>
+            <p className="text-xs opacity-70">{t('health_coach.total_cash')}</p>
             <p className="font-semibold">{formatCurrency(summary.total_cash)}</p>
           </div>
           <div>
-            <p className="text-xs opacity-70">Total Utang</p>
+            <p className="text-xs opacity-70">{t('health_coach.total_debt')}</p>
             <p className="font-semibold">{formatCurrency(summary.total_debt)}</p>
           </div>
         </div>
@@ -132,13 +134,13 @@ const HealthCoach = () => {
 
       {/* Key Ratios */}
       <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
-        <h2 className="font-semibold mb-3">Rasio Keuangan</h2>
+        <h2 className="font-semibold mb-3">{t('health_coach.financial_ratios')}</h2>
         
         <div className="space-y-3">
           {/* Savings Ratio */}
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-600">Rasio Tabungan</span>
+              <span className="text-gray-600">{t('health_coach.savings_ratio')}</span>
               <span className={getStatusColor(healthData?.savings_ratio?.status)}>
                 {savingsRatio.toFixed(1)}%
               </span>
@@ -150,16 +152,16 @@ const HealthCoach = () => {
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              {healthData?.savings_ratio?.description || "Tabungan dari penghasilan"}
+              {healthData?.savings_ratio?.description || t('health_coach.savings_desc_default')}
             </p>
           </div>
 
           {/* Emergency Fund */}
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-600">Dana Darurat</span>
+              <span className="text-gray-600">{t('health_coach.emergency_fund')}</span>
               <span className={getStatusColor(healthData?.emergency_fund_months?.status)}>
-                {emergencyMonths.toFixed(1)} bulan
+                {t('health_coach.months').replace('%value%', emergencyMonths.toFixed(1))}
               </span>
             </div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -169,14 +171,14 @@ const HealthCoach = () => {
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Target: 6 bulan pengeluaran
+              {t('health_coach.emergency_target')}
             </p>
           </div>
 
           {/* DSR */}
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-600">Rasio Cicilan (DSR)</span>
+              <span className="text-gray-600">{t('health_coach.dsr_ratio')}</span>
               <span className={getStatusColor(healthData?.dsr_ratio?.status)}>
                 {dsr.toFixed(1)}%
               </span>
@@ -188,7 +190,7 @@ const HealthCoach = () => {
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Maksimum ideal: 30% dari penghasilan
+              {t('health_coach.dsr_note')}
             </p>
           </div>
         </div>
@@ -197,7 +199,7 @@ const HealthCoach = () => {
       {/* Audit Report */}
       {auditData && (
         <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
-          <h2 className="font-semibold mb-3">Audit AI</h2>
+          <h2 className="font-semibold mb-3">{t('health_coach.ai_audit')}</h2>
           
           {/* Highlights */}
           {auditData.highlights?.length > 0 && (
@@ -229,7 +231,7 @@ const HealthCoach = () => {
           {/* Recommendations */}
           {auditData.recommendations?.length > 0 && (
             <div className="mt-3 pt-3 border-t">
-              <h3 className="text-sm font-medium mb-2">Tips Perbaikan:</h3>
+              <h3 className="text-sm font-medium mb-2">{t('health_coach.improvement_tips')}</h3>
               {auditData.recommendations.map((rec, idx) => (
                 <div key={idx} className="text-sm flex items-start gap-2 mb-1">
                   <span>💡</span>
@@ -255,7 +257,7 @@ const HealthCoach = () => {
         onClick={loadHealthData}
         className="w-full py-3 bg-primary-600 text-white rounded-xl font-medium mt-4"
       >
-        🔄 Refresh Data
+        {t('health_coach.refresh_data')}
       </button>
     </div>
   );

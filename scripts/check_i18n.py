@@ -103,6 +103,50 @@ def used_keys():
     return used
 
 
+
+def check_module_level_t(root):
+    """A t() call outside a component is a crash, not a missing key.
+
+    The translator only exists inside a component. A page that builds a
+    constant array at module level and calls t() while building it
+    throws "t is not defined" the moment the module is imported, and
+    the whole page stays blank. The error arrives at run time, long
+    after the build, so it is worth checking here.
+    """
+    problems = []
+    src = os.path.join(root, "src")
+    for dirpath, _dirs, files in os.walk(src):
+        for name in files:
+            if not name.endswith((".js", ".jsx")):
+                continue
+            path = os.path.join(dirpath, name)
+            rel = os.path.relpath(path, root)
+            with open(path, encoding="utf-8") as handle:
+                lines = handle.read().split("\n")
+
+            # A top level "const X = [" or "= {" that is not a function.
+            start = None
+            for index, line in enumerate(lines):
+                if not re.match(r"^(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*[\[{]", line):
+                    continue
+                # skip the ones that are functions
+                if "=>" in line or "function" in line:
+                    continue
+                depth = 0
+                end = index
+                for scan in range(index, len(lines)):
+                    depth += lines[scan].count("[") - lines[scan].count("]")
+                    depth += lines[scan].count("{") - lines[scan].count("}")
+                    if depth <= 0:
+                        end = scan
+                        break
+                block = "\n".join(lines[index:end + 1])
+                if re.search(r"(?<![\w.])t\(", block):
+                    problems.append((rel, index + 1, block.split("\n")[0][:70]))
+                start = index
+    return problems
+
+
 def main():
     tables = {}
     for lang in LANGS:
@@ -142,11 +186,18 @@ def main():
             print(f"      {key}")
         problems += len(missing)
 
+    # 3. A t() call at module level, which throws when the module loads.
+    for rel, line, snippet in check_module_level_t(ROOT):
+        print(f"T() CALLED AT MODULE LEVEL  {rel}:{line}")
+        print(f"      {snippet}")
+        problems += 1
+
     print()
     if problems:
         print(f"FAILED: {problems} problem(s)")
         return 1
     print("OK: every key the pages ask for exists in every language")
+    print("OK: no translator is called outside a component")
     return 0
 
 

@@ -16,6 +16,7 @@ import {
   BACKGROUNDS,
   BACKGROUND_IDS,
 } from '../../utils/appearance';
+import { useTranslation } from '../../i18n';
 
 const Section = ({ title, hint, children }) => (
   <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
@@ -46,6 +47,7 @@ const SchemeSwatch = ({ scheme }) => (
 );
 
 const Appearance = () => {
+  const { t } = useTranslation();
   const {
     colorScheme,
     fontFamily,
@@ -77,10 +79,10 @@ const Appearance = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
       <div className="bg-accent text-white p-4 sticky top-0 z-10">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">🎨 Tampilan</h1>
+          <h1 className="text-xl font-bold">{t('appearance.title')}</h1>
           {saved && (
             <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-              Tersimpan
+              {t('appearance.saved')}
             </span>
           )}
         </div>
@@ -89,14 +91,14 @@ const Appearance = () => {
       <div className="p-4 max-w-lg mx-auto space-y-4">
         {/* --- The theme --- */}
         <Section
-          title="Mode"
-          hint="Terang, gelap, atau ikut pengaturan perangkat."
+          title={t('appearance.mode')}
+          hint={t('appearance.mode_hint')}
         >
           <div className="grid grid-cols-3 gap-2">
             {[
-              { id: 'light', label: 'Terang', emoji: '☀️' },
-              { id: 'dark', label: 'Gelap', emoji: '🌙' },
-              { id: 'system', label: 'Ikuti sistem', emoji: '🖥️' },
+              { id: 'light', labelKey: 'appearance.mode_light', emoji: '☀️' },
+              { id: 'dark', labelKey: 'appearance.mode_dark', emoji: '🌙' },
+              { id: 'system', labelKey: 'appearance.mode_system', emoji: '🖥️' },
             ].map((option) => (
               <button
                 key={option.id}
@@ -112,7 +114,7 @@ const Appearance = () => {
               >
                 <div className="text-xl">{option.emoji}</div>
                 <div className="text-xs font-medium mt-1 text-gray-700 dark:text-gray-200">
-                  {option.label}
+                  {t(option.labelKey)}
                 </div>
               </button>
             ))}
@@ -121,7 +123,7 @@ const Appearance = () => {
 
         {/* --- The colour scheme --- */}
         <Section
-          title="Warna aksen"
+          title={t('appearance.accent')}
           hint="Warna tombol, tab aktif, dan grafik. Dipakai di kedua mode terang dan gelap."
         >
           <div className="space-y-2">
@@ -144,10 +146,10 @@ const Appearance = () => {
                   <SchemeSwatch scheme={scheme} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                      {scheme.label}
+                      {t(scheme.labelKey)}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {scheme.description}
+                      {t(scheme.descriptionKey)}
                     </div>
                   </div>
                   {active && (
@@ -161,7 +163,7 @@ const Appearance = () => {
 
         {/* --- The font --- */}
         <Section
-          title="Font"
+          title={t('appearance.font')}
           hint="Untuk angka, selalu tabular supaya kolom rupiah rapi."
         >
           <div className="space-y-2">
@@ -185,13 +187,13 @@ const Appearance = () => {
                     className="text-sm font-medium text-gray-800 dark:text-gray-100"
                     style={{ fontFamily: font.stack }}
                   >
-                    {font.label}
+                    {t(font.labelKey)}
                   </div>
                   <div
                     className="text-xs text-gray-500 dark:text-gray-400"
                     style={{ fontFamily: font.stack }}
                   >
-                    Rp1.250.000 — {font.description}
+                    Rp1.250.000 — {t(font.descriptionKey)}
                   </div>
                 </button>
               );
@@ -201,8 +203,8 @@ const Appearance = () => {
 
         {/* --- The size --- */}
         <Section
-          title="Ukuran teks"
-          hint="Memperbesar seluruh aplikasi, termasuk grafik dan spasi."
+          title={t('appearance.text_size')}
+          hint={t('appearance.scale_hint')}
         >
           <div className="grid grid-cols-4 gap-2">
             {FONT_SCALE_IDS.map((id) => {
@@ -228,7 +230,7 @@ const Appearance = () => {
                     Aa
                   </div>
                   <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                    {scale.label}
+                    {t(scale.labelKey)}
                   </div>
                 </button>
               );
@@ -238,7 +240,7 @@ const Appearance = () => {
 
         {/* --- The background --- */}
         <Section
-          title="Latar belakang"
+          title={t('appearance.background')}
           hint="Pola di belakang konten. Grid keuangan seperti kertas grafik."
         >
           <div className="grid grid-cols-2 gap-2">
@@ -263,10 +265,10 @@ const Appearance = () => {
                     data-preview={background.id}
                   />
                   <div className="text-xs font-medium text-gray-800 dark:text-gray-100">
-                    {background.label}
+                    {t(background.labelKey)}
                   </div>
                   <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                    {background.description}
+                    {t(background.descriptionKey)}
                   </div>
                 </button>
               );
@@ -275,11 +277,11 @@ const Appearance = () => {
         </Section>
 
         {/* --- A preview --- */}
-        <Section title="Contoh tampilan">
+        <Section title={t('appearance.preview')}>
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-gray-600 dark:text-gray-300">
-                Saldo bulan ini
+                {t('appearance.preview_balance')}
               </span>
               <span
                 className="text-lg font-bold tabular-nums"
@@ -290,7 +292,7 @@ const Appearance = () => {
             </div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-gray-600 dark:text-gray-300">
-                Pengeluaran
+                {t('appearance.preview_expense')}
               </span>
               <span className="text-lg font-bold tabular-nums text-red-600 dark:text-red-400">
                 -Rp3.250.000
