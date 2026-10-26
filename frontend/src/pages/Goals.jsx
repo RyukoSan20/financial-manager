@@ -8,6 +8,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
+import { PageHeader } from '../components/ui/PageHeader';
+import { buildFlag } from '../utils/featureFlags';
 
 // The accent the user picked is the first colour of the palette.
 //
@@ -18,6 +20,8 @@ const COLORS = chartPalette;
 
 export const Goals = () => {
   const { t } = useTranslation();
+  // With the polish switch off, the page keeps the header it has.
+  const polished = buildFlag('UI_POLISH');
   const { currency: displayCurrency } = useCurrency();
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,16 +100,29 @@ export const Goals = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('goals.title')}</h1>
-          <p className="text-gray-500 mt-1">{t('goals.active_count').replace('%s', activeGoals)}</p>
+      {polished ? (
+        <PageHeader
+          title={t('goals.title')}
+          subtitle={t('goals.active_count').replace('%s', activeGoals)}
+          action={
+            <Button onClick={() => { setEditingGoal(null); setShowModal(true); }}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('goals.new_goal')}
+            </Button>
+          }
+        />
+      ) : (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{t('goals.title')}</h1>
+            <p className="text-gray-500 mt-1">{t('goals.active_count').replace('%s', activeGoals)}</p>
+          </div>
+          <Button onClick={() => { setEditingGoal(null); setShowModal(true); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            {t('goals.new_goal')}
+          </Button>
         </div>
-        <Button onClick={() => { setEditingGoal(null); setShowModal(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          {t('goals.new_goal')}
-        </Button>
-      </div>
+      )}
 
       {/* Summary Cards */}
       {goals.length > 0 && (
