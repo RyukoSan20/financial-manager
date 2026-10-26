@@ -1,0 +1,88 @@
+/*
+ * The polish layer.
+ *
+ * This is the layer the spec asked for: one place where the tidied-up
+ * styles live, so they can be switched off in one step and so they
+ * are easy to find.
+ *
+ * It is off by default. The application sets `data-ui="polish"` on
+ * the root element only when the polish switch is on, and every rule
+ * here is written to apply only when it is there.
+ *
+ * With the layer off, the page is exactly as it was: these rules do
+ * not match anything, so nothing changes.
+ *
+ * A rule that is worth having belongs here rather than scattered
+ * through the pages. A rule that belongs to one page belongs in that
+ * page.
+ */
+
+/* The header shape, used by the PageHeader component. */
+[data-ui="polish"] .page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  [data-ui="polish"] .page-header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+[data-ui="polish"] .page-header__title {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 700;
+  color: rgb(17 24 39);
+}
+
+@media (min-width: 640px) {
+  [data-ui="polish"] .page-header__title {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+}
+
+[data-ui="polish"] .page-header__subtitle {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: rgb(107 114 128);
+  margin-top: 0.125rem;
+}
+
+/*
+ * Dark mode.
+ *
+ * The application decides light or dark with a class on the root
+ * element, and the rules below follow the same convention as the rest
+ * of the stylesheet.
+ */
+.dark [data-ui="polish"] .page-header__title {
+  color: rgb(255 255 255);
+}
+
+.dark [data-ui="polish"] .page-header__subtitle {
+  color: rgb(156 163 175);
+}
+
+/*
+ * The icon family.
+ *
+ * An icon drawn by the phone's font looks different on every
+ * machine and does not follow the colour scheme. This makes the
+ * icon-sized emoji sit on the same line as the icons beside them.
+ */
+[data-ui="polish"] .icon-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  line-height: 1;
+}
+
+[data-ui="polish"] .icon-inline > svg {
+  flex-shrink: 0;
+}
