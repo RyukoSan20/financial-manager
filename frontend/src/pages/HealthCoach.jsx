@@ -3,9 +3,13 @@ import { useState, useEffect } from "react";
 import { api } from "../services/api";
 import { useTranslation } from '../i18n';
 import { useCurrency } from '../utils/currency';
+import { IconText } from '../components/ui/IconText';
+import { buildFlag } from '../utils/featureFlags';
 
 const HealthCoach = () => {
   const { t } = useTranslation();
+  // With the polish switch off, the page keeps the drawings it has.
+  const polished = buildFlag('UI_POLISH');
   // The currency the reader is looking at. The accounts do not all
   // hold the same currency, so the backend converts the balances into
   // this one before it works out the ratios.
@@ -222,7 +226,7 @@ const HealthCoach = () => {
             <div className="mb-3">
               {auditData.highlights.map((highlight, idx) => (
                 <div key={idx} className="text-sm text-green-600 flex items-start gap-2 mb-1">
-                  <span>✅</span>
+                  <IconText name="success" emoji="✅" on={polished} />
                   <span>{highlight.replace(/^[\u2705\u274c\u{1F31F}]\s*/u, '')}</span>
                 </div>
               ))}
@@ -235,7 +239,7 @@ const HealthCoach = () => {
               {auditData.findings.slice(0, 3).map((finding, idx) => (
                 <div key={idx} className="bg-yellow-50 p-3 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <span className="text-yellow-600">⚠️</span>
+                    <IconText name="warning" emoji="⚠️" on={polished} className="w-4 h-4 text-yellow-600" />
                     <span className="font-medium text-sm">{finding.title}</span>
                   </div>
                   <p className="text-xs text-gray-600 mt-1">{finding.description}</p>
@@ -250,7 +254,7 @@ const HealthCoach = () => {
               <h3 className="text-sm font-medium mb-2">{t('health_coach.improvement_tips')}</h3>
               {auditData.recommendations.map((rec, idx) => (
                 <div key={idx} className="text-sm flex items-start gap-2 mb-1">
-                  <span>💡</span>
+                  <IconText name="note" emoji="💡" on={polished} />
                   <span>{rec}</span>
                 </div>
               ))}
