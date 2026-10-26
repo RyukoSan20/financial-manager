@@ -223,7 +223,7 @@ const HealthCoach = () => {
               {auditData.highlights.map((highlight, idx) => (
                 <div key={idx} className="text-sm text-green-600 flex items-start gap-2 mb-1">
                   <span>✅</span>
-                  <span>{highlight.replace(/^[✅❌🌟]\s*/, '')}</span>
+                  <span>{highlight.replace(/^[\u2705\u274c\u{1F31F}]\s*/u, '')}</span>
                 </div>
               ))}
             </div>

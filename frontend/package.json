@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js,.jsx",
+    "lint:guard": "eslint src --ext .js,.jsx --max-warnings 100000 --rule 'no-undef:error' --rule 'no-dupe-keys:error' --rule 'no-const-assign:error' --rule 'no-dupe-args:error' --rule 'no-unreachable:error' --rule 'no-constant-condition:error' --rule 'no-func-assign:error' --rule 'no-import-assign:error' --rule 'no-self-assign:error' --rule 'no-unsafe-finally:error' --rule 'use-isnan:error' --rule 'valid-typeof:error' --rule 'no-sparse-arrays:error' --rule 'no-cond-assign:error' --rule 'no-debugger:error' --rule 'no-dupe-class-members:error'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.0",
@@ -31,6 +33,9 @@
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^4.6.2",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "vite": "^5.1.0"

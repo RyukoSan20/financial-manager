@@ -43,7 +43,6 @@ export function extractTokens(description) {
     'dengan': 1, 'untuk': 1, 'pada': 1, 'ini': 1, 'itu': 1,
     'oleh': 1, 'adalah': 1, 'sebagai': 1, 'tanggal': 1, 'pukul': 1,
     'dini': 1, 'pagi': 1, 'siang': 1, 'sore': 1, 'malam': 1, 'tengah': 1,
-    'di': 1, 'ke': 1, 'dari': 1, 'dengan': 1, 'untuk': 1, 'pada': 1,
   };
   
   const words = description.toLowerCase().split(/\s+/);

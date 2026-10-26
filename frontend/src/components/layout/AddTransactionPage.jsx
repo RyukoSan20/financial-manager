@@ -84,7 +84,7 @@ const AddTransactionPage = () => {
   const [nlpPreview, setNlpPreview] = useState(null);
   
   // Idempotency key - prevents duplicate transactions from double-tap
-  const [transactionRequestId] = useState(() => crypto.randomUUID());
+  const [transactionRequestId, setTransactionRequestId] = useState(() => crypto.randomUUID());
   
   // Date shortcuts
   const dateShortcuts = [

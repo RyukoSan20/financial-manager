@@ -230,7 +230,9 @@ export const Budgets = () => {
 };
 
 const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts = [] }) => {
-  const { t } = useTranslation();
+  // The language comes with the translator: the name of a category is
+  // shown in the language of the reader, and that is decided here.
+  const { t, language } = useTranslation();
   const [form, setForm] = useState({
     name: '',
     category_id: '',

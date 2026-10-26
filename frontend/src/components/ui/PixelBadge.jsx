@@ -111,7 +111,7 @@ export const AccountTypeBadge = ({ type, size = 'sm', className = '' }) => {
 
   return (
     <PixelBadge variant={config.variant} size={size} className={className}>
-      {labels[category] || labels.other}
+      {labels[type] || labels.other}
     </PixelBadge>
   );
 };

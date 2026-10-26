@@ -385,7 +385,7 @@ const ShoppingTracker = () => {
                 <div>
                   <div className="flex justify-between items-center mb-3">
                     <p className="text-sm text-gray-600">
-                      <strong>"{aiResults.query}"</strong> - {t('shopping_tracker.marketplace_count').replace("%s", aiResults.marketplaces?.length ?? 0)}
+                      <strong>&quot;{aiResults.query}&quot;</strong> - {t('shopping_tracker.marketplace_count').replace("%s", aiResults.marketplaces?.length ?? 0)}
                       {aiResults.cached && <span className="ml-2 text-xs bg-yellow-100 px-2 py-0.5 rounded">{t('shopping_tracker.cache')}</span>}
                     </p>
                   </div>

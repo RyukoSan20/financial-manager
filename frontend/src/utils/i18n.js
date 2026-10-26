@@ -68,7 +68,7 @@ export const parseLocalizedNumber = (value, language = DEFAULT_LANGUAGE) => {
   if (!value) return 0;
   
   // Remove currency symbol and whitespace
-  let cleaned = value.replace(/[^\d.,\-]/g, '');
+  let cleaned = value.replace(/[^\d.,-]/g, '');
   
   // Normalize separators based on locale
   if (config.thousandsSeparator === '.') {

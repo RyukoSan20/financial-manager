@@ -159,15 +159,11 @@ export const AuthProvider = ({ children }) => {
 
   const googleLogin = async () => {
     // Always use backend Google OAuth
-    try {
-      const res = await fetch(`${API_URL}/google/url`);
-      if (!res.ok) throw new Error('Google OAuth not available');
-      const data = await res.json();
-      // Redirect to Google
-      window.location.href = data.url;
-    } catch (err) {
-      throw err;
-    }
+    const res = await fetch(`${API_URL}/google/url`);
+    if (!res.ok) throw new Error('Google OAuth not available');
+    const data = await res.json();
+    // Redirect to Google
+    window.location.href = data.url;
   };
 
   const guestLogin = async () => {
@@ -259,7 +255,6 @@ export const AuthProvider = ({ children }) => {
     // Store backend token
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
-    setToken(data.access_token);
     setUser(data.user);
     return data;
   };

@@ -334,8 +334,8 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
     // Date patterns
     const datePatterns = [
-      /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,
-      /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/,
+      /(\d{1,2})[-/](\d{1,2})[-/](\d{4})/,
+      /(\d{4})[-/](\d{1,2})[-/](\d{1,2})/,
     ];
 
     let date = new Date().toISOString().split('T')[0];

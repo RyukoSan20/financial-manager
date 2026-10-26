@@ -70,7 +70,7 @@ export function formatNumber(value, currency = 'IDR') {
 export function parseFormattedNumber(value) {
   if (!value) return 0;
   // Remove all non-numeric except decimal separator and minus
-  const cleaned = value.replace(/[^\d.,\-]/g, '').replace(',', '.');
+  const cleaned = value.replace(/[^\d.,-]/g, '').replace(',', '.');
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 }
@@ -133,7 +133,7 @@ export default function CurrencyInput({
   const handleChange = (e) => {
     const input = e.target.value;
     // Allow: digits, decimal separators, minus
-    const cleaned = input.replace(/[^\d.,\-]/g, '');
+    const cleaned = input.replace(/[^\d.,-]/g, '');
     setDisplayValue(cleaned);
     
     // Parse and emit onChange for real-time updates
@@ -252,7 +252,7 @@ export function NumberInput({
   
   const handleChange = (e) => {
     const input = e.target.value;
-    const cleaned = input.replace(/[^\d.,\-]/g, '');
+    const cleaned = input.replace(/[^\d.,-]/g, '');
     setDisplayValue(cleaned);
     const numValue = parseFormattedNumber(cleaned);
     if (!isNaN(numValue)) {

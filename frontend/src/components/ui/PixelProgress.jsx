@@ -194,6 +194,7 @@ export const DebtProgress = ({
   creditor,
   className = '',
 }) => {
+  const { language } = useTranslation();
   const percentage = (paid / total) * 100;
   const remaining = total - paid;
   

@@ -176,8 +176,8 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
 
     // Date extraction
     const datePatterns = [
-      /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/,
-      /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/,
+      /(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/,
+      /(\d{4})[-/](\d{1,2})[-/](\d{1,2})/,
       /(\d{1,2})\s+(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+(\d{4})/i,
       /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{4})/i,
     ];
@@ -281,7 +281,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
     onClose();
   };
 
-  const useSample = (text) => {
+  const applySample = (text) => {
     setRawText(text);
   };
 
@@ -320,7 +320,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
               {sampleTexts.map((sample, i) => (
                 <button
                   key={i}
-                  onClick={() => useSample(sample.text)}
+                  onClick={() => applySample(sample.text)}
                   className="text-xs px-2 py-1 bg-white dark:bg-gray-700 rounded border border-primary-200 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors"
                 >
                   {sample.label}

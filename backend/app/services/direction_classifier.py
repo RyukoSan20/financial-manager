@@ -853,10 +853,6 @@ def _ask_model(text: str) -> Optional[DirectionResult]:
         _open_breaker()
         return None
 
-    if not raw:
-        _open_breaker()
-        return None
-
     if not isinstance(payload, dict):
         return None
 

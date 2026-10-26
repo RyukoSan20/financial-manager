@@ -165,7 +165,7 @@ export const parseLocalizedNumber = (value, language = null) => {
   const lang = language || getCurrentLanguage();
   const usesDotAsGroup = lang === 'id';
 
-  let cleaned = value.toString().replace(/[^\d.,\-]/g, '');
+  let cleaned = value.toString().replace(/[^\d.,-]/g, '');
 
   if (usesDotAsGroup) {
     cleaned = cleaned.replace(/\./g, '').replace(',', '.');

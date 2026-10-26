@@ -119,7 +119,7 @@ export const Settings = () => {
                     {t('readiness.title')}
                   </span>
                   <span className="font-medium text-gray-700 dark:text-gray-300 tabular-nums">
-                    {passport.readiness.done}/{passport.readiness_total}
+                    {passport.readiness_done}/{passport.readiness_total}
                   </span>
                 </div>
                 <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
@@ -131,10 +131,10 @@ export const Settings = () => {
               </div>
               <div className="mt-3 grid grid-cols-4 gap-2 text-center">
                 {[
-                  ['accounts', passport.counts.accounts],
-                  ['transactions', passport.counts.transactions],
-                  ['goals', passport.counts.goals],
-                  ['budgets', passport.counts.budgets],
+                  ['accounts', passport.counts?.accounts],
+                  ['transactions', passport.counts?.transactions],
+                  ['goals', passport.counts?.goals],
+                  ['budgets', passport.counts?.budgets],
                 ].map(([k, v]) => (
                   <div key={k} className="rounded-lg bg-gray-50 dark:bg-gray-800/60 py-2">
                     <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm tabular-nums">

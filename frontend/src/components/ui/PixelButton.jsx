@@ -55,7 +55,7 @@ export const PixelButton = ({
         ${className}
       `}
       style={{
-        fontFamily: '"Press Start 2P", monospace' if false else 'inherit',
+        fontFamily: 'inherit',
         imageRendering: 'pixelated',
       }}
       {...props}

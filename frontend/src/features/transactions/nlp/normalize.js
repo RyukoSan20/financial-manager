@@ -15,14 +15,12 @@ const SLANG_MAP = {
   // Food
   'mkn': 'makan',
   'mnm': 'minum',
-  'mnm': 'minum',
   'kopi': 'kopi',
   
   // Money slang
   'ceban': '50000',
   'goceng': '10000',
   'cepek': '10000',
-  'sepulu': '10000',
   'duapulu': '20000',
   'limapulu': '50000',
   'sepulu': '10000',

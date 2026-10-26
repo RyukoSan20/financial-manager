@@ -15,6 +15,19 @@ import { batch1, fill } from '../i18n/keys_batch1';
 // when the screen is drawn and not when the module is loaded.
 const frequencyValues = ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'];
 
+// One rule, expressed as a month. The frequency decides how many months
+// one entry covers, so the totals can be compared with each other.
+const monthlyAmount = (r) => {
+  const amount = parseFloat(r.amount) || 0;
+  const freq = String(r.frequency || 'monthly').toLowerCase();
+  if (freq === 'daily') return amount * 30;
+  if (freq === 'weekly') return amount * 4;
+  if (freq === 'biweekly') return amount * 2;
+  if (freq === 'quarterly') return amount / 3;
+  if (freq === 'yearly') return amount / 12;
+  return amount;
+};
+
 export const Recurring = () => {
   const { currency: displayCurrency } = useCurrency();
   const { language } = useTranslation();

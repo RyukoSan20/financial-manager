@@ -102,6 +102,31 @@ jobs:
         continue-on-error: true
         run: npm run lint --if-present
 
+      # no-undef is the guard that matters: a name used in a component
+      # has to exist in the scope that brings it in. This is what caught
+      # `language is not defined` in Budgets.jsx and the same class of
+      # crash in four other files.
+      - name: Guard - no undefined names
+        working-directory: frontend
+        run: |
+          npx eslint src --ext .js,.jsx --max-warnings 100000 \
+            --rule 'no-undef:error' \
+            --rule 'no-dupe-keys:error' \
+            --rule 'no-const-assign:error' \
+            --rule 'no-dupe-args:error' \
+            --rule 'no-unreachable:error' \
+            --rule 'no-constant-condition:error' \
+            --rule 'no-func-assign:error' \
+            --rule 'no-import-assign:error' \
+            --rule 'no-self-assign:error' \
+            --rule 'no-unsafe-finally:error' \
+            --rule 'use-isnan:error' \
+            --rule 'valid-typeof:error' \
+            --rule 'no-sparse-arrays:error' \
+            --rule 'no-cond-assign:error' \
+            --rule 'no-debugger:error' \
+            --rule 'no-dupe-class-members:error'
+
       - name: Test (if present)
         working-directory: frontend
         continue-on-error: true

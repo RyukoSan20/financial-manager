@@ -21,6 +21,7 @@ import {
 
 const AIAdvisor = () => {
   const { t , language } = useTranslation();
+  const K = batch3[language]?.ai_advisor || {};
   const { isAuthenticated } = useAuth();
   const [advice, setAdvice] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -219,7 +220,6 @@ const AIAdvisor = () => {
   };
 
   const getCategoryIcon = (category) => {
-  const K = batch3[language]?.ai_advisor;
     switch(category) {
       case "budget": return <BarChart3 className="w-5 h-5" />;
       case "savings": return <PiggyBank className="w-5 h-5" />;

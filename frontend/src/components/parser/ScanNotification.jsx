@@ -30,6 +30,8 @@ const kindIcon = (kind) =>
   kind === 'qr' ? QrCode : kind === 'receipt' ? Receipt : Bell;
 
 export const ScanNotification = () => {
+  const { language } = useTranslation();
+  const K = batch3[language]?.scan_notification || {};
   const [jobs, setJobs] = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [dragY, setDragY] = useState(0);
@@ -155,8 +157,6 @@ export const ScanNotification = () => {
   };
 
   const subtitle = (job) => {
-  const { language } = useTranslation();
-  const K = batch3[language]?.scan_notification;
     if (job.status === 'running' || job.status === 'queued') {
       return job.message || 'Tunggu sebentar...';
     }
