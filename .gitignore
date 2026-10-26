@@ -40,6 +40,12 @@ Thumbs.db
 .coverage
 coverage/
 
+# Reference material that is not part of the application.
+# The MELD screenshots are 100 MB of images: they stay on this machine
+# as a design reference and do not belong in the repository.
+new-feature-request/meld-reference/
+new-feature-request/files.zip
+
 # Railway
 .railway/
 

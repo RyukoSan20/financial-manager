@@ -75,6 +75,9 @@ class FeedItemResponse(BaseModel):
     source: str  # camera_scan, email_forward, whatsapp, manual, ocr, api
     confidence_score: Optional[float]
     category_name: Optional[str]
+    # The key of a built-in category, which names it in a way that does
+    # not depend on any language.
+    category_system_key: Optional[str] = None
     account_name: Optional[str]
     items: List[TransactionItemResponse] = Field(default_factory=list)
     created_at: datetime

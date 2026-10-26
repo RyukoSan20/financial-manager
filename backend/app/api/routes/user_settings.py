@@ -386,3 +386,70 @@ def get_support_request(
     if request.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your support request")
     return request
+
+
+@router.get("/readiness")
+def get_readiness(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    How ready the account is.
+
+    A new account with nothing in it cannot show a useful budget, a
+    useful chart or a useful health score. This says what is set up,
+    what is still missing, and what to do next.
+    """
+    from app.services.readiness import build_readiness
+    return build_readiness(db, current_user.id).as_dict()
+
+
+@router.get("/passport")
+def get_passport(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    The identity and progress card.
+
+    The name, the achievements earned, the points, and the readiness
+    score, all in one place, so the reader can see how far along they
+    are.
+    """
+    from app.models.account import Account
+    from app.models.transaction import Transaction
+    from app.models.goal import Goal
+    from app.models.budget import Budget
+    from sqlalchemy import func
+    from app.services.readiness import build_readiness
+
+    def count(model, **filters):
+        q = db.query(func.count(model.id)).filter(model.user_id == current_user.id)
+        for k, v in filters.items():
+            q = q.filter(getattr(model, k) == v)
+        return q.scalar() or 0
+
+    readiness = build_readiness(db, current_user.id)
+
+    # The initials for the avatar. A reader with no name gets the
+    # first letter of the email address rather than an empty circle.
+    name = (current_user.full_name or current_user.username or "").strip()
+    if not name:
+        name = (current_user.email or "?").split("@")[0]
+    initials = "".join(part[0] for part in name.split()[:2]).upper() or "?"
+
+    return {
+        "name": name,
+        "email": current_user.email,
+        "initials": initials,
+        "avatar_url": current_user.avatar_url,
+        "readiness_score": readiness.score,
+        "readiness_done": readiness.done_count,
+        "readiness_total": readiness.total_count,
+        "counts": {
+            "accounts": count(Account, is_active=True),
+            "transactions": count(Transaction, is_deleted=False),
+            "goals": count(Goal, is_active=True),
+            "budgets": count(Budget),
+        },
+    }

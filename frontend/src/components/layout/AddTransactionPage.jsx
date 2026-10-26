@@ -7,6 +7,7 @@ import { parseQuickEntry, fetchDirection } from "../../features/transactions/nlp
 import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
 import { useTranslation } from "../../i18n";
 import { batch1, fill } from "../../i18n/keys_batch1";
+import { categoryName } from '../../utils/categoryName';
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
@@ -528,7 +529,12 @@ const AddTransactionPage = () => {
                     'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-200'
                   }`}
                 >
-                  {s.label}
+                  {/* A category suggestion is named by the language of
+                      the reader. The parser works out which category it
+                      is; the wording is the reader's. */}
+                  {s.type === 'category'
+                    ? (categoryName(categories.find(c => c.id === s.value), language) || s.label)
+                    : s.label}
                   {s.confidence && <span className="ml-1 text-xs opacity-60">({s.confidence})</span>}
                 </span>
               ))}
@@ -751,8 +757,8 @@ const AddTransactionPage = () => {
                     categoryId === cat.id ? "bg-primary-50 border-2 border-primary-500" : "bg-gray-50"
                   }`}
                 >
-                  <span className="text-2xl">{getCategoryIcon(cat.name)}</span>
-                  <span className="font-medium">{cat.name}</span>
+                  <span className="text-2xl">{cat.icon || getCategoryIcon(cat.name)}</span>
+                  <span className="font-medium">{categoryName(cat, language)}</span>
                 </button>
               ))}
             </div>

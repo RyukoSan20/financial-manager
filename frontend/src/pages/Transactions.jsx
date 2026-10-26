@@ -9,6 +9,7 @@ import { VoiceTransactionModal } from '../components/parser/VoiceTransactionModa
 import { notifyTransactionAdded, notifyTransactionDeleted, notifyTransactionUpdated, notifyError } from '../components/notifications/NotificationHelper';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
+import { categoryName } from '../utils/categoryName';
 import { useTranslation } from '../i18n';
 import { batch1, fill } from '../i18n/keys_batch1';
 
@@ -374,7 +375,7 @@ export const Transactions = () => {
                             >
                               <option value="">{K.selectCategory}</option>
                               {categories.filter(c => c.type === editForm.type).map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
+                                <option key={c.id} value={c.id}>{categoryName(c, language)}</option>
                               ))}
                             </select>
                             <select
@@ -434,12 +435,12 @@ export const Transactions = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="font-semibold text-gray-900 truncate">
-                                {tx.description || category?.name || (tx.type === 'income' ? K.income : K.expense)}
+                                {tx.description || (category ? categoryName(category, language) : null) || (tx.type === 'income' ? K.income : K.expense)}
                               </p>
                               <SourceBadge type={tx.detection_type} K={K} />
                             </div>
                             <p className="text-sm text-gray-500 truncate">
-                              {category?.name || account?.name || K.unknown}
+                              {(category ? categoryName(category, language) : null) || account?.name || K.unknown}
                             </p>
                           </div>
                         </div>

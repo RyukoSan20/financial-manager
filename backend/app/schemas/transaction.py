@@ -20,7 +20,18 @@ class TransactionBase(EmptyStringAsNone):
     detection_type: str = Field(default="MANUAL")  # MANUAL, OCR_RECEIPT, QRIS_TEXT, SMS_BANK
     receipt_scan_id: Optional[int] = None  # Link to receipt scan
     # Feed/Review Workflow fields
-    status: str = Field(default="pending")  # pending, approved, rejected
+    #
+    # A transaction the reader wrote down themselves is approved from
+    # the start: they wrote it, so there is nothing to review. Only a
+    # transaction that came in from somewhere else, such as a scan or
+    # a forwarded message, waits for the review.
+    #
+    # The default was "pending" for every transaction, which meant a
+    # transaction written by hand never counted towards the balance,
+    # the breakdown or the charts until somebody happened to approve it.
+    # The status is still set by the caller, and the route decides what
+    # a given source means.
+    status: Optional[str] = None  # pending, approved, rejected
     source: str = Field(default="manual")  # camera_scan, email_forward, whatsapp, manual, ocr, api
     merchant_name: Optional[str] = Field(None, max_length=100)
     # Location fields
@@ -113,6 +124,10 @@ class TransactionWithDetails(TransactionResponse):
     category_name: Optional[str] = None
     category_icon: Optional[str] = None
     category_color: Optional[str] = None
+    # The key of a built-in category, which names it in a way that does
+    # not depend on any language. The reader is shown the name in their
+    # own language.
+    category_system_key: Optional[str] = None
     items: List[Dict[str, Any]] = []  # Receipt items from OCR
 
 

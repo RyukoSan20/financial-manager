@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import json
 import asyncio
@@ -40,6 +40,15 @@ class AdviceResponse(BaseModel):
     insight: str
     action_items: List[str]
     potential_impact: str
+    # The words are named by a key, so the frontend can show them in
+    # the language of the reader. The numbers travel with the key.
+    title_key: str = ""
+    insight_key: str = ""
+    insight_values: Dict[str, Any] = {}
+    # Each step is named by a key of its own.
+    action_item_keys: List[str] = []
+    impact_key: str = ""
+    impact_values: Dict[str, Any] = {}
 
 class FinancialSummaryResponse(BaseModel):
     total_balance: float
@@ -61,10 +70,11 @@ class PatternAnalysis(BaseModel):
 # === API Endpoints ===
 
 @router.get("/advice", response_model=List[AdviceResponse])
-def get_ai_advice(
+async def get_ai_advice(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-):
+,
+    display_currency: str = "IDR"):
     """
     Get personalized AI financial advice.
     
@@ -74,11 +84,13 @@ def get_ai_advice(
         raise HTTPException(status_code=401, detail="Authentication required")
     
     # Get financial summary
-    summary = get_financial_summary(db, current_user.id)
+    summary = await get_financial_summary(db, current_user.id, display_currency)
     
     # Get AI advice
     advice_list = ai_advisor.get_advice(summary)
     
+    # The keys travel with the advice, so the frontend can show the
+    # words in the language the reader picked.
     return [
         AdviceResponse(
             title=a.title,
@@ -86,24 +98,31 @@ def get_ai_advice(
             priority=a.priority,
             insight=a.insight,
             action_items=a.action_items,
-            potential_impact=a.potential_impact
+            potential_impact=a.potential_impact,
+            title_key=a.title_key,
+            insight_key=a.insight_key,
+            insight_values=a.insight_values or {},
+            action_item_keys=list(a.action_item_keys or []),
+            impact_key=a.impact_key,
+            impact_values=a.impact_values or {},
         )
         for a in advice_list
     ]
 
 
 @router.get("/summary", response_model=FinancialSummaryResponse)
-def get_financial_summary_api(
+async def get_financial_summary_api(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-):
+,
+    display_currency: str = "IDR"):
     """
     Get current financial summary for AI context.
     """
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
     
-    summary = get_financial_summary(db, current_user.id)
+    summary = await get_financial_summary(db, current_user.id, display_currency)
     
     return FinancialSummaryResponse(
         total_balance=summary.total_balance,
@@ -145,11 +164,12 @@ def analyze_spending_patterns(
 
 
 @router.post("/chat")
-def chat_with_advisor(
+async def chat_with_advisor(
     message: dict,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-):
+,
+    display_currency: str = "IDR"):
     """
     Chat with AI financial advisor.
     
@@ -168,7 +188,7 @@ def chat_with_advisor(
         raise HTTPException(status_code=400, detail="Message too long (max 500 chars)")
     
     # Get financial context
-    summary = get_financial_summary(db, current_user.id)
+    summary = await get_financial_summary(db, current_user.id, display_currency)
     
     # The messages that came before, so the answer can refer to them.
     history = [
@@ -203,7 +223,7 @@ async def chat_stream(
         raise HTTPException(status_code=400, detail="Message too long (max 500 chars)")
     
     # Get financial context
-    summary = get_financial_summary(db, current_user.id)
+    summary = await get_financial_summary(db, current_user.id, display_currency)
     topic = message.get("topic", "free")
     
     # Build user context for AI
@@ -451,10 +471,11 @@ def _agent_reply(plan, executed: bool) -> str:
 
 
 @router.post("/agent", response_model=AgentResponse)
-def ai_agent(
+async def ai_agent(
     request: AgentRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    display_currency: str = "IDR",
 ):
     """
     The financial agent.
@@ -492,7 +513,7 @@ def ai_agent(
     ):
         from app.services.ai_agent_executor import AgentExecutor, execute_plan
 
-        plan = execute_plan(db, current_user.id, plan, message, history)
+        plan = await execute_plan(db, current_user.id, plan, message, history, display_currency)
         try:
             db.commit()
         except Exception as exc:  # noqa: BLE001
@@ -523,7 +544,7 @@ def ai_agent(
     if plan.intent in ("query", "query_advice") and plan.actions:
         from app.services.ai_agent_executor import AgentExecutor, execute_plan
 
-        plan = execute_plan(db, current_user.id, plan, message, history)
+        plan = await execute_plan(db, current_user.id, plan, message, history, display_currency)
         try:
             db.commit()
         except Exception as exc:  # noqa: BLE001
@@ -551,7 +572,7 @@ def ai_agent(
         )
 
         try:
-            summary = get_financial_summary(db, current_user.id)
+            summary = await get_financial_summary(db, current_user.id, display_currency)
             chat_result = ai_advisor.chat(message, summary, history=history)
             reply = chat_result.get("response") or ""
             if not reply:
@@ -586,7 +607,7 @@ def ai_agent(
             message=reply,
         )
 
-    plan = execute_plan(db, current_user.id, plan, message, history)
+    plan = await execute_plan(db, current_user.id, plan, message, history, display_currency)
     try:
         db.commit()
     except Exception as exc:  # noqa: BLE001
@@ -616,7 +637,7 @@ def ai_agent(
 
 
 @router.post("/execute", response_model=ActionResult)
-def execute_ai_action(
+async def execute_ai_action(
     request: ExecuteRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -648,7 +669,7 @@ def execute_ai_action(
             ),
         )
 
-    plan = execute_plan(db, current_user.id, plan, message, history)
+    plan = await execute_plan(db, current_user.id, plan, message, history, display_currency)
     try:
         db.commit()
     except Exception as exc:  # noqa: BLE001

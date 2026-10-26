@@ -39,8 +39,18 @@ const handleAuthError = (response) => {
   }
 };
 
+// A request that was slowed down by the rate limiter is worth trying
+// again. The browser asks for a dozen endpoints at once when a page
+// opens, and a burst can push some of them over the line even though
+// nothing is actually wrong.
+//
+// 429 and 503 are both worth one more try. 401 is not: the session is
+// gone and retrying only hides the message from the reader.
+const RETRYABLE_STATUSES = new Set([429, 503]);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 // Base fetch with interceptor - handles auth and error formatting
-const fetchWithInterceptor = async (url, options = {}) => {
+const fetchWithInterceptor = async (url, options = {}, retryCount = 0) => {
   const token = getToken();
   
   const config = {
@@ -52,8 +62,32 @@ const fetchWithInterceptor = async (url, options = {}) => {
     },
   };
 
-  const response = await fetch(url, config);
-  
+  let response;
+  try {
+    response = await fetch(url, config);
+  } catch (networkError) {
+    // The network itself failed. One more try is worth it, but only
+    // for a read: repeating a write can create it twice.
+    const failedMethod = (config.method || 'GET').toUpperCase();
+    if (retryCount < 2 && failedMethod === 'GET') {
+      await sleep(400 * (retryCount + 1));
+      return fetchWithInterceptor(url, options, retryCount + 1);
+    }
+    throw networkError;
+  }
+
+  // The server is rate limiting or briefly unavailable. Back off a
+  // little and try once more, so a page full of parallel requests does
+  // not lose half of them to a burst.
+  //
+  // Only a read is retried. A write that is repeated can create the
+  // same transaction twice, and a money app must not do that.
+  const method = (config.method || 'GET').toUpperCase();
+  if (RETRYABLE_STATUSES.has(response.status) && retryCount < 2 && method === 'GET') {
+    await sleep(500 * (retryCount + 1));
+    return fetchWithInterceptor(url, options, retryCount + 1);
+  }
+
   // Handle 401 Unauthorized
   if (response.status === 401) {
     handleAuthError(response);
@@ -427,8 +461,11 @@ export const api = {
 
   // Advanced Pipeline APIs
   healthCoach: {
-    score: () => api.request('/health-coach/score'),
-    audit: () => api.request('/health-coach/audit'),
+    // The currency the reader is looking at. The backend converts the
+    // balances into it, because the accounts do not all hold the same
+    // currency.
+    score: (currency = 'IDR') => api.request(`/health-coach/score?display_currency=${encodeURIComponent(currency)}`),
+    audit: (currency = 'IDR') => api.request(`/health-coach/audit?display_currency=${encodeURIComponent(currency)}`),
     recommendations: () => api.request('/health-coach/recommendations'),
   },
 

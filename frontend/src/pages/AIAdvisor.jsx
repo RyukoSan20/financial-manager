@@ -181,6 +181,35 @@ const AIAdvisor = () => {
     return `${t('ai_advisor.local_greeting_title')}\n\n${t('ai_advisor.local_greeting_intro')}\n${t('ai_advisor.local_greeting_item1')}\n${t('ai_advisor.local_greeting_item2')}\n${t('ai_advisor.local_greeting_item3')}\n${t('ai_advisor.local_greeting_item4')}\n${t('ai_advisor.local_greeting_item5')}\n\n${t('ai_advisor.local_greeting_end')}`;
   };
 
+  // The advice is named by a key, so it reads in the language of the
+  // reader. The numbers that go into a sentence travel with it.
+  const adviceTitle = (item) => {
+    if (!item) return '';
+    if (item.title_key) {
+      const values = item.insight_values || {};
+      return t(item.title_key, '', values);
+    }
+    return item.title || '';
+  };
+
+  const adviceInsight = (item) => {
+    if (!item) return '';
+    if (item.insight_key) {
+      return t(item.insight_key, '', item.insight_values || {});
+    }
+    return item.insight || item.description || '';
+  };
+
+  const adviceActions = (item) => {
+    if (!item) return [];
+    // Each step is named by a key, so it reads in the language of the
+    // reader.
+    if (Array.isArray(item.action_item_keys) && item.action_item_keys.length) {
+      return item.action_item_keys.map((k) => t(k)).filter(Boolean);
+    }
+    return item.action_items || [];
+  };
+
   const getPriorityConfig = (priority) => {
     switch(priority) {
       case "high": return { color: "#ef4444", bg: "bg-red-50", border: "border-l-red-500" };
@@ -329,10 +358,10 @@ const AIAdvisor = () => {
                             </span>
                             <div>
                               <h4 className="font-semibold text-gray-900 dark:text-white">
-                                {item.title}
+                                {adviceTitle(item)}
                               </h4>
                               <p className="text-sm text-gray-500 line-clamp-1">
-                                {item.description}
+                                {adviceInsight(item)}
                               </p>
                             </div>
                           </div>
@@ -349,8 +378,11 @@ const AIAdvisor = () => {
                         <div className="flex gap-2 mt-3">
                           <span className={`px-2 py-0.5 text-xs rounded-full ${config.bg}`}
                                 style={{ color: config.color }}>
-                            {item.priority === 'high' ? '🔴 Prioritas Tinggi' : 
-                             item.priority === 'medium' ? '🟡 Prioritas Sedang' : '🟢 Prioritas Normal'}
+                            {item.priority === 'high'
+                              ? t('ai_advisor.priority_high')
+                              : item.priority === 'medium'
+                              ? t('ai_advisor.priority_medium')
+                              : t('ai_advisor.priority_low')}
                           </span>
                           {item.category && (
                             <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 capitalize">
@@ -367,7 +399,7 @@ const AIAdvisor = () => {
                             {K.action_items}
                           </p>
                           <ul className="space-y-1">
-                            {item.action_items.map((action, j) => (
+                            {adviceActions(item).map((action, j) => (
                               <li key={j} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
                                 <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                                 {action}

@@ -9,6 +9,7 @@ import {
 import { formatCurrency, formatPercent } from '../utils/format';
 import { useSyncedPreference } from '../hooks/useSyncedPreference';
 import { useTranslation } from '../i18n';
+import { categoryName } from '../utils/categoryName';
 import { chartPalette } from '../utils/appearance';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -210,7 +211,7 @@ const savePrefs = (prefs) => {
 };
 
 export const Analytics = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -412,13 +413,25 @@ export const Analytics = () => {
             <CardBody>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {Object.entries(healthBreakdown).map(([key, value]) => (
-                  <div key={key} className="p-3 rounded-lg bg-gray-50">
+                  <div
+                    key={key}
+                    className={`p-3 rounded-lg ${value.measurable === false ? 'bg-gray-50/60' : 'bg-gray-50'}`}
+                  >
                     <p className="text-xs text-gray-500">
                       {value.label_key ? t(value.label_key) : (value.label || key.replace(/_/g, ' '))}
                     </p>
-                    <p className={`text-lg font-bold mt-0.5 ${getScoreColor(value.score)}`}>
-                      {value.score}<span className="text-xs text-gray-400">/{value.max || 25}</span>
-                    </p>
+                    {/* A part with no data behind it shows no number at
+                        all. Showing "0 out of 25" would read as a bad
+                        result rather than an empty measurement. */}
+                    {value.measurable === false ? (
+                      <p className="text-sm font-medium text-gray-400 mt-0.5">
+                        {t('analytics.health_not_measured')}
+                      </p>
+                    ) : (
+                      <p className={`text-lg font-bold mt-0.5 ${getScoreColor(value.score)}`}>
+                        {value.score}<span className="text-xs text-gray-400">/{value.max || 25}</span>
+                      </p>
+                    )}
                     <p className="text-xs text-gray-400 mt-1 leading-snug">
                       {value.description_key
                         ? t(value.description_key, '', value.description_values || {})
@@ -426,6 +439,15 @@ export const Analytics = () => {
                     </p>
                   </div>
                 ))}
+                {/* The overall score is only worth showing when enough
+                    of it could be measured. */}
+                {health.has_enough_data === false && (
+                  <div className="col-span-2 lg:col-span-4 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                    <p className="text-sm text-amber-800">
+                      {t('analytics.health_not_enough_data')}
+                    </p>
+                  </div>
+                )}
               </div>
               {health.metrics && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100">
@@ -490,7 +512,9 @@ export const Analytics = () => {
                     <RePieChart>
                       <Pie
                         data={expenseBreakdown.breakdown.map((b) => ({
-                          name: b.name || t('category.lainnya'),
+                          // The server sends the name as it is stored,
+                          // which is Indonesian. It is translated here.
+                          name: categoryName(b.name, language) || t('category.lainnya'),
                           value: parseFloat(b.total) || 0,
                         }))}
                         cx="50%" cy="50%" outerRadius={85} dataKey="value"
@@ -510,7 +534,7 @@ export const Analytics = () => {
                       <span className="flex items-center gap-2 min-w-0">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0"
                           style={{ background: COLORS()[i % COLORS().length] }} />
-                        <span className="truncate">{b.name || t('category.lainnya')}</span>
+                        <span className="truncate">{categoryName(b.name, language) || t('category.lainnya')}</span>
                       </span>
                       <span className="flex items-center gap-2 shrink-0">
                         <span className="font-medium">{formatCurrency(b.total)}</span>
@@ -533,8 +557,14 @@ export const Analytics = () => {
             <CardBody>
               <ResponsiveContainer width="100%" height={230}>
                 <BarChart data={budgetComparison.comparisons.map((c) => ({
-                  category: (c.category_name || t('category.lainnya')).length > 14
-                    ? `${c.category_name.slice(0, 13)}…` : (c.category_name || t('category.lainnya')),
+                  // The server sends the name as it is stored, which is
+                // the Indonesian one. It is translated here, so a
+                // Japanese reader sees the Japanese word.
+                category: (() => {
+                  const raw = c.category_name || t('category.lainnya');
+                  const name = categoryName(raw, language);
+                  return name.length > 14 ? `${name.slice(0, 13)}…` : name;
+                })(),
                   budget: parseFloat(c.budget_amount) || 0,
                   actual: parseFloat(c.actual_spent) || 0,
                 }))}>
@@ -573,7 +603,7 @@ export const Analytics = () => {
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{tx.description || t('analytics.no_description')}</p>
                       <p className="text-xs text-gray-500 truncate">
-                        {tx.category || t('analytics.no_category')}
+                        {categoryName(tx.category, language) || t('analytics.no_category')}
                         {tx.account ? ` · ${tx.account}` : ''}
                       </p>
                     </div>

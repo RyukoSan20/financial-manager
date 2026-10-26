@@ -9,13 +9,22 @@ from datetime import date, datetime
 
 @dataclass
 class FinancialRatio:
-    """Individual financial ratio result."""
+    """Individual financial ratio result.
+
+    The name and the description are named by a key rather than written
+    out, so the frontend can show them in the language the reader
+    picked. The words live in the translation files, not here.
+    """
     name: str
     value: float
     ideal_min: float
     ideal_max: float
     status: str  # "excellent", "good", "warning", "danger"
     description: str
+    # The key the frontend reads, and the numbers that go into it.
+    name_key: str = ""
+    description_key: str = ""
+    description_values: Optional[dict] = None
 
 
 @dataclass
@@ -138,7 +147,10 @@ class FinancialRatiosCalculator:
             ideal_min=3,
             ideal_max=12,
             status=status,
-            description=f"Dana darurat Anda cukup untuk {months:.1f} bulan pengeluaran"
+            description=f"Dana darurat Anda cukup untuk {months:.1f} bulan pengeluaran",
+            name_key="health_coach.ratio_emergency_months",
+            description_key="health_coach.ratio_emergency_months_desc",
+            description_values={"months": round(months, 1)},
         )
     
     def _calculate_savings_ratio(self, ratio: float) -> FinancialRatio:
@@ -160,7 +172,10 @@ class FinancialRatiosCalculator:
             ideal_min=20,
             ideal_max=100,
             status=status,
-            description=f"Tabungan Anda {percentage:.1f}% dari penghasilan"
+            description=f"Tabungan Anda {percentage:.1f}% dari penghasilan",
+            name_key="health_coach.ratio_savings_ratio",
+            description_key="health_coach.ratio_savings_ratio_desc",
+            description_values={"percentage": round(percentage, 1)},
         )
     
     def _calculate_dsr_ratio(self, ratio: float) -> FinancialRatio:
@@ -182,7 +197,10 @@ class FinancialRatiosCalculator:
             ideal_min=0,
             ideal_max=30,
             status=status,
-            description=f"Cicilan utang {percentage:.1f}% dari penghasilan"
+            description=f"Cicilan utang {percentage:.1f}% dari penghasilan",
+            name_key="health_coach.ratio_dsr",
+            description_key="health_coach.ratio_dsr_desc",
+            description_values={"percentage": round(percentage, 1)},
         )
     
     def _calculate_emergency_fund(self, months: float) -> FinancialRatio:
@@ -202,7 +220,10 @@ class FinancialRatiosCalculator:
             ideal_min=3,
             ideal_max=12,
             status=status,
-            description=f"{months:.1f} bulan cadangan hidup"
+            description=f"{months:.1f} bulan cadangan hidup",
+            name_key="health_coach.ratio_emergency_fund",
+            description_key="health_coach.ratio_emergency_fund_desc",
+            description_values={"months": round(months, 1)},
         )
     
     def _calculate_debt_to_asset(self, ratio: float) -> FinancialRatio:
@@ -224,7 +245,10 @@ class FinancialRatiosCalculator:
             ideal_min=0,
             ideal_max=40,
             status=status,
-            description=f"Utang {percentage:.1f}% dari total aset"
+            description=f"Utang {percentage:.1f}% dari total aset",
+            name_key="health_coach.ratio_debt_to_asset",
+            description_key="health_coach.ratio_debt_to_asset_desc",
+            description_values={"percentage": round(percentage, 1)},
         )
     
     def _calculate_overall_score(

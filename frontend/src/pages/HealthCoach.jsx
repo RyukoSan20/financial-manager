@@ -2,9 +2,14 @@
 import { useState, useEffect } from "react";
 import { api } from "../services/api";
 import { useTranslation } from '../i18n';
+import { useCurrency } from '../utils/currency';
 
 const HealthCoach = () => {
   const { t } = useTranslation();
+  // The currency the reader is looking at. The accounts do not all
+  // hold the same currency, so the backend converts the balances into
+  // this one before it works out the ratios.
+  const { currency: displayCurrency } = useCurrency();
   const [healthData, setHealthData] = useState(null);
   const [auditData, setAuditData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -14,12 +19,23 @@ const HealthCoach = () => {
     loadHealthData();
   }, []);
 
+  // The description of a ratio. The backend names it by a key and
+  // gives the numbers that go into it, so it reads in the language of
+  // the reader.
+  const ratioDescription = (ratio) => {
+    if (!ratio) return '';
+    if (ratio.description_key) {
+      return t(ratio.description_key, '', ratio.description_values || {});
+    }
+    return ratio.description || '';
+  };
+
   const loadHealthData = async () => {
     try {
       setLoading(true);
       const [scoreRes, auditRes] = await Promise.all([
-        api.healthCoach.score().catch(() => null),
-        api.healthCoach.audit().catch(() => null)
+        api.healthCoach.score(displayCurrency).catch(() => null),
+        api.healthCoach.audit(displayCurrency).catch(() => null)
       ]);
       
       if (scoreRes?.ok) {
@@ -152,7 +168,7 @@ const HealthCoach = () => {
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              {healthData?.savings_ratio?.description || t('health_coach.savings_desc_default')}
+              {ratioDescription(healthData?.savings_ratio) || t('health_coach.savings_desc_default')}
             </p>
           </div>
 

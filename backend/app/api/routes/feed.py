@@ -338,12 +338,15 @@ def _build_feed_item(transaction: Transaction, db: Session) -> FeedItemResponse:
         if account:
             account_name = account.name
     
-    # Get category name
+    # Get category name, and the key that names a built-in category in
+    # a way that does not depend on any language.
     category_name = None
+    category_system_key = None
     if transaction.category_id:
         category = db.query(Category).filter(Category.id == transaction.category_id).first()
         if category:
             category_name = category.name
+            category_system_key = category.system_key
     
     # Get items
     items = []
@@ -371,6 +374,7 @@ def _build_feed_item(transaction: Transaction, db: Session) -> FeedItemResponse:
         source=transaction.source,
         confidence_score=float(transaction.confidence_score) if transaction.confidence_score else None,
         category_name=category_name,
+        category_system_key=category_system_key,
         account_name=account_name,
         items=items,
         created_at=transaction.created_at

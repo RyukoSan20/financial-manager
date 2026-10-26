@@ -942,7 +942,7 @@ class AgentExecutor:
 
     # -- query ------------------------------------------------------------
 
-    def query_advice(
+    async def query_advice(
         self,
         message: str,
         history: Optional[List[Dict[str, str]]] = None,
@@ -960,7 +960,7 @@ class AgentExecutor:
                 get_financial_summary,
             )
 
-            summary = get_financial_summary(self.db, self.user_id)
+            summary = await get_financial_summary(self.db, self.user_id)
             result = ai_advisor.chat(message, summary, history=history or [])
             reply = result.get("response") or ""
         except Exception as exc:  # noqa: BLE001
@@ -1402,12 +1402,13 @@ def build_plan(db: Session, user_id: int, message: str) -> AgentPlan:
     return plan
 
 
-def execute_plan(
+async def execute_plan(
     db: Session,
     user_id: int,
     plan: AgentPlan,
     message: str,
     history: Optional[List[Dict[str, str]]] = None,
+    display_currency: str = "IDR",
 ) -> AgentPlan:
     """Run the actions of a plan against the database."""
     executor = AgentExecutor(db, user_id)
@@ -1444,7 +1445,7 @@ def execute_plan(
             elif action.kind == "query_transactions":
                 result = executor.query_transactions(text)
             elif action.kind == "query_advice":
-                result = executor.query_advice(text, history)
+                result = await executor.query_advice(text, history)
             else:
                 result = AgentAction(
                     kind=action.kind,

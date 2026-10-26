@@ -118,17 +118,35 @@ class FinancialSummary:
     recent_transactions: List[Dict[str, Any]]
     user_name: str = ""
     currency: str = "IDR"
+    # How many transactions the figures are based on. The advice needs
+    # to know this: one transaction is not a pattern.
+    transaction_count: int = 0
 
 
 @dataclass
 class AIAdvice:
-    """AI-generated financial advice."""
+    """AI-generated financial advice.
+
+    The words are named by a key rather than written out, so the
+    frontend can show them in the language the reader picked. The
+    numbers that go into a sentence travel with it.
+    """
     title: str
     category: str  # "savings", "spending", "investment", "debt", "goals"
     priority: str  # "high", "medium", "low"
     insight: str
     action_items: List[str]
     potential_impact: str
+    # The key the frontend reads, and the numbers that go into it.
+    title_key: str = ""
+    insight_key: str = ""
+    insight_values: Optional[dict] = None
+    action_items_key: str = ""
+    # Each step is named by a key of its own, so the frontend can
+    # translate them one by one.
+    action_item_keys: List[str] = None
+    impact_key: str = ""
+    impact_values: Optional[dict] = None
 
 
 def is_finance_related(question: str) -> bool:
@@ -512,24 +530,79 @@ Jawab pertanyaan di atas berdasarkan data keuangan pengguna. Berikan jawaban yan
         return self._get_fallback_advice(summary)
 
     def _get_fallback_advice(self, summary: FinancialSummary) -> List[AIAdvice]:
-        """Fallback advice when API is unavailable."""
+        """Fallback advice when the model is unavailable.
+
+        The words are named by a key so the frontend can show them in
+        the language of the reader. The numbers travel with the key.
+
+        Advice is only given when there is enough behind it. A single
+        transaction is not a spending pattern, and a person with no
+        income recorded is not a person who should be told to save
+        more. Below the threshold the advice says the data is not
+        enough, instead of pretending to know.
+        """
         advice = []
-        
+
+        # How much is behind the advice. Below this the numbers are
+        # too thin to say anything useful.
+        MIN_TRANSACTIONS = 3
+        MIN_AMOUNT = 10000.0
+
+        transactions = getattr(summary, "transaction_count", 0) or 0
+        has_income = (getattr(summary, "total_income", 0) or 0) > 0
+        total_expense = (getattr(summary, "total_expense", 0) or 0) or 0
+        top_categories = summary.top_categories or []
+
+        enough_for_spending = transactions >= MIN_TRANSACTIONS and total_expense >= MIN_AMOUNT
+        enough_for_savings = has_income and transactions >= MIN_TRANSACTIONS
+
+        # Not enough data yet. One note says so, and no advice is
+        # given on top of it.
+        if not enough_for_spending and not enough_for_savings:
+            advice.append(AIAdvice(
+                title="Data belum cukup",
+                category="general",
+                priority="low",
+                insight=(
+                    "Belum ada cukup transaksi untuk memberi saran yang bisa diandalkan. "
+                    "Catat beberapa transaksi terlebih dahulu, termasuk pengeluaran harian."
+                ),
+                action_items=[
+                    "Catat pengeluaran harian beberapa hari",
+                    "Pastikan ada transaksi pemasukan yang tercatat",
+                    "Muat ulang setelah ada cukup data"
+                ],
+                potential_impact="Saran yang lebih akurat setelah data terkumpul",
+                title_key="ai_advisor.advice_data_insufficient_title",
+                insight_key="ai_advisor.advice_data_insufficient_insight",
+                action_item_keys=["ai_advisor.advice_data_insufficient_action1", "ai_advisor.advice_data_insufficient_action2", "ai_advisor.advice_data_insufficient_action3"],
+                impact_key="ai_advisor.advice_data_insufficient_impact",
+            ))
+            return advice
+
         # Savings rate advice
-        if summary.savings_rate < 20:
+        if enough_for_savings and summary.savings_rate < 20:
             advice.append(AIAdvice(
                 title="Tingkatkan Tabungan",
                 category="savings",
                 priority="high",
-                insight=f"Tingkat tabungan Anda {summary.savings_rate:.1f}% masih di bawah target ideal 20%. Hal ini bisa危及紧急基金的建立.",
+                insight=(
+                    f"Tingkat tabungan Anda {summary.savings_rate:.1f}% masih di bawah target ideal 20%. "
+                    "Membangun dana darurat butuh menyisihkan dana lebih dulu."
+                ),
                 action_items=[
                     "Buat anggaran 50/30/20 (kebutuhan/keinginan/tabungan)",
                     "Otomatisasi transfer ke tabungan saat gajian",
                     "Cari pengeluaran yang bisa dikurangi"
                 ],
-                potential_impact="Meningkatkan dana darurat dan persiapan masa depan"
+                potential_impact="Meningkatkan dana darurat dan persiapan masa depan",
+                title_key="ai_advisor.advice_savings_title",
+                insight_key="ai_advisor.advice_savings_insight",
+                insight_values={"rate": round(summary.savings_rate, 1)},
+                action_item_keys=["ai_advisor.advice_savings_action1", "ai_advisor.advice_savings_action2", "ai_advisor.advice_savings_action3"],
+                impact_key="ai_advisor.advice_savings_impact",
             ))
-        
+
         # Debt advice
         if summary.total_debt > 0:
             advice.append(AIAdvice(
@@ -542,9 +615,14 @@ Jawab pertanyaan di atas berdasarkan data keuangan pengguna. Berikan jawaban yan
                     "Gunakan metode 'snowball' atau 'avalanche'",
                     "Hindari menambah utang baru"
                 ],
-                potential_impact="Mengurangi beban bunga dan memperbaiki rasio utang"
+                potential_impact="Mengurangi beban bunga dan memperbaiki rasio utang",
+                title_key="ai_advisor.advice_debt_title",
+                insight_key="ai_advisor.advice_debt_insight",
+                insight_values={"amount": float(summary.total_debt)},
+                action_item_keys=["ai_advisor.advice_debt_action1", "ai_advisor.advice_debt_action2", "ai_advisor.advice_debt_action3"],
+                impact_key="ai_advisor.advice_debt_impact",
             ))
-        
+
         # Goals advice
         if summary.active_goals > 0:
             advice.append(AIAdvice(
@@ -557,12 +635,17 @@ Jawab pertanyaan di atas berdasarkan data keuangan pengguna. Berikan jawaban yan
                     "Investasikan di instrumen yang sesuai jangka waktu",
                     "Review progress bulanan"
                 ],
-                potential_impact="Mempercepat pencapaian tujuan finansial"
+                potential_impact="Mempercepat pencapaian tujuan finansial",
+                title_key="ai_advisor.advice_goals_title",
+                insight_key="ai_advisor.advice_goals_insight",
+                insight_values={"count": summary.active_goals},
+                action_item_keys=["ai_advisor.advice_goals_action1", "ai_advisor.advice_goals_action2", "ai_advisor.advice_goals_action3"],
+                impact_key="ai_advisor.advice_goals_impact",
             ))
-        
-        # Spending advice
-        if summary.top_categories:
-            top_cat = summary.top_categories[0]
+
+        # Spending advice. Only when there is a real pattern behind it.
+        if enough_for_spending and top_categories:
+            top_cat = top_categories[0]
             advice.append(AIAdvice(
                 title=f"Kurangi Pengeluaran {top_cat['category']}",
                 category="spending",
@@ -573,9 +656,18 @@ Jawab pertanyaan di atas berdasarkan data keuangan pengguna. Berikan jawaban yan
                     "Buat batas bulanan untuk kategori ini",
                     "Cari alternatif yang lebih hemat"
                 ],
-                potential_impact=f"Menghemat Rp {top_cat['total'] * 0.1:,.0f}/bulan jika dikurangi 10%"
+                potential_impact=f"Menghemat Rp {top_cat['total'] * 0.1:,.0f}/bulan jika dikurangi 10%",
+                title_key="ai_advisor.advice_spending_title",
+                insight_key="ai_advisor.advice_spending_insight",
+                insight_values={
+                    "category": top_cat["category"],
+                    "percentage": round(top_cat.get("percentage", 0)),
+                },
+                action_item_keys=["ai_advisor.advice_spending_action1", "ai_advisor.advice_spending_action2", "ai_advisor.advice_spending_action3"],
+                impact_key="ai_advisor.advice_spending_impact",
+                impact_values={"amount": float(top_cat.get("total", 0)) * 0.1},
             ))
-        
+
         return advice
 
     def analyze_spending_pattern(self, transactions: List[Dict]) -> Dict[str, Any]:
@@ -653,11 +745,16 @@ Return JSON:
 ai_advisor = AIFinancialAdvisor()
 
 
-def get_financial_summary(
+async def get_financial_summary(
     db: Session,
-    user_id: int
+    user_id: int,
+    display_currency: str = "IDR",
 ) -> FinancialSummary:
-    """Get financial summary for a user."""
+    """Get financial summary for a user.
+
+    The accounts do not all hold the same currency, so the balance is
+    converted into the currency being shown before it is used.
+    """
     from app.models.account import Account
     from app.models.transaction import Transaction
     from app.models.goal import Goal
@@ -674,9 +771,26 @@ def get_financial_summary(
     user_name = user.username or user.full_name or user.email.split('@')[0] if user else "User"
     
     # Get accounts balance
-    accounts = db.query(Account).filter(Account.user_id == user_id).all()
-    total_balance = sum(float(a.balance or 0) for a in accounts)
+    accounts = db.query(Account).filter(
+        Account.user_id == user_id, Account.is_active == True
+    ).all()
+    from app.services.currency_totals import total_in_currency
+    balance_total = await total_in_currency(
+        [(float(a.balance or 0), a.currency or "IDR") for a in accounts],
+        target=display_currency,
+    )
+    total_balance = balance_total.total
     
+    # How many transactions the month holds. The advice needs to know
+    # this, so it does not draw a conclusion from one entry.
+    transaction_count = db.query(func.count(Transaction.id)).filter(
+        Transaction.user_id == user_id,
+        Transaction.date >= first_of_month,
+        Transaction.date <= today,
+        Transaction.type.in_(["income", "expense"]),
+        Transaction.is_deleted == False,
+    ).scalar() or 0
+
     # Get monthly transactions
     monthly = db.query(
         Transaction.type,
@@ -801,5 +915,6 @@ def get_financial_summary(
         top_categories=top_categories,
         recent_transactions=recent_transactions,
         user_name=user_name,
-        currency="IDR"
+        currency=display_currency,
+        transaction_count=int(transaction_count),
     )

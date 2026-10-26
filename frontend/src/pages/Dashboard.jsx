@@ -14,7 +14,9 @@ import { useCurrency } from '../utils/currency';
 import api, { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../config/url';
 import { useTranslation } from '../i18n';
+import { categoryName, categoryKey, transactionCategoryName } from '../utils/categoryName';
 import AIAssistant from '../components/common/AIAssistant';
+import ReadinessChecklist from '../components/ReadinessChecklist';
 import { useTheme } from '../contexts/ThemeContext';
 import { batch3 } from '../i18n/keys_batch3';
 
@@ -83,6 +85,9 @@ function savingsColor() {
 // ============================================================================
 // CATEGORY COLORS
 // ============================================================================
+// The key of each entry is the system_key the database carries for a
+// built-in category. They have to match exactly, or the colour falls
+// back to grey and every category looks the same.
 const CATEGORY_COLORS = {
   // Income
   salary: '#22c55e',
@@ -91,15 +96,21 @@ const CATEGORY_COLORS = {
   bonus: '#8b5cf6',
   other_income: '#6b7280',
   // Expense
-  food: '#ef4444',
-  transport: '#f97316',
+  food_drink: '#ef4444',
+  transportation: '#f97316',
   shopping: '#eab308',
   health: '#22c55e',
   education: '#3b82f6',
   entertainment: '#ec4899',
+  bills_utilities: '#8b5cf6',
+  savings_investment: '#14b8a6',
+  other_expense: '#6b7280',
+  // The older names, kept so a category that was saved before the key
+  // was introduced keeps its colour.
+  food: '#ef4444',
+  transport: '#f97316',
   bills: '#8b5cf6',
   investment: '#14b8a6',
-  other_expense: '#6b7280',
 };
 
 // ============================================================================
@@ -205,7 +216,7 @@ const AchievementBadge = ({ achievement, earned, isDark }) => {
 
 // Category Breakdown Component
 const CategoryBreakdown = ({ categories, type, isDark, maxItems = 5 }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const entries = Object.entries(categories || {});
   const total = entries.reduce((sum, [, data]) => sum + (data.total || 0), 0);
   const sortedCategories = entries.sort((a, b) => b[1].total - a[1].total).slice(0, maxItems);
@@ -219,16 +230,23 @@ const CategoryBreakdown = ({ categories, type, isDark, maxItems = 5 }) => {
         <>
           {sortedCategories.map(([key, data]) => {
             const percentage = total > 0 ? ((data.total || 0) / total * 100) : 0;
+            // The key of the group is the name the category is stored
+            // under, which is Indonesian. It is translated here, so a
+            // Japanese reader sees the Japanese word.
+            const label = categoryName(key, language);
+            // The colour is looked up by the category key, so the same
+            // category keeps the same colour in every language.
+            const colorKey = categoryKey(key) || key;
             return (
               <div key={key} className="flex items-center gap-2">
                 <div 
                   className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
-                  style={{ backgroundColor: CATEGORY_COLORS[key] || '#6b7280' }} 
+                  style={{ backgroundColor: CATEGORY_COLORS[colorKey] || '#6b7280' }} 
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between text-xs mb-0.5">
                     <span className={`capitalize truncate ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                      {key.replace(/_/g, ' ')}
+                      {label}
                     </span>
                     <span className={`font-medium flex-shrink-0 ml-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                       {formatCurrency(data.total || 0)}
@@ -239,7 +257,7 @@ const CategoryBreakdown = ({ categories, type, isDark, maxItems = 5 }) => {
                       className="h-1.5 rounded-full transition-all" 
                       style={{ 
                         width: `${percentage}%`, 
-                        backgroundColor: CATEGORY_COLORS[key] || '#6b7280' 
+                        backgroundColor: CATEGORY_COLORS[colorKey] || '#6b7280' 
                       }} 
                     />
                   </div>
@@ -249,7 +267,7 @@ const CategoryBreakdown = ({ categories, type, isDark, maxItems = 5 }) => {
           })}
           {entries.length > maxItems && (
             <p className={`text-xs text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-              +{entries.length - maxItems} kategori lainnya
+              +{entries.length - maxItems} {t('dashboard.other_categories')}
             </p>
           )}
         </>
@@ -503,12 +521,16 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       createChart, ColorType, CrosshairMode, LineStyle, 
       LineSeries, AreaSeries, HistogramSeries
     }) => {
-      // Pure JS IDR currency formatter
-      const idrFormatter = (price) => {
-        if (price >= 1000000000) return `Rp ${(price / 1000000000).toFixed(1)}M`;
-        if (price >= 1000000) return `Rp ${(price / 1000000).toFixed(1)}jt`;
-        if (price >= 1000) return `Rp ${(price / 1000).toFixed(0)}rb`;
-        return `Rp ${price}`;
+      // The axis formatter. It uses the currency the chart is drawn
+      // in, not a fixed one: the same chart shows yen for a reader
+      // who reads in yen.
+      const axisCurrency = displayCurrency || 'IDR';
+      const axisSymbol = { IDR: 'Rp', JPY: '¥', USD: '$', EUR: '€', GBP: '£' }[axisCurrency] || axisCurrency;
+      const axisFormatter = (price) => {
+        if (price >= 1000000000) return `${axisSymbol} ${(price / 1000000000).toFixed(1)}B`;
+        if (price >= 1000000) return `${axisSymbol} ${(price / 1000000).toFixed(1)}M`;
+        if (price >= 1000) return `${axisSymbol} ${(price / 1000).toFixed(0)}K`;
+        return `${axisSymbol} ${price}`;
       };
       if (chartInstanceRef.current) {
         try { chartInstanceRef.current.remove(); } catch (e) {}
@@ -540,7 +562,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           mode: 1,
         },
         localization: {
-          priceFormatter: idrFormatter,
+          priceFormatter: axisFormatter,
         },
         handleScroll: { mouseWheel: true, pressedMouseMove: true },
         handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
@@ -649,7 +671,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         window.removeEventListener('resize', handleResize);
       };
     }).catch(err => console.error('Failed to load chart:', err));
-  }, [cashFlowSeries, isDarkMode, displayMode]);
+  }, [cashFlowSeries, isDarkMode, displayMode, displayCurrency]);
 
   // Initialize chart effect
   useEffect(() => {
@@ -856,6 +878,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           )}
         </div>
       </div>
+
+      {/* The setup checklist. A new reader with an empty account sees
+          this instead of a wall of empty charts. It says what to do
+          next and the button goes straight there. */}
+      <ReadinessChecklist />
 
       {/* ================================================================ */}
       {/* FINANCIAL HEALTH STATUS - DIPULIHKAN */}
@@ -1360,7 +1387,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                     </div>
                     <div>
                       <p className={`font-medium ${textPrimary}`}>{tx.description || t('dashboard.transaction')}</p>
-                      <p className={`text-sm ${textSecondary}`}>{tx.category_name || tx.category || t('common.other')}</p>
+                      <p className={`text-sm ${textSecondary}`}>{transactionCategoryName(tx, language) || t('common.other')}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -1389,7 +1416,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className={`font-semibold ${textPrimary}`}>📝 {t('dashboard.feed_review')}</h3>
-            {feedStats?.pending_count > 0 && <Badge variant="warning">{feedStats.pending_count} tertunda</Badge>}
+            {feedStats?.pending_count > 0 && (
+              <Badge variant="warning">{feedStats.pending_count} {t('feed.pending')}</Badge>
+            )}
           </div>
           {feedStats?.pending_count > 0 ? (
             <div className="space-y-3">
@@ -1452,7 +1481,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className={`font-medium ${textPrimary}`}>{goal.name}</p>
-                      <p className={`text-xs ${textSecondary}`}>{goal.category || t('dashboard.savings')}</p>
+                      <p className={`text-xs ${textSecondary}`}>{categoryName(goal.category, language) || t('dashboard.savings')}</p>
                     </div>
                     {goal.is_completed && <Badge variant="success">✓</Badge>}
                   </div>

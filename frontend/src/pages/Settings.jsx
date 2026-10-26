@@ -1,16 +1,30 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/ui';
-import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut, Palette, Coins } from 'lucide-react';
+import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut, Palette, Coins, Search, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
 import api from '../services/api';
 import { useCurrency, CURRENCIES, CURRENCY_CODES } from '../utils/currency';
+import ReadinessChecklist from '../components/ReadinessChecklist';
 
 export const Settings = () => {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('profile');
+  // The search box filters the setting rows inside the tabs, and the
+  // tabs themselves. A long settings page is hard to navigate without
+  // it.
+  const [search, setSearch] = useState('');
+  const [passport, setPassport] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    api.get('/settings/passport')
+      .then((res) => { if (alive) setPassport(res); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   const tabs = [
     { id: 'profile', label: t('settings.tabs.profile'), icon: User },
@@ -19,6 +33,13 @@ export const Settings = () => {
     { id: 'preferences', label: t('settings.tabs.preferences'), icon: Globe },
     { id: 'data', label: t('settings.tabs.data'), icon: Download },
   ];
+
+  // The search filters the tabs as well as the rows inside them.
+  const visibleTabs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return tabs;
+    return tabs.filter((tab) => tab.label.toLowerCase().includes(q));
+  }, [search, tabs]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -40,11 +61,98 @@ export const Settings = () => {
         </Button>
       </div>
 
+      {/* The search box. It filters the settings rows below, so a
+          reader who knows what they want does not have to know which
+          tab holds it. */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('settings.search_placeholder')}
+          className="pl-9 pr-9"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            aria-label={t('settings.search_clear')}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Tabs */}
-        <div className="lg:w-64">
+        {/* The tab column: the identity card, the readiness
+            checklist, and the tabs themselves. */}
+        <div className="lg:w-72 space-y-4">
+          {/* Passport card: who the reader is and how far along they
+              are, in one glance. */}
+          {passport && (
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                {passport.avatar_url ? (
+                  <img
+                    src={passport.avatar_url}
+                    alt=""
+                    className="w-11 h-11 rounded-xl object-cover"
+                  />
+                ) : (
+                  <div className="w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-semibold text-sm shrink-0">
+                    {passport.initials}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    {passport.name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {passport.email}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {t('readiness.title')}
+                  </span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                    {passport.readiness.done}/{passport.readiness_total}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    style={{ width: `${passport.readiness_score}%` }}
+                  />
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                {[
+                  ['accounts', passport.counts.accounts],
+                  ['transactions', passport.counts.transactions],
+                  ['goals', passport.counts.goals],
+                  ['budgets', passport.counts.budgets],
+                ].map(([k, v]) => (
+                  <div key={k} className="rounded-lg bg-gray-50 dark:bg-gray-800/60 py-2">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm tabular-nums">
+                      {v ?? 0}
+                    </p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                      {t(`passport.count.${k}`)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          <ReadinessChecklist />
+
           <Card className="p-2">
-            {tabs.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}

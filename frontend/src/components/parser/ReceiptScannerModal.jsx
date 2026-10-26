@@ -17,6 +17,7 @@ import { formatCurrency } from '../../utils/format';
 import { ScanDiagnostics, LearnFromScan } from './ScanDiagnostics';
 import { ReceiptBreakdown } from './ReceiptBreakdown';
 import { scanManager, dataUrlToFile } from '../../services/scanManager';
+import { categoryName } from '../../utils/categoryName';
 import { useTranslation } from '../../i18n';
 import { batch1, fill } from '../../i18n/keys_batch1';
 
@@ -760,7 +761,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
                 <option value="">{K.pickCategoryOptional}</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.name}
+                    {categoryName(cat, language)}
                   </option>
                 ))}
               </select>

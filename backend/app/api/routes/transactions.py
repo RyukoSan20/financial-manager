@@ -100,12 +100,26 @@ def list_transactions(
             "is_recurring": t.is_recurring,
             "is_deleted": t.is_deleted,
             "detection_type": t.detection_type,
+            # The review state. Without it the list cannot tell a
+            # transaction that is still waiting for a review from one
+            # that was approved, and the reader sees "no status" for
+            # everything.
+            "status": t.status,
             "merchant_name": t.merchant_name,
             "raw_source_text": t.raw_source_text,
             "confidence_score": t.confidence_score,
             "receipt_scan_id": t.receipt_scan_id,
             "created_at": t.created_at,
             "updated_at": t.updated_at,
+            # The name of the category and the account. Without these
+            # the list shows the id and the page has nothing to put on
+            # the screen. The key of a built-in category goes with it,
+            # so the reader can be shown the name in their own language.
+            "account_name": t.account.name if t.account else None,
+            "category_name": t.category.name if t.category else None,
+            "category_icon": t.category.icon if t.category else None,
+            "category_color": t.category.color if t.category else None,
+            "category_system_key": t.category.system_key if t.category else None,
             "items": [],
         }
         # Load receipt items from pre-fetched map
@@ -264,7 +278,17 @@ def create_transaction(
     # A NULL or empty status counts as approved: that is what the older
     # rows in the database carry, and leaving them out made the balance
     # drift away from the sum of the transactions.
-    if transaction.status in (None, "", "approved"):
+    # The same decision as below: the balance moves for a transaction
+    # that is counted, and a transaction that waits for the review does
+    # not move it yet.
+    counted_status = transaction.status
+    if counted_status is None:
+        counted_status = (
+            "pending"
+            if transaction.source in ("camera_scan", "email_forward", "whatsapp", "ocr")
+            else "approved"
+        )
+    if counted_status in ("", "approved"):
         delta = balance_delta(transaction.type, transaction.amount)
         # Atomic update: balance = balance + delta
         db.execute(
@@ -290,6 +314,21 @@ def create_transaction(
     else:
         transaction_currency = (transaction.currency or "IDR").upper()
 
+    # The status of a new transaction.
+    #
+    # A transaction the reader wrote down is approved from the start.
+    # One that came in from a scan, a forwarded message or a parse
+    # waits for the review, because nobody has looked at it yet.
+    #
+    # The caller may say which it is. When it says nothing, the source
+    # decides.
+    if transaction.status:
+        new_status = transaction.status
+    elif transaction.source in ("camera_scan", "email_forward", "whatsapp", "ocr"):
+        new_status = "pending"
+    else:
+        new_status = "approved"
+
     db_transaction = Transaction(
         user_id=current_user.id,
         amount=transaction.amount,
@@ -307,7 +346,7 @@ def create_transaction(
         longitude=transaction.longitude,
         client_request_id=transaction.client_request_id,
         # Feed/Review Workflow fields
-        status=transaction.status,
+        status=new_status,
         source=transaction.source,
         merchant_name=transaction.merchant_name,
     )

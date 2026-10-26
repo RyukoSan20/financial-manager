@@ -8,23 +8,14 @@ import api from '../services/api';
 import { formatCurrency, formatDate } from '../utils/format';
 import { showNotification } from '../components/notifications/NotificationHelper';
 import { useTranslation } from '../i18n';
+import { categoryName } from '../utils/categoryName';
 import { batch3 } from '../i18n/keys_batch3';
 
-// Default categories
-const DEFAULT_CATEGORIES = [
-  { id: 1, name: 'Makanan', name_en: 'Food', name_ja: '食品', icon: '🍔', color: 'bg-orange-100 text-orange-600' },
-  { id: 2, name: 'Transport', name_en: 'Transport', name_ja: '交通', icon: '🚗', color: 'bg-blue-100 text-blue-600' },
-  { id: 3, name: 'Belanja', name_en: 'Shopping', name_ja: '買い物', icon: '🛒', color: 'bg-pink-100 text-pink-600' },
-  { id: 4, name: 'Tagihan', name_en: 'Bills', name_ja: '請求', icon: '📄', color: 'bg-purple-100 text-purple-600' },
-  { id: 5, name: 'Kesehatan', name_en: 'Health', name_ja: '健康', icon: '💊', color: 'bg-red-100 text-red-600' },
-  { id: 6, name: 'Hiburan', name_en: 'Entertainment', name_ja: '娯楽', icon: '🎬', color: 'bg-yellow-100 text-yellow-600' },
-  { id: 7, name: 'Pendidikan', name_en: 'Education', name_ja: '教育', icon: '📚', color: 'bg-indigo-100 text-indigo-600' },
-  { id: 8, name: 'Rumah', name_en: 'Home', name_ja: '家', icon: '🏠', color: 'bg-green-100 text-green-600' },
-  { id: 9, name: 'Asuransi', name_en: 'Insurance', name_ja: '保険', icon: '🛡️', color: 'bg-cyan-100 text-cyan-600' },
-  { id: 10, name: 'Jajan', name_en: 'Snacks', name_ja: 'おやつ', icon: '🍿', color: 'bg-amber-100 text-amber-600' },
-  { id: 11, name: 'Masa Depan', name_en: 'Future', name_ja: '将来', icon: '🚀', color: 'bg-violet-100 text-violet-600' },
-  { id: 12, name: 'Investasi', name_en: 'Investment', name_ja: '投資', icon: '📈', color: 'bg-emerald-100 text-emerald-600' },
-];
+// The categories come from the server. A hardcoded list here would
+// fight the server over the same ids and show the wrong category for a
+// transaction. The name of each one is translated by system_key, so a
+// category the application ships with reads in the language of the
+// reader and a category the reader made keeps their own spelling.
 
 export const CategoryExpenses = () => {
   const { t, language } = useTranslation();
@@ -75,21 +66,13 @@ export const CategoryExpenses = () => {
       if (catRes.status === 'fulfilled') {
         catData = Array.isArray(catRes.value) ? catRes.value : [];
       }
-      // Merge with default categories
-      const mergedCategories = [...DEFAULT_CATEGORIES];
-      catData.forEach(cat => {
-        if (!mergedCategories.find(c => c.id === cat.id)) {
-          mergedCategories.push({
-            id: cat.id,
-            name: cat.name,
-            name_en: cat.name,
-            name_ja: cat.name,
-            icon: '📁',
-            color: 'bg-gray-100 text-gray-600'
-          });
-        }
-      });
-      setCategories(mergedCategories);
+      // The categories the server knows about. A category with no icon
+      // gets a plain one, and the rest keeps what it was given.
+      setCategories(catData.map(cat => ({
+        ...cat,
+        icon: cat.icon || '📁',
+        color: cat.color || 'bg-gray-100 text-gray-600',
+      })));
 
       // Handle breakdown
       if (breakdownRes.status === 'fulfilled') {
@@ -127,18 +110,18 @@ export const CategoryExpenses = () => {
   // Get category info
   const getCategoryInfo = (catId) => {
     if (catId === 'uncategorized') {
-      return { name: 'Uncategorized', icon: '📁', color: 'bg-gray-100 text-gray-600' };
+      return { name: t('category.uncategorized'), icon: '📁', color: 'bg-gray-100 text-gray-600' };
     }
     const cat = categories.find(c => c.id === parseInt(catId));
-    return cat || { name: `Category ${catId}`, icon: '📁', color: 'bg-gray-100 text-gray-600' };
+    return cat || { name: t('category.uncategorized'), icon: '📁', color: 'bg-gray-100 text-gray-600' };
   };
 
-  // Get display name based on language
+  // The name of a category in the language of the reader. A category
+  // the application ships with is translated by its key; a category the
+  // reader made keeps the name they gave it.
   const getDisplayName = (cat) => {
-    if (!cat) return 'Unknown';
-    if (language === 'en') return cat.name_en || cat.name;
-    if (language === 'ja') return cat.name_ja || cat.name;
-    return cat.name;
+    if (!cat) return t('category.uncategorized');
+    return categoryName(cat, language);
   };
 
   // Toggle category expansion

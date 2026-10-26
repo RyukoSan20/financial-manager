@@ -7,6 +7,7 @@ import { Plus, Repeat, RefreshCw, Trash2, Edit2, Calendar, Clock, Play, Pause } 
 import { formatCurrency, formatDate } from '../utils/format';
 import { useCurrency, sumInDisplay } from '../utils/currency';
 import { showNotification } from '../components/notifications/NotificationHelper';
+import { categoryName } from '../utils/categoryName';
 import { useTranslation } from '../i18n';
 import { batch1, fill } from '../i18n/keys_batch1';
 
@@ -301,7 +302,7 @@ export const Recurring = () => {
                           <Clock className="w-3 h-3" />
                           {frequencyOptions.find(f => f.value === rule.frequency)?.label || rule.frequency}
                         </span>
-                        {category && <span>{category.name}</span>}
+                        {category && <span>{categoryName(category, language)}</span>}
                         {account && <span>{account.name}</span>}
                       </div>
                       {rule.next_occurrence && (
@@ -535,7 +536,7 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
           label={K.category}
           options={categories
             .filter(c => c.type === form.rule_type)
-            .map(c => ({ value: c.id, label: c.name }))}
+            .map(c => ({ value: c.id, label: categoryName(c, language) }))}
           value={form.category_id}
           onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
           placeholder={K.selectCategory}

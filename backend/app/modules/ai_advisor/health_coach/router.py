@@ -8,13 +8,15 @@ from app.core.security import get_current_user
 from app.core.database import SessionLocal
 from app.modules.ai_advisor.health_coach.financial_ratios import calculate_financial_health
 from app.modules.ai_advisor.health_coach.audit_generator import generate_proactive_audit, AuditGenerator
+from app.services.currency_totals import total_in_currency
 
 router = APIRouter(prefix="/api/health-coach", tags=["AI Health Coach"])
 
 
 @router.get("/score")
 async def get_health_score(
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    display_currency: str = "IDR",
 ):
     """Get financial health score and ratios."""
     user_id = current_user.id if hasattr(current_user, 'id') else None
@@ -44,11 +46,21 @@ async def get_health_score(
             Transaction.date >= start_month
         ).scalar() or 0
         
-        # Get total cash
-        total_cash = db.query(func.sum(Account.balance)).filter(
+        # Get total cash.
+        #
+        # The accounts do not all hold the same currency. A rupiah
+        # balance and a yen balance cannot be added together, so each
+        # one is converted into the currency being shown and the
+        # amounts that could not be converted are listed separately.
+        accounts = db.query(Account).filter(
             Account.user_id == user_id,
             Account.is_active == True
-        ).scalar() or 0
+        ).all()
+        cash_total = await total_in_currency(
+            [(float(a.balance or 0), a.currency or "IDR") for a in accounts],
+            target=display_currency,
+        )
+        total_cash = cash_total.total
         
         # Get total debt
         total_debt = db.query(func.sum(Debt.current_balance)).filter(
@@ -70,29 +82,47 @@ async def get_health_score(
             "liquidity_ratio": {
                 "value": health.liquidity_ratio.value,
                 "status": health.liquidity_ratio.status,
-                "description": health.liquidity_ratio.description
+                "description": health.liquidity_ratio.description,
+                "name_key": health.liquidity_ratio.name_key,
+                "description_key": health.liquidity_ratio.description_key,
+                "description_values": health.liquidity_ratio.description_values or {}
             },
             "savings_ratio": {
                 "value": health.savings_ratio.value,
                 "status": health.savings_ratio.status,
-                "description": health.savings_ratio.description
+                "description": health.savings_ratio.description,
+                "name_key": health.savings_ratio.name_key,
+                "description_key": health.savings_ratio.description_key,
+                "description_values": health.savings_ratio.description_values or {}
             },
             "dsr_ratio": {
                 "value": health.dsr_ratio.value,
                 "status": health.dsr_ratio.status,
-                "description": health.dsr_ratio.description
+                "description": health.dsr_ratio.description,
+                "name_key": health.dsr_ratio.name_key,
+                "description_key": health.dsr_ratio.description_key,
+                "description_values": health.dsr_ratio.description_values or {}
             },
             "emergency_fund_months": {
                 "value": health.emergency_fund_months.value,
                 "status": health.emergency_fund_months.status,
-                "description": health.emergency_fund_months.description
+                "description": health.emergency_fund_months.description,
+                "name_key": health.emergency_fund_months.name_key,
+                "description_key": health.emergency_fund_months.description_key,
+                "description_values": health.emergency_fund_months.description_values or {}
             },
             "summary": {
                 "monthly_income": health.monthly_income,
                 "monthly_expense": health.monthly_expense,
                 "monthly_savings": health.monthly_savings,
                 "total_cash": health.total_cash,
-                "total_debt": health.total_debt
+                "total_debt": health.total_debt,
+                # Which currency the cash is shown in, and what it is
+                # made of. The reader can see that the total is not
+                # just one account.
+                "currency": cash_total.currency,
+                "cash_by_currency": cash_total.by_currency,
+                "cash_unconverted": cash_total.unconverted,
             }
         }
     finally:
@@ -101,7 +131,8 @@ async def get_health_score(
 
 @router.get("/audit")
 async def get_health_audit(
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    display_currency: str = "IDR",
 ):
     """Get comprehensive financial health audit report."""
     user_id = current_user.id if hasattr(current_user, 'id') else None
@@ -129,10 +160,15 @@ async def get_health_audit(
             Transaction.date >= start_month
         ).scalar() or 0
         
-        total_cash = db.query(func.sum(Account.balance)).filter(
+        accounts = db.query(Account).filter(
             Account.user_id == user_id,
             Account.is_active == True
-        ).scalar() or 0
+        ).all()
+        cash_total = await total_in_currency(
+            [(float(a.balance or 0), a.currency or "IDR") for a in accounts],
+            target=display_currency,
+        )
+        total_cash = cash_total.total
         
         total_debt = db.query(func.sum(Debt.current_balance)).filter(
             Debt.user_id == user_id,

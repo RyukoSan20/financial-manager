@@ -120,7 +120,7 @@ export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
             {stats && stats.account_balance !== 0 && (
               <span className="inline-flex items-center gap-0.5">
                 <Mail className="w-2.5 h-2.5" />
-                {formatCurrency(stats.account_balance)}
+                {formatCurrency(stats.account_balance, stats.account_balance_currency)}
               </span>
             )}
           </div>

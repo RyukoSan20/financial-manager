@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { STAGES, STAGE_LABEL, idr, safeUrl } from '../constants';
+import { categoryName } from '../../../utils/categoryName';
 import { useTranslation } from '../../../i18n';
 import { batch3 } from '../../../i18n/keys_batch3';
 
@@ -31,7 +32,7 @@ function Card({ item, onDragStart, onDragEnd, onPick }) {
           {item.quantity} × {idr(item.price)}
         </span>
         {item.marketplace && <span>{item.marketplace}</span>}
-        {item.category_name && <span className="sb-chip">{item.category_name}</span>}
+        {item.category_name && <span className="sb-chip">{categoryName(item.category_name, language)}</span>}
         {item.tracking_number && (
           <span>
             Resi {item.courier ? `${item.courier} ` : ''}

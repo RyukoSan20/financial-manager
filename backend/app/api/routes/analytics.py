@@ -896,10 +896,18 @@ def get_financial_health(
         scores["savings_rate"] = 0
     
     # 2. Emergency Fund (25 points max)
+    #
+    # With no spending recorded there is no target to measure against.
+    # Giving the full points for that would show a perfect score for
+    # an empty month, which is not true. The score is left out of the
+    # total instead, and the card says there is not enough to go on.
     max_score += 25
     monthly_expense = expense
     emergency_target = monthly_expense * 6
-    if total_balance >= emergency_target:
+    emergency_measurable = monthly_expense > 0
+    if not emergency_measurable:
+        scores["emergency_fund"] = 0
+    elif total_balance >= emergency_target:
         scores["emergency_fund"] = 25
     elif total_balance >= monthly_expense * 3:
         scores["emergency_fund"] = 15
@@ -924,8 +932,13 @@ def get_financial_health(
         scores["debt_level"] = 0
     
     # 4. Goals Progress (25 points max)
+    #
+    # No goals means there is nothing to be on track with. That is not
+    # the same as being on track with everything, so the points are
+    # left out of the total rather than given in full.
     max_score += 25
-    if goals:
+    goals_measurable = bool(goals)
+    if goals_measurable:
         on_track_count = 0
         for g in goals:
             on_track = calculate_goal_on_track(g.current_amount, g.target_amount, g.target_date)
@@ -934,10 +947,29 @@ def get_financial_health(
         goal_score = int(on_track_count / len(goals) * 25)
         scores["goals_progress"] = goal_score
     else:
-        scores["goals_progress"] = 25  # No goals = no penalty
+        scores["goals_progress"] = 0
     
-    total_score = sum(scores.values())
-    overall_score = int(total_score / max_score * 100) if max_score > 0 else 0
+    # The total is the sum over the parts that could be measured. A
+    # part that had no data is left out of both the sum and the
+    # maximum, so it neither adds to the score nor holds it down.
+    measured_keys = []
+    if income > 0:
+        measured_keys.append("savings_rate")
+    if emergency_measurable:
+        measured_keys.append("emergency_fund")
+    if income > 0:
+        measured_keys.append("debt_level")
+    if goals_measurable:
+        measured_keys.append("goals_progress")
+
+    total_score = sum(scores[k] for k in measured_keys)
+    measured_max = 25 * len(measured_keys)
+    overall_score = int(total_score / measured_max * 100) if measured_max > 0 else 0
+
+    # When nothing at all could be measured there is no score to show.
+    # Saying "0 out of 100" would read as a bad result rather than an
+    # empty month.
+    has_enough_data = measured_max > 0 and len(measured_keys) >= 2
     
     # Determine rating
     if overall_score >= 80:
@@ -959,10 +991,17 @@ def get_financial_health(
         "total_score": overall_score,
         "rating": rating,
         "message_key": "analytics.health_message_" + rating,
+        # Whether there was enough to judge. With one transaction the
+        # score is a guess, and the card should say so rather than
+        # present a number as if it were a verdict.
+        "has_enough_data": has_enough_data,
+        "measured_parts": measured_keys,
+        "measured_max": measured_max,
         "breakdown": {
             "savings_rate": {
                 "score": scores["savings_rate"],
                 "max": 25,
+                "measurable": income > 0,
                 "label_key": "analytics.health_savings_rate",
                 "description_key": (
                     "analytics.health_savings_aim"
@@ -973,13 +1012,19 @@ def get_financial_health(
             "emergency_fund": {
                 "score": scores["emergency_fund"],
                 "max": 25,
+                "measurable": emergency_measurable,
                 "label_key": "analytics.health_emergency_fund",
-                "description_key": "analytics.health_emergency_funded",
+                "description_key": (
+                    "analytics.health_emergency_funded"
+                    if emergency_measurable
+                    else "analytics.health_no_expense_data"
+                ),
                 "description_values": {"target": _round(emergency_target)},
             },
             "debt_level": {
                 "score": scores["debt_level"],
                 "max": 25,
+                "measurable": income > 0,
                 "label_key": "analytics.health_debt_level",
                 "description_key": (
                     "analytics.health_debt_dti"
@@ -993,6 +1038,7 @@ def get_financial_health(
             "goals_progress": {
                 "score": scores["goals_progress"],
                 "max": 25,
+                "measurable": goals_measurable,
                 "label_key": "analytics.health_goals_progress",
                 "description_key": (
                     "analytics.health_goals_active"

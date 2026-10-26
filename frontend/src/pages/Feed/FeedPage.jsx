@@ -8,9 +8,10 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { useTranslation } from '../../i18n';
+import { transactionCategoryName } from '../../utils/categoryName';
 
 const FeedPage = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [activeTab, setActiveTab] = useState("pending");
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -421,7 +422,7 @@ const FeedPage = () => {
                       <>
                         <span>·</span>
                         <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded text-xs">
-                          {transaction.category_name}
+                          {transactionCategoryName(transaction, language)}
                         </span>
                       </>
                     )}

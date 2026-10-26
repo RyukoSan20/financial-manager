@@ -126,3 +126,29 @@ jobs:
         working-directory: frontend
         run: |
           test -f dist/sw.js && echo "sw.js present" || (echo "::error::sw.js missing" && exit 1)
+
+  i18n:
+    name: Translation Guards
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # These three guards catch the failures that a build cannot:
+      # a key no language has, a translator called outside a component,
+      # a helper used but never imported, and the same key written twice
+      # where the second one quietly puts the English back.
+      - name: Check every key exists in every language
+        run: python3 scripts/check_i18n.py
+
+      - name: Check every helper is imported
+        run: python3 scripts/check_undefined.py
+
+      - name: Check no key is written twice
+        run: python3 scripts/check_duplicate_keys.py

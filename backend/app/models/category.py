@@ -11,6 +11,12 @@ class Category(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)  # null for shared categories
     name = Column(String(100), nullable=False)
+    # The same category in the other two languages. A category the
+    # application ships with also carries a system_key, which names it
+    # in a way that does not depend on any language.
+    name_en = Column(String(100), nullable=True)
+    name_ja = Column(String(100), nullable=True)
+    system_key = Column(String(60), nullable=True, index=True)
     type = Column(String(20), nullable=False)  # income, expense
     description = Column(Text, nullable=True)
     icon = Column(String(50), nullable=True)

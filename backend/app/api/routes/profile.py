@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.services.currency_totals import total_in_currency
 from app.models.user import User
 from app.models.transaction import Transaction
 from app.models.account import Account
@@ -37,7 +38,7 @@ def _month_name(month: int) -> str:
 
 
 @router.get("/summary")
-def get_profile_summary(
+async def get_profile_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -93,8 +94,21 @@ def get_profile_summary(
     ).scalar() or 0
 
     # Account balance is the stored running balance, not a recomputation.
+    # Accounts can be in different currencies, so they are converted
+    # before they are added. Adding them raw would report rupiah and
+    # yen as if they were the same money.
     balances = db.query(Account).filter(Account.user_id == user_id).all()
-    total_balance = sum(float(getattr(a, "balance", 0) or 0) for a in balances)
+    display_currency = (
+        getattr(current_user, "default_currency", None)
+        or getattr(current_user_settings, "currency", None)
+        or "IDR"
+    )
+    balance_total = await total_in_currency(
+        [(float(getattr(a, "balance", 0) or 0), getattr(a, "currency", None) or "IDR")
+         for a in balances],
+        target=display_currency,
+    )
+    total_balance = balance_total.total
 
     # ---- Activity history (last 30 days, grouped per day) ---------------
     since = datetime.utcnow() - timedelta(days=30)
@@ -223,6 +237,9 @@ def get_profile_summary(
             "total_expense": float(total_expense or 0),
             "net_balance": float((total_income or 0) - (total_expense or 0)),
             "account_balance": total_balance,
+            "account_balance_currency": display_currency,
+            "account_balance_by_currency": balance_total.by_currency,
+            "account_balance_unconverted": balance_total.unconverted,
             "transaction_count": int(tx_count),
             "account_count": int(account_count),
             "receipt_scan_count": int(scan_count),

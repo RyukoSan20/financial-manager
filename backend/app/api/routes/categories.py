@@ -143,23 +143,40 @@ def seed_default_categories(
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
     
+    # The name in three languages, plus a key that names the category
+    # without depending on any language. The key is what the frontend
+    # reads, so a change of wording never has to touch the database.
     default_categories = [
         # Income
-        {"name": "Gaji", "type": "income", "icon": "💰", "color": "#4CAF50"},
-        {"name": "Freelance", "type": "income", "icon": "💻", "color": "#2196F3"},
-        {"name": "Investasi", "type": "income", "icon": "📈", "color": "#9C27B0"},
-        {"name": "Bonus", "type": "income", "icon": "🎁", "color": "#FF9800"},
-        {"name": "Lainnya (Income)", "type": "income", "icon": "📦", "color": "#607D8B"},
+        {"name": "Gaji", "name_en": "Salary", "name_ja": "給与", "system_key": "salary",
+         "type": "income", "icon": "💰", "color": "#4CAF50"},
+        {"name": "Freelance", "name_en": "Freelance", "name_ja": "フリーランス", "system_key": "freelance",
+         "type": "income", "icon": "💻", "color": "#2196F3"},
+        {"name": "Investasi", "name_en": "Investment", "name_ja": "投資収入", "system_key": "investment_income",
+         "type": "income", "icon": "📈", "color": "#9C27B0"},
+        {"name": "Bonus", "name_en": "Bonus", "name_ja": "ボーナス", "system_key": "bonus",
+         "type": "income", "icon": "🎁", "color": "#FF9800"},
+        {"name": "Lainnya (Income)", "name_en": "Other (Income)", "name_ja": "その他（収入）", "system_key": "other_income",
+         "type": "income", "icon": "📦", "color": "#607D8B"},
         # Expense
-        {"name": "Makanan & Minuman", "type": "expense", "icon": "🍔", "color": "#F44336"},
-        {"name": "Transportasi", "type": "expense", "icon": "🚗", "color": "#3F51B5"},
-        {"name": "Belanja", "type": "expense", "icon": "🛒", "color": "#E91E63"},
-        {"name": "Kesehatan", "type": "expense", "icon": "🏥", "color": "#00BCD4"},
-        {"name": "Pendidikan", "type": "expense", "icon": "📚", "color": "#795548"},
-        {"name": "Hiburan", "type": "expense", "icon": "🎬", "color": "#FF5722"},
-        {"name": "Tagihan & Utilitas", "type": "expense", "icon": "📄", "color": "#9E9E9E"},
-        {"name": "Investasi & Tabungan", "type": "expense", "icon": "🏦", "color": "#4CAF50"},
-        {"name": "Lainnya (Expense)", "type": "expense", "icon": "📦", "color": "#607D8B"},
+        {"name": "Makanan & Minuman", "name_en": "Food & Drink", "name_ja": "飲食", "system_key": "food_drink",
+         "type": "expense", "icon": "🍔", "color": "#F44336"},
+        {"name": "Transportasi", "name_en": "Transportation", "name_ja": "交通", "system_key": "transportation",
+         "type": "expense", "icon": "🚗", "color": "#3F51B5"},
+        {"name": "Belanja", "name_en": "Shopping", "name_ja": "買い物", "system_key": "shopping",
+         "type": "expense", "icon": "🛒", "color": "#E91E63"},
+        {"name": "Kesehatan", "name_en": "Health", "name_ja": "健康", "system_key": "health",
+         "type": "expense", "icon": "🏥", "color": "#00BCD4"},
+        {"name": "Pendidikan", "name_en": "Education", "name_ja": "教育", "system_key": "education",
+         "type": "expense", "icon": "📚", "color": "#795548"},
+        {"name": "Hiburan", "name_en": "Entertainment", "name_ja": "娯楽", "system_key": "entertainment",
+         "type": "expense", "icon": "🎬", "color": "#FF5722"},
+        {"name": "Tagihan & Utilitas", "name_en": "Bills & Utilities", "name_ja": "公共料金", "system_key": "bills_utilities",
+         "type": "expense", "icon": "📄", "color": "#9E9E9E"},
+        {"name": "Investasi & Tabungan", "name_en": "Investment & Savings", "name_ja": "投資・貯蓄", "system_key": "savings_investment",
+         "type": "expense", "icon": "🏦", "color": "#4CAF50"},
+        {"name": "Lainnya (Expense)", "name_en": "Other (Expense)", "name_ja": "その他（支出）", "system_key": "other_expense",
+         "type": "expense", "icon": "📦", "color": "#607D8B"},
     ]
     
     created = []
@@ -174,6 +191,13 @@ def seed_default_categories(
             db_category = Category(**cat_data)
             db.add(db_category)
             created.append(cat_data["name"])
+        elif existing.system_key is None:
+            # The category is already there from an older version. Give
+            # it the key and the other names so it reads in every
+            # language from now on.
+            existing.system_key = cat_data["system_key"]
+            existing.name_en = cat_data["name_en"]
+            existing.name_ja = cat_data["name_ja"]
     
     db.commit()
     return {"message": f"Created {len(created)} categories", "categories": created}

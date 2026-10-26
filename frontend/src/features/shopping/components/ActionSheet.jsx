@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { idr, wibDate } from '../constants';
 import { useTranslation } from '../../../i18n';
 import { batch2, fill } from '../../../i18n/keys_batch2';
+import { categoryName } from '../../../utils/categoryName';
 
 const digits = (v) => String(v ?? '').replace(/\D/g, '');
 
@@ -132,7 +133,7 @@ export default function ActionSheet({ mode, item, accounts, categories, refsErro
                 <option value="">{K.no_category}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {categoryName(c, language)}
                   </option>
                 ))}
               </select>

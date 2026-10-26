@@ -8,6 +8,11 @@ from datetime import datetime
 
 class CategoryBase(EmptyStringAsNone):
     name: str = Field(..., max_length=100)
+    # The name of the same category in the other languages.
+    name_en: Optional[str] = Field(None, max_length=100)
+    name_ja: Optional[str] = Field(None, max_length=100)
+    # Names a built-in category without depending on any language.
+    system_key: Optional[str] = Field(None, max_length=60)
     type: str = Field(..., pattern="^(income|expense)$")
     icon: Optional[str] = None
     color: Optional[str] = None
@@ -20,6 +25,8 @@ class CategoryCreate(CategoryBase, EmptyStringAsNone):
 
 class CategoryUpdate(EmptyStringAsNone):
     name: Optional[str] = Field(None, max_length=100)
+    name_en: Optional[str] = Field(None, max_length=100)
+    name_ja: Optional[str] = Field(None, max_length=100)
     icon: Optional[str] = None
     color: Optional[str] = None
     is_active: Optional[bool] = None

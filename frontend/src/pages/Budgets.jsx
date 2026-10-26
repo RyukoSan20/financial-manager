@@ -5,9 +5,10 @@ import { formatCurrency, formatDate } from '../utils/format';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
+import { categoryName } from '../utils/categoryName';
 
 export const Budgets = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [budgets, setBudgets] = useState([]);
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -155,7 +156,7 @@ export const Budgets = () => {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">
-                        {category?.name || budget.name || t('budgets.default_name')}
+                        {category ? categoryName(category, language) : (budget.name || t('budgets.default_name'))}
                       </p>
                       <p className="text-sm text-gray-500">
                         {budget.period === 'monthly' ? t('budgets.period_monthly') : budget.period === 'weekly' ? t('budgets.period_weekly') : t('budgets.period_yearly')}
@@ -267,8 +268,12 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts =
   const handleSubmit = (e) => {
     e.preventDefault();
     // Get category name for budget name if category selected
-    const categoryName = categories?.find(c => c.id === parseInt(form.category_id))?.name || t('budgets.general_category');
-    const budgetName = form.name || `${categoryName} ${t('budgets.default_name')}`;
+    // The name of the category the budget is for, in the language of
+    // the reader. It goes into the name of the budget when the reader
+    // did not write one.
+    const chosen = categories?.find(c => c.id === parseInt(form.category_id));
+    const chosenName = chosen ? categoryName(chosen, language) : t('budgets.general_category');
+    const budgetName = form.name || `${chosenName} ${t('budgets.default_name')}`;
     onSubmit({
       ...form,
       name: budgetName,
@@ -283,7 +288,7 @@ const BudgetModal = ({ isOpen, onClose, onSubmit, budget, categories, accounts =
       <form onSubmit={handleSubmit} className="space-y-4">
         <Select
           label={t('transaction.category')}
-          options={categories.filter(c => c.type === 'expense').map(c => ({ value: c.id, label: c.name }))}
+          options={categories.filter(c => c.type === 'expense').map(c => ({ value: c.id, label: categoryName(c, language) }))}
           value={form.category_id}
           onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
           placeholder={t('budgets.select_category')}
