@@ -25,6 +25,8 @@ from sqlalchemy.orm import Session
 from app.models.account import Account
 from app.models.debt import Debt
 from app.models.transaction import Transaction
+from app.models.user import User
+from app.services.currency_totals import total_in_currency
 
 # A transaction only counts once it is approved. `None` and the empty
 # string are what older rows hold, and they mean approved too.
@@ -80,10 +82,33 @@ class HealthScore:
         }
 
 
+def saved_display_currency(db: Session, user_id: int) -> str:
+    """
+    The currency the reader is seeing their money in.
+
+    A choice of its own, saved in their settings. It is not the
+    interface language: reading the app in Japanese does not change
+    the currency, and changing the currency does not change the
+    language.
+    """
+    from app.models.user_settings import UserSettings
+
+    if user_id is None:
+        return "IDR"
+    settings = (
+        db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+    )
+    chosen = getattr(settings, "currency", None) if settings else None
+    if not chosen:
+        user = db.query(User).filter(User.id == user_id).first()
+        chosen = getattr(user, "default_currency", None) if user else None
+    return (chosen or "IDR").upper()
+
+
 async def total_balance(
     db: Session,
     user_id: int,
-    display_currency: str = "IDR",
+    display_currency: Optional[str] = None,
 ) -> dict:
     """
     The sum of the active account balances, in the display currency.
@@ -92,8 +117,8 @@ async def total_balance(
     before they are added. A balance that cannot be converted is left
     out and listed separately, so the total is never a mixture.
     """
-    from app.services.currency_totals import total_in_currency
-
+    if display_currency is None:
+        display_currency = saved_display_currency(db, user_id)
     target = (display_currency or "IDR").upper()
     accounts = (
         db.query(Account)
@@ -350,3 +375,4 @@ def month_range(today: Optional[date] = None) -> Tuple[date, date]:
         today = date.today()
     _, last = monthrange(today.year, today.month)
     return date(today.year, today.month, 1), date(today.year, today.month, last)
+

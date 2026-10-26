@@ -12,6 +12,7 @@ import asyncio
 
 from app.core.security import get_current_user
 from app.core.audit_logger import log_action, AuditAction
+from app.services.metrics import total_balance
 from app.modules.ai_advisor.context_engine.pii_scrubber import pii_scrubber
 from app.modules.ai_advisor.llm_orchestrator.client import get_ai_client, FunctionRegistry
 
@@ -218,7 +219,8 @@ async def _build_user_context(db, user_id: int) -> str:
         Account.is_active == True
     ).all()
     
-    total_balance = sum(float(a.balance or 0) for a in accounts)
+    balance = await total_balance(db, user_id)
+    total_balance = balance["total"]
     
     # Get monthly income/expense
     monthly_income = db.query(func.sum(Transaction.amount)).filter(
@@ -401,7 +403,8 @@ async def get_financial_health_score(
             Account.user_id == user_id,
             Account.is_active == True
         ).all()
-        total_balance = sum(float(a.balance or 0) for a in accounts)
+        balance = await total_balance(db, user_id)
+        total_balance = balance["total"]
         
         # Get monthly income/expense
         income = db.query(func.sum(Transaction.amount)).filter(
