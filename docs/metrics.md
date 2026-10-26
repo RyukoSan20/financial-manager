@@ -235,3 +235,61 @@ one transaction.
 5. **One definition per metric.** If a second place needs the same
    number, it calls the shared service rather than repeating the
    calculation.
+
+
+## What was wrong, and what changed
+
+This section records the defects found while writing this document, so
+that the next person does not have to find them again.
+
+### The balance was added up raw in eleven places
+
+An account holds the currency it was opened in. A reader with a rupiah
+account and a yen account cannot have their two balances added
+together face to face, because the result is a number in no currency
+at all.
+
+The total was worked out in five different files, and three of them
+added the raw numbers. The places that were wrong:
+
+| Place | What it did |
+|---|---|
+| `backend/app/api/routes/analytics.py` | The net worth endpoints and the financial health endpoint. |
+| `backend/app/api/routes/profile.py` | The balance in the profile header. |
+| `backend/app/modules/ai_advisor/router.py` | The context the AI Advisor reads out to the reader. |
+| `backend/app/modules/ai_advisor/llm_orchestrator/client.py` | The balance the orchestrator hands to the model. |
+| `backend/app/services/ai_agent_executor.py` | The balance the agent reports. |
+| `backend/app/modules/ledger/analytics_service.py` | The net worth and the month summary. |
+
+They now all go through `backend/app/services/metrics.py`.
+
+### The profile counted closed accounts
+
+The Dashboard, the Analytics page, the accounts list and the AI
+Advisor left closed accounts out of the balance. The profile added
+them in. The header and the page underneath it could show two
+different numbers for the same reader.
+
+### Three calculations were wrong
+
+`backend/app/services/calculation/formulas.py`. These had never been
+run, because the test runner was not installed.
+
+- `calculate_split_bill` raised a `TypeError` instead of reporting
+  that a split between zero people is not possible.
+- `calculate_income_conversion` had its table the wrong way round.
+  A monthly income became a twelfth of what it was instead of twelve
+  times. Every row of the table was swapped.
+- `calculate_required_saving_for_goal` returned a saving rate with
+  cents in it. "44,444.44 a day" is not a figure anyone can act on.
+
+### The tests were reading another checkout
+
+`backend/tests/unit/test_calculations.py` loaded the formulas with an
+absolute path into one particular checkout. A test run in a worktree
+or a second clone therefore tested the other checkout, and a fix that
+had never been written looked like a fix that worked.
+
+It now works the path out from the file's own location, and
+`backend/tests/conftest.py` puts this checkout's backend at the front
+of the path for every test.
