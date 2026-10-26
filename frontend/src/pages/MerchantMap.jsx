@@ -6,6 +6,8 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from "re
 import { api } from "../services/api";
 import { formatCurrency } from "../utils/format";
 import { useTranslation } from "../i18n";
+import { IconText } from "../components/ui/IconText";
+import { buildFlag } from "../utils/featureFlags";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -59,6 +61,8 @@ const FlyTo = ({ center, zoom }) => {
 
 const MerchantMap = () => {
   const { t } = useTranslation();
+  // With the polish switch off, the page keeps the drawings it has.
+  const polished = buildFlag("UI_POLISH");
 
   // Data states
   const [markers, setMarkers] = useState([]);
@@ -166,7 +170,7 @@ const MerchantMap = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center p-8">
-          <div className="text-4xl mb-4">⚠️</div>
+          <IconText name="warning" emoji="⚠️" on={polished} className="w-8 h-8" />
           <p className="text-red-500 mb-4">{error}</p>
           <button onClick={fetchData} className="px-4 py-2 bg-primary-600 text-white rounded-lg">
             {t("merchant_map.retry")}
@@ -213,7 +217,7 @@ const MerchantMap = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-3 pl-10 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
           />
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><IconText name="search" emoji="🔍" on={polished} className="w-4 h-4" /></span>
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
