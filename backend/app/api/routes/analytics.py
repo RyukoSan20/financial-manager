@@ -8,6 +8,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from collections import defaultdict
 
+from app.services.currency_totals import total_in_currency
 from app.core.database import get_db
 from app.core.security import get_current_user_optional
 from app.models.transaction import Transaction
@@ -68,6 +69,28 @@ def get_period_range(period_type: str, reference_date: date = None):
 # =============================================================================
 # CASH FLOW TRENDS
 # =============================================================================
+
+def _display_currency(current_user, db) -> str:
+    """
+    The currency the reader is seeing their money in.
+
+    It is a choice of its own, saved in their settings. It is not the
+    interface language: reading the app in Japanese does not change
+    the currency, and changing the currency does not change the
+    language.
+    """
+    from app.models.user_settings import UserSettings
+
+    user_id = current_user.id if current_user else None
+    if user_id is None:
+        return "IDR"
+    settings = (
+        db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+    )
+    chosen = getattr(settings, "currency", None) if settings else None
+    if not chosen and current_user is not None:
+        chosen = getattr(current_user, "default_currency", None)
+    return (chosen or "IDR").upper()
 
 @router.get("/cash-flow-trend")
 def get_cash_flow_trend(
@@ -608,7 +631,7 @@ def get_spending_patterns(
 # =============================================================================
 
 @router.get("/net-worth-history")
-def get_net_worth_history(
+async def get_net_worth_history(
     months: int = Query(default=12, ge=1, le=36),
     current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
@@ -649,9 +672,24 @@ def get_net_worth_history(
         Debt.is_paid_off == False,
     ).all()
     
-    total_assets = sum(a.balance for a in accounts if a.balance > 0)
-    total_liabilities = sum(a.balance for a in accounts if a.balance < 0)
-    total_liabilities += sum(d.current_balance for d in debts)
+    # The accounts do not all hold the same currency, so their
+    # balances are converted before they are added. The debts are
+    # tracked in rupiah, so they are added as they are.
+    display_currency = _display_currency(current_user, db)
+    assets_total = await total_in_currency(
+        [(float(a.balance or 0), (a.currency or "IDR").upper())
+         for a in accounts if a.balance > 0],
+        target=display_currency,
+    )
+    liabilities_total = await total_in_currency(
+        [(float(a.balance or 0), (a.currency or "IDR").upper())
+         for a in accounts if a.balance < 0],
+        target=display_currency,
+    )
+    total_assets = assets_total.total
+    total_liabilities = liabilities_total.total + sum(
+        float(d.current_balance or 0) for d in debts
+    )
     
     current_net_worth = total_assets - total_liabilities
     
@@ -669,7 +707,7 @@ def get_net_worth_history(
 
 
 @router.post("/net-worth-snapshot")
-def create_net_worth_snapshot(
+async def create_net_worth_snapshot(
     current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
@@ -686,15 +724,30 @@ def create_net_worth_snapshot(
         Debt.is_paid_off == False,
     ).all()
     
-    # Calculate totals by type
-    cash = sum(a.balance for a in accounts if a.account_type == "cash")
-    bank = sum(a.balance for a in accounts if a.account_type == "bank")
-    investment = sum(a.balance for a in accounts if a.account_type == "investment")
-    ewallet = sum(a.balance for a in accounts if a.account_type == "e-wallet")
-    credit_card = sum(abs(a.balance) for a in accounts if a.account_type == "credit_card")
+    # Calculate totals by type. Each type is converted on its own,
+    # because an account in yen cannot be added to one in rupiah.
+    display_currency = _display_currency(current_user, db)
+
+    async def _by_type(account_type: str) -> float:
+        part = await total_in_currency(
+            [(float(a.balance or 0), (a.currency or "IDR").upper())
+             for a in accounts if a.account_type == account_type],
+            target=display_currency,
+        )
+        return part.total
+
+    cash = await _by_type("cash")
+    bank = await _by_type("bank")
+    investment = await _by_type("investment")
+    ewallet = await _by_type("e-wallet")
+    credit_card = await _by_type("credit_card")
     
-    total_assets = sum(a.balance for a in accounts)
-    total_debt = credit_card + sum(d.current_balance for d in debts)
+    assets_total = await total_in_currency(
+        [(float(a.balance or 0), (a.currency or "IDR").upper()) for a in accounts],
+        target=display_currency,
+    )
+    total_assets = assets_total.total
+    total_debt = credit_card + sum(float(d.current_balance or 0) for d in debts)
     net_worth = total_assets - total_debt
     
     # Get previous snapshot
@@ -826,7 +879,7 @@ def get_monthly_comparison(
 # =============================================================================
 
 @router.get("/financial-health")
-def get_financial_health(
+async def get_financial_health(
     current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
@@ -858,7 +911,15 @@ def get_financial_health(
     accounts = db.query(Account).filter(
         Account.is_active == True, Account.user_id == user_id
     ).all()
-    total_balance = sum(a.balance for a in accounts)
+    # The balance is converted into the display currency before it is
+    # compared with the spending. Adding rupiah to yen would make the
+    # emergency fund look far better than it is.
+    display_currency = _display_currency(current_user, db)
+    balance_total = await total_in_currency(
+        [(float(a.balance or 0), (a.currency or "IDR").upper()) for a in accounts],
+        target=display_currency,
+    )
+    total_balance = balance_total.total
     
     # Get debts
     debts = db.query(Debt).filter(

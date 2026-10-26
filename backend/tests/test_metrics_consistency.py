@@ -32,8 +32,10 @@ from app.models.account import Account
 from app.models.category import Category
 from app.models.debt import Debt
 from app.models.goal import Goal
+from app.models.net_worth import NetWorthSnapshot
 from app.models.transaction import Transaction
 from app.models.user import User  # noqa: F401  (registers the users table)
+from app.models.user_settings import UserSettings  # noqa: F401
 from app.services import metrics
 
 
@@ -57,6 +59,8 @@ def db():
                 "debts",
                 "goals",
                 "categories",
+                "net_worth_snapshots",
+                "user_settings",
             }
         ],
     )
@@ -303,3 +307,66 @@ def test_transaction_count_ignores_deleted(db):
     db.commit()
 
     assert metrics.transaction_count(db, 1) == 0
+
+
+# ---------------------------------------------------------------------------
+# The endpoints, not just the service
+# ---------------------------------------------------------------------------
+
+def test_net_worth_does_not_mix_currencies(db):
+    """
+    The net worth endpoints used to add balances raw.
+
+    This is the same defect one layer up: the endpoint returned a
+    number in no currency at all, and the emergency fund built on that
+    number looked healthy for a reader who had almost no cash.
+    """
+    import asyncio
+
+    from app.api.routes.analytics import get_net_worth_history
+    from app.core.security import get_current_user_optional
+
+    class FakeUser:
+        id = 1
+        default_currency = "IDR"
+
+    _account(db, 1, 5_950_000, "IDR", "Tabungan")
+    _account(db, 1, 98_000, "JPY", "Yen")
+
+    result = asyncio.run(
+        get_net_worth_history(12, FakeUser(), db)
+    )
+    current = result["current"]
+    # The assets are 5,950,000 rupiah plus 98,000 yen converted. Not
+    # 6,048,000.
+    assert current["total_assets"] != pytest.approx(5_950_000 + 98_000, rel=1e-9)
+
+
+def test_financial_health_does_not_mix_currencies(db):
+    """
+    The health score compared the balance with the spending.
+
+    With a raw sum, a reader with 5,950,000 rupiah and 98,000 yen had
+    a balance of 6,048,000, which against a small monthly spending
+    looked like a full emergency fund. The number was in no currency.
+    """
+    import asyncio
+
+    from app.api.routes.analytics import get_financial_health
+
+    class FakeUser:
+        id = 1
+        default_currency = "IDR"
+
+    _account(db, 1, 5_950_000, "IDR", "Tabungan")
+    _account(db, 1, 98_000, "JPY", "Yen")
+
+    today = date.today()
+    start, end = metrics.month_range(today)
+    _transaction(db, 1, 5_000_000, "income", start + timedelta(days=1))
+    _transaction(db, 1, 1_000_000, "expense", start + timedelta(days=2))
+
+    result = asyncio.run(get_financial_health(FakeUser(), db))
+
+    reported = float(result["metrics"]["total_balance"])
+    assert reported != pytest.approx(5_950_000 + 98_000, rel=1e-9)
