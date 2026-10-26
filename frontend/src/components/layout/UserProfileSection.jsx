@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { User as UserIcon, ChevronRight, Loader2, History, Mail, CalendarDays, Activity } from 'lucide-react';
 import { api } from '../../services/api';
 import { formatCurrency } from '../../utils/format';
+import { formatTanggal } from '../../utils/idFormat';
 import { useTranslation } from '../../i18n';
 import { batch3 } from '../../i18n/keys_batch3';
 
@@ -88,17 +89,17 @@ export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
 
         {/* Profile History - live counters from the API */}
         {summary && (
-          <div className="flex items-center gap-2.5 mt-1.5 text-[10px] text-gray-500 dark:text-gray-400">
-            <span className="inline-flex items-center gap-0.5" title={t('profile_card.transactions_title')}>
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+            <span className="inline-flex items-center gap-0.5 whitespace-nowrap" title={t('profile_card.transactions_title')}>
               <Activity className="w-2.5 h-2.5" />
               {txCount} {t('profile_card.transactions')}
             </span>
-            <span className="inline-flex items-center gap-0.5" title={t('profile_card.active_days_title')}>
+            <span className="inline-flex items-center gap-0.5 whitespace-nowrap" title={t('profile_card.active_days_title')}>
               <History className="w-2.5 h-2.5" />
               {activeDays} {t('profile_card.active_days')}
             </span>
             {streak > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-orange-500 font-medium">
+              <span className="inline-flex items-center gap-0.5 text-orange-500 font-medium whitespace-nowrap">
                 🔥 {streak} {t('profile_card.days')}
               </span>
             )}
@@ -107,13 +108,14 @@ export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
 
         {/* Identity chips */}
         {summary && (
-          <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
-            {identity.member_since && (
-              <span className="inline-flex items-center gap-0.5">
-                <CalendarDays className="w-2.5 h-2.5" />
-                {new Date(identity.member_since.iso || identity.member_since.date).toLocaleDateString(
-                  language === 'ja' ? 'ja-JP' : language === 'en' ? 'en-US' : 'id-ID',
-                  { year: 'numeric', month: 'long', day: 'numeric' }
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[10px] text-gray-400">
+            {identity?.member_since && (
+              <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
+                <CalendarDays className="w-2.5 h-2.5 shrink-0" />
+                {formatTanggal(
+                  identity.member_since.iso || identity.member_since.date,
+                  'long',
+                  language
                 )}
               </span>
             )}
