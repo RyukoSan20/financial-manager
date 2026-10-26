@@ -2,9 +2,14 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { api } from "../services/api";
 import { useTranslation } from "../i18n";
+import { IconText } from "../components/ui/IconText";
+import { ShoppingCart } from "lucide-react";
+import { buildFlag } from "../utils/featureFlags";
 
 const ShoppingTracker = () => {
   const { t } = useTranslation();
+  // With the polish switch off, the page keeps the drawings it has.
+  const polished = buildFlag("UI_POLISH");
   const [items, setItems] = useState([]);
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,7 +173,7 @@ const ShoppingTracker = () => {
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
       <div className="bg-primary-600 text-white p-4 sticky top-0 z-10 shadow-md">
-        <h1 className="text-xl font-bold">🛒 {t('nav.shopping')}</h1>
+        <h1 className="text-xl font-bold"><IconText name="cart" emoji="🛒" on={polished}>{t('nav.shopping')}</IconText></h1>
       </div>
       
       {/* Budget Card - PRIORITY FIRST! */}
@@ -350,7 +355,7 @@ const ShoppingTracker = () => {
       {activeTab === "ai" && (
         <div className="px-4">
           <div className="bg-white rounded-xl p-4 shadow-sm border border-primary-100">
-            <h3 className="font-bold text-lg mb-2">🔍 {t('shopping_tracker.ai_price_search')}</h3>
+            <h3 className="font-bold text-lg mb-2"><IconText name="search" emoji="🔍" on={polished}>{t('shopping_tracker.ai_price_search')}</IconText></h3>
             <p className="text-sm text-gray-500 mb-4">
               {t('shopping_tracker.ai_price_search_desc')}
             </p>
@@ -400,7 +405,9 @@ const ShoppingTracker = () => {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="text-3xl">{mp.icon || "🛒"}</span>
+                              <span className="text-3xl">{polished ? null : (mp.icon || "🛒")}
+                                {polished ? <ShoppingCart className="w-7 h-7" aria-hidden="true" /> : null}
+                              </span>
                               <div>
                                 <p className={`font-bold text-lg ${style.text}`}>{mp.name}</p>
                                 <p className="text-xs text-gray-500">{t('shopping_tracker.click_to_search').replace("%s", mp.name)}</p>
