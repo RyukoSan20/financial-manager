@@ -10,6 +10,7 @@ import {
 import { useTranslation } from '../../i18n';
 import { buildFlag } from '../../utils/featureFlags';
 import { SHOPPING_STAGE_ICONS } from '../../utils/icons';
+import { IconText } from '../../components/ui/IconText';
 
 // Pipeline stages configuration
 const STAGES = [
@@ -20,6 +21,7 @@ const STAGES = [
   { id: 'received', labelKey: 'shopping.stage_received', icon: '✅', color: 'green' },
   { id: 'cancelled', labelKey: 'shopping.stage_cancelled', icon: '❌', color: 'red' },
 ];
+
 
 const MARKETPLACES = ['shopee', 'tokopedia', 'lazada', 'blibli', 'tiktok', 'bukalapak', 'lainnya'];
 
@@ -282,7 +284,7 @@ const ShoppingPage = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            🛒 {t('shopping.title')}
+            <IconText name="cart" emoji="🛒" on={polished}>{t('shopping.title')}</IconText>
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
             {t('shopping.subtitle')}
@@ -350,7 +352,7 @@ const ShoppingPage = () => {
                   {(() => {
                     const StageIcon = SHOPPING_STAGE_ICONS[stage.id];
                     if (polished && StageIcon) {
-                      return <StageIcon className="w-5 h-5 shrink-0" />;
+                      return <StageIcon className="w-5 h-5 shrink-0" aria-hidden="true" />;
                     }
                     return <span className="text-xl">{stage.icon}</span>;
                   })()}
@@ -531,7 +533,7 @@ const ShoppingPage = () => {
               >
                 {STAGES.filter(s => s.id !== 'received' && s.id !== 'cancelled').map((stage) => (
                   <option key={stage.id} value={stage.id}>
-                    {polished ? '' : `${stage.icon} `}{t(stage.labelKey)}
+                    {polished ? null : `${stage.icon} `}{t(stage.labelKey)}
                   </option>
                 ))}
               </select>
