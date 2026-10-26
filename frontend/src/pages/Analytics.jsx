@@ -7,6 +7,7 @@ import {
   Sparkles, Activity, Layers, ChevronRight
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/format';
+import { formatAxisValue } from '../utils/idFormat';
 import { useSyncedPreference } from '../hooks/useSyncedPreference';
 import { useTranslation } from '../i18n';
 import { categoryName } from '../utils/categoryName';
@@ -475,7 +476,7 @@ export const Analytics = () => {
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}${t('analytics.million')}`} />
+                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatAxisValue(v, language)} />
                   <Tooltip formatter={(value) => formatCurrency(value)} />
                   <Legend />
                   <Area type="monotone" dataKey="Income" name={t('analytics.chart_income')} stroke="#22c55e" fill="#22c55e" fillOpacity={0.15} />
@@ -518,6 +519,12 @@ export const Analytics = () => {
                           value: parseFloat(b.total) || 0,
                         }))}
                         cx="50%" cy="50%" outerRadius={85} dataKey="value"
+                        // A slice with a border draws that border on
+                        // the cut as well, so one slice shows a line
+                        // across the middle of the circle. With one
+                        // slice there is no cut to show.
+                        stroke={expenseBreakdown.breakdown.length > 1 ? '#fff' : 'none'}
+                        strokeWidth={expenseBreakdown.breakdown.length > 1 ? 2 : 0}
                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       >
                         {expenseBreakdown.breakdown.map((_, i) => (
@@ -570,7 +577,7 @@ export const Analytics = () => {
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="category" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}${t('analytics.million')}`} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatAxisValue(v, language)} />
                   <Tooltip formatter={(value) => formatCurrency(value)} />
                   <Legend />
                   <Bar dataKey="budget" fill={COLORS()[0]} name={t('analytics.chart_budget')} radius={[4, 4, 0, 0]} />
@@ -628,7 +635,7 @@ export const Analytics = () => {
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}${t('analytics.million')}`} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatAxisValue(v, language)} />
                   <Tooltip formatter={(value) => formatCurrency(value)} />
                   <Bar dataKey="total" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                 </BarChart>
