@@ -5,10 +5,14 @@ import { formatCurrency, formatDate } from '../utils/format';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
+import { PageHeader } from '../components/ui/PageHeader';
+import { buildFlag } from '../utils/featureFlags';
 import { categoryName } from '../utils/categoryName';
 
 export const Budgets = () => {
   const { t, language } = useTranslation();
+  // With the polish switch off, the page keeps the header it has.
+  const polished = buildFlag('UI_POLISH');
   const [budgets, setBudgets] = useState([]);
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -80,18 +84,31 @@ export const Budgets = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('budgets.title')}</h1>
-          <p className="text-gray-500 mt-1">
-            {t('budgets.active_count').replace('%s', budgets.length)}
-          </p>
+      {polished ? (
+        <PageHeader
+          title={t('budgets.title')}
+          subtitle={t('budgets.active_count').replace('%s', budgets.length)}
+          action={
+            <Button onClick={() => { setEditingBudget(null); setShowModal(true); }}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('budgets.add')}
+            </Button>
+          }
+        />
+      ) : (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{t('budgets.title')}</h1>
+            <p className="text-gray-500 mt-1">
+              {t('budgets.active_count').replace('%s', budgets.length)}
+            </p>
+          </div>
+          <Button onClick={() => { setEditingBudget(null); setShowModal(true); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            {t('budgets.add')}
+          </Button>
         </div>
-        <Button onClick={() => { setEditingBudget(null); setShowModal(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          {t('budgets.add')}
-        </Button>
-      </div>
+      )}
 
       {/* Summary */}
       {budgets.length > 0 && (
