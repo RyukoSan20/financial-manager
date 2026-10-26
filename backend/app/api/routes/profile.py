@@ -97,7 +97,10 @@ async def get_profile_summary(
     # Accounts can be in different currencies, so they are converted
     # before they are added. Adding them raw would report rupiah and
     # yen as if they were the same money.
-    balances = db.query(Account).filter(Account.user_id == user_id).all()
+    balances = db.query(Account).filter(
+        Account.user_id == user_id,
+        Account.is_active == True,
+    ).all()
     display_currency = (
         getattr(current_user, "default_currency", None)
         or getattr(current_user_settings, "currency", None)

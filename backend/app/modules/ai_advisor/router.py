@@ -220,7 +220,7 @@ async def _build_user_context(db, user_id: int) -> str:
     ).all()
     
     balance = await total_balance(db, user_id)
-    total_balance = balance["total"]
+    account_total = balance["total"]
     
     # Get monthly income/expense
     monthly_income = db.query(func.sum(Transaction.amount)).filter(
@@ -259,7 +259,7 @@ async def _build_user_context(db, user_id: int) -> str:
     # Build context string
     context = f"""
 📊 RINGKASAN KEUANGAN BULAN INI:
-- Total Saldo: Rp {total_balance:,.0f}
+- Total Saldo: Rp {account_total:,.0f}
 - Pemasukan: Rp {float(monthly_income):,.0f}
 - Pengeluaran: Rp {float(monthly_expense):,.0f}
 - Tabungan: Rp {float(monthly_income) - float(monthly_expense):,.0f}
@@ -404,7 +404,7 @@ async def get_financial_health_score(
             Account.is_active == True
         ).all()
         balance = await total_balance(db, user_id)
-        total_balance = balance["total"]
+        account_total = balance["total"]
         
         # Get monthly income/expense
         income = db.query(func.sum(Transaction.amount)).filter(
@@ -434,11 +434,11 @@ async def get_financial_health_score(
         # 2. Emergency Fund (30% weight) - 6 months expenses
         monthly_expense = float(expense)
         emergency_target = monthly_expense * 6
-        emergency_ratio = min(1.0, total_balance / emergency_target) if emergency_target > 0 else 0
+        emergency_ratio = min(1.0, account_total / emergency_target) if emergency_target > 0 else 0
         emergency_score = emergency_ratio * 30  # Max 30 points
         
         # 3. Debt Ratio (20% weight) - debt should be < 30% of assets
-        debt_ratio = total_debt / (total_balance + total_debt) if (total_balance + total_debt) > 0 else 0
+        debt_ratio = total_debt / (account_total + total_debt) if (account_total + total_debt) > 0 else 0
         debt_score = max(0, 20 - (debt_ratio * 20))  # Max 20 points
         
         # 4. Budget Utilization (10% weight)
