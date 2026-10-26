@@ -250,23 +250,28 @@ class FunctionRegistry:
         except Exception as e:
             return {"error": str(e)}
     
-    def get_balance_summary(self, args: Dict) -> Dict:
+    async def get_balance_summary(self, args: Dict) -> Dict:
         """Get total balance across accounts."""
         if not self.db:
             return {"total_balance": 0, "accounts": []}
         
         from app.models.account import Account
+        from app.services.metrics import total_balance
         
         accounts = self.db.query(Account).filter(
             Account.user_id == self.user_id,
             Account.is_active == True
         ).all()
         
-        total = sum(float(a.balance or 0) for a in accounts)
+        # The accounts do not all hold the same currency, so the total
+        # is converted before it is reported. The dispatch that calls
+        # this already awaits a coroutine when it finds one.
+        balance = await total_balance(self.db, self.user_id)
+        total = balance["total"]
         
         return {
             "total_balance": total,
-            "currency": "IDR",
+            "currency": balance["currency"],
             "account_count": len(accounts),
             "accounts": [
                 {"name": a.name, "balance": float(a.balance or 0)}

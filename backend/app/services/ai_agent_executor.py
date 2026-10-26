@@ -24,6 +24,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.account import Account
+from app.services.currency_totals import total_in_currency
+from app.services.metrics import total_balance
 from app.models.budget import Budget
 from app.models.category import Category
 from app.models.goal import Goal
@@ -111,16 +113,23 @@ def _create_default_account(db: Session, user_id: int) -> Optional[Account]:
         return None
 
 
-def _total_balance(db: Session, user_id: int) -> Decimal:
+async def _total_balance(db: Session, user_id: int) -> Decimal:
     """What the user actually has, across the non-credit accounts."""
-    total = db.execute(
-        select(func.coalesce(func.sum(Account.balance), 0)).where(
+    accounts = db.execute(
+        select(Account).where(
             Account.user_id == user_id,
             Account.is_active.is_(True),
             Account.is_credit.is_(False),
         )
-    ).scalar()
-    return _to_decimal(total)
+    ).scalars().all()
+    # The accounts do not all hold the same currency, so the balances
+    # are converted before they are added.
+    balance = await total_balance(db, user_id)
+    credit_free = await total_in_currency(
+        [(float(a.balance or 0), (a.currency or "IDR").upper()) for a in accounts],
+        target=balance["currency"],
+    )
+    return _to_decimal(credit_free.total)
 
 
 def _find_category(db: Session, user_id: int, name: str) -> Optional[Category]:
@@ -585,7 +594,7 @@ class AgentExecutor:
 
     # -- allocation -------------------------------------------------------
 
-    def allocate(self, message: str) -> AgentAction:
+    async def allocate(self, message: str) -> AgentAction:
         """
         Split the money into budgets by percentage.
 
@@ -604,7 +613,7 @@ class AgentExecutor:
             )
 
         total_percent = sum(p for _, p in percentages)
-        balance = _total_balance(self.db, self.user_id)
+        balance = await _total_balance(self.db, self.user_id)
 
         created: List[Dict[str, Any]] = []
         for purpose, percent in percentages:
@@ -1016,7 +1025,7 @@ class AgentExecutor:
                                 for r in rows]},
         )
 
-    def query_balance(self, message: str) -> AgentAction:
+    async def query_balance(self, message: str) -> AgentAction:
         """Report the balance across the user's own accounts."""
         accounts = self.db.execute(
             select(Account).where(
@@ -1025,9 +1034,13 @@ class AgentExecutor:
             )
         ).scalars().all()
 
-        total = sum(float(a.balance or 0) for a in accounts)
+        # The accounts do not all hold the same currency, so the total
+        # is converted before it is reported to the reader.
+        balance = await total_balance(self.db, self.user_id)
+        total = balance["total"]
         lines = [
-            f"{a.name}: Rp{float(a.balance or 0):,.0f}" for a in accounts
+            f"{a.name}: {a.currency} {float(a.balance or 0):,.0f}"
+            for a in accounts
         ]
 
         return AgentAction(
@@ -1427,7 +1440,7 @@ async def execute_plan(
             elif action.kind == "set_budget":
                 result = executor.set_budget(text)
             elif action.kind == "allocate":
-                result = executor.allocate(text)
+                result = await executor.allocate(text)
             elif action.kind == "set_savings_goal":
                 result = executor.set_savings_goal(text)
             elif action.kind == "set_recurring":
@@ -1437,7 +1450,7 @@ async def execute_plan(
             elif action.kind == "query_budgets":
                 result = executor.query_budgets(text)
             elif action.kind == "query_balance":
-                result = executor.query_balance(text)
+                result = await executor.query_balance(text)
             elif action.kind == "query_expenses":
                 result = executor.query_expenses(text)
             elif action.kind == "query_goals":

@@ -110,7 +110,7 @@ async def get_dashboard_summary(
     db = SessionLocal()
     try:
         service = AnalyticsService(db, user_id)
-        summary = service.get_current_month_summary()
+        summary = await service.get_current_month_summary()
         
         # Get account details
         from app.models.account import Account
@@ -194,7 +194,7 @@ async def get_net_worth(
     db = SessionLocal()
     try:
         service = AnalyticsService(db, user_id)
-        net_worth = service.calculate_net_worth()
+        net_worth = await service.calculate_net_worth()
         
         return NetWorthResponse(
             total_assets=float(net_worth.total_assets),
@@ -274,7 +274,7 @@ async def get_health_score(
     db = SessionLocal()
     try:
         service = AnalyticsService(db, user_id)
-        health = service.calculate_financial_health_score()
+        health = await service.calculate_financial_health_score()
         
         return HealthScore(
             score=health["score"],
@@ -393,11 +393,11 @@ async def export_analytics(
                     for cf in cash_flows
                 ],
                 "net_worth": {
-                    "total_assets": float(service.calculate_net_worth().total_assets),
-                    "total_liabilities": float(service.calculate_net_worth().total_liabilities),
-                    "net_worth": float(service.calculate_net_worth().net_worth)
+                    "total_assets": float((await service.calculate_net_worth()).total_assets),
+                    "total_liabilities": float((await service.calculate_net_worth()).total_liabilities),
+                    "net_worth": float((await service.calculate_net_worth()).net_worth)
                 },
-                "health_score": service.calculate_financial_health_score()["score"]
+                "health_score": (await service.calculate_financial_health_score())["score"]
             }
             return data
         

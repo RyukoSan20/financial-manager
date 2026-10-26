@@ -11,6 +11,7 @@ from sqlalchemy import func, extract
 
 from app.models.account import Account
 from app.models.transaction import Transaction
+from app.services.metrics import total_balance
 from app.models.budget import Budget
 from app.models.goal import Goal
 from app.models.debt import Debt
@@ -59,7 +60,7 @@ class AnalyticsService:
         self.db = db
         self.user_id = user_id
     
-    def calculate_net_worth(self) -> NetWorthResult:
+    async def calculate_net_worth(self) -> NetWorthResult:
         """
         Calculate net worth = Total Assets - Total Liabilities.
         Uses Decimal for precision (no floating point errors).
@@ -80,8 +81,22 @@ class AnalyticsService:
         assets = Decimal("0")
         asset_breakdown = {}
         
+        # The accounts do not all hold the same currency, so the
+        # balances are converted before they are added.
+        converted = await total_balance(self.db, self.user_id)
+        target = converted["currency"]
         for account in accounts:
-            balance = Decimal(str(account.balance or "0"))
+            amount, currency = float(account.balance or "0"), (
+                (account.currency or "IDR").upper()
+            )
+            if currency != target:
+                from app.services.currency import converter
+                rate = await converter.rate(currency, target)
+                if rate is None:
+                    # No rate: leave it out rather than mix it in.
+                    continue
+                amount = amount * rate
+            balance = Decimal(str(amount))
             assets += balance
             
             acc_type = account.account_type or "Lainnya"
@@ -171,7 +186,7 @@ class AnalyticsService:
         
         return results
     
-    def get_current_month_summary(self) -> Dict:
+    async def get_current_month_summary(self) -> Dict:
         """
         Get current month financial summary.
         Used for dashboard overview cards.
@@ -202,7 +217,11 @@ class AnalyticsService:
             Account.user_id == self.user_id,
             Account.is_active == True
         ).all()
-        total_balance = sum(Decimal(str(a.balance or "0")) for a in accounts)
+        # The accounts do not all hold the same currency, so the
+        # balance is converted before it is reported. A raw sum would
+        # be a number in no currency at all.
+        balance = await total_balance(self.db, self.user_id)
+        total_balance = Decimal(str(balance["total"]))
         
         # Get debt
         debts = self.db.query(Debt).filter(
@@ -329,14 +348,14 @@ class AnalyticsService:
         
         return {"trends": trends[:10]}
     
-    def calculate_financial_health_score(self) -> Dict:
+    async def calculate_financial_health_score(self) -> Dict:
         """
         Calculate comprehensive financial health score (0-100).
         Based on 5 key metrics.
         """
         # Get data
-        net_worth = self.calculate_net_worth()
-        summary = self.get_current_month_summary()
+        net_worth = await self.calculate_net_worth()
+        summary = await self.get_current_month_summary()
         
         income = Decimal(str(summary["total_income"]))
         expense = Decimal(str(summary["total_expense"]))
