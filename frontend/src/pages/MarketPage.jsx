@@ -10,6 +10,8 @@ import { formatNumber } from '../utils/format';
 import { apiUrl } from '../config/url';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from '../i18n';
+import { IconText } from '../components/ui/IconText';
+import { buildFlag } from '../utils/featureFlags';
 
 // Dark Mode Toggle Component
 const ThemeToggle = ({ isDark, onToggle, label }) => (
@@ -58,6 +60,8 @@ const MarketCard = ({ name, value, change, changeValue, positive, unit = '', isD
 
 export const MarketPage = () => {
   const { t } = useTranslation();
+  // With the polish switch off, the page keeps the drawings it has.
+  const polished = buildFlag('UI_POLISH');
   // Dark mode comes from the global ThemeContext so the page always matches
   // the toggle in the navigation and the user's saved preference.
   const { isDarkMode, toggleTheme } = useTheme();
@@ -470,7 +474,7 @@ export const MarketPage = () => {
                       </p>
                     </div>
                     <div className={`text-4xl ${ihsg.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {ihsg.change_percent >= 0 ? '📈' : '📉'}
+                      <IconText name={ihsg.change_percent >= 0 ? 'income' : 'expense'} emoji={ihsg.change_percent >= 0 ? '📈' : '📉'} on={polished} className="w-4 h-4" />
                     </div>
                   </div>
                   <div className={`mt-2 flex gap-4 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
