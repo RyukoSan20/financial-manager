@@ -97,6 +97,7 @@ export const batch3 = {
       bank_name: "Bank",
       bank_name_placeholder: "mis. Bank Central Asia",
       initial_balance: "Saldo Awal",
+      negative_balance_warning: "Saldo akun ini minus. Kalau ini saldo awal, isi 0 dan perbaiki lewat transaksi.",
       cancel: "Batal",
       update: "Perbarui",
       kind_names: {
@@ -322,6 +323,7 @@ export const batch3 = {
       account_name: "Account Name",
       account_name_placeholder: "e.g., BCA Savings",
       initial_balance: "Initial Balance",
+      negative_balance_warning: "This account's balance is negative. If this is an opening balance, enter 0 and correct it with a transaction.",
       update: "Update",
       add_account: "Add Account",
       bank_name_placeholder: "e.g., Bank Central Asia",
@@ -555,6 +557,7 @@ export const batch3 = {
       account_name: "口座名",
       account_name_placeholder: "例: 三菱UFJ普通預金",
       initial_balance: "初期残高",
+      negative_balance_warning: "この口座の残高がマイナスです。初期残高なら 0 を入力し、取引で修正してください。",
       update: "更新",
       add_account: "口座を追加",
       bank_name_placeholder: "例: 三菱UFJ銀行",

@@ -217,6 +217,11 @@ export const Accounts = () => {
                                 {formatCurrency(account.balance, account.currency)}
                               </p>
                             )}
+                            {parseFloat(account.balance) < 0 && (
+                              <p className="text-xs text-danger-600 max-w-[14rem]">
+                                {K?.negative_balance_warning}
+                              </p>
+                            )}
                             <Badge size="sm" variant={account.is_active ? 'success' : 'default'}>
                               {account.is_active ? 'Active' : 'Inactive'}
                             </Badge>
@@ -395,6 +400,11 @@ const AccountModal = ({ isOpen, onClose, onSubmit, account }) => {
           value={form.balance}
           onChange={(e) => setForm(f => ({ ...f, balance: e.target.value }))}
         />
+        {parseFloat(form.balance) < 0 && (
+          <p className="text-xs text-danger-600 mt-1">
+            {K?.negative_balance_warning}
+          </p>
+        )}
 
         <div className="flex gap-3 pt-4">
           <Button type="button" variant="outline" onClick={onClose} className="flex-1">
