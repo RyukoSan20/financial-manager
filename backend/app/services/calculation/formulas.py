@@ -1084,6 +1084,7 @@ def calculate_split_bill(total_amount: Decimal, number_of_people: int) -> Calcul
             value=Decimal("0"),
             unit="IDR",
             formula="per_person = total / number_of_people",
+            example="",
             valid=False,
             error="Number of people must be positive"
         )
@@ -1220,19 +1221,22 @@ def calculate_income_conversion(amount: Decimal, from_period: str, to_period: st
         daily = annual / 365
         daily = monthly / 30
     """
+    # The multiplier is how many of the target period fit in one of
+    # the source period. Twelve months fit in a year, so a monthly
+    # amount becomes twelve times bigger when it becomes annual.
     conversions = {
-        ("annual", "monthly"): Decimal("12"),
-        ("annual", "weekly"): Decimal("52"),
-        ("annual", "daily"): Decimal("365"),
-        ("monthly", "annual"): Decimal("1") / Decimal("12"),
+        ("annual", "monthly"): Decimal("1") / Decimal("12"),
+        ("annual", "weekly"): Decimal("1") / Decimal("52"),
+        ("annual", "daily"): Decimal("1") / Decimal("365"),
+        ("monthly", "annual"): Decimal("12"),
         ("monthly", "weekly"): Decimal("52") / Decimal("12"),
         ("monthly", "daily"): Decimal("30"),
-        ("weekly", "annual"): Decimal("1") / Decimal("52"),
+        ("weekly", "annual"): Decimal("52"),
         ("weekly", "monthly"): Decimal("12") / Decimal("52"),
         ("weekly", "daily"): Decimal("7"),
-        ("daily", "annual"): Decimal("1") / Decimal("365"),
-        ("daily", "monthly"): Decimal("1") / Decimal("30"),
-        ("daily", "weekly"): Decimal("1") / Decimal("7"),
+        ("daily", "annual"): Decimal("365"),
+        ("daily", "monthly"): Decimal("30"),
+        ("daily", "weekly"): Decimal("7"),
     }
     
     if from_period == to_period:
@@ -1459,12 +1463,15 @@ def calculate_required_saving_for_goal(
     weekly = daily * Decimal("7")
     monthly = daily * Decimal("30")
     
+    # These are whole rupiah. A saving rate of "44,444.44 a day" is
+    # not a figure anyone can act on, and the fraction of a rupiah
+    # is not money.
     return {
         "remaining": _round(remaining),
         "days_remaining": days_remaining,
-        "required_daily": _round(daily),
-        "required_weekly": _round(weekly),
-        "required_monthly": _round(monthly),
+        "required_daily": _round(daily, 0),
+        "required_weekly": _round(weekly, 0),
+        "required_monthly": _round(monthly, 0),
         "status": "active"
     }
 

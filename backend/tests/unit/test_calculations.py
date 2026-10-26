@@ -6,7 +6,21 @@ from datetime import date, timedelta
 
 
 # Import all functions by exec
-exec(open('/Users/rafi/financial-manager/backend/app/services/calculation/formulas.py').read())
+#
+# The path is worked out from this file, so the tests read the code
+# beside them. It used to name one absolute path, which meant the
+# tests ran against whichever checkout that path pointed at, and a
+# worktree or a second clone was never actually tested.
+import os
+
+FORMULAS_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "app",
+    "services",
+    "calculation",
+    "formulas.py",
+)
+exec(open(FORMULAS_PATH).read())
 
 
 class TestGoalCalculations:
