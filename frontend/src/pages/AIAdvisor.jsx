@@ -12,6 +12,8 @@ import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { formatCurrency, formatPercent } from '../utils/format';
 import { useTranslation } from '../i18n';
+import { buildFlag } from '../utils/featureFlags';
+import { ADVISOR_PROMPT_ICONS } from '../utils/icons';
 import { batch3 } from '../i18n/keys_batch3';
 import { 
   Send, Sparkles, RefreshCw, TrendingUp, TrendingDown, 
@@ -35,13 +37,17 @@ const AIAdvisor = () => {
   const messagesEndRef = useRef(null);
 
   // Pre-built prompts
+  // With the polish switch off, the emoji stay as they are. With it
+  // on, the chips carry an icon from the same family as the rest of
+  // the application.
+  const polished = buildFlag('UI_POLISH');
   const quickPrompts = [
-    { icon: "📊", label: t('ai_advisor.prompt_budget_label'), prompt: t('ai_advisor.prompt_budget') },
-    { icon: "🎯", label: t('ai_advisor.prompt_goal_label'), prompt: t('ai_advisor.prompt_goal') },
-    { icon: "💰", label: t('ai_advisor.prompt_saving_label'), prompt: t('ai_advisor.prompt_saving') },
-    { icon: "📉", label: t('ai_advisor.prompt_expense_label'), prompt: t('ai_advisor.prompt_expense') },
-    { icon: "📈", label: t('ai_advisor.prompt_invest_label'), prompt: t('ai_advisor.prompt_invest') },
-    { icon: "🛡️", label: t('ai_advisor.prompt_emergency_label'), prompt: t('ai_advisor.prompt_emergency') },
+    { key: 'prompt_budget', icon: "📊", label: t('ai_advisor.prompt_budget_label'), prompt: t('ai_advisor.prompt_budget') },
+    { key: 'prompt_goal', icon: "🎯", label: t('ai_advisor.prompt_goal_label'), prompt: t('ai_advisor.prompt_goal') },
+    { key: 'prompt_saving', icon: "💰", label: t('ai_advisor.prompt_saving_label'), prompt: t('ai_advisor.prompt_saving') },
+    { key: 'prompt_expense', icon: "📉", label: t('ai_advisor.prompt_expense_label'), prompt: t('ai_advisor.prompt_expense') },
+    { key: 'prompt_invest', icon: "📈", label: t('ai_advisor.prompt_invest_label'), prompt: t('ai_advisor.prompt_invest') },
+    { key: 'prompt_emergency', icon: "🛡️", label: t('ai_advisor.prompt_emergency_label'), prompt: t('ai_advisor.prompt_emergency') },
   ];
 
   useEffect(() => {
@@ -326,7 +332,13 @@ const AIAdvisor = () => {
                   }}
                   className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors text-left"
                 >
-                  <span>{prompt.icon}</span>
+                  {(() => {
+                    const PromptIcon = ADVISOR_PROMPT_ICONS[prompt.key];
+                    if (polished && PromptIcon) {
+                      return <PromptIcon className="w-4 h-4 shrink-0" />;
+                    }
+                    return <span>{prompt.icon}</span>;
+                  })()}
                   <span className="text-gray-700 dark:text-gray-300">{prompt.label}</span>
                 </button>
               ))}

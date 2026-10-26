@@ -1,8 +1,12 @@
 // Gmail Integration Page - Beautiful UI
 import { useState, useEffect } from "react";
 import { useTranslation } from '../i18n';
+import { buildFlag } from '../utils/featureFlags';
+import { Banknote, Wallet } from 'lucide-react';
 
 const GmailIntegration = () => {
+  // With the polish switch off, the emoji stay as they are.
+  const polished = buildFlag('UI_POLISH');
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState({ connected: false, message: t('gmail_integration.loading') });
@@ -112,14 +116,29 @@ const GmailIntegration = () => {
             <div className="bg-gray-50 rounded-xl p-4">
               <h3 className="font-medium text-gray-800 mb-2">{t('gmail_integration.supports')}</h3>
               <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                <span>🏦 BCA</span>
-                <span>🏦 Mandiri</span>
-                <span>🏦 BNI</span>
-                <span>🏦 BRI</span>
-                <span>💚 GoPay</span>
-                <span>💜 OVO</span>
-                <span>💙 DANA</span>
-                <span>💛 ShopeePay</span>
+                {polished ? (
+                  <>
+                    <span className="inline-flex items-center gap-1.5"><Banknote className="w-4 h-4" /> BCA</span>
+                    <span className="inline-flex items-center gap-1.5"><Banknote className="w-4 h-4" /> Mandiri</span>
+                    <span className="inline-flex items-center gap-1.5"><Banknote className="w-4 h-4" /> BNI</span>
+                    <span className="inline-flex items-center gap-1.5"><Banknote className="w-4 h-4" /> BRI</span>
+                    <span className="inline-flex items-center gap-1.5"><Wallet className="w-4 h-4" /> GoPay</span>
+                    <span className="inline-flex items-center gap-1.5"><Wallet className="w-4 h-4" /> OVO</span>
+                    <span className="inline-flex items-center gap-1.5"><Wallet className="w-4 h-4" /> DANA</span>
+                    <span className="inline-flex items-center gap-1.5"><Wallet className="w-4 h-4" /> ShopeePay</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🏦 BCA</span>
+                    <span>🏦 Mandiri</span>
+                    <span>🏦 BNI</span>
+                    <span>🏦 BRI</span>
+                    <span>💚 GoPay</span>
+                    <span>💜 OVO</span>
+                    <span>💙 DANA</span>
+                    <span>💛 ShopeePay</span>
+                  </>
+                )}
               </div>
             </div>
             

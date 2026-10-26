@@ -157,6 +157,8 @@ export const COLOR_SCHEMES = {
 };
 
 export const SCHEME_IDS = Object.keys(COLOR_SCHEMES);
+import { buildFlag } from './featureFlags';
+
 export const DEFAULT_SCHEME = 'emerald';
 
 /**
@@ -395,6 +397,15 @@ export function applyAppearance(appearance = {}) {
   root.setAttribute('data-font', font.id);
   root.setAttribute('data-font-scale', scale.id);
   root.setAttribute('data-background', background.id);
+
+  // The polish layer. It is off unless the build turned it on, and
+  // the attribute is removed rather than set to "off", so the rules
+  // in that layer do not match anything.
+  if (buildFlag('UI_POLISH')) {
+    root.setAttribute('data-ui', 'polish');
+  } else {
+    root.removeAttribute('data-ui');
+  }
 
   // The shades, so a component can use any step of the accent. Every
   // step of the scale is set, including the ones the dark mode needs,

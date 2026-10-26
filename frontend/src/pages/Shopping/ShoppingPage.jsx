@@ -8,6 +8,8 @@ import {
   X, GripVertical, RefreshCw, DollarSign, TrendingUp, Filter
 } from 'lucide-react';
 import { useTranslation } from '../../i18n';
+import { buildFlag } from '../../utils/featureFlags';
+import { SHOPPING_STAGE_ICONS } from '../../utils/icons';
 
 // Pipeline stages configuration
 const STAGES = [
@@ -23,6 +25,8 @@ const MARKETPLACES = ['shopee', 'tokopedia', 'lazada', 'blibli', 'tiktok', 'buka
 
 const ShoppingPage = () => {
   const { t } = useTranslation();
+  // With the polish switch off, the emoji stay as they are.
+  const polished = buildFlag('UI_POLISH');
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -343,7 +347,13 @@ const ShoppingPage = () => {
               {/* Stage Header */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">{stage.icon}</span>
+                  {(() => {
+                    const StageIcon = SHOPPING_STAGE_ICONS[stage.id];
+                    if (polished && StageIcon) {
+                      return <StageIcon className="w-5 h-5 shrink-0" />;
+                    }
+                    return <span className="text-xl">{stage.icon}</span>;
+                  })()}
                   <h3 className="font-semibold text-gray-900 dark:text-white">
                     {t(stage.labelKey)}
                   </h3>
@@ -521,7 +531,7 @@ const ShoppingPage = () => {
               >
                 {STAGES.filter(s => s.id !== 'received' && s.id !== 'cancelled').map((stage) => (
                   <option key={stage.id} value={stage.id}>
-                    {stage.icon} {t(stage.labelKey)}
+                    {polished ? '' : `${stage.icon} `}{t(stage.labelKey)}
                   </option>
                 ))}
               </select>
