@@ -14,6 +14,8 @@ import {
 import { api } from '../services/api';
 import { formatCurrency } from '../utils/format';
 import { useTranslation } from '../i18n';
+import { IconText } from '../components/ui/IconText';
+import { buildFlag } from '../utils/featureFlags';
 
 const MERCHANT_TYPE_KEYS = [
   { value: '', key: 'type_all' },
@@ -32,6 +34,8 @@ const DEFAULT_PRODUCT_ICON = '📦';
 
 export const CatalogPage = () => {
   const { t } = useTranslation();
+  // With the polish switch off, the page keeps the drawings it has.
+  const polished = buildFlag('UI_POLISH');
   const [tab, setTab] = useState('merchants');
   const [merchants, setMerchants] = useState([]);
   const [products, setProducts] = useState([]);
@@ -193,6 +197,7 @@ export const CatalogPage = () => {
               <EmptyState
                 title={t('catalog_page.no_stores')}
                 text={t('catalog_page.no_stores_desc')}
+                polished={polished}
               />
             )}
             {filteredMerchants.map((merchant) => (
@@ -210,6 +215,7 @@ export const CatalogPage = () => {
               <EmptyState
                 title={t('catalog_page.no_products')}
                 text={t('catalog_page.no_products_desc')}
+                polished={polished}
               />
             )}
             {filteredProducts.map((product) => (
@@ -227,9 +233,9 @@ export const CatalogPage = () => {
   );
 };
 
-const EmptyState = ({ title, text }) => (
+const EmptyState = ({ title, text, polished }) => (
   <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-xl">
-    <div className="text-3xl mb-2">📭</div>
+    <IconText name="inbox" emoji="📭" on={polished} className="w-7 h-7" />
     <div className="text-sm font-medium text-gray-700 dark:text-gray-200">
       {title}
     </div>
