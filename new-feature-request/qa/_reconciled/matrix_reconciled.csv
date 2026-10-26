@@ -1,0 +1,83 @@
+row_no,group,feature,workbook_status,real_status,evidence,notes,priority,penilaian
+1,Capture & input,Input manual transaksi,Ada,Exists,frontend/src/components/layout/AddTransactionPage.jsx; frontend/src/pages/Transactions.jsx,Manual add form with quick chips.,Rendah,Setara
+2,Capture & input,Kalkulator di kolom nominal,Tidak terlihat,Missing,-,No amount-field calculator/expr parser in the amount input. Calculators page is a separate page.,Sedang,GAP
+3,Capture & input,Chip nominal cepat,Ada,Exists,frontend/src/pages/Transactions.jsx (quick amount chips),Chip row of preset amounts.,Rendah,CEK PESAING
+4,Capture & input,Ketik cepat bahasa natural,Sebagian,Partial,backend/app/services/parser_service.py; backend/app/api/routes/parser.py,Text/natural-language parser exists via /parser. Frontend entry point partial.,Tinggi,GAP BESAR
+5,Capture & input,Input suara,Tidak terlihat,Exists,frontend/src/components/parser/VoiceTransactionModal.jsx; backend/app/api/routes/voice.py,Voice input modal + /api/voice.,Sedang,GAP BESAR
+6,Capture & input,Multi-transaksi dalam satu kalimat,Tidak terlihat,Missing,-,No multi-transaction sentence splitter.,Sedang,GAP
+7,Capture & input,Scan struk (OCR/AI),Tidak terlihat,Exists,backend/app/api/routes/scans.py; backend/app/models/receipt_scan.py; frontend/src/components/parser/ReceiptScannerModal.jsx,Receipt scan + OCR pipeline.,Rendah,GAP BESAR
+8,Capture & input,Berbagi struk/screenshot dari aplikasi lain,Tidak terlihat,Missing,-,No share-target / Web Share intake of a receipt from another app.,Rendah,GAP
+9,Capture & input,Pembaca notifikasi menjadi draf,Tidak terlihat,Partial,frontend/src/components/parser/ScanNotification.jsx,"Notification text can be parsed and shown, but no inbox queue of drafts.",Tinggi,GAP BESAR
+10,Capture & input,Tempel teks notifikasi/SMS bank,Tidak terlihat,Exists,backend/app/api/routes/parser.py; backend/app/services/parser_service.py; frontend/src/components/parser/TextParserModal.jsx,Paste/text parsing into a transaction.,Tinggi,PELUANG (cek)
+11,Capture & input,Draf / tinjau sebelum final,Tidak terlihat,Partial,"backend/app/models/transaction.py:59 status column (pending, approved, rejected)","Status column exists; the /feed review screen exists but it is an approval queue, not a pre-approval draft inbox for all capture sources.",Tinggi,GAP
+12,Capture & input,Catat via bot Telegram,Tidak terlihat,Missing,-,No Telegram bot.,Rendah,GAP
+13,Capture & input,Catat via WhatsApp,Tidak terlihat,Missing,-,No WhatsApp intake.,Rendah,GAP
+14,Capture & input,Pintasan sistem & widget,Tidak terlihat,Partial,frontend/public/manifest.json; frontend/public/sw.js,PWA manifest + service worker exist. No OS shortcuts/affordances beyond the manifest.,Sedang,GAP BESAR
+15,Capture & input,Impor/ekspor CSV,Perlu cek,Partial,"backend/app/api/routes/data.py:22 /export, :137 /export/csv, :168 /delete-all",CSV export exists. No CSV import endpoint found.,Sedang,VERIFIKASI
+16,Capture & input,Kategori otomatis dari deskripsi,Sebagian,Exists,backend/app/api/routes/category_hints.py; backend/app/api/routes/categories.py (category-hints/bootstrap),Auto category suggestion from description.,Tinggi,GAP BESAR
+17,Capture & input,Kamus merek/istilah lokal Indonesia,Sebagian,Partial,backend/app/models/merchant_catalog.py; backend/app/services/catalog.py,Merchant catalog auto-learns names from receipts; no curated local-brand dictionary.,Tinggi,PELUANG (cek)
+18,Capture & input,Toleransi typo,Sebagian,Partial,backend/app/services/parser_service.py,Parser normalises some input; no dedicated fuzzy/typo tolerance layer found.,Sedang,PELUANG (cek)
+19,Akun & kategori,Multi akun/dompet,Ada,Exists,backend/app/api/routes/accounts.py; frontend/src/pages/Accounts.jsx,Multi-account with kinds and native currency.,Rendah,Setara
+20,Akun & kategori,Transfer antar akun,Sebagian,Exists,backend/app/api/routes/transfers.py; backend/app/models/transfers.py,Transfer + explicit FX transfer between accounts.,Tinggi,GAP
+21,Akun & kategori,Logo bank & e-wallet Indonesia,Tidak terlihat,Missing,-,No bank/e-wallet logo registry. Account bank is a free-text field.,Sedang,GAP BESAR
+22,Akun & kategori,Kategori kustom,Perlu cek,Exists,backend/app/api/routes/categories.py (POST),User can create categories.,Rendah,VERIFIKASI
+23,Akun & kategori,Kelompok Kebutuhan/Keinginan,Tidak terlihat,Partial,frontend/src/pages/CategoryExpenses.jsx,Categories are grouped for the expense view; no persisted needs/wants group on the category record.,Sedang,GAP
+24,Akun & kategori,Kategori 'Penyesuaian Saldo',Tidak terlihat,Missing,-,No balance-adjustment category type.,Sedang,GAP
+25,Akun & kategori,Label / Tag,Perlu cek,Missing,-,No tag/label model or column on transactions.,Rendah,VERIFIKASI
+26,Akun & kategori,Multi mata uang,Perlu cek,Exists,backend/app/models/transaction.py:23 currency; backend/app/services/currency_totals.py; backend/app/api/routes/transfers.py,"Real multi-currency: native currency per account/record, live conversion, explicit FX transfer.",Rendah,VERIFIKASI
+27,Akun & kategori,Onboarding pilih kategori awal,Tidak terlihat,Missing,-,No first-run category picker wired to system_key.,Tinggi,GAP
+28,Akun & kategori,Checklist kesiapan akun,Tidak terlihat,Exists,frontend/src/components/ReadinessChecklist.jsx; backend/app/api/routes/user_settings.py /readiness,"Setup checklist with progress bar, live on Dashboard and Settings.",Sedang,GAP
+29,Tagihan & berulang,Transaksi berulang,Perlu cek,Exists,backend/app/api/routes/recurring.py; backend/app/models/recurring.py,Recurring rules CRUD.,Tinggi,VERIFIKASI
+30,Tagihan & berulang,Pelacak langganan,Perlu cek,Partial,backend/app/api/routes/recurring.py,"Recurring covers subscriptions by type, but no dedicated subscription tracker (logo, 1-31 billing day, per-service cycle).",Tinggi,VERIFIKASI
+31,Tagihan & berulang,Pengingat sebelum jatuh tempo,Tidak terlihat,Exists,backend/app/models/recurring.py:41 reminder_days_before; backend/app/models/user_settings.py:66,Reminder-days-before exists on recurring rules and in settings.,Tinggi,GAP BESAR
+32,Tagihan & berulang,Auto-debit saat tanggal tagih,Tidak terlihat,Missing,-,No auto-debit on a billing date.,Sedang,GAP
+33,Tagihan & berulang,Auto-input gaji,Tidak terlihat,Missing,-,No auto-income rule.,Sedang,GAP
+34,Tagihan & berulang,Pengingat harian untuk mencatat,Tidak terlihat,Exists,backend/app/models/user_settings.py:64 reminder_frequency; frontend/src/pages/Settings/NotificationSettings.jsx,Reminder frequency setting exists; daily push delivery is NOT implemented (no worker found).,Sedang,GAP BESAR
+35,Tagihan & berulang,Insight mingguan/bulanan,Tidak terlihat,Partial,"backend/app/models/user_settings.py:63 weekly_summary, :64 monthly_summary",Summary toggles exist as settings; no generated weekly/monthly insight content found.,Sedang,GAP
+36,Tagihan & berulang,Utang-piutang,Tidak terlihat,Missing,-,Debt model has no direction (payable vs receivable) field.,Tinggi,GAP
+37,Perencanaan,Budget per kategori,Perlu cek,Exists,backend/app/api/routes/budgets.py; frontend/src/pages/Budgets.jsx,Budgets per category.,Tinggi,VERIFIKASI
+38,Perencanaan,Smart Budget 50/30/20 + resep,Tidak terlihat,Missing,-,"50/30/20 appears only as AI advice text and a calculator result, not as a budget preset or recipe.",Sedang,GAP
+39,Perencanaan,Batas aman per hari,Tidak terlihat,Exists,frontend/src/pages/Dashboard.jsx:773 calculateSafeToSpend(),Safe-to-spend computed and shown on Dashboard.,Tinggi,GAP
+40,Perencanaan,Awal periode budget (tanggal gajian),Tidak terlihat,Missing,-,No budget period start / payday setting. period_start exists only on net_worth_snapshots.,Tinggi,GAP
+41,Perencanaan,Target tabungan + proyeksi tanggal,Perlu cek,Partial,frontend/src/pages/Goals.jsx; backend/app/models/goal.py,Goal target + current + progress. No projected completion date.,Sedang,VERIFIKASI
+42,Perencanaan,Target dana darurat otomatis,Tidak terlihat,Exists,backend/app/modules/ai_advisor/health_coach/financial_ratios.py,Emergency-months ratio computed by Health Coach.,Sedang,GAP
+43,Perencanaan,Net worth (aset & liabilitas),Tidak terlihat,Exists,backend/app/models/net_worth.py (net_worth_snapshots); backend/app/api/routes/analytics.py,Net worth snapshot table + analytics endpoint.,Sedang,GAP BESAR
+44,Perencanaan,Kesehatan finansial (skor + saran),Perlu cek,Exists,backend/app/modules/ai_advisor/health_coach/router.py; frontend/src/pages/HealthCoach.jsx,Health score + ratios + advice.,Sedang,VERIFIKASI
+45,Perencanaan,Asisten AI keuangan,Sebagian,Exists,frontend/src/pages/AIAdvisor.jsx; backend/app/api/routes/ai_advisor.py,AI Advisor page and /api/ai endpoints.,Sedang,GAP BESAR
+46,Analitik,"Grafik mingguan, income vs expense, tren saldo",Perlu cek,Exists,frontend/src/pages/Analytics.jsx; frontend/src/pages/Dashboard.jsx (cash flow chart),"Charts for cash flow, category breakdown, trends.",Tinggi,VERIFIKASI
+47,Analitik,Custom chart tersimpan,Tidak terlihat,Partial,frontend/src/pages/Dashboard.jsx chartConfig; backend/app/api/routes/dashboard.py chartConfig,"Chart type/config is a UI state, not a saved named preset.",Rendah,GAP
+48,Analitik,Heatmap pengeluaran,Tidak terlihat,Exists,backend/app/api/routes/analytics.py:1330 /spending/heatmap,Spending heatmap endpoint (grouped by location).,Rendah,GAP
+49,Analitik,Audit trail perubahan,Tidak terlihat,Exists,backend/app/models/activity_log.py; backend/app/api/routes/logs.py,Activity log table + logger helper + route.,Sedang,GAP
+50,Kolaborasi,Ruang bersama (pasangan/keluarga/bisnis),Tidak terlihat,Missing,-,No household/shared-space model. 'household' string hits are unrelated.,Sedang,GAP BESAR
+51,Kolaborasi,Kode undangan anggota,Tidak terlihat,Missing,-,No invite code.,Sedang,GAP
+52,Kolaborasi,Hak akses per anggota,Tidak terlihat,Missing,-,No per-member roles/permissions.,Sedang,GAP
+53,Kolaborasi,Notifikasi saat anggota mencatat,Tidak terlihat,Missing,-,No member notifications.,Rendah,GAP
+54,Kolaborasi,Agenda bersama,Tidak terlihat,Missing,-,No shared agenda.,Rendah,GAP
+55,Kolaborasi,"Tugas, target, catatan bersama",Tidak terlihat,Missing,-,No shared tasks/notes.,Rendah,GAP
+56,Kolaborasi,Daftar kebutuhan/belanja bersama,Tidak terlihat,Partial,frontend/src/pages/Shopping/ShoppingPage.jsx; backend/app/api/routes/shopping.py,"Shopping lists are per-user, not shared with others.",Tinggi,GAP
+57,Kolaborasi,Bagikan template budget/transaksi,Tidak terlihat,Missing,-,No budget/transaction templates.,Sedang,GAP
+58,Kolaborasi,Komunitas,Tidak terlihat,Missing,-,No community/leaderboard.,Rendah,GAP
+59,Keamanan & privasi,PIN / biometrik / auto-lock,Tidak terlihat,Partial,backend/app/models/user_settings.py:56 biometric_login; frontend/src/pages/Settings/AppSettings.jsx,"Biometric preference toggle exists; no WebAuthn/PIN enforcement, no auto-lock.",Tinggi,GAP
+60,Keamanan & privasi,Mode lokal tanpa akun,Tidak terlihat,Exists,backend/app/models/user.py is_guest; frontend/src/pages/Login.jsx,Guest mode (use without an account).,Sedang,GAP
+61,Keamanan & privasi,Pemrosesan teks di perangkat,Sebagian,Missing,-,No on-device text processing. OCR/AI run server-side.,Tinggi,PELUANG (cek)
+62,Keamanan & privasi,Hapus akun & ekspor data di aplikasi,Perlu cek,Exists,"backend/app/api/routes/data.py:22 /export, :137 /export/csv, :168 /delete-all",Export and delete-all endpoints. No per-account deletion endpoint found (delete-all only).,Tinggi,VERIFIKASI
+63,Keamanan & privasi,Halaman 'Jejak Data' (apa yang keluar ke mana),Tidak terlihat,Missing,-,No 'what leaves your device' screen.,Tinggi,PELUANG
+64,Platform & UX,Aplikasi Android,Tidak terlihat,Missing,-,Web/PWA only. No Android app in this repo.,Sedang,GAP BESAR
+65,Platform & UX,Aplikasi iOS,Tidak terlihat,Missing,-,Web/PWA only. No iOS app in this repo.,Sedang,GAP
+66,Platform & UX,PWA / instal dari browser,Ada,Exists,frontend/public/manifest.json; frontend/public/sw.js,PWA manifest + service worker.,Rendah,Setara
+67,Platform & UX,Mode gelap / tema,Perlu cek,Exists,frontend/src/contexts/ThemeContext.jsx; backend/app/models/user_settings.py theme/color_scheme,"Theme with light/dark/system + accent + font + background, persisted server-side.",Sedang,VERIFIKASI
+68,Platform & UX,Pencarian di pengaturan,Perlu cek,Exists,frontend/src/pages/Settings.jsx (settings.search_placeholder),Settings search box filters tabs.,Rendah,VERIFIKASI
+69,Platform & UX,UI Bahasa Indonesia konsisten,Sebagian,Exists,frontend/src/i18n/ (id/en/ja); scripts/check_i18n.py,Three locales with a CI gate. Some hardcoded English remains (see A3).,Sedang,PELUANG (cek)
+70,Platform & UX,Gamifikasi & maskot,Tidak terlihat,Exists,frontend/src/pages/Dashboard.jsx:26 ACHIEVEMENTS; frontend/src/components/ui/PixelBadge.jsx,"Achievements, streaks, badges. No passport/mascot layer.",Sedang,GAP
+71,Platform & UX,Tutorial video terstruktur,Tidak terlihat,Missing,-,No structured tutorial or video lessons.,Rendah,GAP
+72,Bisnis & pertumbuhan,Paket Pro berbayar,Tidak terlihat,Missing,-,"No paid plan. biometric_login/toggles are preferences, not a plan.",Sedang,GAP BESAR
+73,Bisnis & pertumbuhan,Referral & program kreator,Tidak terlihat,Missing,-,No referral program.,Sedang,GAP
+74,Bisnis & pertumbuhan,Konten & komunitas media sosial,Tidak terlihat,Missing,-,No owned media channels in this repo.,Sedang,GAP BESAR
+75,Pembeda rencana kita,Perencanaan belanja: estimasi vs aktual,Tidak terlihat,Exists,frontend/src/pages/Shopping/ShoppingPage.jsx (plan vs purchased); frontend/src/pages/ShoppingTracker.jsx,Shopping board separates planned items from actual transactions.,Tinggi,PELUANG
+76,Pembeda rencana kita,Banding harga marketplace / harga acuan,Tidak terlihat,Missing,-,No marketplace price comparison or reference price.,Sedang,PELUANG
+77,Pembeda rencana kita,Saran belanja bulanan dari riwayat,Tidak terlihat,Missing,-,No monthly shopping suggestion generated from history.,Tinggi,PELUANG
+78,Pembeda rencana kita,Wishlist + masa tunggu + dampak ke budget,Tidak terlihat,Exists,backend/app/models/wishlist_item.py; frontend/src/pages/ShoppingTracker.jsx,Wishlist with items. No waiting-time-to-afford metric.,Tinggi,PELUANG
+79,Pembeda rencana kita,Feed ICS / tambah ke Google Calendar,Tidak terlihat,Missing,-,No ICS/calendar feed.,Tinggi,PELUANG
+80,Pembeda rencana kita,Kalender uang (prakiraan saldo harian),Tidak terlihat,Missing,-,No daily balance calendar projection.,Sedang,PELUANG
+81,Pembeda rencana kita,Deteksi tagihan ganda,Tidak terlihat,Missing,-,No duplicate-charge detection.,Sedang,PELUANG
+82,Pembeda rencana kita,Deteksi langganan terlupakan dari riwayat,Tidak terlihat,Missing,-,No forgotten-subscription detection.,Sedang,PELUANG
