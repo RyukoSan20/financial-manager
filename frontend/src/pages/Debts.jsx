@@ -5,10 +5,14 @@ import { formatCurrency, formatDate } from '../utils/format';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
+import { PageHeader } from '../components/ui/PageHeader';
+import { buildFlag } from '../utils/featureFlags';
 import { useCurrency, sumInDisplay } from '../utils/currency';
 
 export const Debts = () => {
   const { t } = useTranslation();
+  // With the polish switch off, the page keeps the header it has.
+  const polished = buildFlag('UI_POLISH');
   const { currency: displayCurrency } = useCurrency();
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -138,22 +142,41 @@ export const Debts = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('debts.title')}</h1>
-          <p className="text-gray-500">{t('debts.subtitle')}</p>
+      {polished ? (
+        <PageHeader
+          title={t('debts.title')}
+          subtitle={t('debts.subtitle')}
+          action={
+            <div className="flex gap-2">
+              <Button onClick={fetchData} variant="outline">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                {t('debts.refresh')}
+              </Button>
+              <Button onClick={() => { setEditingDebt(null); setShowModal(true); }}>
+                <Plus className="w-4 h-4 mr-2" />
+                {t('debts.add')}
+              </Button>
+            </div>
+          }
+        />
+      ) : (
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{t('debts.title')}</h1>
+            <p className="text-gray-500">{t('debts.subtitle')}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={fetchData} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              {t('debts.refresh')}
+            </Button>
+            <Button onClick={() => { setEditingDebt(null); setShowModal(true); }}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('debts.add')}
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={fetchData} variant="outline">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            {t('debts.refresh')}
-          </Button>
-          <Button onClick={() => { setEditingDebt(null); setShowModal(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            {t('debts.add')}
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
