@@ -6,6 +6,8 @@ import { useAuth } from "../../context/AuthContext";
 import { parseQuickEntry, fetchDirection } from "../../features/transactions/nlp/parseQuickEntry.js";
 import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
 import { useTranslation } from "../../i18n";
+import { IconText } from "../ui/IconText";
+import { buildFlag } from "../../utils/featureFlags";
 import { batch1, fill } from "../../i18n/keys_batch1";
 import { categoryName } from '../../utils/categoryName';
 
@@ -13,6 +15,8 @@ const AddTransactionPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { language, getCurrencyConfig } = useTranslation();
+  // With the polish switch off, the page keeps the drawings it has.
+  const polished = buildFlag('UI_POLISH');
   const K = batch1[language]?.addTx || batch1.id.addTx;
   // The currency is a choice of its own, so the symbol is read from the
   // store rather than written into the page.
@@ -466,7 +470,7 @@ const AddTransactionPage = () => {
             onClick={loadData}
             className="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium"
           >
-            🔄 {K.retry}
+            <IconText name="repeat" emoji="🔄" on={polished}>{K.retry}</IconText>
           </button>
         </div>
       </div>
@@ -508,7 +512,7 @@ const AddTransactionPage = () => {
         {/* Quick Entry NLP Input */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">⚡</span>
+            <IconText name="zap" emoji="⚡" on={polished} className="w-5 h-5" />
             <span className="text-sm font-medium text-gray-600">{K.quickType}</span>
           </div>
           <input
@@ -688,7 +692,7 @@ const AddTransactionPage = () => {
             onClick={() => setShowDateSheet(true)}
             className="px-4 py-2 rounded-full text-sm font-medium bg-white text-gray-600"
           >
-            📅 {K.pick}
+            <IconText name="calendar" emoji="📅" on={polished}>{K.pick}</IconText>
           </button>
         </div>
 
@@ -877,7 +881,7 @@ const AddTransactionPage = () => {
                 }}
                 className="w-full py-4 bg-primary-600 text-white rounded-xl font-medium flex items-center justify-center gap-2"
               >
-                📍 {K.useCurrentLocation}
+                <IconText name="location" emoji="📍" on={polished}>{K.useCurrentLocation}</IconText>
               </button>
 
               {/* Manual Input */}
@@ -903,7 +907,7 @@ const AddTransactionPage = () => {
                   onClick={() => { setLocation(""); setLocationCoords(null); setShowLocationSheet(false); }}
                   className="w-full py-3 text-red-500 border border-red-200 rounded-xl"
                 >
-                  🗑️ {K.removeLocation}
+                  <IconText name="trash" emoji="🗑️" on={polished}>{K.removeLocation}</IconText>
                 </button>
               )}
             </div>
