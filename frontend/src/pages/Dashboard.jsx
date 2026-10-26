@@ -18,6 +18,8 @@ import { categoryName, categoryKey, transactionCategoryName } from '../utils/cat
 import AIAssistant from '../components/common/AIAssistant';
 import ReadinessChecklist from '../components/ReadinessChecklist';
 import { useTheme } from '../contexts/ThemeContext';
+import { IconText } from '../components/ui/IconText';
+import { buildFlag } from '../utils/featureFlags';
 import { batch3 } from '../i18n/keys_batch3';
 
 // ============================================================================
@@ -217,6 +219,8 @@ const AchievementBadge = ({ achievement, earned, isDark }) => {
 // Category Breakdown Component
 const CategoryBreakdown = ({ categories, type, isDark, maxItems = 5 }) => {
   const { t, language } = useTranslation();
+  // With the polish switch off, the page keeps the drawings it has.
+  const polished = buildFlag('UI_POLISH');
   const entries = Object.entries(categories || {});
   const total = entries.reduce((sum, [, data]) => sum + (data.total || 0), 0);
   const sortedCategories = entries.sort((a, b) => b[1].total - a[1].total).slice(0, maxItems);
@@ -224,7 +228,9 @@ const CategoryBreakdown = ({ categories, type, isDark, maxItems = 5 }) => {
   return (
     <div className="space-y-2">
       <h4 className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-        {type === 'income' ? '💰 ' + t('dashboard.income_detail') : '💸 ' + t('dashboard.expense_detail')}
+        <IconText name={type === 'income' ? 'income' : 'expense'} emoji={type === 'income' ? '💰' : '💸'} on={polished}>
+          {type === 'income' ? t('dashboard.income_detail') : t('dashboard.expense_detail')}
+        </IconText>
       </h4>
       {sortedCategories.length > 0 ? (
         <>
@@ -304,6 +310,8 @@ const SpendingProgressBar = ({ current, total, status, isDark }) => {
 export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const { currency: displayCurrency } = useCurrency();
   const { t, language, currency, currencyConfig } = useTranslation();
+  // With the polish switch off, the page keeps the drawings it has.
+  const polished = buildFlag('UI_POLISH');
   
   // ==========================================================================
   // STATE MANAGEMENT - SEMUA STATE DIPULIHKAN
@@ -1225,7 +1233,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Category Breakdown */}
           <Card className={`p-4 ${bgCard} border ${borderColor}`}>
-            <h3 className={`font-semibold mb-4 ${textPrimary}`}>📊 {t('dashboard.category_detail')}</h3>
+            <h3 className={`font-semibold mb-4 ${textPrimary}`}><IconText name="chart" emoji="📊" on={polished}>{t('dashboard.category_detail')}</IconText></h3>
             <div className="grid grid-cols-2 gap-4">
               <CategoryBreakdown categories={categorySummary.income} type="income" isDark={isDark} maxItems={5} />
               <CategoryBreakdown categories={categorySummary.expense} type="expense" isDark={isDark} maxItems={5} />
@@ -1235,7 +1243,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           {/* Market Overview */}
           <Card className={`p-4 ${bgCard} border ${borderColor}`}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className={`font-semibold ${textPrimary}`}>📈 {t('dashboard.market_overview')}</h3>
+              <h3 className={`font-semibold ${textPrimary}`}><IconText name="chart_line" emoji="📈" on={polished}>{t('dashboard.market_overview')}</IconText></h3>
               {realtimeUpdate && (
                 <span className="flex items-center gap-1 text-xs text-green-500">
                   <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -1276,7 +1284,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Award className="w-5 h-5 text-purple-500" />
-            <h3 className={`font-semibold ${textPrimary}`}>🏆 {t('dashboard.achievements')}</h3>
+            <h3 className={`font-semibold ${textPrimary}`}><IconText name="trophy" emoji="🏆" on={polished}>{t('dashboard.achievements')}</IconText></h3>
             <Badge variant="secondary">{achievements.length}/{ACHIEVEMENTS.length}</Badge>
           </div>
           <p className={`text-xs ${textSecondary}`}>{achievements.length} / {ACHIEVEMENTS.length} {t('dashboard.achievements_reached')}</p>
@@ -1314,7 +1322,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-orange-500" />
-                  <h3 className={`font-semibold ${textPrimary}`}>💳 {t('dashboard.debts')}</h3>
+                  <h3 className={`font-semibold ${textPrimary}`}><IconText name="payment" emoji="💳" on={polished}>{t('dashboard.debts')}</IconText></h3>
                 </div>
                 <Badge variant="warning">{debts.length} hutang</Badge>
               </div>
@@ -1340,7 +1348,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <RefreshCw className="w-5 h-5 text-primary-500" />
-                  <h3 className={`font-semibold ${textPrimary}`}>🔄 {t('dashboard.recurring')}</h3>
+                  <h3 className={`font-semibold ${textPrimary}`}><IconText name="repeat" emoji="🔄" on={polished}>{t('dashboard.recurring')}</IconText></h3>
                 </div>
                 <Badge variant="info">{recurringTransactions.length}</Badge>
               </div>
@@ -1415,7 +1423,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         {/* Feed Review */}
         <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`font-semibold ${textPrimary}`}>📝 {t('dashboard.feed_review')}</h3>
+            <h3 className={`font-semibold ${textPrimary}`}><IconText name="file" emoji="📝" on={polished}>{t('dashboard.feed_review')}</IconText></h3>
             {feedStats?.pending_count > 0 && (
               <Badge variant="warning">{feedStats.pending_count} {t('feed.pending')}</Badge>
             )}
@@ -1467,7 +1475,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-primary-500" />
-              <h3 className={`font-semibold ${textPrimary}`}>🎯 {t('dashboard.financial_goals')}</h3>
+              <h3 className={`font-semibold ${textPrimary}`}><IconText name="goal" emoji="🎯" on={polished}>{t('dashboard.financial_goals')}</IconText></h3>
             </div>
             <Button variant="ghost" size="sm" onClick={() => window.location.href = '/goals'}>
               {t('dashboard.view_all')} →
