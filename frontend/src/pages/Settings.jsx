@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/ui';
-import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut, Palette, Coins, Search, X } from 'lucide-react';
+import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut, Palette, Coins, Search, X, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
 import api from '../services/api';
 import { useCurrency, CURRENCIES, CURRENCY_CODES } from '../utils/currency';
 import ReadinessChecklist from '../components/ReadinessChecklist';
+import PrivacyPage from './Settings/PrivacyPage';
 
 export const Settings = () => {
   const { user, logout } = useAuth();
@@ -32,6 +33,7 @@ export const Settings = () => {
     { id: 'security', label: t('settings.tabs.security'), icon: Lock },
     { id: 'preferences', label: t('settings.tabs.preferences'), icon: Globe },
     { id: 'data', label: t('settings.tabs.data'), icon: Download },
+    { id: 'privacy', label: t('settings.tabs.privacy'), icon: ShieldCheck },
   ];
 
   // The search filters the tabs as well as the rows inside them.
@@ -176,6 +178,7 @@ export const Settings = () => {
           {activeTab === 'security' && <SecurityTab />}
           {activeTab === 'preferences' && <PreferencesTab user={user} />}
           {activeTab === 'data' && <DataTab logout={logout} />}
+          {activeTab === 'privacy' && <PrivacyPage />}
         </div>
       </div>
     </div>

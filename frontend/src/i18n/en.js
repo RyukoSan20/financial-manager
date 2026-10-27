@@ -473,6 +473,7 @@ export default {
       security: "Security",
       preferences: "Preferences",
       data: "Data",
+      privacy: "Privacy",
     },
     appearance: {
       title: "Appearance",

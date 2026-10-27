@@ -73,6 +73,23 @@ export const batch7 = {
     privacy_never_desc: "Tidak ada catatan yang dikirim ke mana pun tanpa Anda meminta.",
     privacy_placeholder: "Baris ini diisi setelah setiap layanan yang ada diperiksa satu per satu.",
     privacy_on_device: " diproses di perangkat",
+
+    // The privacy page.
+    privacy_page_title: "Data dan privasi",
+    privacy_page_subtitle: "Apa yang meninggalkan perangkat Anda, dan apa yang tidak pernah meninggalkannya.",
+    privacy_stays_heading: "Yang tetap di perangkat",
+    privacy_out_heading: "Yang dikirim keluar",
+    privacy_never_heading: "Yang tidak pernah dikirim",
+    privacy_carries_yes: "Membawa catatan Anda",
+    privacy_carries_no: "Tidak membawa catatan Anda",
+    privacy_host_label: "Tujuan",
+    privacy_who_label: "Penerima",
+    privacy_what_label: "Yang dikirim",
+    privacy_when_label: "Kapan dikirim",
+    privacy_why_label: "Alasan",
+    privacy_show_detail: "Lihat rincian",
+    privacy_hide_detail: "Sembunyikan rincian",
+    privacy_footer: "Halaman ini diperiksa terhadap kode server oleh pengujian otomatis, sehingga isinya tidak bisa menjadi basi.",
   },
 
   en: {
@@ -120,6 +137,23 @@ export const batch7 = {
     privacy_never_desc: "No record is sent anywhere without you asking for it.",
     privacy_placeholder: "This line is filled in once each service has been checked one by one.",
     privacy_on_device: " processed on the device",
+
+    // The privacy page.
+    privacy_page_title: "Data and privacy",
+    privacy_page_subtitle: "What leaves your device, and what never leaves it.",
+    privacy_stays_heading: "What stays on the device",
+    privacy_out_heading: "What is sent out",
+    privacy_never_heading: "What is never sent",
+    privacy_carries_yes: "Carries your records",
+    privacy_carries_no: "Does not carry your records",
+    privacy_host_label: "Destination",
+    privacy_who_label: "Recipient",
+    privacy_what_label: "What is sent",
+    privacy_when_label: "When it is sent",
+    privacy_why_label: "Why",
+    privacy_show_detail: "See the detail",
+    privacy_hide_detail: "Hide the detail",
+    privacy_footer: "This page is checked against the server code by an automatic test, so it cannot go out of date.",
   },
 
   ja: {
@@ -167,6 +201,23 @@ export const batch7 = {
     privacy_never_desc: "依頼しない記録がどこかへ送られることはありません。",
     privacy_placeholder: "各サービスを一つずつ確認したあとにこの行が埋まります。",
     privacy_on_device: "（端末内で処理）",
+
+    // The privacy page.
+    privacy_page_title: "データとプライバシー",
+    privacy_page_subtitle: "この端末から出るもの、そして絶対に出ないもの。",
+    privacy_stays_heading: "端末に留まるもの",
+    privacy_out_heading: "外部に送られるもの",
+    privacy_never_heading: "決して送られないもの",
+    privacy_carries_yes: "記録が含まれます",
+    privacy_carries_no: "記録は含まれません",
+    privacy_host_label: "送信先",
+    privacy_who_label: "受取先",
+    privacy_what_label: "送られる内容",
+    privacy_when_label: "送信されるとき",
+    privacy_why_label: "理由",
+    privacy_show_detail: "詳細を見る",
+    privacy_hide_detail: "詳細を隠す",
+    privacy_footer: "このページは自動テストでサーバーコードと照合されるため、古いままにはなりません。",
   },
 };
 

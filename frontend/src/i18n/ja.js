@@ -473,6 +473,7 @@ export default {
       security: "セキュリティ",
       preferences: "環境設定",
       data: "データ",
+      privacy: "プライバシー",
     },
     appearance: {
       title: "表示",

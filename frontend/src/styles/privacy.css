@@ -1,0 +1,146 @@
+
+/*
+ * The privacy page.
+ *
+ * Part of the polish layer, so it is off unless the polish switch is
+ * on. The colours come from the same variables as the rest of the
+ * application, so the page follows the light and dark themes.
+ */
+
+[data-ui="polish"] .privacy-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+[data-ui="polish"] .privacy-page__header h1 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+[data-ui="polish"] .privacy-page__header p {
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+[data-ui="polish"] .privacy-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.0625rem;
+  line-height: 1.625rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.625rem;
+}
+
+[data-ui="polish"] .privacy-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+[data-ui="polish"] .privacy-item {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+[data-ui="polish"] .privacy-item strong {
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+}
+
+[data-ui="polish"] .privacy-item span {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  color: var(--text-secondary);
+}
+
+[data-ui="polish"] .privacy-item__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+[data-ui="polish"] .privacy-item__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* The badge that says whether the reader's own records travel. */
+[data-ui="polish"] .privacy-badge {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 9999px;
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+[data-ui="polish"] .privacy-badge--carries {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+[data-ui="polish"] .privacy-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.125rem 0.25rem;
+}
+
+[data-ui="polish"] .privacy-toggle:hover {
+  color: var(--text-primary);
+}
+
+[data-ui="polish"] .privacy-detail {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) 1fr;
+  gap: 0.25rem 0.875rem;
+  margin: 0.625rem 0 0;
+  padding-top: 0.625rem;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+[data-ui="polish"] .privacy-detail dt {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+[data-ui="polish"] .privacy-detail dd {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  color: var(--text-primary);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+[data-ui="polish"] .privacy-footer {
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+  color: var(--text-muted);
+  font-style: italic;
+}

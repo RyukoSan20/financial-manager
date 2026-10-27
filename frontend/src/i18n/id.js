@@ -473,6 +473,7 @@ export default {
       security: "Keamanan",
       preferences: "Preferensi",
       data: "Data",
+      privacy: "Privasi",
     },
     appearance: {
       title: "Tampilan",
