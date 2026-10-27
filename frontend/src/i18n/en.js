@@ -1327,6 +1327,19 @@ export default {
     security_no_email: "• No email is sent or deleted",
     security_token: "• The token is stored encrypted",
     security_disconnect: "• You can disconnect at any time",
+
+    // The states of the connection.
+    state_checking: "Checking the connection...",
+    state_not_connected: "Gmail is not connected.",
+    state_connected: "Gmail is connected.",
+    state_needs_reauth: "Connect Gmail again to carry on.",
+    state_not_configured: "The server is not set up for Gmail.",
+    not_configured_note:
+      "This server has no Google sign-in details, so the connect button cannot be used.",
+    error_oauth_not_configured:
+      "There are no Google sign-in details on this server.",
+    error_connect_failed: "Could not connect Gmail.",
+    error_disconnect_failed: "Could not disconnect Gmail.",
   },
 
   // merchant_manager

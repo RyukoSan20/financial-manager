@@ -1327,6 +1327,19 @@ export default {
     security_no_email: "• Tidak ada email yang dikirim atau dihapus",
     security_token: "• Token tersimpan dengan enkripsi",
     security_disconnect: "• Bisa putuskan kapan saja",
+
+    // The states of the connection.
+    state_checking: "Memeriksa koneksi...",
+    state_not_connected: "Gmail belum terhubung.",
+    state_connected: "Gmail terhubung.",
+    state_needs_reauth: "Hubungkan kembali Gmail untuk melanjutkan.",
+    state_not_configured: "Server belum diatur untuk Gmail.",
+    not_configured_note:
+      "Server ini belum punya pengaturan masuk Google, jadi tombol sambung tidak bisa dipakai.",
+    error_oauth_not_configured:
+      "Pengaturan masuk Google belum ada di server ini.",
+    error_connect_failed: "Gagal menyambungkan Gmail.",
+    error_disconnect_failed: "Gagal memutus sambungan.",
   },
 
   // merchant_manager

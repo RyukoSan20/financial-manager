@@ -1327,6 +1327,19 @@ export default {
     security_no_email: "• メールは送信も削除もされません",
     security_token: "• トークンは暗号化して保存されます",
     security_disconnect: "• いつでも接続を解除できます",
+
+    // The states of the connection.
+    state_checking: "接続を確認しています...",
+    state_not_connected: "Gmail はまだ接続されていません。",
+    state_connected: "Gmail は接続されています。",
+    state_needs_reauth: "続行するには Gmail を再接続してください。",
+    state_not_configured: "サーバーは Gmail 用に設定されていません。",
+    not_configured_note:
+      "このサーバーには Google へのサインイン情報がないため、接続ボタンを使えません。",
+    error_oauth_not_configured:
+      "このサーバーには Google へのサインイン情報がありません。",
+    error_connect_failed: "Gmail を接続できませんでした。",
+    error_disconnect_failed: "Gmail の接続を解除できませんでした。",
   },
 
   // merchant_manager

@@ -3,45 +3,72 @@ import { useState, useEffect } from "react";
 import { useTranslation } from '../i18n';
 import { buildFlag } from '../utils/featureFlags';
 import { Banknote, Wallet } from 'lucide-react';
+import { api } from '../services/api';
 
 const GmailIntegration = () => {
   // With the polish switch off, the emoji stay as they are.
   const polished = buildFlag('UI_POLISH');
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState({ connected: false, message: t('gmail_integration.loading') });
+  const [checking, setChecking] = useState(true);
+  // The state comes from the server as a code, so it can be shown in
+  // the language of the reader. The message is only the fallback.
+  const [status, setStatus] = useState({
+    connected: false,
+    state: 'checking',
+    configured: true,
+    message: '',
+  });
   const [error, setError] = useState(null);
 
   useEffect(() => {
     checkStatus();
   }, []);
 
+  // The message for a state, in the reader's language.
+  const stateMessage = (code) => {
+    const key = `gmail_integration.state_${code}`;
+    const translated = t(key, '');
+    if (translated) return translated;
+    return status.message || t('gmail_integration.not_connected_status');
+  };
+
   const checkStatus = async () => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-      
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/integrations/gmail/status`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const data = await api.request('/integrations/gmail/status');
+      setStatus({
+        connected: Boolean(data.connected),
+        state: data.state || (data.connected ? 'connected' : 'not_connected'),
+        configured: data.configured !== false,
+        connected_at: data.connected_at || null,
+        message: data.message || '',
       });
-      if (res.ok) setStatus(await res.json());
     } catch (e) {
-      setStatus({ connected: false, message: t('gmail_integration.not_connected_status') });
+      setStatus({
+        connected: false,
+        state: 'not_connected',
+        configured: true,
+        message: '',
+      });
+    } finally {
+      setChecking(false);
     }
   };
 
   const connectGmail = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/integrations/gmail/connect`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await api.request('/integrations/gmail/connect');
       if (data.auth_url) window.location.href = data.auth_url;
       else setError(t('gmail_integration.oauth_unavailable'));
     } catch (e) {
-      setError(t('gmail_integration.connect_failed'));
+      // The server says what went wrong with a code, so the message
+      // can be in the reader's language.
+      const code = e?.code || 'connect_failed';
+      const key = `gmail_integration.error_${code}`;
+      const translated = t(key, '');
+      setError(translated || t('gmail_integration.connect_failed'));
     } finally {
       setLoading(false);
     }
@@ -49,14 +76,16 @@ const GmailIntegration = () => {
 
   const disconnectGmail = async () => {
     if (!confirm(t('gmail_integration.disconnect_confirm'))) return;
-    
+
+    setError(null);
     try {
-      const token = localStorage.getItem("token");
-      await fetch(`${import.meta.env.VITE_API_URL}/integrations/gmail/disconnect`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
+      await api.request('/integrations/gmail/disconnect', { method: 'POST' });
+      setStatus({
+        connected: false,
+        state: 'not_connected',
+        configured: status.configured,
+        message: '',
       });
-      setStatus({ connected: false, message: t('gmail_integration.disconnected') });
     } catch (e) {
       setError(t('gmail_integration.disconnect_failed'));
     }
@@ -79,7 +108,9 @@ const GmailIntegration = () => {
             <h2 className="font-semibold text-lg">
               {status.connected ? t('gmail_integration.connected_title') : t('gmail_integration.not_connected_title')}
             </h2>
-            <p className="text-sm text-gray-500">{status.message}</p>
+            <p className="text-sm text-gray-500">
+              {checking ? t('gmail_integration.loading') : stateMessage(status.state)}
+            </p>
           </div>
         </div>
         
@@ -103,6 +134,13 @@ const GmailIntegration = () => {
           </div>
         ) : (
           <div className="space-y-4">
+            {!status.configured && (
+              <div className="bg-amber-50 rounded-xl p-4">
+                <p className="text-sm text-amber-800">
+                  {t('gmail_integration.not_configured_note')}
+                </p>
+              </div>
+            )}
             <div className="bg-primary-50 rounded-xl p-4">
               <h3 className="font-medium text-primary-800 mb-2">{t('gmail_integration.how_it_works')}</h3>
               <ul className="text-sm text-primary-700 space-y-1">
@@ -144,7 +182,7 @@ const GmailIntegration = () => {
             
             <button
               onClick={connectGmail}
-              disabled={loading}
+              disabled={loading || !status.configured}
               className="w-full py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
