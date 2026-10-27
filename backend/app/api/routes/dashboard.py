@@ -3,13 +3,13 @@ Dashboard Cash Flow API - Dynamic Timeframe dengan Granularity
 Implementasi Stockbit-style untuk Financial Dashboard
 """
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 from typing import Optional, Literal, Dict, List
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from calendar import month_abbr
+from calendar import month_abbr, monthrange
 
 from app.core.database import get_db
 from app.core.security import get_current_user_optional
@@ -20,6 +20,128 @@ from app.models.category import Category
 from app.models.user import User
 
 router = APIRouter()
+
+@router.get("/month-timeline")
+def get_month_timeline(
+    month: Optional[str] = Query(
+        default=None,
+        description="The month to show, as YYYY-MM. The current month when it is left out.",
+    ),
+    currency: Optional[str] = Query(default=None, description="The currency to show the totals in"),
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
+    """
+    The transactions of one month, day by day.
+
+    The dashboard shows what happened this month as a list of days,
+    so a reader can see how the month went rather than only the sum
+    of it. The days come back in order, oldest first, and each one
+    carries the money in and the money out for that day.
+
+    Only the transactions that actually count are here: a pending
+    transaction is waiting in the review queue and a rejected one was
+    thrown away, so neither has moved the balance.
+    """
+    user_id = current_user.id if current_user else None
+
+    if month:
+        try:
+            year_part, month_part = month.split("-")
+            year = int(year_part)
+            month_number = int(month_part)
+        except (ValueError, AttributeError):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "bad_month",
+                    "message": "The month must be written as YYYY-MM.",
+                },
+            )
+        if not 1 <= month_number <= 12:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "bad_month",
+                    "message": "The month must be written as YYYY-MM.",
+                },
+            )
+    else:
+        today = date.today()
+        year = today.year
+        month_number = today.month
+
+    first_day = date(year, month_number, 1)
+    _, last_day = monthrange(year, month_number)
+    last_day = date(year, month_number, last_day)
+
+    query = db.query(Transaction).filter(
+        Transaction.date >= first_day,
+        Transaction.date <= last_day,
+        *counted_transactions_filter(),
+    )
+    if user_id:
+        query = query.filter(Transaction.user_id == user_id)
+
+    rows = query.order_by(Transaction.date.asc(), Transaction.id.asc()).all()
+
+    # The days are gathered first, so that a day with no transactions
+    # still appears. A reader wants to see the gap, not to have it
+    # quietly filled in.
+    days = {}
+    for day_number in range(1, last_day.day + 1):
+        days[date(year, month_number, day_number)] = {
+            "date": date(year, month_number, day_number).isoformat(),
+            "day": day_number,
+            "income": 0.0,
+            "expense": 0.0,
+            "net": 0.0,
+            "count": 0,
+            "transactions": [],
+        }
+
+    for row in rows:
+        day = days.get(row.date)
+        if day is None:
+            continue
+        amount = float(row.amount or 0)
+        if row.type == "income":
+            day["income"] += amount
+        else:
+            day["expense"] += amount
+        day["net"] = round(day["income"] - day["expense"], 2)
+        day["count"] += 1
+        day["transactions"].append(
+            {
+                "id": row.id,
+                "description": row.description,
+                "amount": round(amount, 2),
+                "type": row.type,
+                "category": row.category,
+                "date": row.date.isoformat() if row.date else None,
+            }
+        )
+
+    # The days with something in them, newest first, because that is
+    # the order a reader reads a list of days in.
+    days_with_activity = [day for day in days.values() if day["count"] > 0]
+    days_with_activity.reverse()
+
+    total_income = round(sum(day["income"] for day in days.values()), 2)
+    total_expense = round(sum(day["expense"] for day in days.values()), 2)
+
+    return {
+        "month": f"{year:04d}-{month_number:02d}",
+        "start_date": first_day.isoformat(),
+        "end_date": last_day.isoformat(),
+        "currency": (currency or "IDR").upper(),
+        "total_income": total_income,
+        "total_expense": total_expense,
+        "net": round(total_income - total_expense, 2),
+        "count": sum(day["count"] for day in days.values()),
+        "days": days_with_activity,
+    }
+
 
 # Dashboard summary endpoint for frontend compatibility
 @router.get("/summary")
