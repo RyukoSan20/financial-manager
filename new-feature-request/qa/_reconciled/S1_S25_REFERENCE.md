@@ -50,8 +50,8 @@ would have invented work rather than recovered it.
 | A1 | S1, S2, S3, S7, S8, S14, S17 | done |
 | A2 | S4, S5, S15, S18 | done |
 | A3 | S6, S22 | done |
-| A4 | S13, S16 | not started |
-| A5 | S9, S10, S11, S12, S21, S25 | not started |
+| A4 | S13, S16 | done |
+| A5 | S9, S10, S11, S12, S21, S25 | done |
 | A6 | S20 | not started |
 | A7 | rows from the reconciled matrix | not started |
 | — | S19, S23, S24 | no batch assigned; S23 and S24 are audits, S19 needs a definition of what a streak counts |
@@ -202,3 +202,165 @@ name in the reader's language.
 - The build was run with the switch on and with it off, and the
   bundle read to confirm the tab is present in one and absent in the
   other.
+
+## A4: what was done
+
+**S13, Gmail Sync states.** The Gmail page was reading a status the
+server never sent, so it always fell through to the "not connected"
+branch, and the reader could not tell which of three states the
+connection was really in. The server now says which state it is in
+(`backend/app/modules/integrations/email_parser/gmail_router.py`),
+and the page shows that state.
+
+Three things were broken behind this, and each was fixed:
+
+- **The router did not exist.** `gmail_oauth.py` no longer had the
+  `GmailService` class that `email_poller.py` and the package's
+  `__init__.py` imported, so the whole package failed to import and
+  the router was never registered. Every `/api/integrations/gmail/*`
+  endpoint answered 404: the page was dead, not merely unclear.
+- **The encryption could not run.** `KMSEncryption._derive_key` called
+  `PBKDF2HMAC.verify()`, which checks a signature and always fails
+  here, so every encryption raised "Keys do not match". It now calls
+  `derive()`, which is what produces the key.
+- **The credentials table was never created.** The model was not in
+  the tables that get created, so the table was missing on a fresh
+  install.
+
+The server also says when the Google sign-in details are not set up,
+rather than failing with a stack trace.
+
+**S16, Delete All Data safeguards.** The client asked for a
+confirmation word before deleting everything. The server did not.
+Someone who called the endpoint directly deleted every row with no
+check at all. The server now requires the same confirmation word.
+
+### How this was checked
+
+- `backend/tests/unit/test_gmail_integration.py` — that the package
+  imports, the router is registered, a token is encrypted rather than
+  merely encoded, a token stored the old way is still readable, the
+  status reports the right state, and connecting without the Google
+  details says so.
+- The regression tests were shown to fail when the fixes were taken
+  out.
+
+## A5: what was done
+
+Six items: S9, S10, S11, S12, S21, S25. Every one of them is behind a
+reader switch, and every switch is off to begin with, so a reader who
+has not asked for any of it sees exactly what they saw before.
+
+**S9, sidebar grouping.** The flat list of twenty items was hard to
+scan. `frontend/src/components/layout/navGroups.js` groups them into
+five: money, plan, insight, tools, and the rest. The groups are drawn
+by `GroupedNav.jsx`.
+
+The groups live in a plain `.js` file rather than in the component, so
+a script can check them without a browser. That is not tidiness for
+its own sake: the groups name the items by key, and a key that does
+not match the map of items is silently dropped, so a link goes missing
+from the menu without a word of warning. That happened twice while
+this was being written (`health-coach` for `healthCoach`, and
+`category-expenses` for `categoryExpenses`), and
+`frontend/src/components/layout/__tests__/navGrouping.test.js` now
+fails if it happens again.
+
+**S10, Merchant behind the advanced-features flag.** The merchant and
+map pages are out of the menu until the advanced features are turned
+on. Reaching one anyway — an old link, a bookmark — shows a page that
+says what is going on and where to turn it on, rather than a blank
+screen.
+
+**S11, onboarding.** `frontend/src/components/dashboard/Onboarding.jsx`.
+A new account is empty, so the first screen a reader sees is empty
+charts. The setup walks through four steps — an account, a budget, the
+recurring bills, the first transaction — and skips the ones the server
+says are already done. It is a guide, not a gate: it can be closed at
+any point and the reader can come back to it.
+
+**S12, "this month" timeline.**
+`frontend/src/components/dashboard/MonthTimeline.jsx` and the endpoint
+`/api/dashboard/month-timeline`. The month is shown day by day, each
+day with the money in, the money out and the difference. The endpoint
+only counts the transactions that actually count: a pending
+transaction is waiting in the review queue and a rejected one was
+thrown away, so neither has moved the balance.
+
+**S21, single add button.**
+`frontend/src/components/common/SingleAddButton.jsx`. One button, in
+the same place on every page that can add something. It sits above the
+bottom navigation on a phone and in the corner on a bigger screen.
+
+**S25, opt-in reminders.** The server works out what the reader should
+be reminded about, in `backend/app/services/reminder_service.py`, and
+the endpoint `/api/reminders/next` says so. Nothing is sent anywhere:
+the reminder is shown by the browser on this device, and it stops the
+moment the reader turns it off.
+
+The reasons are looked at in the order a reader would think about them:
+a bill that is due, a budget that has run out, a recurring bill that
+has come round, and then the day itself — a day that has passed with
+nothing recorded on it.
+
+The server sends a code as well as a sentence, for the same reason as
+everywhere else in this application: the sentence is written in one
+language, so the code is what the screen translates.
+
+### Two bugs found while this was being checked
+
+Both were in the new code, and both are now covered by tests.
+
+- **A recurring bill would have raised an error.** The service read
+  `recurring.name`, but a recurring rule has a `description` and no
+  `name` at all. Reaching that branch raised `AttributeError`.
+- **A budget was judged by spending outside its period.** The spending
+  was counted from the beginning of time, with no date filter and no
+  category or account filter, so a category budget was judged by the
+  whole of the reader's spending and a budget whose period had ended
+  was still judged. The calculation now matches the budgets page, so
+  the reminder and the page cannot disagree.
+
+### The switches
+
+Three more reader switches, all off to begin with and all stored in
+the browser, so they belong to the device:
+
+| Switch | What it does |
+|--------|--------------|
+| `NAV_V2` | The grouped sidebar |
+| `SINGLE_ADD` | The one add button |
+| `ADVANCED_FEATURES` | The merchant and map pages |
+| `REMINDERS` | The reminders |
+
+They are all turned on and off in one place, the display options panel
+on the settings page (`frontend/src/components/settings/SwitchPanel.jsx`),
+which also has a way to put them all back as they were.
+
+### How this was checked
+
+- `backend/tests/unit/test_reminders.py` — that a bill due within the
+  window is worth a reminder, one that is not due is not, one that is
+  paid off is not, a budget that has run out is, a budget is not judged
+  by spending outside its period, a budget whose period has ended is
+  not judged, a recurring bill that has come round is, a day with
+  nothing recorded on it is, a day that was recorded is not, and the
+  answer carries a code the screen can translate.
+- `frontend/src/components/layout/__tests__/navGrouping.test.js` — 45
+  checks that every item the groups name exists, that every item in
+  the map is in a group, and that the advanced pages and the advanced
+  group agree.
+- The regression tests were shown to fail when the fixes were taken
+  out: putting the wrong key back into the groups failed two checks.
+- The build was run with the switch on and with it off, and the bundle
+  read to confirm.
+
+### One thing that was changed rather than added
+
+The day of the week for the weekly reminder needed somewhere to live.
+The obvious place — `reminder_days_before` — already meant "how many
+days before a bill is due", and writing the day of the week into it
+would have quietly changed what that setting meant. So the day of the
+week has its own column, `reminder_day_of_week`, and the old setting
+keeps its meaning.
+

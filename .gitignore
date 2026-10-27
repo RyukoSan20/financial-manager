@@ -10,6 +10,11 @@ dist/
 build/
 *.egg-info/
 
+# The builds that check the feature switches. These are thrown away
+# after they are read, so they are not part of the project.
+dist-flag/
+dist-noflag/
+
 # Logs
 *.log
 
