@@ -173,6 +173,10 @@ async def create_transfer(
             user_id=current_user.id,
         )
         db.add(tx_out)
+        # The row has to be written before its id can be read, so that
+        # the other half of the transfer can point back at it. Without
+        # this the link was silently never made.
+        db.flush()
 
         # Update source account balance
         from_account.balance -= transfer.amount
