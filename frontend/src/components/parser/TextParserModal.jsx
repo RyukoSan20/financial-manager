@@ -8,8 +8,15 @@ import { Modal, Button, Input, Select } from '../ui';
 import { Camera, FileText, Loader2, Check, Sparkles, AlertCircle, ChevronDown, ChevronUp, Copy, Trash2, Zap } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
+import { useTranslation } from '../../i18n';
+import { batch4 } from '../../i18n/keys_batch4';
 
 export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
+  // The messages in this screen used to be written in Indonesian, so
+  // a reader who picked English still read Indonesian. They are read
+  // from the language the reader picked now.
+  const { language } = useTranslation();
+  const K = batch4[language]?.text_parser;
   const [rawText, setRawText] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
@@ -63,12 +70,12 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
 
   const handleParse = async () => {
     if (!rawText.trim()) {
-      setError('Masukkan teks terlebih dahulu');
+      setError(K.empty_text);
       return;
     }
 
     if (rawText.trim().length < 10) {
-      setError('Teks terlalu pendek. Minimal 10 karakter.');
+      setError(K.text_too_short);
       return;
     }
 
@@ -94,7 +101,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
           });
           setParseDetails({ method: 'Local Parser', confidence: 0.85 });
         } else {
-          setError('Tidak ada transaksi terdeteksi. Coba format teks yang berbeda.');
+          setError(K.no_transaction);
         }
         return;
       }
@@ -119,7 +126,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
         setParseDetails({ method: 'Local Parser', confidence: 0.75 });
         setStep('preview');
       } else {
-        setError('Gagal parse: ' + (err.message || 'Unknown error'));
+        setError(K.parse_failed + ' ' + (err.message || K.unknown_error));
       }
     } finally {
       setLoading(false);
@@ -218,7 +225,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
         transaction_type: type.toUpperCase(),
         suggested_type: type,
         merchant_name: merchant || 'Parsed Transaction',
-        description: merchant || 'Transaction from parsed text',
+        description: merchant || K.from_parsed_text,
         date: dateStr || new Date().toISOString().split('T')[0],
         confidence_score: 0.75,
         detection_type: 'local_parser',
@@ -231,12 +238,12 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
 
   const handleConfirm = async () => {
     if (!selectedResult) {
-      setError('Pilih transaksi terlebih dahulu');
+      setError(K.pick_transaction);
       return;
     }
     
     if (!selectedResult.account_id) {
-      setError('Pilih akun terlebih dahulu');
+      setError(K.pick_account);
       return;
     }
 
@@ -265,7 +272,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
       handleClose();
     } catch (err) {
       console.error('Confirm error:', err);
-      setError('Gagal menyimpan: ' + (err.message || 'Unknown error'));
+      setError(K.save_failed + ' ' + (err.message || K.unknown_error));
     } finally {
       setConfirming(false);
     }
@@ -315,7 +322,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
         <div className="space-y-4">
           {/* Quick Samples */}
           <div className="bg-primary-50 dark:bg-primary-900/30 rounded-lg p-3">
-            <p className="text-sm text-primary-800 dark:text-primary-300 mb-2 font-medium">💡 Contoh cepat:</p>
+            <p className="text-sm text-primary-800 dark:text-primary-300 mb-2 font-medium">{K.examples_title}</p>
             <div className="flex flex-wrap gap-2">
               {sampleTexts.map((sample, i) => (
                 <button
@@ -332,12 +339,12 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
           {/* Text Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Tempel atau ketik teks SMS / QRIS / notifikasi
+              {K.input_label}
             </label>
             <textarea
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              placeholder="Tempel teks SMS bank, QRIS, GoPay, OVO, Dana, transfer, dll..."
+              placeholder={K.placeholder}
               className="w-full h-40 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                          placeholder-gray-400 dark:placeholder-gray-500 resize-none
@@ -429,7 +436,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
                     {/* Date */}
                     {result.date && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        📅 {result.date}
+                        {K.result_date} {result.date}
                       </p>
                     )}
                   </div>
@@ -491,7 +498,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
-              <option value="">Pilih Akun</option>
+              <option value="">{K.choose_account}</option>
               {accounts.map((acc) => (
                 <option key={acc.id} value={acc.id}>
                   {acc.name} - {formatCurrency(acc.balance, acc.currency)}
