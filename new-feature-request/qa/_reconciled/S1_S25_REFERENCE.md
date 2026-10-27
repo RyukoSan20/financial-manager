@@ -49,7 +49,7 @@ would have invented work rather than recovered it.
 |-------|-----|-------|
 | A1 | S1, S2, S3, S7, S8, S14, S17 | done |
 | A2 | S4, S5, S15, S18 | done |
-| A3 | S6, S22 | not started |
+| A3 | S6, S22 | done |
 | A4 | S13, S16 | not started |
 | A5 | S9, S10, S11, S12, S21, S25 | not started |
 | A6 | S20 | not started |
@@ -131,3 +131,74 @@ on. With the switch off, the rules match nothing.
   `"0"` gives off.
 - Every fallback in the pages was kept verbatim, so the switch-off
   page is the page that was there before.
+
+## A3: what was done
+
+**S6, Indonesian UI strings and consistent terms.** Two parts.
+
+*One word for each thing.* The complaint was that the Indonesian
+screen read as half-finished because English and Indonesian sat side
+by side: "Budget" on one page and "Anggaran" on the next, "Edit"
+here and "Ubah" there. A reader should not have to learn two words
+for one thing. Where two words competed, the one the application
+already used everywhere else won, so no preference was invented.
+`frontend/src/i18n/__tests__/terminology.test.js` holds the 25
+checks that stop a new page introducing a third word.
+
+*The messages that only ever appeared in Indonesian.* Ten screens
+read a message that was written in one language only, so an English
+or Japanese reader saw Indonesian or English where the rest of the
+page was in their own language. Each of those messages now has a
+name in all three languages, in `frontend/src/i18n/keys_batch4.js`.
+
+**S22, Indonesia-relevant calculators.** New tab on the calculators
+page, behind the `UI_POLISH` switch, so with the switch off the page
+is the page that was there before. Four calculators, because they
+follow Indonesian law and Indonesian institutions rather than a
+general rule:
+
+- **PPh 21** — the income tax an employer withholds. The three rate
+  tables of Lampiran PP 58/2023, the annual reckoning and the
+  December month, and the daily rate.
+- **PPN** — the sales tax, 11% on ordinary goods and 12% on luxury
+  goods.
+- **THR** — the religious holiday allowance: one month of wages after
+  a year of service, and a share of it before that.
+- **BPJS** — the health insurance, the old-age savings, the pension,
+  the accident cover and the death benefit, with what comes out of
+  the salary and what the employer adds.
+
+The working out is on the server, in
+`backend/app/services/calculation/indonesia.py`, because the rate
+tables live there and change when the rules change. The browser does
+not hold a copy of them. The endpoints are under
+`/api/calculators/id/`, and they need no account and read and write
+nothing.
+
+### A note on the wording of the results
+
+The server sends a code as well as a sentence wherever the sentence
+would otherwise have been shown to the reader: the way the holiday
+allowance was worked out, and the message for a failure. A sentence
+written in one language cannot be put into another, so the code is
+what the screen translates. The sentence is still sent, for a log or
+a developer, and is what the screen falls back to when a code has no
+name in the reader's language.
+
+### How this was checked
+
+- `backend/tests/unit/test_indonesia_calculations.py` — the worked
+  examples from the rules themselves.
+- `backend/tests/unit/test_indonesia_calculators_api.py` — that the
+  endpoints are wired up and answer with those numbers, and that the
+  calculators that were already there still answer.
+- `backend/tests/unit/test_indonesia_calculator_language.py` — that
+  the code arrives, and that a failure carries a code and a sentence.
+- `backend/tests/unit/test_indonesia_calculator_locales.py` — that
+  every code the server can send has a name in all three languages.
+- The regression tests were shown to fail when the fix was taken
+  out: removing `method_code` failed three checks, and putting the
+  plain sentence back into the failures failed two more.
+- The build was run with the switch on and with it off, and the
+  bundle read to confirm the tab is present in one and absent in the
+  other.
