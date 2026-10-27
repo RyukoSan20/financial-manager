@@ -56,6 +56,9 @@ class NotificationSettingsResponse(BaseModel):
     monthly_summary: bool = False
     reminder_frequency: str = "weekly"
     reminder_days_before: int = 3
+    reminder_enabled: bool = False
+    reminder_time: str = "19:00"
+    reminder_day_of_week: int = 1
 
 
 class SettingsResponse(BaseModel):
@@ -93,6 +96,9 @@ class NotificationSettingsUpdate(BaseModel):
     monthly_summary: Optional[bool] = None
     reminder_frequency: Optional[str] = None
     reminder_days_before: Optional[int] = Field(default=None, ge=0, le=30)
+    reminder_enabled: Optional[bool] = None
+    reminder_time: Optional[str] = None
+    reminder_day_of_week: Optional[int] = Field(default=None, ge=0, le=6)
 
 
 class SupportRequestCreate(BaseModel):
@@ -166,6 +172,9 @@ def _to_notif_response(s: UserSettings) -> NotificationSettingsResponse:
         monthly_summary=s.monthly_summary,
         reminder_frequency=s.reminder_frequency,
         reminder_days_before=s.reminder_days_before,
+        reminder_enabled=s.reminder_enabled,
+        reminder_time=s.reminder_time,
+        reminder_day_of_week=s.reminder_day_of_week,
     )
 
 

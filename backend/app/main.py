@@ -20,7 +20,7 @@ from app.api.routes import (
     currency,
     realtime_market, logs, merchant, webhooks, location,
     unified_market, user_settings, voice, profile, learning, scans,
-    breakdown, indonesia_calculators,
+    breakdown, indonesia_calculators, reminders,
 )
 
 # Import models to register with SQLAlchemy
@@ -165,6 +165,25 @@ def _run_schema_migrations():
                 except Exception as e:
                     print(f"[MIGRATION] Failed to add supabase_id: {e}")
 
+            # Migration: the reminders are opt-in, so the table needs
+            # to know whether the reader turned them on, and when.
+            try:
+                settings_columns = [col['name'] for col in inspector.get_columns('user_settings')]
+                if 'reminder_enabled' not in settings_columns:
+                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN reminder_enabled BOOLEAN DEFAULT FALSE"))
+                    conn.commit()
+                    print("[MIGRATION] Added reminder_enabled column to user_settings")
+                if 'reminder_time' not in settings_columns:
+                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN reminder_time VARCHAR(5) DEFAULT '19:00'"))
+                    conn.commit()
+                    print("[MIGRATION] Added reminder_time column to user_settings")
+                if 'reminder_day_of_week' not in settings_columns:
+                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN reminder_day_of_week INTEGER DEFAULT 1"))
+                    conn.commit()
+                    print("[MIGRATION] Added reminder_day_of_week column to user_settings")
+            except Exception as e:
+                print(f"[MIGRATION] user_settings reminders: {e}")
+
             # Migration: Add period_type to budgets if missing
             try:
                 budgets_columns = [col['name'] for col in inspector.get_columns('budgets')]
@@ -261,6 +280,7 @@ app.include_router(shopping.router, prefix="/api/shopping", tags=["Shopping Boar
 app.include_router(kanban_board.router, prefix="/api/kanban", tags=["Kanban Board"])
 app.include_router(exchange.router, prefix="/api/exchange")
 app.include_router(currency.router, prefix="/api/currency", tags=["Currency"])
+app.include_router(reminders.router, prefix="/api/reminders", tags=["Reminders"])
 # unified_market MUST be registered before market so its real-time handlers win
 # on the shared paths (/summary, /crypto, /commodities). FastAPI matches the
 # first registered route, and market.py only serves the legacy Yahoo-based

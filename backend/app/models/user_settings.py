@@ -64,6 +64,15 @@ class UserSettings(Base):
     monthly_summary = Column(Boolean, default=False, nullable=False)
     reminder_frequency = Column(String(10), default="weekly", nullable=False)
     reminder_days_before = Column(Integer, default=3, nullable=False)
+    # The reminders are opt-in. Nothing is reminded about, and nothing
+    # is asked of the browser, until the reader turns them on.
+    reminder_enabled = Column(Boolean, default=False, nullable=False)
+    reminder_time = Column(String(5), default="19:00", nullable=False)
+    # The day of the week the weekly reminder falls on. This is its
+    # own column, because `reminder_days_before` already means
+    # "how many days before a bill is due" and the two are not the
+    # same thing.
+    reminder_day_of_week = Column(Integer, default=1, nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
