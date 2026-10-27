@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
 import { batch3 } from '../i18n/keys_batch3';
+import { batch4 } from '../i18n/keys_batch4';
 
 export const Register = () => {
   const [form, setForm] = useState({
@@ -18,6 +19,7 @@ export const Register = () => {
   const { register, isSupabase } = useAuth();
   const { language } = useTranslation();
   const K = batch3[language]?.register;
+  const A = batch4[language]?.register;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,7 +66,7 @@ export const Register = () => {
     }
 
     if (passwordStrength.score < 2) {
-      setError('Password terlalu lemah. Gunakan kombinasi huruf besar, kecil, angka, dan simbol.');
+      setError(A.weak_password);
       return;
     }
 
@@ -74,7 +76,7 @@ export const Register = () => {
       await register(form.email, form.password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Registrasi gagal. Email mungkin sudah terdaftar.');
+      setError(err.message || A.failed);
     } finally {
       setLoading(false);
     }
