@@ -5,6 +5,7 @@ import api from '../services/api';
 import { showNotification } from '../components/notifications/NotificationHelper';
 import { useTranslation } from '../i18n';
 import { batch3 } from '../i18n/keys_batch3';
+import { batch4 } from '../i18n/keys_batch4';
 import { CURRENCIES, CURRENCY_CODES, formatNative, useCurrency } from '../utils/currency';
 import { formatCurrency } from '../utils/format';
 
@@ -28,6 +29,7 @@ const getAccountIcon = (type) => {
 export const Accounts = () => {
   const { t, language } = useTranslation();
   const K = batch3[language]?.accounts;
+  const A = batch4[language]?.accounts;
   const { currency: displayCurrency } = useCurrency();
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +71,7 @@ export const Accounts = () => {
       fetchData();
     } catch (err) {
       console.error('Failed to save account:', err);
-      alert('Failed to save account: ' + (err.message || 'Unknown error'));
+      alert(A.save_failed + (err.message || A.unknown_error));
     }
   };
 
