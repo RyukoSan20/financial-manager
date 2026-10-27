@@ -38,4 +38,5 @@ from . import (
     learning,
     scans,
     indonesia_calculators,
+    insights,
 )

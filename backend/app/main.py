@@ -20,7 +20,7 @@ from app.api.routes import (
     currency,
     realtime_market, logs, merchant, webhooks, location,
     unified_market, user_settings, voice, profile, learning, scans,
-    breakdown, indonesia_calculators, reminders,
+    breakdown, indonesia_calculators, reminders, insights,
 )
 
 # Import models to register with SQLAlchemy
@@ -281,6 +281,7 @@ app.include_router(kanban_board.router, prefix="/api/kanban", tags=["Kanban Boar
 app.include_router(exchange.router, prefix="/api/exchange")
 app.include_router(currency.router, prefix="/api/currency", tags=["Currency"])
 app.include_router(reminders.router, prefix="/api/reminders", tags=["Reminders"])
+app.include_router(insights.router, prefix="/api/insights", tags=["Insights"])
 # unified_market MUST be registered before market so its real-time handlers win
 # on the shared paths (/summary, /crypto, /commodities). FastAPI matches the
 # first registered route, and market.py only serves the legacy Yahoo-based
