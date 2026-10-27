@@ -32,7 +32,10 @@ class KMSEncryption:
             iterations=100000,
             backend=default_backend()
         )
-        return kdf.verify(self.master_key.encode(), salt)
+        # derive, not verify: this is the key the master key and the
+        # salt produce. verify() checks a signature and always fails
+        # here, so every encryption raised "Keys do not match".
+        return kdf.derive(self.master_key.encode())
     
     def encrypt(self, plaintext: str) -> str:
         """
