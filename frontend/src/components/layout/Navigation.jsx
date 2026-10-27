@@ -41,6 +41,14 @@ import { showNotification } from '../notifications/NotificationHelper';
 import AddTransactionPage from './AddTransactionPage';
 import { UserProfileSection } from './UserProfileSection';
 import { CurrencyBadge } from '../common/CurrencyBadge';
+import GroupedNav, { buildNavMap, isGroupedNavOn } from './GroupedNav';
+
+// The icons by the name the grouped view uses them under.
+const ICONS = {
+  LayoutDashboard, Receipt, Wallet, PiggyBank, Repeat, Target, CreditCard,
+  Calculator, BarChart3, Settings, Map, Sparkles, Heart, ShoppingCart,
+  Kanban, Mail, ShoppingBag, PieChart, BellRing,
+};
 
 const navItems = (t) => [
   { name: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
@@ -96,6 +104,10 @@ const Sidebar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        {isGroupedNavOn() ? (
+          <GroupedNav navMap={buildNavMap(t)} icons={ICONS} />
+        ) : (
+        <>
         <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider dark:text-gray-300">{t('nav.dashboard')}</p>
         {items.map((item) => {
           const isActive = location.pathname === item.href || 
@@ -119,6 +131,8 @@ const Sidebar = () => {
             </Link>
           );
         })}
+        </>
+        )}
       </nav>
 
       {/* Bottom Section */}
@@ -234,6 +248,10 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
               
               {/* Menu Items */}
               <nav className="flex-1 py-2 px-3 space-y-1 overflow-y-auto">
+                {isGroupedNavOn() ? (
+                  <GroupedNav navMap={buildNavMap(t)} icons={ICONS} />
+                ) : (
+                <>
                 {items.map((item) => {
                   const isActive = location.pathname === item.href;
                   return (
@@ -253,6 +271,8 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
                     </Link>
                   );
                 })}
+                </>
+                )}
               </nav>
               
               {/* Bottom */}
