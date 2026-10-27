@@ -4,8 +4,8 @@ Last updated (2026-10-28T06:47:50+0700, reconcile-state session)
 
 NEXT ACTION
 Send the reconcile-state report (section 8 format) and STOP. Wait for
-the owner's choice on 3.6 (privacy manifest) and for approval of the
-queue item to work on next.
+the owner's choice on 3.6 (privacy manifest: restore-and-redo versus
+finish the refactor), and for approval of the next queue item (Q1).
 
 IN-FLIGHT
 Nothing. The previous session was interrupted during a privacy-manifest
@@ -157,3 +157,17 @@ SESSION LOG
   still import it; that commit is an ancestor of main. Verified D3:
   pytest is not in the production dependency set. Wrote this file and
   CONSTRAINTS.md, and scripts/agent_preflight.sh.
+
+  2026-10-28T06:55:00+0700  Committed 66400a2 (agent_state: PROGRESS.md,
+  CONSTRAINTS.md, agent_preflight.sh) and 509bb71 (docs/flags.md).
+  Ran the preflight: it exits 1, correctly, because the uncommitted
+  privacy manifest fails its test. Lint 0 errors / 204 warnings, backend
+  pytest 192 passed, build PASS. Built main in a detached worktree for
+  a like-for-like chunk comparison, then removed it: main main chunk
+  1,518.56 kB (gzip 422.59 kB), this branch 1,619.26 kB (gzip 453.99 kB),
+  +100.70 kB raw / +31.40 kB gzip.
+  Measured the C6 caps: 4 commits exceed 150 changed lines against
+  existing files alone (90153aa 158, f440b17 331, bc4f973 171,
+  c4edc01 163) and 20 commits exceed 40 lines on a single existing
+  file. All are listed in the report for the owner to accept or cut.
+  STOPPED here to send the report.
