@@ -19,6 +19,7 @@ app and come back to the result through the notification sheet.
 
 import base64
 import logging
+from datetime import date, datetime
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
@@ -97,6 +98,111 @@ def _run_in_own_session(
         session.close()
 
 
+def _parse_scan_date(value: Any) -> Optional[date]:
+    """
+    The date of a scan, as a date.
+
+    The receipt parsers hand back a date in several shapes: a plain
+    "YYYY-MM-DD" string, a full timestamp, or nothing at all. A
+    transaction needs a real date, so the shapes are turned into one
+    here rather than being left to fail further down.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    text = str(value).strip()
+    if not text:
+        return None
+    for pattern in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(text[:10], pattern).date()
+        except ValueError:
+            continue
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).date()
+    except ValueError:
+        return None
+
+
+def _create_transaction_for_scan(
+    db: Session,
+    user_id: int,
+    result: Dict[str, Any],
+    receipt_scan_id: Optional[int],
+) -> Optional[int]:
+    """
+    Make the transaction for a finished scan.
+
+    A scan used to stop at the receipt: the receipt and its lines were
+    written down and the products were learned into the catalogue, but
+    no transaction was ever made. So the result sheet had something to
+    show, and the history had nothing in it, and the "View Transaction"
+    button led to a page with no transaction on it.
+
+    The transaction is created here, as a pending one. It waits for the
+    review, because nobody has looked at the scan yet and the amount
+    may be wrong. It does not move the balance until it is approved.
+
+    The account is the reader's first active one, which is the same
+    choice the other incoming-transaction paths make.
+    """
+    from decimal import Decimal
+
+    from app.models.account import Account
+    from app.models.transaction import Transaction
+
+    breakdown = result.get("breakdown") or {}
+    items = breakdown.get("items") or result.get("items") or []
+
+    total = result.get("amount") or result.get("total_amount") or breakdown.get("total")
+    try:
+        amount = float(str(total).replace(".", "").replace(",", ".")) if total else 0.0
+    except (TypeError, ValueError):
+        amount = 0.0
+
+    if not amount:
+        return None
+
+    account = db.query(Account).filter(
+        Account.user_id == user_id,
+        Account.is_active == True,
+    ).first()
+    if account is None:
+        # There is nowhere to put the money, so there is no transaction
+        # to make. The scan itself is still saved.
+        logger.warning("Scan saved but no active account to hold the transaction")
+        return None
+
+    merchant = result.get("merchant_name") or "Merchant"
+    transaction_date = _parse_scan_date(result.get("date")) or date.today()
+
+    transaction = Transaction(
+        user_id=user_id,
+        type="expense",
+        amount=Decimal(str(amount)),
+        currency=account.currency or "IDR",
+        date=transaction_date,
+        description=f"{merchant} - {result.get('payment_method') or ''}".strip(" -"),
+        notes=result.get("raw_text"),
+        account_id=account.id,
+        receipt_scan_id=receipt_scan_id,
+        merchant_name=merchant,
+        merchant_address=result.get("merchant_address"),
+        detection_type="OCR_RECEIPT",
+        # The scan has not been looked at yet, so the transaction waits
+        # for the review rather than moving the balance straight away.
+        status="pending",
+        source="camera_scan",
+        confidence_score=Decimal(str(result.get("confidence_score") or 0)),
+    )
+    db.add(transaction)
+    db.flush()
+    return int(transaction.id)
+
+
 def _save_scan_to_db(
     db: Session,
     user_id: int,
@@ -131,7 +237,10 @@ def _save_scan_to_db(
             subtotal=Decimal(str(breakdown.get("subtotal") or 0)),
             discount_total=Decimal(str(breakdown.get("discount_total") or 0)),
             payment_method=result.get("payment_method"),
-            receipt_date=result.get("date"),
+            # The column is a date and a time, so a plain string is
+            # refused by the database. This was silently failing and
+            # losing the whole receipt.
+            receipt_date=_parse_scan_date(result.get("date")),
             address=result.get("merchant_address"),
             ocr_confidence=Decimal(str(result.get("confidence_score") or 0)),
             detection_type="ENTERPRISE_LOCAL_OCR",
@@ -165,6 +274,17 @@ def _save_scan_to_db(
             )
 
         db.commit()
+
+        # The transaction for the scan. Without it the receipt is on
+        # file but there is no transaction to open, and the history
+        # stays empty.
+        transaction_id = _create_transaction_for_scan(
+            db, user_id, result, int(scan.id)
+        )
+        if transaction_id:
+            result["transaction_id"] = transaction_id
+            db.commit()
+
         return int(scan.id)
     except Exception as exc:  # noqa: BLE001 - a failed save must not lose the scan
         logger.exception("Failed to persist background scan")
