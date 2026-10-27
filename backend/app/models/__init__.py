@@ -19,6 +19,7 @@ from app.models.merchant_catalog import MerchantCatalog, UserProduct
 from app.models.learning_note import LearningNote
 from app.models.breakdown_item import BreakdownItem
 from app.models.catalog_icon import CatalogIcon
+from app.models.gmail_credentials import GmailCredentials
 
 __all__ = [
     "Account",
@@ -51,4 +52,5 @@ __all__ = [
     "LearningNote",
     "BreakdownItem",
     "CatalogIcon",
+    "GmailCredentials",
 ]
