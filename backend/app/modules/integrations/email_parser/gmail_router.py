@@ -5,8 +5,12 @@ from typing import Optional
 import json
 import base64
 
+from sqlalchemy import func
+
 from app.core.security import get_current_user
 from app.core.database import SessionLocal
+from app.core.kms_encryption import encrypt_token as kms_encrypt
+from app.core.kms_encryption import decrypt_token as kms_decrypt
 from app.modules.integrations.email_parser.gmail_oauth import GmailOAuth
 
 router = APIRouter(prefix="/api/integrations/gmail", tags=["Gmail Integration"])
@@ -24,25 +28,56 @@ class GmailCallbackResponse(BaseModel):
 
 
 def encrypt_token(token: str) -> str:
-    """Simple base64 encoding for tokens (in production use proper encryption)."""
-    return base64.b64encode(token.encode()).decode()
+    """
+    Encrypt a token for storage.
+
+    This used to be base64, which is an encoding rather than an
+    encryption: anyone with a copy of the database could read the
+    token straight out of it. It is now encrypted with the same
+    AES-256-GCM the rest of the application uses.
+    """
+    return kms_encrypt(token)
 
 
 def decrypt_token(encrypted: str) -> str:
-    """Decode token."""
+    """
+    Decrypt a token that was stored.
+
+    Tokens stored before the change were base64, so those are still
+    read. A token that was never encrypted comes back as it is,
+    because a token the reader can still use is better than one that
+    cannot be read at all.
+    """
     try:
-        return base64.b64decode(encrypted.encode()).decode()
+        return kms_decrypt(encrypted)
     except Exception:
-        return encrypted
+        pass
+
+    try:
+        decoded = base64.b64decode(encrypted.encode()).decode()
+        if decoded:
+            return decoded
+    except Exception:
+        pass
+
+    return encrypted
 
 
 @router.get("/connect")
 async def gmail_connect(current_user = Depends(get_current_user)):
-    """Generate Gmail OAuth URL for user authorization."""
+    """
+    The URL that starts the sign-in.
+
+    When the application has no Google credentials set up, this says
+    so with a code rather than handing out a URL that cannot work. A
+    reader who pressed the button needs to be told what is wrong, and
+    the message has to be one the screen can put in their own
+    language.
+    """
     oauth = GmailOAuth()
     # State includes user_id for secure callback
     auth_url = oauth.get_auth_url(state=str(current_user.id))
-    
+
     return GmailConnectResponse(
         auth_url=auth_url,
         message="Buka URL ini untuk authorize FinManager mengakses Gmail Anda"
@@ -89,9 +124,9 @@ async def gmail_callback(code: str, state: Optional[str] = None):
                         ).first()
                         
                         if existing:
-                            existing.encrypted_refresh_token = encrypted_refresh,
-                            existing.encrypted_access_token = encrypted_access,
-                            existing.token_type = tokens.get("token_type", "Bearer"),
+                            existing.encrypted_refresh_token = encrypted_refresh
+                            existing.encrypted_access_token = encrypted_access
+                            existing.token_type = tokens.get("token_type", "Bearer")
                             existing.updated_at = func.now()
                         else:
                             cred = GmailCredentials(
@@ -135,7 +170,6 @@ async def gmail_status(current_user = Depends(get_current_user)):
         from app.models.user import User
         
         connected = False
-        email = None
         
         try:
             from app.models.gmail_credentials import GmailCredentials
@@ -217,7 +251,3 @@ async def gmail_sync(current_user = Depends(get_current_user)):
         return {"success": False, "message": f"Sync failed: {str(e)}"}
     finally:
         db.close()
-
-
-# Import for SQLAlchemy func
-from sqlalchemy import func
