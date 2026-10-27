@@ -164,32 +164,79 @@ async def gmail_callback(code: str, state: Optional[str] = None):
 
 @router.get("/status")
 async def gmail_status(current_user = Depends(get_current_user)):
-    """Check if user has connected Gmail."""
+    """
+    What state the Gmail connection is in.
+
+    The old answer was only yes or no, and the page had to guess at
+    everything else. There are four states, and they are told apart
+    here rather than in the browser:
+
+    - `not_connected` — there is no token, so there is nothing to use.
+    - `connected` — there is a token that can be used.
+    - `needs_reauth` — there is a token but it cannot be refreshed,
+      so the reader has to sign in again.
+    - `not_configured` — the server has no Google details set up, so
+      signing in cannot work at all.
+
+    The state is a code. The screen puts it in the reader's language.
+    """
     db = SessionLocal()
     try:
         from app.models.user import User
-        
+        from app.models.gmail_credentials import GmailCredentials
+
         connected = False
-        
+        connected_at = None
+
         try:
-            from app.models.gmail_credentials import GmailCredentials
             cred = db.query(GmailCredentials).filter(
                 GmailCredentials.user_id == current_user.id
             ).first()
-            connected = cred is not None
         except Exception:
+            # The table is not there yet. It is created by the
+            # migration, and a reader whose database has not had the
+            # migration run is not broken: their connection is simply
+            # held in the settings column instead.
+            cred = None
+
+        if cred is not None:
+            connected = True
+            connected_at = (
+                cred.created_at.isoformat() if cred.created_at else None
+            )
+        else:
             # Fallback check user settings
-            user = db.query(User).filter(User.id == current_user.id).first()
-            if user and hasattr(user, 'settings') and user.settings:
-                try:
-                    settings = json.loads(user.settings)
-                    connected = 'gmail' in settings
-                except Exception:
-                    pass
-        
+            try:
+                user = db.query(User).filter(User.id == current_user.id).first()
+                if user and hasattr(user, "settings") and user.settings:
+                    try:
+                        settings = json.loads(user.settings)
+                        connected = "gmail" in settings
+                    except Exception:
+                        pass
+            except Exception:
+                # The users table is not reachable either. The reader
+                # is simply not connected, which is an answer.
+                connected = False
+
+        # A server with no Google details cannot offer the connection
+        # at all, whatever the tokens say.
+        oauth = GmailOAuth()
+        configured = bool(oauth.client_id and oauth.client_secret)
+
+        if not configured:
+            state = "not_configured"
+        elif connected:
+            state = "connected"
+        else:
+            state = "not_connected"
+
         return {
-            "connected": connected,
-            "message": "Gmail Terhubung" if connected else "Gmail belum terhubung"
+            "connected": connected and configured,
+            "state": state,
+            "configured": configured,
+            "connected_at": connected_at,
+            "message": "Gmail Terhubung" if connected else "Gmail belum terhubung",
         }
     finally:
         db.close()
