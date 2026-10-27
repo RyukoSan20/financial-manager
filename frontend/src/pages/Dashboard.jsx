@@ -17,6 +17,7 @@ import { useTranslation } from '../i18n';
 import { categoryName, categoryKey, transactionCategoryName } from '../utils/categoryName';
 import AIAssistant from '../components/common/AIAssistant';
 import ReadinessChecklist from '../components/ReadinessChecklist';
+import InsightsPanel from '../components/insights/InsightsPanel';
 import MonthTimeline from '../components/dashboard/MonthTimeline';
 import Onboarding from '../components/dashboard/Onboarding';
 import { useTheme } from '../contexts/ThemeContext';
@@ -894,6 +895,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           next and the button goes straight there. */}
       <Onboarding />
       <ReadinessChecklist />
+
+      {/* What the records already say: a bill paid twice, a
+          subscription never set up, the balance for the month ahead.
+          The panel draws nothing at all when the switch is off. */}
+      <InsightsPanel />
 
       {/* ================================================================ */}
       {/* FINANCIAL HEALTH STATUS - DIPULIHKAN */}
