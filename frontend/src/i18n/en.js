@@ -52,6 +52,7 @@ export default {
   
   // Common
   common: {
+    unknown_error: "Unknown error",
     loading: "Loading...",
     other: "Other",
     total: "Total",

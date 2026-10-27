@@ -52,6 +52,7 @@ export default {
   
   // Common
   common: {
+    unknown_error: "不明なエラー",
     loading: "読み込み中...",
     other: "その他",
     total: "合計",
