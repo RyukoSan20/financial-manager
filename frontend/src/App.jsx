@@ -1,10 +1,14 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationToast } from './components/notifications/NotificationBell';
 import { ScanNotification } from './components/parser/ScanNotification';
 import { Layout } from './components/layout/Layout';
+import ReminderScheduler from './components/notifications/ReminderScheduler';
+import AdvancedLocked from './components/common/AdvancedLocked';
+import { canSeePage } from './components/layout/GroupedNav';
 import { AddTransactionPage, MorePage } from './components/layout/Navigation';
 import { I18nProvider } from './i18n';
 import {
@@ -65,6 +69,25 @@ const RequireAuth = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
   
+  return children;
+};
+
+/**
+ * A page that needs the advanced features.
+ *
+ * The page itself is shown when the advanced features are on. When
+ * they are off, the reader is told what is going on and offered the
+ * switch, rather than being dropped on a blank page.
+ */
+const AdvancedPage = ({ children }) => {
+  const location = useLocation();
+  const [allowed, setAllowed] = useState(() => canSeePage(location.pathname));
+
+  useEffect(() => {
+    setAllowed(canSeePage(location.pathname));
+  }, [location.pathname]);
+
+  if (!allowed) return <AdvancedLocked onTurnedOn={() => setAllowed(true)} />;
   return children;
 };
 
@@ -134,8 +157,8 @@ function App() {
               <Route path="recurring" element={<Recurring />} />
               <Route path="calculators" element={<Calculators />} />
               <Route path="analytics" element={<Analytics />} />
-              <Route path="merchant" element={<MerchantManager />} />
-              <Route path="map" element={<MerchantMap />} />
+              <Route path="merchant" element={<AdvancedPage><MerchantManager /></AdvancedPage>} />
+              <Route path="map" element={<AdvancedPage><MerchantMap /></AdvancedPage>} />
               <Route path="advisor" element={<AIAdvisor />} />
               <Route path="health-coach" element={<HealthCoach />} />
               <Route path="shopping" element={<ShoppingTracker />} />
@@ -173,6 +196,11 @@ function App() {
           {/* The background scan notification. It sits above everything
               else so a finished scan is visible from any page. */}
           <ScanNotification />
+
+          {/* The reminders. This shows nothing on its own; it only
+              asks the browser to show a reminder when one is due and
+              the reader has turned them on. */}
+          <ReminderScheduler />
         </BrowserRouter>
         </NotificationProvider>
         </ThemeProvider>
