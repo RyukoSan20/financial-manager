@@ -508,7 +508,7 @@ const DataTab = ({ logout }) => {
       setMessage(t('settings.data.exported'));
     } catch (error) {
       console.error('Export error:', error);
-      setMessage('Export failed: ' + (error.message || 'Unknown error'));
+      setMessage(t('settings.data.export_failed') + ': ' + (error.message || t('common.unknown_error')));
     } finally {
       setLoading(false);
     }
