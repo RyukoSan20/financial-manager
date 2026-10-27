@@ -6,7 +6,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 
-from .gmail_oauth import GmailOAuth, GmailService
+from .gmail_oauth import GmailOAuth
+from .gmail_service import GmailService, get_gmail_service
 from .parser_registry import parser_registry
 
 
@@ -56,9 +57,15 @@ class EmailPoller:
         Returns summary of polling results.
         """
         try:
-            # Get Gmail service
-            access_token = self.oauth.get_access_token(credentials)
-            gmail = GmailService(access_token)
+            # Get Gmail service. The service refreshes the access
+            # token itself when the one that was stored has expired.
+            gmail = get_gmail_service(credentials)
+            if not gmail:
+                return {
+                    "emails_checked": 0,
+                    "transactions_created": 0,
+                    "error": "no usable Gmail credentials"
+                }
             
             # Build query
             domains = " OR ".join([f"from:{d}" for d in self.config.enabled_domains])
