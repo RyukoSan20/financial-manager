@@ -23,6 +23,7 @@ import {
 import { api } from '../../services/api';
 import { useTranslation } from '../../i18n';
 import { batch3 } from '../../i18n/keys_batch3';
+import { batch4 } from '../../i18n/keys_batch4';
 
 const money = (value) => `Rp${Number(value || 0).toLocaleString('id-ID')}`;
 
@@ -58,7 +59,10 @@ export const BreakdownViewer = ({
   compact = false,
 }) => {
   const { language } = useTranslation();
+  // The messages here were written in Indonesian while the rest of
+  // the screen was translated, so the screen read as half done.
   const K = batch3[language]?.breakdown;
+  const M = batch4[language]?.breakdown;
   const [lines, setLines] = useState(initialLines || []);
   const [expanded, setExpanded] = useState(!compact);
   const [busy, setBusy] = useState(false);
@@ -107,7 +111,7 @@ export const BreakdownViewer = ({
       setError('');
       onChanged?.(res);
     } catch (err) {
-      setError('Gagal memuat rincian');
+      setError(M.load_failed);
     } finally {
       setBusy(false);
     }
@@ -120,7 +124,7 @@ export const BreakdownViewer = ({
       setLines(res.lines || []);
       onChanged?.(res);
     } catch (err) {
-      setError('Gagal menghapus baris');
+      setError(M.delete_failed);
     } finally {
       setBusy(false);
     }
@@ -130,7 +134,7 @@ export const BreakdownViewer = ({
     e.preventDefault();
     const amount = Number(String(draft.total_price).replace(/[^\d]/g, ''));
     if (!draft.name.trim() || !amount) {
-      setError('Nama dan nominal harus diisi');
+      setError(M.name_and_amount_required);
       return;
     }
     setBusy(true);
@@ -150,7 +154,7 @@ export const BreakdownViewer = ({
       setError('');
       onChanged?.(res);
     } catch (err) {
-      setError('Gagal menambah baris');
+      setError(M.add_failed);
     } finally {
       setBusy(false);
     }
