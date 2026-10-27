@@ -10,17 +10,31 @@ import { IconText } from "../ui/IconText";
 import { buildFlag } from "../../utils/featureFlags";
 import { batch1, fill } from "../../i18n/keys_batch1";
 import { categoryName } from '../../utils/categoryName';
+import {
+  sanitizeAmount,
+  formatAmountInput,
+  parseAmount,
+  addAmount,
+} from '../../utils/amountInput';
+import { formatNative, currencyConfig } from '../../utils/currency';
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { language, getCurrencyConfig } = useTranslation();
+  const { language } = useTranslation();
   // With the polish switch off, the page keeps the drawings it has.
   const polished = buildFlag('UI_POLISH');
   const K = batch1[language]?.addTx || batch1.id.addTx;
-  // The currency is a choice of its own, so the symbol is read from the
-  // store rather than written into the page.
-  const currencySymbol = getCurrencyConfig().symbol;
+  // The symbol on the amount field is the symbol of the currency the
+  // amount is written in, which is the currency of the account the
+  // money goes into. The display currency is a reading choice, and
+  // putting its symbol on a dollar amount would say the wrong thing.
+  const amountSymbol = (currencyConfig(accountCurrency) || {}).symbol || 'Rp';
+  // The currency the amount is written in. This is the currency of the
+  // account the money goes into, because a transaction is in the
+  // currency of its account. The display currency is a reading choice
+  // and does not change the money itself.
+  const [accountCurrency, setAccountCurrency] = useState('IDR');
   
   // Helper: Get date in WIB timezone (YYYY-MM-DD) - defined first
   const getWIBDate = (offsetDays = 0) => {
@@ -54,6 +68,11 @@ const AddTransactionPage = () => {
   const [saving, setSaving] = useState(false);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [showAccountSheet, setShowAccountSheet] = useState(false);
+  // Which end of a transfer is being picked: the source or the
+  // destination. Both used to open the same sheet, which meant the two
+  // ends could not be told apart and picking one could overwrite the
+  // other.
+  const [accountSheetSide, setAccountSheetSide] = useState('source');
   const [showDateSheet, setShowDateSheet] = useState(false);
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   
@@ -265,20 +284,25 @@ const AddTransactionPage = () => {
   }, [quickEntry, nlpPreview]);
 
   // Format number with dots
+  //
+  // The amount is written the way its own currency writes it, and the
+  // reader's currency is the currency of the account the money goes
+  // into. The helpers live in `utils/amountInput.js`, because the
+  // rules about decimals and grouping are the same wherever money is
+  // typed.
   const formatNumber = (num) => {
     if (!num) return "";
-    return parseInt(num.toString().replace(/\D/g, "")).toLocaleString("id-ID");
+    return formatAmountInput(String(num), accountCurrency);
   };
 
   // Parse formatted number
   const parseNumber = (formatted) => {
-    return parseInt(formatted.replace(/\./g, "") || "0");
+    return parseAmount(formatted, accountCurrency);
   };
 
   // Handle amount input
   const handleAmountChange = (e) => {
-    const raw = e.target.value.replace(/\D/g, "");
-    setAmount(raw);
+    setAmount(sanitizeAmount(e.target.value, accountCurrency));
   };
 
   // Apply recent combo
@@ -297,8 +321,7 @@ const AddTransactionPage = () => {
 
   // Quick add preset amount
   const addPreset = (preset) => {
-    const current = parseNumber(amount);
-    setAmount((current + preset).toString());
+    setAmount(addAmount(amount, preset, accountCurrency));
     amountInputRef.current?.focus();
   };
 
@@ -306,6 +329,17 @@ const AddTransactionPage = () => {
   const selectedCategory = categories.find(c => c.id === categoryId);
   const selectedAccount = accounts.find(a => a.id === accountId);
   const selectedToAccount = accounts.find(a => a.id === toAccountId);
+
+  // The amount is written in the currency of the account it is going
+  // into, so the currency follows the account. A reader with a dollar
+  // account and a rupiah account sees the amount written the way each
+  // of those currencies writes it.
+  useEffect(() => {
+    const next = (selectedAccount?.currency || 'IDR').toUpperCase();
+    if (next !== accountCurrency) {
+      setAccountCurrency(next);
+    }
+  }, [selectedAccount?.currency, accountCurrency]);
 
   // Save transaction
   const handleSave = async (addAnother = false) => {
@@ -322,33 +356,44 @@ const AddTransactionPage = () => {
       alert(K.pickCategoryAlert);
       return;
     }
+    // A transfer needs both ends. Without the destination, the money
+    // would leave the source account and never arrive anywhere, and
+    // the source would be debited for good. The whole transfer has to
+    // be checked before any of it is sent.
+    if (type === "transfer" && !toAccountId) {
+      alert(K.pickTargetAccountAlert);
+      return;
+    }
+    if (type === "transfer" && toAccountId === accountId) {
+      alert(K.sameAccountAlert);
+      return;
+    }
 
     setSaving(true);
     try {
       // Create transaction
       if (type === "transfer") {
-        // Create expense from source account
-        await api.transactions.create({
-          type: "expense",
+        // The server does the whole transfer in one go, so the money
+        // cannot be left half moved. The two transactions it writes are
+        // linked to each other and to the transfer itself, and the
+        // server rolls the whole thing back if any part of it fails.
+        //
+        // Writing the two halves here as two separate transactions was
+        // wrong in three ways: the two halves were not linked, so
+        // nothing could tell them apart later; the destination was
+        // credited the same number as the source was debited, even
+        // when the two accounts hold different currencies; and if the
+        // second half failed, the first was already saved, so the money
+        // had left the source account and arrived nowhere.
+        await api.transfers.create({
           amount: finalAmount,
+          currency: accountCurrency,
+          date,
           description: description || fill(K.transferToDesc, { name: selectedToAccount?.name || K.transferOtherAccount }),
-          account_id: accountId,
-          date,
-          category_id: getTransferCategory(),
-          client_request_id: `${transactionRequestId}-expense`,
+          from_account_id: accountId,
+          to_account_id: toAccountId,
         });
-        
-        // Create income to destination account
-        await api.transactions.create({
-          type: "income",
-          amount: finalAmount,
-          description: description || fill(K.transferFromDesc, { name: selectedAccount?.name || K.transferOtherAccount }),
-          account_id: toAccountId,
-          date,
-          category_id: getTransferCategory(),
-          client_request_id: `${transactionRequestId}-income`,
-        });
-        
+
         // Create fee as expense if any
         if (parseNumber(transferFee) > 0) {
           await api.transactions.create({
@@ -415,13 +460,9 @@ const AddTransactionPage = () => {
     }
   };
 
-  const getTransferCategory = () => {
-    // Find or create transfer category
-    const transferCat = categories.find(c => 
-      c.name.toLowerCase().includes("transfer")
-    );
-    return transferCat?.id || categories[0]?.id || 1;
-  };
+  // The transfer category is no longer needed here. The server writes
+  // the two halves of a transfer itself, and it does not use a category
+  // for them.
 
   const getFeeCategory = () => {
     const feeCat = categories.find(c => 
@@ -573,7 +614,7 @@ const AddTransactionPage = () => {
         {/* Amount Input */}
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-2xl">{currencySymbol}</span>
+            <span className="text-2xl">{amountSymbol}</span>
             <input
               ref={amountInputRef}
               type="text"
@@ -627,7 +668,10 @@ const AddTransactionPage = () => {
 
         {/* Account Selector */}
         <button
-          onClick={() => setShowAccountSheet(true)}
+          onClick={() => {
+            setAccountSheetSide('source');
+            setShowAccountSheet(true);
+          }}
           className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
         >
           <div className="text-left">
@@ -635,7 +679,7 @@ const AddTransactionPage = () => {
             <p className="font-medium">{selectedAccount?.name || K.pickAccount}</p>
             {selectedAccount?.balance && (
               <p className="text-xs text-gray-400">
-                {fill(K.balance, { amount: `${currencySymbol} ${parseInt(selectedAccount.balance).toLocaleString("id-ID")}` })}
+                {fill(K.balance, { amount: formatNative(selectedAccount.balance, selectedAccount.currency) })}
               </p>
             )}
           </div>
@@ -645,7 +689,10 @@ const AddTransactionPage = () => {
         {/* Transfer: To Account */}
         {type === "transfer" && (
           <button
-            onClick={() => setShowAccountSheet(true)}
+            onClick={() => {
+              setAccountSheetSide('destination');
+              setShowAccountSheet(true);
+            }}
             className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
           >
             <div className="text-left">
@@ -778,19 +825,32 @@ const AddTransactionPage = () => {
           <div className="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
             <div className="shrink-0 p-4 border-b">
               <h2 className="font-semibold text-lg">
-                {type === "transfer" && !toAccountId ? K.pickSourceAccount : K.pickAccountTitle}
+                {type === "transfer" && accountSheetSide === 'destination'
+                  ? K.pickTargetAccount
+                  : type === "transfer"
+                    ? K.pickSourceAccount
+                    : K.pickAccountTitle}
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {accounts.map((acc) => {
-                const isDisabled = type === "transfer" && toAccountId && acc.id === toAccountId;
+                // The two ends of a transfer cannot be the same
+                // account, so the other end is not offered.
+                const isDisabled = type === "transfer" && (
+                  accountSheetSide === 'destination'
+                    ? acc.id === accountId
+                    : acc.id === toAccountId
+                );
                 return (
                   <button
                     key={acc.id}
                     onClick={() => {
                       if (type === "transfer") {
-                        if (!toAccountId) setAccountId(acc.id);
-                        else setToAccountId(acc.id);
+                        if (accountSheetSide === 'destination') {
+                          setToAccountId(acc.id);
+                        } else {
+                          setAccountId(acc.id);
+                        }
                       } else {
                         setAccountId(acc.id);
                       }
@@ -800,8 +860,11 @@ const AddTransactionPage = () => {
                     className={`w-full p-4 rounded-xl flex items-center justify-between ${
                       isDisabled ? "opacity-50" : ""
                     } ${
-                      (type !== "transfer" && accountId === acc.id) || 
-                      (type === "transfer" && (accountId === acc.id || toAccountId === acc.id))
+                      type === "transfer"
+                        ? (accountSheetSide === 'destination'
+                            ? toAccountId === acc.id
+                            : accountId === acc.id)
+                        : accountId === acc.id
                         ? "bg-primary-50 border-2 border-primary-500" 
                         : "bg-gray-50"
                     }`}
@@ -809,7 +872,7 @@ const AddTransactionPage = () => {
                     <div>
                       <p className="font-medium">{acc.name}</p>
                       <p className="text-sm text-gray-500">
-                        {fill(K.balance, { amount: `${currencySymbol} ${parseInt(acc.balance || 0).toLocaleString("id-ID")}` })}
+                        {fill(K.balance, { amount: formatNative(acc.balance || 0, acc.currency) })}
                       </p>
                     </div>
                   </button>
