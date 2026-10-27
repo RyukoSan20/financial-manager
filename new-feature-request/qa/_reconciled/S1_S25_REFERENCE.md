@@ -52,7 +52,7 @@ would have invented work rather than recovered it.
 | A3 | S6, S22 | done |
 | A4 | S13, S16 | done |
 | A5 | S9, S10, S11, S12, S21, S25 | done |
-| A6 | S20 | not started |
+| A6 | S20 | done |
 | A7 | rows from the reconciled matrix | not started |
 | — | S19, S23, S24 | no batch assigned; S23 and S24 are audits, S19 needs a definition of what a streak counts |
 
@@ -363,4 +363,107 @@ days before a bill is due", and writing the day of the week into it
 would have quietly changed what that setting meant. So the day of the
 week has its own column, `reminder_day_of_week`, and the old setting
 keeps its meaning.
+
+## A6: what was done
+
+**S20, input flow.** This is the flow that records a transaction, so
+the money is what is at stake. Four things were wrong in it, and each
+one was found by reading the code rather than by looking at a screen.
+
+### The amount a reader types
+
+The old code read the amount with `parseInt` and stripped every
+character that was not a digit. That is right for rupiah, which has no
+cents, and wrong for everything else:
+
+- a dollar amount of 12.50 became 12, and the fifty cents were
+  quietly lost;
+- a rupiah amount of 12.50 became 12, and the digits the reader had
+  typed were quietly thrown away.
+
+The rules are now in `frontend/src/utils/amountInput.js`, as plain
+functions with no React in them:
+
+- the amount keeps the decimals its own currency has, and no more;
+- a currency with no cents has no decimal point at all;
+- the grouping is added for reading and taken off again when the
+  amount is read back;
+- a quick amount button adds to what is already typed, and the sum is
+  rounded to the currency's decimals, so 0.10 plus 0.20 is 0.30 and
+  not 0.30000000000000004.
+
+The currency is the currency of the account the money goes into, and
+it follows the account as the reader changes it. The symbol on the
+amount field and the balance under each account are written in that
+currency too. The display currency is a reading choice, and putting
+its symbol on a dollar amount would say the wrong thing.
+
+### The two ends of a transfer
+
+**The source and the destination opened the same sheet.** Both buttons
+called `setShowAccountSheet(true)`, and the sheet decided which end it
+was for by asking whether a destination had been picked yet. So the
+reader could not tell the two ends apart, and picking the source
+could overwrite the destination.
+
+There is now a separate sheet for each end, the sheet says which end
+it is picking, and the other end is not offered — a transfer to the
+same account is refused.
+
+**The two ends were written as two unrelated transactions.** The add
+screen wrote an `expense` out of the source account and an `income`
+into the destination account, as two separate requests. That was
+wrong in three ways:
+
+- the two halves were not linked to each other, so nothing could tell
+  them apart from two ordinary transactions that happened to be the
+  same amount;
+- the destination was credited the same number as the source was
+  debited, even when the two accounts hold different currencies;
+- if the second half failed, the first was already saved, so the money
+  had left the source account and arrived nowhere.
+
+There is already an endpoint on the server that does the whole
+transfer in one go — `/api/transfers/` — which writes both halves
+linked to each other, converts the amount when the two accounts hold
+different currencies and writes down the rate it used, and rolls the
+whole thing back if any part of it fails. Nothing was calling it. The
+add screen calls it now.
+
+**A transfer with no destination could still be saved.** The source
+was debited and committed, and only then did the credit fail, so the
+money had gone. The whole transfer is now checked before any of it is
+sent.
+
+### A bug in the transfer endpoint itself
+
+Writing the test for the above found one in the server that the page
+was not using.
+
+`create_transfer` wrote the outgoing transaction and then read
+`tx_out.id` to point the incoming transaction back at it. The row had
+not been flushed, so its id was `None`, and
+`transfer_to_transaction_id` was never set. The model says the link
+is what makes a transfer readable later; in practice it was silently
+never made.
+
+There is now a `db.flush()` between the two. The regression test was
+shown to fail when it was taken out.
+
+### How this was checked
+
+- `backend/tests/unit/test_transfer_atomicity.py` — that the two ends
+  of a transfer are linked to each other and to the transfer, that the
+  money leaves one account and arrives in the other, that a transfer to
+  the same account is refused, and that a transfer with no destination
+  is refused with nothing written and the money unmoved.
+- `frontend/src/utils/__tests__/amountInput.test.js` — 31 checks on
+  the amount: the decimals each currency has, what survives being
+  typed, how it is shown, how it is read back, and the quick amount
+  buttons.
+- The regression tests were shown to fail when the fixes were taken
+  out: taking out the `db.flush()` failed one check, and the amount
+  rules were checked against the old behaviour.
+- The build was run with the switch on and with it off, and the bundle
+  read to confirm.
 
