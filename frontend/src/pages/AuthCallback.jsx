@@ -5,10 +5,12 @@ import { getSupabase } from '../lib/supabase';
 import { apiUrl } from '../config/url';
 import { useTranslation } from '../i18n';
 import { batch3 } from '../i18n/keys_batch3';
+import { batch4 } from '../i18n/keys_batch4';
 
 export const AuthCallback = () => {
   const { language } = useTranslation();
   const K = batch3[language]?.auth_callback;
+  const A = batch4[language]?.auth_callback;
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -25,7 +27,7 @@ export const AuthCallback = () => {
       
       if (errorParam) {
         console.error('OAuth error:', errorParam);
-        setError('Authentication failed: ' + errorParam);
+        setError(A.failed + errorParam);
         setTimeout(() => navigate('/login'), 3000);
         return;
       }
@@ -89,7 +91,7 @@ export const AuthCallback = () => {
       }
     } catch (err) {
       console.error('Auth callback error:', err);
-      setError('Authentication failed');
+      setError(A.failed_short);
       setTimeout(() => navigate('/login'), 3000);
     }
   };
