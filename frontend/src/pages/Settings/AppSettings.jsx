@@ -6,6 +6,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { THEME_DARK, THEME_LIGHT, THEME_SYSTEM } from '../../utils/theme';
 import { useTranslation } from '../../i18n';
 import { batch2, fill } from '../../i18n/keys_batch2';
+import SwitchPanel from '../../components/settings/SwitchPanel';
 
 const DEFAULTS = {
   theme: 'system',
@@ -114,6 +115,8 @@ const AppSettings = () => {
         {error && (
           <div className="p-3 bg-red-100 text-red-700 rounded-lg">{error}</div>
         )}
+
+        <SwitchPanel />
 
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <h2 className="font-bold text-lg mb-4">{t('app_settings.appearance')}</h2>
