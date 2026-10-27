@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner } from '../components/ui';
 import { Plus, Wallet, Banknote, CreditCard, Smartphone, RefreshCw, Trash2, Edit2, PiggyBank } from 'lucide-react';
+import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import api from '../services/api';
 import { showNotification } from '../components/notifications/NotificationHelper';
 import { useTranslation } from '../i18n';
@@ -142,11 +143,19 @@ export const Accounts = () => {
               : '-'}
           </p>
         </div>
-        <Button onClick={() => { setEditingAccount(null); setShowModal(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          {K.add_account}
-        </Button>
+        {!isSingleAddOn() && (
+          <Button onClick={() => { setEditingAccount(null); setShowModal(true); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            {K.add_account}
+          </Button>
+        )}
       </div>
+
+      {/* The one add button, in the same place on every page. */}
+      <SingleAddButton
+        label={K.add_account}
+        onClick={() => { setEditingAccount(null); setShowModal(true); }}
+      />
 
       {/* Account Summary Cards */}
       {summary && (

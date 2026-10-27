@@ -4,6 +4,7 @@ import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { apiUrl as buildApiUrl } from '../config/url';
 import { Plus, Repeat, RefreshCw, Trash2, Edit2, Calendar, Clock, Play, Pause } from 'lucide-react';
+import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import { formatCurrency, formatDate } from '../utils/format';
 import { useCurrency, sumInDisplay } from '../utils/currency';
 import { showNotification } from '../components/notifications/NotificationHelper';
@@ -200,12 +201,20 @@ export const Recurring = () => {
           <Button size="sm" variant="outline" onClick={triggerProcess}>
             <Play className="w-4 h-4 mr-1" /> {K.processNow}
           </Button>
-          <Button onClick={() => { setEditingRule(null); setShowModal(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            {K.newRecurring}
-          </Button>
+          {!isSingleAddOn() && (
+            <Button onClick={() => { setEditingRule(null); setShowModal(true); }}>
+              <Plus className="w-4 h-4 mr-2" />
+              {K.newRecurring}
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* The one add button, in the same place on every page. */}
+      <SingleAddButton
+        label={K.newRecurring}
+        onClick={() => { setEditingRule(null); setShowModal(true); }}
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

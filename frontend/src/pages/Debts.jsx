@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, ProgressBar, Badge, EmptyState, Spinner } from '../components/ui';
 import { Plus, CreditCard, RefreshCw, Trash2, Edit2, Calendar, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
+import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import { formatCurrency, formatDate } from '../utils/format';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
@@ -170,13 +171,21 @@ export const Debts = () => {
               <RefreshCw className="w-4 h-4 mr-2" />
               {t('debts.refresh')}
             </Button>
-            <Button onClick={() => { setEditingDebt(null); setShowModal(true); }}>
-              <Plus className="w-4 h-4 mr-2" />
-              {t('debts.add')}
-            </Button>
+            {!isSingleAddOn() && (
+              <Button onClick={() => { setEditingDebt(null); setShowModal(true); }}>
+                <Plus className="w-4 h-4 mr-2" />
+                {t('debts.add')}
+              </Button>
+            )}
           </div>
         </div>
       )}
+
+      {/* The one add button, in the same place on every page. */}
+      <SingleAddButton
+        label={t('debts.add')}
+        onClick={() => { setEditingDebt(null); setShowModal(true); }}
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

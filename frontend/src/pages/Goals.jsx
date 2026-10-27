@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { chartPalette } from '../utils/appearance';
 import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner, StatCard } from '../components/ui';
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp, TrendingDown, Clock, CheckCircle } from 'lucide-react';
+import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import { formatCurrency, formatPercent, formatDate } from '../utils/format';
 import { useCurrency, sumInDisplay } from '../utils/currency';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
@@ -117,12 +118,20 @@ export const Goals = () => {
             <h1 className="text-2xl font-bold text-gray-900">{t('goals.title')}</h1>
             <p className="text-gray-500 mt-1">{t('goals.active_count').replace('%s', activeGoals)}</p>
           </div>
-          <Button onClick={() => { setEditingGoal(null); setShowModal(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            {t('goals.new_goal')}
-          </Button>
+          {!isSingleAddOn() && (
+            <Button onClick={() => { setEditingGoal(null); setShowModal(true); }}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('goals.new_goal')}
+            </Button>
+          )}
         </div>
       )}
+
+      {/* The one add button, in the same place on every page. */}
+      <SingleAddButton
+        label={t('goals.new_goal')}
+        onClick={() => { setEditingGoal(null); setShowModal(true); }}
+      />
 
       {/* Summary Cards */}
       {goals.length > 0 && (

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, ProgressBar, Badge, EmptyState, Spinner } from '../components/ui';
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp } from 'lucide-react';
+import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import { formatCurrency, formatDate } from '../utils/format';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
@@ -103,12 +104,20 @@ export const Budgets = () => {
               {t('budgets.active_count').replace('%s', budgets.length)}
             </p>
           </div>
-          <Button onClick={() => { setEditingBudget(null); setShowModal(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            {t('budgets.add')}
-          </Button>
+          {!isSingleAddOn() && (
+            <Button onClick={() => { setEditingBudget(null); setShowModal(true); }}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('budgets.add')}
+            </Button>
+          )}
         </div>
       )}
+
+      {/* The one add button, in the same place on every page. */}
+      <SingleAddButton
+        label={t('budgets.add')}
+        onClick={() => { setEditingBudget(null); setShowModal(true); }}
+      />
 
       {/* Summary */}
       {budgets.length > 0 && (
