@@ -1,8 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Modal, Button } from '../ui';
 import { Camera, X, Flashlight, SwitchCamera, Loader2, AlertTriangle } from 'lucide-react';
+import { useTranslation } from '../../i18n';
+import { batch4 } from '../../i18n/keys_batch4';
 
 export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
+  // The messages in this screen used to be written in Indonesian, so
+  // a reader who picked English still read Indonesian. They are read
+  // from the language the reader picked now.
+  const { language } = useTranslation();
+  const K = batch4[language]?.qr_scanner;
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
   const [hasCamera, setHasCamera] = useState(true);
@@ -53,12 +60,12 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
         setError('');
       } else {
         setHasCamera(false);
-        setError('Tidak ada kamera yang ditemukan');
+        setError(K.no_camera);
       }
     } catch (err) {
       console.error('Failed to load QR scanner:', err);
       setHasCamera(false);
-      setError('Gagal memuat scanner QR: ' + (err?.message || err));
+      setError(K.scanner_load_failed + ' ' + (err?.message || err));
     } finally {
       setLoading(false);
     }
@@ -139,12 +146,12 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
       setScanning(false);
       const msg = String(err?.message || err);
       if (msg.includes('Permission') || msg.includes('permission')) {
-        setError('Izin kamera ditolak. Izinkan akses kamera di pengaturan browser lalu coba lagi.');
+        setError(K.permission_denied);
       } else if (msg.includes('NotFoundError') || msg.includes('no camera')) {
         setHasCamera(false);
-        setError('Kamera tidak ditemukan pada perangkat ini.');
+        setError(K.no_camera_device);
       } else {
-        setError('Gagal memulai kamera: ' + msg);
+        setError(K.start_failed + ' ' + msg);
       }
     } finally {
       setLoading(false);
@@ -180,7 +187,7 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
         await track.torchFeature().apply(!torchOn);
         setTorchOn(!torchOn);
       } else {
-        setError('Flash tidak tersedia di kamera ini');
+        setError(K.flash_unavailable);
       }
     } catch (err) {
       console.error('Torch error:', err);
@@ -274,7 +281,7 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
           {!scanning && !error && loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white">
               <Loader2 className="w-10 h-10 animate-spin mb-2" />
-              <p>Memuat kamera...</p>
+              <p>{K.loading_camera}</p>
             </div>
           )}
 
