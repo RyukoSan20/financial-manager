@@ -75,6 +75,15 @@ async def gmail_connect(current_user = Depends(get_current_user)):
     language.
     """
     oauth = GmailOAuth()
+    if not oauth.client_id or not oauth.client_secret:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "oauth_not_configured",
+                "message": "The Google sign-in details are not set up on the server.",
+            },
+        )
+
     # State includes user_id for secure callback
     auth_url = oauth.get_auth_url(state=str(current_user.id))
 
