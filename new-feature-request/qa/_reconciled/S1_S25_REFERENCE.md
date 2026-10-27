@@ -47,8 +47,8 @@ would have invented work rather than recovered it.
 
 | Batch | IDs | State |
 |-------|-----|-------|
-| A1 | S1, S2, S3, S7, S8, S14, S17 | in progress |
-| A2 | S4, S5, S15, S18 | not started |
+| A1 | S1, S2, S3, S7, S8, S14, S17 | done |
+| A2 | S4, S5, S15, S18 | done |
 | A3 | S6, S22 | not started |
 | A4 | S13, S16 | not started |
 | A5 | S9, S10, S11, S12, S21, S25 | not started |
@@ -76,3 +76,58 @@ workbook:
   tax (PPN) and loan (cicilan).
 - **S17** partly done. Negative balances are stored, but nothing warns
   the reader about one, and there is no opening-balance question.
+
+## A2: what was done
+
+**S4, default accent not red.** Already correct. The default scheme
+is `emerald`, in `frontend/src/utils/appearance.js` and in the backend
+default. `rose` exists as a colour a user may choose; it is not the
+default. No change needed, and none was made.
+
+**S5, one PageHeader pattern.** New `frontend/src/components/ui/PageHeader.jsx`.
+Adopted on Budgets, Goals and Debts. The header each of those pages
+wrote is kept as the fallback, so with the switch off the pages are
+byte-for-byte what they were. Other pages still have their own
+headers; they were left alone to keep the change small.
+
+**S15, sidebar profile card.** `frontend/src/components/layout/UserProfileSection.jsx`.
+Two chip rows used `flex` without `flex-wrap`, so on a narrow sidebar
+the chips were clipped instead of wrapping. Both rows now wrap, and
+each chip holds its own line rather than being squeezed. The date also
+used its own formatting; it now uses the shared `formatTanggal`. This
+is a FIX: it is on by default, because the card was visibly broken.
+The change also removed a crash: `identity.member_since` was read
+without a check, and `identity` is not always present.
+
+**S18, one icon family.** New `frontend/src/utils/icons.js` and
+`frontend/src/components/ui/IconText.jsx`. The emoji were replaced
+with the icon family the application already uses, on nine screens:
+Dashboard, Shopping, ShoppingTracker, HealthCoach, MerchantMap,
+MarketPage, Catalog, AddTransactionPage, AIAdvisor and Gmail Sync.
+The emoji are still there when the switch is off.
+
+### The switches
+
+`frontend/src/utils/featureFlags.js` holds the switches. Each one is
+off unless the build turns it on, so nothing changes for a reader
+until a switch is deliberately turned on.
+
+| Switch | How it is turned on | What it does |
+|--------|--------------------|--------------|
+| `UI_POLISH` | `VITE_UI_POLISH=1` at build time | The polish layer: the shared header, the icon family, the `data-ui="polish"` stylesheet |
+
+The polish layer is `frontend/src/styles/polish.css`. Every rule in it
+is written to apply only when the root element carries
+`data-ui="polish"`, and that attribute is set only when the switch is
+on. With the switch off, the rules match nothing.
+
+### How this was checked
+
+- The switch logic: `frontend/src/utils/__tests__/featureFlags.test.js`,
+  20 assertions. A switch nobody has touched is off; a broken stored
+  value is treated as off rather than as a crash.
+- The build was run four ways and the environment object read out of
+  the bundle each time: no `VITE_UI_POLISH` gives off, `"1"` gives on,
+  `"0"` gives off.
+- Every fallback in the pages was kept verbatim, so the switch-off
+  page is the page that was there before.
