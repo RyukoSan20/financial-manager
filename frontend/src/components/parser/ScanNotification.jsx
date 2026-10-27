@@ -365,7 +365,14 @@ export const ScanNotification = () => {
               type="button"
               onClick={() => {
                 closeSheet();
-                navigate('/transactions');
+                // Go to the transaction the scan made, when it made one.
+                // The transaction waits for the review, so it is found
+                // there rather than in the history.
+                if (result.transaction_id) {
+                  navigate(`/transactions?highlight=${result.transaction_id}`);
+                } else {
+                  navigate('/transactions');
+                }
               }}
               className="flex-1 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700"
             >

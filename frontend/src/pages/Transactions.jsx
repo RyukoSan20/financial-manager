@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, Spinner, Badge } from '../components/ui';
 import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing, Mic } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
@@ -7,6 +7,7 @@ import { QRScannerModal } from '../components/parser/QRScannerModal';
 import { ReceiptScannerModal } from '../components/parser/ReceiptScannerModal';
 import { VoiceTransactionModal } from '../components/parser/VoiceTransactionModal';
 import { notifyTransactionAdded, notifyTransactionDeleted, notifyTransactionUpdated, notifyError } from '../components/notifications/NotificationHelper';
+import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { categoryName } from '../utils/categoryName';
@@ -51,7 +52,24 @@ export const Transactions = () => {
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [prefillQRText, setPreFillQRText] = useState('');
   const [expandedTxId, setExpandedTxId] = useState(null);
+  // The card of the transaction that was just scanned. It is scrolled
+  // into view, so the reader lands on the transaction rather than
+  // having to look for it.
+  const highlightRef = useRef(null);
   const [pendingCount, setPendingCount] = useState(0);
+  // The transaction that was just scanned, asked for by the scan
+  // result sheet so the reader lands on the right one.
+  const [highlightId] = useState(() => {
+    const raw = new URLSearchParams(window.location.search).get('highlight');
+    return raw ? parseInt(raw, 10) : null;
+  });
+  // How many transactions have been asked for. The list is read in
+  // blocks, because a reader with a year of spending behind them has
+  // more than one screen of it, and there was no way to reach any of
+  // it past the first hundred.
+  const [limit, setLimit] = useState(100);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   
   // Edit mode state
   const [editingTx, setEditingTx] = useState(null);
@@ -61,16 +79,31 @@ export const Transactions = () => {
     fetchData();
   }, []);
 
+  // Scroll to the transaction that was just scanned, once the list has
+  // arrived. Without this the reader lands at the top of the page and
+  // has to find the transaction themselves.
+  useEffect(() => {
+    if (!highlightId || loading || !transactions.length) return;
+    const timer = setTimeout(() => {
+      const node = highlightRef.current;
+      if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [highlightId, loading, transactions.length]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
       const [txRes, accRes, catRes, feedStatsRes] = await Promise.allSettled([
-        api.transactions.list({ limit: 100 }),
+        api.transactions.list({ limit }),
         api.accounts.list(),
         api.categories.list(),
         api.get('/feed/stats').catch(() => null),
       ]);
-      setTransactions(Array.isArray(txRes.value) ? txRes.value : []);
+      const rows = Array.isArray(txRes.value) ? txRes.value : [];
+      setTransactions(rows);
+      // A full block means there is probably more behind it.
+      setHasMore(rows.length >= limit);
       setAccounts(Array.isArray(accRes.value) ? accRes.value : []);
       setCategories(Array.isArray(catRes.value) ? catRes.value : []);
       if (feedStatsRes.status === 'fulfilled' && feedStatsRes.value) {
@@ -81,6 +114,28 @@ export const Transactions = () => {
       setTransactions([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Read the next block of transactions.
+   *
+   * The older ones are appended, so the list the reader is looking at
+   * stays where it is.
+   */
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const next = limit + 100;
+      const res = await api.transactions.list({ limit: next });
+      const rows = Array.isArray(res) ? res : [];
+      setTransactions(rows);
+      setLimit(next);
+      setHasMore(rows.length >= next);
+    } catch (err) {
+      console.error('Failed to load more transactions:', err);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -225,13 +280,18 @@ export const Transactions = () => {
           </div>
           <p className="text-sm text-gray-500">{fill(K.count, { count: filteredTransactions.length })}</p>
         </div>
-        <button
-          onClick={() => window.location.href = '/add'}
-          className="p-3 bg-primary-600 text-white rounded-xl shadow-lg active:bg-primary-600"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
+        {!isSingleAddOn() && (
+          <button
+            onClick={() => window.location.href = '/add'}
+            className="p-3 bg-primary-600 text-white rounded-xl shadow-lg active:bg-primary-600"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        )}
       </div>
+
+      {/* The one add button, in the same place on every page. */}
+      <SingleAddButton href="/add" label={K.addTransaction} />
 
       {/* Smart Parser Buttons */}
       <div className="flex gap-2">
@@ -411,10 +471,17 @@ export const Transactions = () => {
                   // Normal display mode
                   const hasItems = tx.items && tx.items.length > 0;
                   const isExpanded = expandedTxId === tx.id;
+                  const isHighlighted = highlightId === tx.id;
                   return (
                     <div 
                       key={tx.id}
-                      className="bg-white rounded-2xl p-4 shadow-sm active:bg-gray-50 cursor-pointer group"
+                      id={`transaction-${tx.id}`}
+                      ref={isHighlighted ? highlightRef : undefined}
+                      className={`bg-white rounded-2xl p-4 shadow-sm active:bg-gray-50 cursor-pointer group ${
+                        isHighlighted
+                          ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900'
+                          : ''
+                      }`}
                       onClick={() => hasItems && setExpandedTxId(isExpanded ? null : tx.id)}
                     >
                       <div className="flex items-center justify-between">
@@ -438,6 +505,11 @@ export const Transactions = () => {
                                 {tx.description || (category ? categoryName(category, language) : null) || (tx.type === 'income' ? K.income : K.expense)}
                               </p>
                               <SourceBadge type={tx.detection_type} K={K} />
+                              {tx.status === 'pending' && (
+                                <span className="flex-shrink-0 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 text-xs font-medium">
+                                  {K.pendingBadge}
+                                </span>
+                              )}
                             </div>
                             <p className="text-sm text-gray-500 truncate">
                               {(category ? categoryName(category, language) : null) || account?.name || K.unknown}
@@ -547,6 +619,21 @@ export const Transactions = () => {
               </div>
             </div>
           ))}
+
+          {/* The older transactions. Without this, anything past the
+              first hundred could not be reached at all. */}
+          {hasMore && (
+            <div className="flex justify-center py-4">
+              <button
+                type="button"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                {loadingMore ? K.loading : K.loadMore}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
