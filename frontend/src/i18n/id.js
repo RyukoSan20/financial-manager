@@ -987,6 +987,7 @@ export default {
     tab_savings: "Savings Goal",
     tab_income: "Konverter Pemasukan",
     tab_budget: "Budget",
+    tab_id: 'Kalkulator Indonesia',
     enter_values: "Masukkan nilai untuk menghitung",
     total: "Total",
     discount_title: "Hitung Diskon",

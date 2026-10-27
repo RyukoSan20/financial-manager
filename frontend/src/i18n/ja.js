@@ -987,6 +987,7 @@ export default {
     tab_savings: "貯蓄目標",
     tab_income: "収入換算",
     tab_budget: "予算",
+    tab_id: 'インドネシアの計算ツール',
     enter_values: "値を入力すると計算されます",
     total: "合計",
     discount_title: "割引の計算",

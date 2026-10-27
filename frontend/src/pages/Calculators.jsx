@@ -6,10 +6,16 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../utils/format';
 import { useTranslation } from '../i18n';
+import { buildFlag } from '../utils/featureFlags';
+import { IndonesiaCalculators } from '../components/calculators/IndonesiaCalculators';
 
 export const Calculators = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('discount');
+  // The Indonesian calculators are new screens, so they are behind a
+  // switch. With the switch off the page is the page that was there
+  // before, tabs and all.
+  const idCalculators = buildFlag('UI_POLISH');
   
   const tabs = [
     { id: 'discount', label: t('calculators.tab_discount'), icon: Percent },
@@ -19,6 +25,12 @@ export const Calculators = () => {
     { id: 'savings', label: t('calculators.tab_savings'), icon: Target },
     { id: 'income', label: t('calculators.tab_income'), icon: ArrowRightLeft },
     { id: 'budget', label: t('calculators.tab_budget'), icon: PiggyBank },
+    // The Indonesian ones sit apart, because they are new.
+    ...(idCalculators
+      ? [
+        { id: 'id', label: t('calculators.tab_id'), icon: Calculator },
+      ]
+      : []),
   ];
 
   return (
@@ -58,6 +70,7 @@ export const Calculators = () => {
       {activeTab === 'savings' && <SavingsGoalCalculator />}
       {activeTab === 'income' && <IncomeConverter />}
       {activeTab === 'budget' && <BudgetCalculator />}
+      {activeTab === 'id' && idCalculators && <IndonesiaCalculators />}
     </div>
   );
 };
