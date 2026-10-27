@@ -1485,6 +1485,8 @@ export default {
     currency_desc: "Choose the currency every amount is shown in",
     reminders_title: "Turn on reminders",
     reminders_desc: "Reminders help you record transactions regularly",
+    recurring_title: "Note what repeats",
+    recurring_desc: "Rent, subscriptions, salary — write it down once, then it repeats each month",
     done: "Done",
     next: "Next",
     start: "Start",

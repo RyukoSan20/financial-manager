@@ -1485,6 +1485,8 @@ export default {
     currency_desc: "すべての金額を表示する通貨を選びます",
     reminders_title: "リマインダーをオンにする",
     reminders_desc: "リマインダーがあると定期的に記録できます",
+    recurring_title: "繰り返すものを記録する",
+    recurring_desc: "家賃やサブスク、給与など、1度書けば毎月自動で繰り返されます",
     done: "完了",
     next: "次へ",
     start: "開始",

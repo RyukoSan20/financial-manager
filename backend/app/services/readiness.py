@@ -80,6 +80,7 @@ def build_readiness(db: Session, user_id: int) -> ReadinessReport:
     from app.models.transaction import Transaction
     from app.models.budget import Budget
     from app.models.goal import Goal
+    from app.models.recurring import RecurringRule
     from app.models.user import User
     from app.models.user_settings import UserSettings
 
@@ -186,7 +187,22 @@ def build_readiness(db: Session, user_id: int) -> ReadinessReport:
         done=has_currency,
     ))
 
-    # 7. The reminders. A reader who forgets to record does not get
+    # 7. The recurring transactions. Rent, subscriptions and salary
+    #    come round every month, and writing them down once is what
+    #    makes the forecast work.
+    recurring_count = count(RecurringRule)
+    items.append(ReadinessItem(
+        key="recurring",
+        title_key="readiness.recurring_title",
+        description_key="readiness.recurring_desc",
+        icon="recurring",
+        href="/recurring",
+        order=65,
+        done=recurring_count > 0,
+        value=recurring_count,
+    ))
+
+    # 8. The reminders. A reader who forgets to record does not get
     #    the benefit of the app.
     reminder_frequency = None
     if settings:

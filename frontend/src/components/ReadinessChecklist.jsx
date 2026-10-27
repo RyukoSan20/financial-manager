@@ -4,7 +4,7 @@ import { useTranslation } from '../i18n';
 import { api } from '../services/api';
 import {
   User as UserIcon, Wallet, Receipt, Target, Flag,
-  Coins, Bell, Check, ChevronRight,
+  Coins, Bell, Check, ChevronRight, Repeat,
 } from 'lucide-react';
 
 const ICONS = {
@@ -15,6 +15,7 @@ const ICONS = {
   flag: Flag,
   coins: Coins,
   bell: Bell,
+  recurring: Repeat,
 };
 
 /**

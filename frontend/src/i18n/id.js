@@ -1485,6 +1485,8 @@ export default {
     currency_desc: "Pilih mata uang untuk menampilkan semua nominal",
     reminders_title: "Aktifkan pengingat",
     reminders_desc: "Pengingat membantu Anda mencatat transaksi secara rutin",
+    recurring_title: "Catat transaksi berulang",
+    recurring_desc: "Sewa, langganan, gaji — catat sekali, lalu bulanan otomatis",
     done: "Selesai",
     next: "Berikutnya",
     start: "Mulai",
