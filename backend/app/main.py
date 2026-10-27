@@ -20,7 +20,7 @@ from app.api.routes import (
     currency,
     realtime_market, logs, merchant, webhooks, location,
     unified_market, user_settings, voice, profile, learning, scans,
-    breakdown,
+    breakdown, indonesia_calculators,
 )
 
 # Import models to register with SQLAlchemy
@@ -247,6 +247,7 @@ app.include_router(debts.router, prefix="/api/debts", tags=["Debts"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(calculators.router, prefix="/api/calculators", tags=["Calculators"])
+app.include_router(indonesia_calculators.router, prefix="/api/calculators", tags=["Calculators"])
 app.include_router(data.router, prefix="/api/data", tags=["Data"])
 app.include_router(parser.router, prefix="/api/parser", tags=["Parser"])
 app.include_router(voice.router, prefix="/api/voice", tags=["Voice"])

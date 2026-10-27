@@ -37,4 +37,5 @@ from . import (
     profile,
     learning,
     scans,
+    indonesia_calculators,
 )
