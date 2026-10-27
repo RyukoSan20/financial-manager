@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from '../i18n';
 import { batch3 } from '../i18n/keys_batch3';
+import { batch4 } from '../i18n/keys_batch4';
 
 const GmailCallback = () => {
   const { language } = useTranslation();
   const K = batch3[language]?.gmail_callback;
-  const [status, setStatus] = useState("Memproses...");
+  const A = batch4[language]?.gmail_callback;
+  const [status, setStatus] = useState(A.processing);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
@@ -18,7 +20,7 @@ const GmailCallback = () => {
     const errorParam = params.get("error");
 
     if (errorParam) {
-      setError("Akses Gmail ditolak. Silakan coba lagi.");
+      setError(A.denied);
       return;
     }
 
@@ -27,16 +29,16 @@ const GmailCallback = () => {
       localStorage.setItem("gmail_oauth_code", code);
       localStorage.setItem("gmail_connected_at", new Date().toISOString());
       
-      setStatus("✅ Gmail berhasil terhubung!");
+      setStatus("✅ " + A.connected);
       
       // Redirect to Gmail page after 2 seconds
       setTimeout(() => {
         navigate("/gmail");
       }, 2000);
     } else {
-      setError("Kode OAuth tidak ditemukan.");
+      setError(A.no_code);
     }
-  }, [navigate]);
+  }, [navigate, A]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
