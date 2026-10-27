@@ -29,6 +29,7 @@ from decimal import Decimal
 from app.services.calculation.indonesia import (
     CATEGORY_OF_STATUS,
     PTKP_ANNUAL,
+    RuleError,
     calculate_bpjs,
     calculate_pph21,
     calculate_pph21_annual,
@@ -84,6 +85,13 @@ def pph21(req: PPh21Request):
     """The income tax withheld from a monthly salary."""
     try:
         return calculate_pph21(req.monthly_gross, req.status, req.months_withheld)
+    except RuleError as exc:
+        # The code is in the body as well as the sentence, so a screen
+        # can show the sentence in the reader's own language.
+        raise HTTPException(
+            status_code=400,
+            detail={"code": exc.code, "message": exc.detail},
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -98,6 +106,11 @@ def pph21_annual(req: PPh21AnnualRequest):
             req.employee_pension,
             req.zakat,
         )
+    except RuleError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": exc.code, "message": exc.detail},
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -125,6 +138,11 @@ def bpjs(req: BPJSRequest):
     """The insurance contributions on a monthly wage."""
     try:
         return calculate_bpjs(req.monthly_wage, req.risk, req.extra_family_members)
+    except RuleError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": exc.code, "message": exc.detail},
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

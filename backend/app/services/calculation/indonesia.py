@@ -44,6 +44,24 @@ def _rupiah(value) -> Decimal:
     return value.quantize(RUPIAH, rounding=ROUND_HALF_UP)
 
 
+class RuleError(ValueError):
+    """
+    An input the rules do not cover.
+
+    It carries a code as well as a sentence. The sentence says what
+    went wrong in one language, which is what a developer or a log
+    needs; the code says what went wrong in a way a screen can put
+    into whatever language the reader picked. Without the code, an
+    English or Indonesian sentence would be shown to a reader who
+    chose another language.
+    """
+
+    def __init__(self, code: str, detail: str):
+        super().__init__(detail)
+        self.code = code
+        self.detail = detail
+
+
 # === PPh 21: the effective rate tables ===
 
 # The three tables from Lampiran PP 58/2023.
@@ -292,7 +310,9 @@ def effective_rate(monthly_gross: Decimal, category: str) -> Decimal:
     """
     table = TER_TABLE_OF_CATEGORY.get(category)
     if table is None:
-        raise ValueError(f"unknown category: {category}")
+        raise RuleError(
+            "unknown_category", f"unknown category: {category}"
+        )
 
     for cap, rate in table:
         if monthly_gross <= cap:
@@ -346,8 +366,9 @@ def calculate_pph21(
     status = (status or "K/0").strip()
 
     if status not in PTKP_ANNUAL:
-        raise ValueError(
-            f"unknown status: {status}; expected one of {', '.join(sorted(PTKP_ANNUAL))}"
+        raise RuleError(
+            "unknown_status",
+            f"unknown status: {status}; expected one of {', '.join(sorted(PTKP_ANNUAL))}",
         )
 
     category = CATEGORY_OF_STATUS[status]
@@ -441,7 +462,7 @@ def calculate_pph21_annual(
     status = (status or "K/0").strip()
 
     if status not in PTKP_ANNUAL:
-        raise ValueError(f"unknown status: {status}")
+        raise RuleError("unknown_status", f"unknown status: {status}")
 
     category = CATEGORY_OF_STATUS[status]
     annual_gross = monthly_gross * Decimal("12")
@@ -602,17 +623,20 @@ def calculate_thr(
             "one_month_wage": one_month_wage,
             "thr": Decimal("0"),
             "method": "not eligible",
+            "method_code": "not_eligible",
             "rule": "Permenaker 6/2016",
         }
 
     if service_months >= THR_FULL_SERVICE_MONTHS:
         thr = one_month_wage
         method = "one month of wages"
+        method_code = "full"
     else:
         thr = _rupiah(
             one_month_wage * Decimal(service_months) / Decimal(THR_FULL_SERVICE_MONTHS)
         )
         method = f"{service_months}/12 of one month of wages"
+        method_code = "proportional"
 
     return {
         "eligible": True,
@@ -620,6 +644,9 @@ def calculate_thr(
         "one_month_wage": one_month_wage,
         "thr": thr,
         "method": method,
+        # A code the screen can put in its own language, rather than
+        # the sentence above, which is written in one language only.
+        "method_code": method_code,
         "rule": "Permenaker 6/2016",
     }
 
@@ -682,8 +709,9 @@ def calculate_bpjs(
     risk = (risk or "low").strip()
 
     if risk not in BPJS_JKK_RATES:
-        raise ValueError(
-            f"unknown risk: {risk}; expected one of {', '.join(sorted(BPJS_JKK_RATES))}"
+        raise RuleError(
+            "unknown_risk",
+            f"unknown risk: {risk}; expected one of {', '.join(sorted(BPJS_JKK_RATES))}",
         )
 
     if extra_family_members < 0:
