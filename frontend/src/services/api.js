@@ -109,6 +109,7 @@ const fetchWithInterceptor = async (url, options = {}, retryCount = 0) => {
     
     // Format error message from backend validation errors
     let errorMsg = 'Request failed';
+    let errorCode = null;
     if (errorData.detail) {
       if (typeof errorData.detail === 'string') {
         errorMsg = errorData.detail;
@@ -116,10 +117,21 @@ const fetchWithInterceptor = async (url, options = {}, retryCount = 0) => {
         // FastAPI validation errors: [{loc: [...], msg: "...", type: "..."}]
         errorMsg = errorData.detail.map(e => e.msg || JSON.stringify(e)).join(', ');
       } else if (typeof errorData.detail === 'object') {
-        errorMsg = JSON.stringify(errorData.detail);
+        // A detail that carries a code is a message the server wrote
+        // for the reader. The code is kept so the screen can say it
+        // in the reader's own language; the message is the fallback
+        // for when there is no translation for that code.
+        if (errorData.detail.code) {
+          errorCode = errorData.detail.code;
+          errorMsg = errorData.detail.message || errorData.detail.code;
+        } else {
+          errorMsg = JSON.stringify(errorData.detail);
+        }
       }
     }
-    throw new Error(errorMsg);
+    const error = new Error(errorMsg);
+    if (errorCode) error.code = errorCode;
+    throw error;
   }
   
   return response;
