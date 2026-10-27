@@ -563,7 +563,7 @@ const DataTab = ({ logout }) => {
     setMessage('');
 
     try {
-      await api.data.deleteAll();
+      await api.data.deleteAll(word);
       setMessage(t('settings.data.deleted'));
       
       // Show notification

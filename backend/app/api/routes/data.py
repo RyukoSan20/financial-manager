@@ -18,6 +18,15 @@ from app.models.transfer import Transfer
 
 router = APIRouter(tags=["Data"])
 
+# The words that confirm that everything is really to be deleted.
+#
+# The settings screen asks the reader to type a word in their own
+# language, so each language has its own word here. They are all
+# accepted, because the server cannot know which one the reader was
+# shown, and the reader must not have to switch language to delete
+# their data.
+DELETE_CONFIRMATION_WORDS = {"HAPUS", "DELETE", "削除"}
+
 
 @router.get("/export")
 def export_data(
@@ -167,10 +176,41 @@ def export_transactions_csv(
 
 @router.delete("/delete-all")
 def delete_all_user_data(
+    confirm: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete ALL user data. This action is irreversible."""
+    """
+    Delete ALL user data. This action is irreversible.
+
+    The browser asks for confirmation before it calls this, but the
+    browser is not the thing that has to be protected: a request that
+    arrives without the right confirmation is refused here as well.
+    Without that, a stray call, a retry, or a link that was followed
+    by accident would wipe everything with no way back.
+
+    The word to confirm with is the one the screen already asks for.
+    It is compared without regard to case and without regard to the
+    spaces around it, because the reader types it by hand.
+    """
+    if not confirm:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "confirmation_required",
+                "message": "This request needs the confirmation word.",
+            },
+        )
+
+    if confirm.strip().upper() not in DELETE_CONFIRMATION_WORDS:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "confirmation_wrong",
+                "message": "That is not the confirmation word.",
+            },
+        )
+
     try:
         user_id = current_user.id
         

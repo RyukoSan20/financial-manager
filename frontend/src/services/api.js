@@ -404,7 +404,13 @@ export const api = {
   data: {
     export: () => api.request('/data/export'),
     exportCsv: () => api.request('/data/export/csv'),
-    deleteAll: () => api.request('/data/delete-all', { method: 'DELETE' }),
+    // The server checks the confirmation word too, so it has to be
+    // sent along with the request. The word is the one the settings
+    // screen asked the reader to type.
+    deleteAll: (confirmWord) =>
+      api.request(`/data/delete-all?confirm=${encodeURIComponent(confirmWord || '')}`, {
+        method: 'DELETE',
+      }),
   },
 
   // Background Scan Jobs
