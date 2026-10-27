@@ -17,6 +17,8 @@ import { useTranslation } from '../i18n';
 import { categoryName, categoryKey, transactionCategoryName } from '../utils/categoryName';
 import AIAssistant from '../components/common/AIAssistant';
 import ReadinessChecklist from '../components/ReadinessChecklist';
+import MonthTimeline from '../components/dashboard/MonthTimeline';
+import Onboarding from '../components/dashboard/Onboarding';
 import { useTheme } from '../contexts/ThemeContext';
 import { IconText } from '../components/ui/IconText';
 import { buildFlag } from '../utils/featureFlags';
@@ -890,6 +892,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       {/* The setup checklist. A new reader with an empty account sees
           this instead of a wall of empty charts. It says what to do
           next and the button goes straight there. */}
+      <Onboarding />
       <ReadinessChecklist />
 
       {/* ================================================================ */}
@@ -1374,6 +1377,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       {/* RECENT TRANSACTIONS & FEED REVIEW - DIPULIHKAN */}
       {/* ================================================================ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* The month, day by day */}
+        <MonthTimeline />
+
         {/* Recent Transactions */}
         <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
