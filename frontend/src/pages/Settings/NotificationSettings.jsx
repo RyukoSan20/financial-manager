@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { useTranslation } from '../../i18n';
 import { batch2 } from '../../i18n/keys_batch2';
+import ReminderSettings from '../../components/settings/ReminderSettings';
 
 const DEFAULTS = {
   email_notifications: true,
@@ -174,6 +175,12 @@ const NotificationSettings = () => {
               onChange={() => handleToggle('monthly_summary')}
             />
           </div>
+        </div>
+
+        {/* The reminders. This is its own panel, because the reminders
+            are opt-in and are shown by the browser on this device. */}
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <ReminderSettings />
         </div>
 
         <button
