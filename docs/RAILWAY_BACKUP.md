@@ -1,3 +1,7 @@
+> **This document is out of date.** It records the state of the old Railway
+> database. The current setup is described in
+> **[docs/DEPLOYMENT_MAP.md](DEPLOYMENT_MAP.md)**.
+
 # Railway Backup Configuration
 # Created: 2024-10-10
 

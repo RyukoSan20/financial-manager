@@ -1,15 +1,16 @@
 {
+  "$comment": "Out of date as a deployment description: the frontend is served by the nginx on the server, which proxies /api to the backend. This file describes the Vercel + Railway setup. The Railway URLs are replaced with the current server, so the file still works if it is used, but it is not how the application is deployed now. See docs/DEPLOYMENT_MAP.md.",
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "framework": null,
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://fin-manager-production.up.railway.app/api/:path*"
+      "destination": "https://my-financial-manager.online/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://fin-manager-production.up.railway.app/health"
+      "destination": "https://my-financial-manager.online/health"
     },
     {
       "source": "/((?!assets/).*)",

@@ -1,3 +1,16 @@
+> **This document is out of date.**
+>
+> It describes a deployment that is no longer used: the frontend on
+> Vercel and the backend on Railway. The application is now served from
+> one server, by Docker, behind nginx. The backend runs on the server
+> and the frontend is served as static files by the same nginx.
+>
+> The current setup is described in **[docs/DEPLOYMENT_MAP.md](docs/DEPLOYMENT_MAP.md)**,
+> and the pipeline that puts it there is
+> **[.github/workflows/deploy.yml](.github/workflows/deploy.yml)**.
+>
+> This file is kept for the record. Do not follow it.
+
 # FinManager Deployment Guide
 
 ## Architecture
