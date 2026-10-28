@@ -20,11 +20,18 @@ import {
   Bell,
 } from 'lucide-react';
 import { scanManager } from '../../services/scanManager';
+import { dismissScan, isDismissed } from '../../utils/scanDismissal';
 import { useTranslation } from '../../i18n';
 import { batch3 } from '../../i18n/keys_batch3';
 
 /** How far the sheet has to be pulled up before it opens. */
 const OPEN_THRESHOLD = 64;
+
+/**
+ * How long a finished scan stays on the screen before it goes by
+ * itself.
+ */
+const AUTO_DISMISS_MS = 8000;
 
 const kindIcon = (kind) =>
   kind === 'qr' ? QrCode : kind === 'receipt' ? Receipt : Bell;
@@ -36,6 +43,10 @@ export const ScanNotification = () => {
   const [expanded, setExpanded] = useState(null);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
+  // Whether the bar is on its way out. The bar is given eight seconds
+  // and then it goes by itself, so a finished scan does not sit at the
+  // bottom of the screen all day.
+  const [leaving, setLeaving] = useState(false);
 
   // The collapsed bar is dragged upwards to open, the open sheet is
   // dragged downwards to close. Both directions therefore need their own
@@ -65,13 +76,42 @@ export const ScanNotification = () => {
   const active = expanded ? jobs.find((j) => j.jobId === expanded) : null;
 
   // The finished job that has not been looked at yet.
+  //
+  // A scan that has already been dealt with is skipped. Without this
+  // the bar came back on every page, because closing the sheet hid the
+  // sheet but did not mark the scan as dealt with.
   const pending = jobs.find(
-    (job) => job.status === 'completed' && !job.seen
+    (job) => job.status === 'completed' && !job.seen && !isDismissed(job.jobId)
   );
   const running = jobs.find((job) => job.status === 'running' || job.status === 'queued');
 
   // The bar that is shown when nothing is expanded.
   const bar = pending || running;
+
+  // Whether the bar is a scan that is still running.
+  const isRunning = Boolean(bar && (bar.status === 'running' || bar.status === 'queued'));
+
+  // A finished scan is given eight seconds and then it goes by itself.
+  // The timer is cleared when the bar changes, so a new scan is not
+  // taken away early by the timer that belonged to the old one.
+  useEffect(() => {
+    if (!bar || isRunning) return undefined;
+    setLeaving(false);
+    const timer = setTimeout(() => {
+      setLeaving(true);
+      // The scan is dealt with once the bar has gone, so it does not
+      // come back on the next page.
+      if (bar.jobId) {
+        dismissScan(bar.jobId);
+        scanManager.markSeen(bar.jobId);
+      }
+    }, AUTO_DISMISS_MS);
+    return () => clearTimeout(timer);
+    // The bar is a new object on every render, so it is not in the
+    // dependency list. What matters is which scan it is and what state
+    // that scan is in, and those two are.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bar?.jobId, bar?.status]);
   if (!bar && !active) return null;
 
   const openJob = (job) => {
@@ -81,7 +121,13 @@ export const ScanNotification = () => {
     scanManager.markSeen(job.jobId);
   };
 
-  const closeSheet = () => {
+  // Closing the sheet is also saying the scan has been dealt with, so
+  // it does not come back on the next page.
+  const closeSheet = (jobId) => {
+    if (jobId) {
+      dismissScan(jobId);
+      scanManager.markSeen(jobId);
+    }
     setExpanded(null);
     setDragY(0);
     setDragging(false);
@@ -111,8 +157,9 @@ export const ScanNotification = () => {
     const distance = dragDistanceRef.current;
     setDragY(0);
     if (distance >= OPEN_THRESHOLD) {
-      // Pulled far enough down: the sheet goes away.
-      closeSheet();
+      // Pulled far enough down: the sheet goes away, and the scan is
+      // dealt with.
+      closeSheet(active?.jobId);
     }
   };
 
@@ -175,8 +222,6 @@ export const ScanNotification = () => {
 
   // --- The collapsed bar -------------------------------------------------
   if (!active) {
-    const Icon = kindIcon(bar.kind);
-    const isRunning = bar.status === 'running' || bar.status === 'queued';
     const isFailed = bar.status === 'failed';
 
     return (
@@ -184,7 +229,10 @@ export const ScanNotification = () => {
         className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 pointer-events-none"
         style={{
           transform: `translateY(${-barDragY}px)`,
-          transition: barDragging ? 'none' : 'transform 200ms ease-out',
+          transition: barDragging
+            ? 'none'
+            : 'transform 200ms ease-out, opacity 300ms ease-out',
+          opacity: leaving ? 0 : 1,
         }}
       >
         <button
@@ -245,7 +293,7 @@ export const ScanNotification = () => {
       <button
         type="button"
         aria-label={K.close}
-        onClick={closeSheet}
+        onClick={() => closeSheet(active?.jobId)}
         className="absolute inset-0 bg-black/40"
       />
 
@@ -282,7 +330,7 @@ export const ScanNotification = () => {
             </div>
             <button
               type="button"
-              onClick={closeSheet}
+              onClick={() => closeSheet(active?.jobId)}
               className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
               aria-label={K.close_scan}
             >
@@ -356,7 +404,7 @@ export const ScanNotification = () => {
           <div className="mt-4 flex gap-2">
             <button
               type="button"
-              onClick={closeSheet}
+              onClick={() => closeSheet(active?.jobId)}
               className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
             >
               {K.close}
@@ -364,7 +412,7 @@ export const ScanNotification = () => {
             <button
               type="button"
               onClick={() => {
-                closeSheet();
+                closeSheet(active?.jobId);
                 // Go to the transaction the scan made, when it made one.
                 // The transaction waits for the review, so it is found
                 // there rather than in the history.
