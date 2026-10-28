@@ -25,16 +25,19 @@ const AddTransactionPage = () => {
   // With the polish switch off, the page keeps the drawings it has.
   const polished = buildFlag('UI_POLISH');
   const K = batch1[language]?.addTx || batch1.id.addTx;
-  // The symbol on the amount field is the symbol of the currency the
-  // amount is written in, which is the currency of the account the
-  // money goes into. The display currency is a reading choice, and
-  // putting its symbol on a dollar amount would say the wrong thing.
-  const amountSymbol = (currencyConfig(accountCurrency) || {}).symbol || 'Rp';
   // The currency the amount is written in. This is the currency of the
   // account the money goes into, because a transaction is in the
   // currency of its account. The display currency is a reading choice
   // and does not change the money itself.
   const [accountCurrency, setAccountCurrency] = useState('IDR');
+  // The symbol on the amount field is the symbol of the currency the
+  // amount is written in, which is the currency of the account the
+  // money goes into. The display currency is a reading choice, and
+  // putting its symbol on a dollar amount would say the wrong thing.
+  //
+  // This reads the state above, so it has to come after it: reading a
+  // `const` before it is declared throws, and the page goes blank.
+  const amountSymbol = (currencyConfig(accountCurrency) || {}).symbol || 'Rp';
   
   // Helper: Get date in WIB timezone (YYYY-MM-DD) - defined first
   const getWIBDate = (offsetDays = 0) => {

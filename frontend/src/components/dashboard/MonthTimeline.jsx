@@ -13,6 +13,7 @@ import { useTranslation } from '../../i18n';
 import { batch6 } from '../../i18n/keys_batch6';
 import { api } from '../../services/api';
 import { formatCurrency } from '../../utils/format';
+import { amountSign, isIncoming } from '../../utils/transactionSign';
 import { ChevronDown, ChevronRight, CalendarDays } from 'lucide-react';
 
 export default function MonthTimeline() {
@@ -124,12 +125,12 @@ export default function MonthTimeline() {
                           </span>
                           <span
                             className={
-                              tx.type === 'income'
+                              isIncoming(tx.type)
                                 ? 'text-emerald-600'
                                 : 'text-rose-600'
                             }
                           >
-                            {tx.type === 'income' ? '+' : '-'}
+                            {amountSign(tx.type)}
                             {formatCurrency(tx.amount, data.currency)}
                           </span>
                         </div>

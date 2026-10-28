@@ -5,6 +5,7 @@
 
 import { useTranslation } from '../../i18n';
 import { batch3 } from '../../i18n/keys_batch3';
+import { isIncoming, isOutgoing } from '../../utils/transactionSign';
 
 export const PixelBadge = ({
   children,
@@ -159,14 +160,14 @@ export const StatusDot = ({
 export const TransactionTypeBadge = ({ type, size = 'md', className = '' }) => {
   const { language } = useTranslation();
   const K = batch3[language]?.pixel_badge;
-  if (type === 'income') {
+  if (isIncoming(type)) {
     return (
       <PixelBadge variant="income" size={size} className={className}>
         ↑ {K.income}
       </PixelBadge>
     );
   }
-  if (type === 'expense') {
+  if (isOutgoing(type)) {
     return (
       <PixelBadge variant="expense" size={size} className={className}>
         ↓ {K.expense}
@@ -225,7 +226,7 @@ export const DateTag = ({ date, size = 'sm', className = '' }) => {
  * Amount Tag - Formatted amount with color
  */
 export const AmountTag = ({ amount, type, size = 'md', className = '' }) => {
-  const isPositive = type === 'income';
+  const isPositive = isIncoming(type);
   const formatted = new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',

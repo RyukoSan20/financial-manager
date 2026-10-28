@@ -105,9 +105,13 @@ def get_month_timeline(
         if day is None:
             continue
         amount = float(row.amount or 0)
+        # A transfer moves money between the reader's own accounts, so
+        # it is neither income nor spending. Counting the two halves of
+        # one transfer as expenses made a transfer look like spending
+        # twice over.
         if row.type == "income":
             day["income"] += amount
-        else:
+        elif row.type == "expense":
             day["expense"] += amount
         day["net"] = round(day["income"] - day["expense"], 2)
         day["count"] += 1

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatCurrency } from '../utils/format';
+import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { useTranslation } from '../i18n';
 
 const StatTile = ({ icon: Icon, label, value, tone = 'neutral', sublabel }) => {
@@ -307,12 +308,12 @@ const ProfileSummary = () => {
                 <li key={tx.id} className="px-4 py-3 flex items-center gap-3">
                   <div
                     className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                      tx.type === 'income'
+                      isIncoming(tx.type)
                         ? 'bg-emerald-50 text-emerald-600'
                         : 'bg-rose-50 text-rose-600'
                     }`}
                   >
-                    {tx.type === 'income' ? (
+                    {isIncoming(tx.type) ? (
                       <TrendingUp className="w-4 h-4" />
                     ) : (
                       <TrendingDown className="w-4 h-4" />
@@ -320,16 +321,16 @@ const ProfileSummary = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-gray-800 dark:text-gray-200 truncate">
-                      {tx.merchant_name || tx.description || (tx.type === 'income' ? t('transaction.income') : t('transaction.expense'))}
+                      {tx.merchant_name || tx.description || (isIncoming(tx.type) ? t('transaction.income') : t('transaction.expense'))}
                     </p>
                     <p className="text-xs text-gray-400">{tx.date}</p>
                   </div>
                   <p
                     className={`text-sm font-semibold shrink-0 ${
-                      tx.type === 'income' ? 'text-emerald-600' : 'text-gray-700 dark:text-gray-200'
+                      isIncoming(tx.type) ? 'text-emerald-600' : 'text-gray-700 dark:text-gray-200'
                     }`}
                   >
-                    {tx.type === 'income' ? '+' : '-'}
+                    {amountSign(tx.type)}
                     {formatCurrency(tx.amount, tx.currency)}
                   </p>
                 </li>

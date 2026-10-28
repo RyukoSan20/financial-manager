@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { formatCurrency, formatDate } from '../utils/format';
+import { amountSign, isIncoming } from '../utils/transactionSign';
 import { showNotification } from '../components/notifications/NotificationHelper';
 import { useTranslation } from '../i18n';
 import { categoryName } from '../utils/categoryName';
@@ -176,7 +177,7 @@ export const CategoryExpenses = () => {
 
   // Get transaction type color
   const getTypeColor = (type) => {
-    if (type === 'income') return 'text-success-600';
+    if (isIncoming(type)) return 'text-success-600';
     return 'text-danger-600';
   };
 
@@ -365,7 +366,7 @@ export const CategoryExpenses = () => {
                             </div>
                             <div className="flex items-center gap-3">
                               <p className={`font-semibold ${getTypeColor(trans.type)}`}>
-                                {trans.type === 'income' ? '+' : '-'}{formatCurrency(trans.amount, trans.currency)}
+                                {amountSign(trans.type)}{formatCurrency(trans.amount, trans.currency)}
                               </p>
                               <div className="flex gap-1">
                                 <button

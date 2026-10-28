@@ -6,6 +6,7 @@ import { apiUrl as buildApiUrl } from '../config/url';
 import { Plus, Repeat, RefreshCw, Trash2, Edit2, Calendar, Clock, Play, Pause } from 'lucide-react';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import { formatCurrency, formatDate } from '../utils/format';
+import { isIncoming, isOutgoing } from '../utils/transactionSign';
 import { useCurrency, sumInDisplay } from '../utils/currency';
 import { showNotification } from '../components/notifications/NotificationHelper';
 import { categoryName } from '../utils/categoryName';
@@ -28,6 +29,31 @@ const monthlyAmount = (r) => {
   if (freq === 'yearly') return amount / 12;
   return amount;
 };
+
+// The server calls the kind of rule `type`, and the name of the rule
+// `description`. The page has always read `rule_type` and `name`, so
+// every rule looked like an expense with no name, and the monthly
+// income and expense totals were both zero.
+//
+// The two shapes are put into one here, so the page reads one set of
+// names and cannot drift from the server again.
+const normalizeRule = (rule) => ({
+  ...rule,
+  rule_type: rule.rule_type || rule.type || 'expense',
+  name: rule.name || rule.description || '',
+  type: rule.type || rule.rule_type || 'expense',
+  description: rule.description || rule.name || '',
+});
+
+// The upcoming list is a different shape again: it has no name, and
+// the date it names is `next_date`.
+const normalizeUpcoming = (item) => ({
+  ...item,
+  rule_type: item.rule_type || item.type || 'expense',
+  name: item.name || item.description || '',
+  rule_name: item.rule_name || item.frequency || '',
+  date: item.date || item.next_date,
+});
 
 export const Recurring = () => {
   const { currency: displayCurrency } = useCurrency();
@@ -53,15 +79,23 @@ export const Recurring = () => {
     setLoading(true);
     try {
       const [rulesRes, catRes, accRes, upcomingRes] = await Promise.all([
-        api.recurring.list(),
+        // The paused rules are shown too, so the reader can start one
+        // again. The server hides them unless it is asked for both.
+        api.request('/recurring/?active_only=false'),
         api.categories.list(),
         api.accounts.list(),
         api.recurring.upcoming(),
       ]);
-      setRules(Array.isArray(rulesRes) ? rulesRes : []);
+      setRules(Array.isArray(rulesRes) ? rulesRes.map(normalizeRule) : []);
       setCategories(Array.isArray(catRes) ? catRes : []);
       setAccounts(Array.isArray(accRes) ? accRes : []);
-      setUpcoming(Array.isArray(upcomingRes) ? upcomingRes : []);
+      setUpcoming(
+        Array.isArray(upcomingRes)
+          ? upcomingRes.map(normalizeUpcoming)
+          : Array.isArray(upcomingRes?.upcoming)
+          ? upcomingRes.upcoming.map(normalizeUpcoming)
+          : []
+      );
     } catch (error) {
       console.error('Failed to fetch recurring data:', error);
     } finally {
@@ -135,12 +169,20 @@ export const Recurring = () => {
       } else {
         await api.recurring.create(formData);
       }
-      
+
       setShowModal(false);
       setEditingRule(null);
       fetchData();
     } catch (err) {
-      console.error(err);
+      // The rule was not saved, and the reader has to be told why.
+      // The message the server wrote is the one worth showing.
+      console.error('Recurring rule save failed:', err);
+      showNotification({
+        type: 'error',
+        title: K.notif.failedTitle,
+        message: err?.message || K.notif.failedMsg,
+        category: 'recurring',
+      });
     }
   };
 

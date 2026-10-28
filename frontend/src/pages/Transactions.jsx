@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Card, Spinner, Badge } from '../components/ui';
 import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing, Mic } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
+import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { TextParserModal } from '../components/parser/TextParserModal';
 import { QRScannerModal } from '../components/parser/QRScannerModal';
 import { ReceiptScannerModal } from '../components/parser/ReceiptScannerModal';
@@ -487,13 +488,13 @@ export const Transactions = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1">
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                            tx.type === 'income' 
-                              ? 'bg-success-100 text-success-600' 
-                              : tx.type === 'expense'
+                            isIncoming(tx.type)
+                              ? 'bg-success-100 text-success-600'
+                              : isOutgoing(tx.type)
                               ? 'bg-danger-100 text-danger-600'
                               : 'bg-blue-100 text-blue-600'
                           }`}>
-                            {tx.type === 'income' ? (
+                            {isIncoming(tx.type) ? (
                               <ArrowUpRight className="w-6 h-6" />
                             ) : (
                               <ArrowDownRight className="w-6 h-6" />
@@ -519,9 +520,9 @@ export const Transactions = () => {
                         <div className="flex items-center gap-3">
                           <div className="text-right">
                             <p className={`font-bold text-lg ${
-                              tx.type === 'income' ? 'text-success-600' : 'text-gray-900'
+                              isIncoming(tx.type) ? 'text-success-600' : 'text-gray-900'
                             }`}>
-                              {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, tx.currency)}
+                              {amountSign(tx.type)}{formatCurrency(tx.amount, tx.currency)}
                             </p>
                           </div>
                           {/* Chevron dropdown - always visible */}

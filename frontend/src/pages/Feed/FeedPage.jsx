@@ -9,6 +9,7 @@ import {
 import api from '../../services/api';
 import { useTranslation } from '../../i18n';
 import { transactionCategoryName } from '../../utils/categoryName';
+import { amountSign, isIncoming, isOutgoing } from '../../utils/transactionSign';
 
 const FeedPage = () => {
   const { t, language } = useTranslation();
@@ -458,13 +459,13 @@ const FeedPage = () => {
                 
                 <div className="text-right ml-4 flex-shrink-0">
                   <div className={`text-xl font-bold ${
-                    transaction.type === 'expense' 
-                      ? 'text-red-600 dark:text-red-400' 
-                      : transaction.type === 'income'
+                    isOutgoing(transaction.type)
+                      ? 'text-red-600 dark:text-red-400'
+                      : isIncoming(transaction.type)
                       ? 'text-green-600 dark:text-green-400'
                       : 'text-gray-900 dark:text-white'
                   }`}>
-                    {transaction.type === 'expense' ? '-' : transaction.type === 'income' ? '+' : ''}
+                    {amountSign(transaction.type)}
                     {formatCurrency(transaction.amount, transaction.currency)}
                   </div>
                 </div>
