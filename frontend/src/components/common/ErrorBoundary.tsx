@@ -54,6 +54,10 @@ class ErrorBoundary extends Component<Props, State> {
     try {
       // Get API URL from environment
       const API_URL = import.meta.env.VITE_API_URL || '';
+      // VITE_API_URL already ends with /api, and the error router is
+      // mounted at /api/errors. Writing /api/errors/client onto it
+      // gave /api/api/errors/client, which the server never answers.
+      const errorsUrl = `${API_URL.replace(/\/api$/, '')}/api/errors/client`;
       
       // Extract component stack
       const componentStack = errorInfo.componentStack || '';
@@ -79,7 +83,7 @@ class ErrorBoundary extends Component<Props, State> {
       };
 
       // Send to backend
-      const response = await fetch(`${API_URL}/api/errors/client`, {
+      const response = await fetch(errorsUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
