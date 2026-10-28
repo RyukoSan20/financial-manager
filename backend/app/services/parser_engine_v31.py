@@ -10,6 +10,8 @@ import re
 import logging
 from typing import List, Dict, Any, Optional, Tuple
 
+from app.services.receipt_text import normalize_printed_amounts
+
 logger = logging.getLogger(__name__)
 
 # Lazy import rapidfuzz
@@ -31,17 +33,34 @@ def _get_rapidfuzz():
 # ============================================================
 
 def normalize_receipt_line(line: str) -> str:
-    """Clean receipt line - remove Rp, normalize spaces, fix thousand separators."""
+    """
+    Clean a receipt line: remove the currency mark, and put the
+    numbers back together.
+
+    A receipt from a thermal printer lays the characters out in a
+    fixed width grid, so the amount 33.900 is read as "33, 900" or
+    "33 900". The parser then reads "33" as the amount and misses the
+    900, and the reader is told their shopping cost 33 rupiah.
+
+    The numbers are put back together first, here, so that nothing
+    downstream has to know about the grid.
+    """
     if not line:
         return ""
     line = str(line).strip()
+
+    # Put the printed numbers back together, before the currency mark
+    # is removed, so the amount is whole when the mark is taken off.
+    line = normalize_printed_amounts(line)
+
     # Remove currency prefix
     line = re.sub(r'(?i)\b(rp|idr)\.?\s*', '', line)
-    
-    # Fix thousand separator: "18 000" -> "18000", "33 900" -> "33900", "5 200" -> "5200"
-    # Generic pattern: 1-3 digits + space + exactly 3 digits -> merge them
-    line = re.sub(r'(\b\d{1,3})\s+(\d{3}\b)', r'\1\2', line)
-    
+
+    # A number that is left with a thousands separator written as a
+    # dot is read as one number, not as a decimal. The dot is kept
+    # here, because the amount helpers downstream know what to do with
+    # it, and the reader is never shown a raw dot.
+
     return re.sub(r'\s+', ' ', line).strip()
 
 
@@ -130,15 +149,40 @@ MERCHANT_PATTERNS = [
 
 def detect_merchant(full_text: str) -> str:
     """
-    Detect merchant from FULL receipt text (not just top lines).
-    Search entire receipt including footer.
+    The shop this receipt is from.
+
+    The shop is read off the receipt rather than looked up in a list.
+    The list could not grow: a receipt from a shop nobody had thought
+    of came back as "Unknown Merchant", and the reader had to fix it by
+    hand every single time.
+
+    The list is still consulted, because a shop that is already known
+    is worth recognising straight away, but it is only a starting
+    point. What the receipt itself says comes first when it is clear
+    enough, and the words a machine prints at the end of a receipt are
+    never taken for a shop.
     """
     upper_text = full_text.upper()
-    
+
+    # The shop as the receipt says it. A company name at the top, or
+    # the name after "dibayarkan ke", is more certain than a list
+    # entry, because it is what this receipt actually says.
+    from app.services.catalog_autodiscovery import best_merchant
+
+    lines = [line for line in full_text.split("\n") if line.strip()]
+    candidate = best_merchant(lines)
+    if candidate is not None and candidate.source in ("company_line", "paid_to"):
+        return candidate.name
+
     for pattern, name in MERCHANT_PATTERNS:
         if re.search(pattern, upper_text, re.IGNORECASE):
             return name
-    
+
+    # A name read from the receipt, even if it is not certain. It is
+    # better than "Unknown Merchant", and the reader can change it.
+    if candidate is not None:
+        return candidate.name
+
     return "Unknown Merchant"
 
 
