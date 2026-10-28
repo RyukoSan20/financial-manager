@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { scanManager } from '../../services/scanManager';
 import { dismissScan, shouldNotify } from '../../utils/scanDismissal';
+import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n';
 import { batch3 } from '../../i18n/keys_batch3';
 
@@ -38,6 +39,7 @@ const kindIcon = (kind) =>
 
 export const ScanNotification = () => {
   const { language } = useTranslation();
+  const { user, loading: authLoading } = useAuth();
   const K = batch3[language]?.scan_notification || {};
   const [jobs, setJobs] = useState([]);
   const [expanded, setExpanded] = useState(null);
@@ -66,11 +68,27 @@ export const ScanNotification = () => {
   const barDistanceRef = useRef(0);
   const navigate = useNavigate();
 
+  // The notification only belongs to a signed-in reader. Before the
+  // reader is known, nothing is shown: the bar used to appear on the
+  // login page, carrying a scan that belonged to whoever was signed in
+  // before.
+  const signedIn = Boolean(user);
+
   useEffect(() => {
+    // While the reader is being found out, wait. Showing the bar
+    // during that moment would show a scan of the wrong person.
+    if (authLoading) return undefined;
+    if (!signedIn) {
+      // Nobody is signed in, so any scan left over from the last
+      // reader is dropped rather than shown to the next one.
+      scanManager.reset();
+      setJobs([]);
+      return undefined;
+    }
     const unsubscribe = scanManager.subscribe(setJobs);
     scanManager.restore();
     return unsubscribe;
-  }, []);
+  }, [signedIn, authLoading]);
 
   // The job the sheet is showing.
   const active = expanded ? jobs.find((j) => j.jobId === expanded) : null;
@@ -114,6 +132,11 @@ export const ScanNotification = () => {
     // that scan is in, and those two are.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bar?.jobId, bar?.status]);
+
+  // A finished scan belongs to a reader. With nobody signed in there
+  // is nothing to announce, so the bar stays off the login page and
+  // off any page that is read without signing in.
+  if (!signedIn) return null;
   if (!bar && !active) return null;
 
   const openJob = (job) => {

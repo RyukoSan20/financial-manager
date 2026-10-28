@@ -9,15 +9,45 @@
  * The same flow is used for a receipt image, a photo taken with the
  * camera, and a QR code read with the camera.
  */
-import { apiUrl } from '../config/url';
+// The address is read from the build here, and the joining of a path
+// to it is done by a helper that has no build behind it, so this
+// module can also be loaded by Node, as the tests do.
+import { normalizeBase, buildApiUrl } from '../config/apiBase.js';
 
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 120000;
 
-const tokenOf = () =>
-  localStorage.getItem('token') ||
-  localStorage.getItem('sb_token') ||
-  localStorage.getItem('access_token');
+/**
+ * The base address of the backend.
+ *
+ * Outside a bundler there is no build to read the address from, so
+ * the fallback is used. The tests never make a request, so the
+ * fallback is only there to keep the module loadable.
+ */
+function apiBase() {
+  const fromBuild =
+    typeof import.meta !== 'undefined' && import.meta.env
+      ? import.meta.env.VITE_API_URL
+      : '';
+  return normalizeBase(fromBuild || 'https://my-financial-manager.online/api');
+}
+
+/**
+ * The address of a path on the backend.
+ */
+const apiUrl = (path = '') => buildApiUrl(apiBase(), path);
+
+const tokenOf = () => {
+  // Outside a browser there is no storage to read. The tests load this
+  // module in Node, so the storage is looked for before it is used.
+  const storage = typeof localStorage !== 'undefined' ? localStorage : null;
+  if (!storage) return null;
+  return (
+    storage.getItem('token') ||
+    storage.getItem('sb_token') ||
+    storage.getItem('access_token')
+  );
+};
 
 const authHeaders = () => {
   const token = tokenOf();
@@ -27,7 +57,7 @@ const authHeaders = () => {
 /**
  * A scan that is running, or has finished, in the background.
  */
-class ScanManager {
+export class ScanManager {
   constructor() {
     /** job_id -> { kind, status, progress, message, result, error, startedAt } */
     this.jobs = new Map();
@@ -53,6 +83,25 @@ class ScanManager {
 
   list() {
     return Array.from(this.jobs.values()).sort((a, b) => b.startedAt - a.startedAt);
+  }
+
+  /**
+   * Forget everything.
+   *
+   * The manager is a single object that lives for as long as the page
+   * is open, so the jobs of one reader stay in it after they log out.
+   * The next reader then saw the finished scans of the one before,
+   * including on the login page, which is nobody's business.
+   *
+   * The timers that poll for results are stopped as well: a poll that
+   * keeps running after the reader has gone would put their scan back
+   * into the list.
+   */
+  reset() {
+    this.timers.forEach((timer) => clearTimeout(timer));
+    this.timers.clear();
+    this.jobs.clear();
+    this.emit();
   }
 
   update(jobId, patch) {
@@ -209,6 +258,10 @@ class ScanManager {
    * is not lost.
    */
   async restore() {
+    // Without a reader there is nothing to restore. Without this check
+    // the request went out without a token, and on the login page the
+    // result was read as if it belonged to whoever opened the page.
+    if (!tokenOf()) return;
     try {
       const response = await fetch(apiUrl('scans/'), { headers: authHeaders() });
       if (!response.ok) return;

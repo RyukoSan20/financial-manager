@@ -72,6 +72,7 @@ for test_file in \
   src/utils/__tests__/abTesting.test.js \
   src/utils/__tests__/budgetRecipes.test.js \
   src/utils/__tests__/scanDismissal.test.js \
+  src/utils/__tests__/scanManager.test.js \
   src/utils/__tests__/healthMetrics.test.js \
   src/utils/__tests__/gmailState.test.js \
   src/data/__tests__/privacyManifest.test.js
