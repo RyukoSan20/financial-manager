@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Input, Select, Modal, ProgressBar, Badge, EmptyState, Spinner } from '../components/ui';
+import { Card, Button, Input, Select, Modal, ProgressBar, Badge, Spinner } from '../components/ui';
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp } from 'lucide-react';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import { formatCurrency, formatDate } from '../utils/format';
@@ -9,6 +9,9 @@ import { useTranslation } from '../i18n';
 import { PageHeader } from '../components/ui/PageHeader';
 import { buildFlag } from '../utils/featureFlags';
 import { categoryName } from '../utils/categoryName';
+import HonestEmptyState from '../components/common/HonestEmptyState';
+import BudgetRecipeSelector from '../components/budget/BudgetRecipeSelector';
+import { getVariant, readerKey, trackEvent } from '../utils/abTesting';
 
 export const Budgets = () => {
   const { t, language } = useTranslation();
@@ -20,6 +23,13 @@ export const Budgets = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
+
+  // Which version of the budget page this reader sees. It is decided
+  // on this device, and the reader sees the same version every time.
+  const [recipeVersion] = useState(() =>
+    getVariant('exp_budget_wizard', readerKey())
+  );
+  const useRecipes = recipeVersion === 'recipe';
 
   useEffect(() => {
     fetchData();
@@ -151,17 +161,32 @@ export const Budgets = () => {
 
       {/* Budget List */}
       {budgets.length === 0 ? (
-        <EmptyState
-          icon={<Target className="w-8 h-8 text-gray-400" />}
-          title={t('budgets.empty_title')}
-          description={t('budgets.empty_desc')}
-          action={
-            <Button onClick={() => setShowModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              {t('budgets.create')}
-            </Button>
-          }
-        />
+        <>
+          <HonestEmptyState
+            titleKey="budgets.empty_title"
+            descriptionKey="budgets.empty_desc"
+            hintKey="budgets.empty_hint"
+            primaryActionKey="budgets.create"
+            secondaryActionKey="budgets.empty_recipe_action"
+            onPrimary={() => setShowModal(true)}
+            onSecondary={() => setShowModal(true)}
+            mascotMood="idle"
+          />
+
+          {/* The recipes. They are the easier way in for a reader who
+              has nothing yet, so they sit under the explanation. */}
+          {useRecipes && (
+            <div className="mt-4">
+              <BudgetRecipeSelector
+                total={3000000}
+                onApply={() => {
+                  trackEvent('exp_budget_wizard', 'recipe_applied', undefined);
+                  setShowModal(true);
+                }}
+              />
+            </div>
+          )}
+        </>
       ) : (
         <div className="grid gap-4">
           {budgets.map((budget) => {
