@@ -9,3 +9,7 @@ export { ProgressBar } from './ProgressBar';
 export { Spinner } from './Spinner';
 export { StatCard } from './StatCard';
 export { EmptyState } from './EmptyState';
+export { default as ConfirmDialog } from './ConfirmDialog';
+export { default as AnimatedNumber } from '../common/AnimatedNumber';
+export { default as HonestEmptyState } from '../common/HonestEmptyState';
+export { default as FinBuddyMascot } from '../common/FinBuddyMascot';
