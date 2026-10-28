@@ -91,6 +91,18 @@ fi
 cd "$ROOT"
 echo
 
+echo "--- route smoke test ------------------------------------------"
+cd "$ROOT"
+if "$ROOT/backend/venv/bin/python" "$ROOT/scripts/smoke_test_routes.py" > /tmp/preflight_smoke.log 2>&1; then
+  grep -E '^  OK' /tmp/preflight_smoke.log
+  echo "  -> route smoke test OK"
+else
+  tail -30 /tmp/preflight_smoke.log
+  note_failure "route smoke test"
+fi
+cd "$ROOT"
+echo
+
 echo "--- backend pytest -q -----------------------------------------"
 cd "$ROOT/backend"
 if [ -x venv/bin/python ]; then
