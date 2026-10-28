@@ -86,3 +86,93 @@
 [data-ui="polish"] .icon-inline > svg {
   flex-shrink: 0;
 }
+
+/* ---------------------------------------------------------------------------
+ * The numbers.
+ *
+ * A column of money is read down, not across. When the digits are
+ * laid out in proportion to their width, the column is ragged and the
+ * reader has to work to compare two amounts. When the digits are all
+ * the same width, the amounts line up and the comparison is
+ * immediate.
+ *
+ * So every amount, every percentage and every table of numbers uses
+ * the tabular figures. The style is applied to the number itself, not
+ * to the page, so it follows the number wherever the number goes.
+ */
+
+[data-ui="polish"] .money,
+[data-ui="polish"] .tabular-nums,
+[data-ui="polish"] table td,
+[data-ui="polish"] table th,
+[data-ui="polish"] .stat-value {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ---------------------------------------------------------------------------
+ * The layered surface.
+ *
+ * A block of one bright colour is loud. It is loud whether or not it
+ * carries anything worth looking at, and a page with three of them
+ * has three places competing for the eye.
+ *
+ * The layered surface is quieter and holds more. It has a faint
+ * border, so the edge of the card is visible without the card being
+ * outlined; a soft shadow underneath, so the card sits on the page
+ * rather than being cut out of it; and a measured gradient, so there
+ * is a direction to it without it shouting.
+ *
+ * The border is grey with some transparency, which is the one colour
+ * that does not fight with whatever accent the reader has chosen.
+ */
+
+[data-ui="polish"] .layered-surface {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px -12px rgba(15, 23, 42, 0.12);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.6) 0%,
+    rgba(255, 255, 255, 0) 60%
+  );
+  transition:
+    box-shadow var(--duration-settle, 240ms) var(--ease-out-soft, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color var(--duration-settle, 240ms) var(--ease-out-soft, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.dark [data-ui="polish"] .layered-surface {
+  border-color: rgba(148, 163, 184, 0.16);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.24),
+    0 8px 24px -12px rgba(0, 0, 0, 0.4);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0) 60%
+  );
+}
+
+/*
+ * A card that can be hovered answers the pointer. The change is a
+ * little, and it is quick.
+ */
+[data-ui="polish"] .layered-surface--interactive:hover {
+  border-color: rgba(148, 163, 184, 0.34);
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 12px 32px -14px rgba(15, 23, 42, 0.18);
+}
+
+/* ---------------------------------------------------------------------------
+ * The empty state.
+ * ------------------------------------------------------------------------- */
+
+[data-ui="polish"] .honest-empty__title {
+  letter-spacing: -0.01em;
+}
+
+[data-ui="polish"] .honest-empty__mascot {
+  opacity: 0.95;
+}

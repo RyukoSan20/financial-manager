@@ -1,0 +1,218 @@
+/*
+ * The motion layer.
+ *
+ * Small movements, and nothing that moves on its own. A page that
+ * drifts, pulses or bounces is tiring to read and it makes the
+ * numbers harder to read, which is the one thing this application
+ * cannot afford.
+ *
+ * So the rules here are about how things *respond*, not about
+ * performing for their own sake:
+ *
+ * - a press is answered with a press, in 150 milliseconds;
+ * - a thing that appears fades and settles, it does not fly in;
+ * - a number that changes counts to the new value rather than
+ *   jumping.
+ *
+ * The easing is the one from Transitions.dev, which is worth naming
+ * because the numbers are not arbitrary: `cubic-bezier(0.22, 1, 0.36,
+ * 1)` starts fast and settles slowly, so a movement feels like it
+ * comes to rest rather than like it stops.
+ *
+ * Everything here is inside the polish layer, so a build with the
+ * polish switch off is completely unaffected.
+ */
+
+/* ---------------------------------------------------------------------------
+ * The easing
+ * ------------------------------------------------------------------------- */
+
+[data-ui="polish"] {
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-press: 150ms;
+  --duration-settle: 240ms;
+}
+
+/* ---------------------------------------------------------------------------
+ * Pressing
+ * ------------------------------------------------------------------------- */
+
+/*
+ * A button that is pressed goes down a little and comes straight back.
+ * The scale is small, because a large one is a bounce, and a bounce on
+ * every press is exhausting.
+ */
+[data-ui="polish"] .pressable {
+  transition: transform var(--duration-press) var(--ease-out-soft);
+}
+
+[data-ui="polish"] .pressable:active {
+  transform: scale(0.96);
+}
+
+/*
+ * The quick amount chips on the add page. They are pressed often, so
+ * the answer has to be quick.
+ */
+[data-ui="polish"] .amount-chip {
+  transition:
+    transform var(--duration-press) var(--ease-out-soft),
+    background-color var(--duration-press) var(--ease-out-soft),
+    border-color var(--duration-press) var(--ease-out-soft);
+}
+
+[data-ui="polish"] .amount-chip:active {
+  transform: scale(0.95);
+}
+
+/* ---------------------------------------------------------------------------
+ * Appearing
+ * ------------------------------------------------------------------------- */
+
+/*
+ * Something that has just appeared fades in and settles. It does not
+ * slide in from the side, because a sliding thing draws the eye to
+ * the edge of the screen rather than to the thing itself.
+ */
+[data-ui="polish"] .settle-in {
+  animation: fm-settle-in var(--duration-settle) var(--ease-out-soft) both;
+}
+
+@keyframes fm-settle-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * The empty state. It arrives a fraction after the page, so it reads
+ * as settling into place rather than appearing in a flash.
+ */
+[data-ui="polish"] .honest-empty {
+  animation: fm-settle-in var(--duration-settle) var(--ease-out-soft) both;
+}
+
+/* ---------------------------------------------------------------------------
+ * A number that changes
+ * ------------------------------------------------------------------------- */
+
+/*
+ * The digits of a number that is counting up stay in place. Without
+ * this the whole line moves as the digits change width, which makes
+ * the number harder to read at the moment it is being read.
+ */
+[data-ui="polish"] .tabular-nums,
+[data-ui="polish"] .money,
+[data-ui="polish"] .animated-number {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ---------------------------------------------------------------------------
+ * The mascot
+ * ------------------------------------------------------------------------- */
+
+/*
+ * The mascot breathes, very slowly, and only when it is idle. A
+ * mascot that moves all the time is a mascot that is noticed all the
+ * time.
+ */
+[data-ui="polish"] .finbuddy[data-mood="idle"] {
+  animation: fm-breathe 4.5s var(--ease-in-out-soft) infinite;
+}
+
+@keyframes fm-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-1.5px) scale(1.01);
+  }
+}
+
+/*
+ * The scanning mascot looks about, at a speed that matches a machine
+ * working rather than a person waiting.
+ */
+[data-ui="polish"] .finbuddy[data-mood="scanning"] {
+  animation: fm-scan 1.6s var(--ease-in-out-soft) infinite;
+}
+
+@keyframes fm-scan {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+/*
+ * The thinking mascot does not move. It is thinking.
+ */
+[data-ui="polish"] .finbuddy[data-mood="thinking"] {
+  animation: fm-pulse 2.2s var(--ease-in-out-soft) infinite;
+}
+
+@keyframes fm-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+/*
+ * The celebrating mascot jumps once and then settles. Once, because
+ * a mascot that keeps jumping never settles down.
+ */
+[data-ui="polish"] .finbuddy[data-mood="celebrating"] {
+  animation: fm-cheer 700ms var(--ease-out-soft) 1;
+}
+
+@keyframes fm-cheer {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-6px) scale(1.05);
+  }
+  70% {
+    transform: translateY(0) scale(0.98);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Respecting the reader
+ * ------------------------------------------------------------------------- */
+
+/*
+ * A reader who has asked the system for less movement gets none of
+ * it. This is the system setting, not a flag in this project, and it
+ * is checked here because the motion is all in CSS.
+ */
+@media (prefers-reduced-motion: reduce) {
+  [data-ui="polish"] .finbuddy,
+  [data-ui="polish"] .settle-in,
+  [data-ui="polish"] .honest-empty {
+    animation: none !important;
+  }
+
+  [data-ui="polish"] .pressable:active,
+  [data-ui="polish"] .amount-chip:active {
+    transform: none !important;
+  }
+}
