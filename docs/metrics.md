@@ -49,13 +49,28 @@ converted into the display currency.
 |---|---|
 | `frontend/src/pages/Accounts.jsx` | `summary.total_balance` + `summary.currency`. |
 | `frontend/src/pages/Dashboard.jsx` | `summary.total_balance` + `summary.total_balance_currency`. |
-| `frontend/src/pages/Analytics.jsx` | `health.metrics.total_balance`. |
+| `frontend/src/pages/Analytics.jsx` | `health.metrics.total_balance`, read through `frontend/src/utils/healthMetrics.js`. |
 | `frontend/src/components/layout/UserProfileSection.jsx` | `stats.account_balance` + `stats.account_balance_currency`. |
 | `frontend/src/pages/HealthCoach.jsx` | `total_cash` + `currency`. |
 
 **A number is wrong if** two pages show different totals for the same
 accounts in the same display currency. The cross-page test in
 `backend/tests/test_metrics_consistency.py` checks this.
+
+**One reader, one place.** The health answer carries the balance, the
+saving rate, the debt and the goal count under `metrics`. The analytics
+page reads them through `frontend/src/utils/healthMetrics.js`, so the
+strip at the top of the page and the card further down cannot drift
+apart. They did once: the strip read them from the top level, where
+there is nothing, and the page showed a balance of zero next to the
+real one.
+
+**The count behind the score.** The health answer also carries
+`metrics.transaction_count`, from the shared `transaction_count()` in
+`backend/app/services/metrics.py`. The frontend needs it because a
+score of 0 out of 100 with one transaction is not a verdict, it is a
+measurement that could not be made. Below three transactions the
+score is not shown at all.
 
 ---
 

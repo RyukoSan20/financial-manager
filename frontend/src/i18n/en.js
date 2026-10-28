@@ -742,6 +742,7 @@ export default {
     health_message_poor: "Your financial health needs significant improvement.",
     health_not_measured: "Not measured yet",
     health_not_enough_data: "There is not enough data to judge your financial health yet. Record a few transactions first.",
+    health_score_not_ready: "No score yet",
     health_no_expense_data: "No spending recorded this month, so the emergency fund cannot be measured.",
     health_savings_rate: "Savings Rate",
     health_savings_aim: "aim for 20%+ savings rate",

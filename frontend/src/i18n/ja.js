@@ -742,6 +742,7 @@ export default {
     health_message_poor: "家計の健康状態には大きな改善が必要です。",
     health_not_measured: "未測定",
     health_not_enough_data: "Trackingはまだ十分なデータがありません。まずいくつかの取引を記録してください。",
+    health_score_not_ready: "スコアはまだありません",
     health_no_expense_data: "今月の支出記録がないため、緊急予備資金を計算できません。",
     health_savings_rate: "貯蓄率",
     health_savings_aim: "貯蓄率20%以上を目指しましょう",

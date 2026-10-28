@@ -9,6 +9,7 @@ from decimal import Decimal
 from collections import defaultdict
 
 from app.services.currency_totals import total_in_currency
+from app.services.metrics import transaction_count as metrics_transaction_count
 from app.core.database import get_db
 from app.core.security import get_current_user_optional
 from app.models.transaction import Transaction
@@ -928,6 +929,10 @@ async def get_financial_health(
         Debt.is_paid_off == False
     ).all()
     total_debt = sum(d.current_balance for d in debts)
+
+    # How many transactions the reader has recorded. It is the same
+    # count the shared metrics service gives, so the two never differ.
+    metrics_tx_count = metrics_transaction_count(db, user_id)
     
     # Get goals
     goals = db.query(Goal).filter(
@@ -1114,6 +1119,11 @@ async def get_financial_health(
             "total_balance": total_balance,
             "total_debt": total_debt,
             "active_goals": len(goals),
+            # How many transactions the reader has recorded. The
+            # frontend needs this to know whether the score is worth
+            # showing: a score of zero out of one transaction is not a
+            # verdict, it is a measurement that could not be made.
+            "transaction_count": metrics_tx_count,
         }
     }
 

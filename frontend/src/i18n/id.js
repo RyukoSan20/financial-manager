@@ -742,6 +742,7 @@ export default {
     health_message_poor: "Kesehatan keuangan Anda perlu perbaikan besar.",
     health_not_measured: "Belum ada data",
     health_not_enough_data: "Data belum cukup untuk menilai kesehatan keuangan Anda. Catat beberapa transaksi terlebih dahulu.",
+    health_score_not_ready: "Belum ada skor",
     health_no_expense_data: "Belum ada pengeluaran tercatat bulan ini, jadi dana darurat belum bisa dihitung.",
     health_savings_rate: "Tingkat Tabungan",
     health_savings_aim: "Usahakan tingkat tabungan 20%+",

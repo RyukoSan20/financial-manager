@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/format';
 import { formatAxisValue } from '../utils/idFormat';
+import { canShowHealthScore, healthMetrics, transactionCount } from '../utils/healthMetrics';
 import { useSyncedPreference } from '../hooks/useSyncedPreference';
 import { useTranslation } from '../i18n';
 import { categoryName } from '../utils/categoryName';
@@ -345,6 +346,18 @@ export const Analytics = () => {
   const healthScore = health ? (health.overall_score ?? health.total_score ?? 0) : 0;
   const healthBreakdown = health?.breakdown || {};
 
+  // The health numbers, read from where the server puts them. The
+  // strip at the top and the card further down used to read them from
+  // two different places, and only one of those places was right, so
+  // the page showed two different balances.
+  const healthNums = healthMetrics(health);
+  const healthTxCount = transactionCount(health);
+
+  // Whether the score is worth showing. A score of zero out of one
+  // transaction is not a verdict, it is a measurement that could not
+  // be made, so the page says what is missing instead.
+  const showHealthScore = canShowHealthScore(health, healthTxCount);
+
   const Widget = ({ id, children, className = '' }) => {
     const meta = WIDGETS[id];
     const Icon = meta.icon;
@@ -385,16 +398,29 @@ export const Analytics = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-primary-100 text-sm font-medium">{t('analytics.widget_health_label')}</p>
-                  <p className="text-5xl font-bold text-white mt-2">{healthScore}/100</p>
-                  <Badge variant={getScoreLabel(healthScore).color} className="mt-2">
-                    {getScoreLabel(healthScore).label}
-                  </Badge>
+                  {/* The score is only shown when it could be measured.
+                      A large "0/100" with the words "needs work" reads
+                      as a verdict, and with one transaction there is
+                      nothing to judge. */}
+                  {showHealthScore ? (
+                    <>
+                      <p className="text-5xl font-bold text-white mt-2 tabular-nums">{healthScore}/100</p>
+                      <Badge variant={getScoreLabel(healthScore).color} className="mt-2">
+                        {getScoreLabel(healthScore).label}
+                      </Badge>
+                    </>
+                  ) : (
+                    <p className="text-2xl font-bold text-white mt-2 max-w-md leading-snug">
+                      {t('analytics.health_score_not_ready')}
+                    </p>
+                  )}
                   {(health.message_key || health.message) && (
                     <p className="text-primary-100 text-xs mt-2 max-w-md">
                       {health.message_key ? t(health.message_key) : health.message}
                     </p>
                   )}
                 </div>
+                {showHealthScore && (
                 <div className="w-28 h-28 hidden sm:block">
                   <ResponsiveContainer>
                     <RePieChart>
@@ -409,6 +435,7 @@ export const Analytics = () => {
                     </RePieChart>
                   </ResponsiveContainer>
                 </div>
+                )}
               </div>
             </div>
             <CardBody>
@@ -780,28 +807,28 @@ export const Analytics = () => {
           {[
             {
               label: t('analytics.stat_balance'),
-              value: formatCurrency(health.total_balance || 0),
+              value: formatCurrency(healthNums.totalBalance),
               tone: 'text-gray-900 dark:text-gray-100',
             },
             {
               label: t('analytics.stat_saving_rate'),
-              value: `${(health.savings_rate || 0).toFixed(1)}%`,
+              value: `${healthNums.savingRate.toFixed(1)}%`,
               tone:
-                (health.savings_rate || 0) >= 20
+                healthNums.savingRate >= 20
                   ? 'text-success-600 dark:text-success-400'
                   : 'text-warning-600 dark:text-warning-400',
             },
             {
               label: t('analytics.stat_total_debt'),
-              value: formatCurrency(health.total_debt || 0),
+              value: formatCurrency(healthNums.totalDebt),
               tone:
-                (health.total_debt || 0) > 0
+                healthNums.totalDebt > 0
                   ? 'text-danger-600 dark:text-danger-400'
                   : 'text-gray-900 dark:text-gray-100',
             },
             {
               label: t('analytics.stat_active_goals'),
-              value: String(health.active_goals || 0),
+              value: String(healthNums.activeGoals),
               tone: 'text-primary-600 dark:text-primary-400',
             },
           ].map((stat) => (
