@@ -136,6 +136,51 @@ export function formatTanggal(value, style = 'short', language = null) {
   return formatted;
 }
 
+
+/**
+ * Clean a number before it is shown.
+ *
+ * Money is stored as a decimal, and a decimal does not always come
+ * back as a whole number. Two hundred and fifty thousand rupiah comes
+ * out of the database as 250000.00000000003, and a subtraction of two
+ * almost equal amounts comes out as -0.0000014397338687.
+ *
+ * Both were written on the screen exactly as they came out, so a chart
+ * axis said "Rp -0.0000014397338687" and a balance said "Rp -0". A
+ * reader cannot read that, and it is not true: the amount is zero, or
+ * it is a whole number of rupiah.
+ *
+ * So a number that is smaller than the smallest visible step is zero,
+ * and a number that carries a floating point tail is the number it was
+ * meant to be.
+ *
+ * The step is the smallest amount the reader can see. For rupiah,
+ * which has no cents, that is one rupiah, so a difference of half a
+ * rupiah is nothing. A currency with cents passes a smaller step.
+ *
+ * A number that is not a number at all stays zero, rather than
+ * becoming "NaN" on the screen.
+ */
+export function cleanNumber(value, step = 1, decimals = 6) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+
+  // Anything smaller than one step is not an amount, it is the
+  // leftover of a subtraction. It is zero, and it is zero whatever
+  // sign it came in with, because "-0" is worse than "0".
+  if (Math.abs(number) < step) return 0;
+
+  // Round away the noise, but leave the last visible digit alone: a
+  // reader must not see a rounding that was not asked for.
+  const factor = 10 ** decimals;
+  const rounded = Math.round(number * factor) / factor;
+
+  // A rounded zero is zero, not negative zero.
+  if (rounded === 0) return 0;
+
+  return rounded;
+}
+
 /**
  * Write a number on a chart axis.
  *

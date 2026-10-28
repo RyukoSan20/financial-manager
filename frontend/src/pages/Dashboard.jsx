@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatNumber, formatPercent, formatNative } from '../utils/format';
 import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
+import { cleanNumber } from '../utils/idFormat';
 import { useCurrency } from '../utils/currency';
 import api, { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../config/url';
@@ -539,10 +540,15 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       const axisCurrency = displayCurrency || 'IDR';
       const axisSymbol = { IDR: 'Rp', JPY: '¥', USD: '$', EUR: '€', GBP: '£' }[axisCurrency] || axisCurrency;
       const axisFormatter = (price) => {
-        if (price >= 1000000000) return `${axisSymbol} ${(price / 1000000000).toFixed(1)}B`;
-        if (price >= 1000000) return `${axisSymbol} ${(price / 1000000).toFixed(1)}M`;
-        if (price >= 1000) return `${axisSymbol} ${(price / 1000).toFixed(0)}K`;
-        return `${axisSymbol} ${price}`;
+        // A chart axis is a whole rupiah, and a difference of two
+        // almost equal amounts comes out of the database with a long
+        // tail. Cleaning it first means the axis never says
+        // "Rp -0.0000014397338687".
+        const value = cleanNumber(price);
+        if (value >= 1000000000) return `${axisSymbol} ${(value / 1000000000).toFixed(1)}B`;
+        if (value >= 1000000) return `${axisSymbol} ${(value / 1000000).toFixed(1)}M`;
+        if (value >= 1000) return `${axisSymbol} ${(value / 1000).toFixed(0)}K`;
+        return `${axisSymbol} ${value}`;
       };
       if (chartInstanceRef.current) {
         try { chartInstanceRef.current.remove(); } catch (e) {}
@@ -610,7 +616,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           _labelX: item.labelX || item.labelXShort || '',
           income: item.totalIncome || item.income || 0,
           expense: item.totalExpense || item.expense || 0,
-          savings: item.netSavings || item.net || (item.totalIncome - item.totalExpense) || 0,
+          // The saving for the month. It is cleaned here as well, so
+          // the line does not dip below zero by a fraction of a
+          // rupiah.
+          savings: cleanNumber(item.netSavings || item.net || (item.totalIncome - item.totalExpense) || 0),
         };
       });
 

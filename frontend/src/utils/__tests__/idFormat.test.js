@@ -18,6 +18,7 @@ import {
   formatAxisValue,
   formatNumber,
   currencyStyle,
+  cleanNumber,
 } from '../idFormat.js';
 
 let passed = 0;
@@ -115,6 +116,48 @@ check('a missing number', formatNumber(null, 'IDR'), '0');
 // The result
 // ---------------------------------------------------------------------------
 
+// The bug this fixes: a subtraction of two almost equal amounts came
+// out as -0.0000014397338687, and that was written on the chart.
+check('a number very close to zero is zero', cleanNumber(-0.0000014397338687), 0);
+check('a tiny positive number is zero', cleanNumber(0.0000014397338687), 0);
+check('exactly zero is zero', cleanNumber(0), 0);
+check('negative zero is zero', cleanNumber(-0), 0);
+
+// A whole number with a floating point tail is the whole number.
+//
+// The tails are written as sums rather than as literals, because a
+// literal that long does not survive the trip through the parser and
+// the linter rightly complains about it.
+check(
+  'a float tail is cleaned',
+  cleanNumber(250000 + 0.00000000003),
+  250000
+);
+check(
+  'a big float tail is cleaned',
+  cleanNumber(1234567.89 + 0.0000000002),
+  1234567.89
+);
+
+// An ordinary number is left alone.
+check('an ordinary number is unchanged', cleanNumber(5996400), 5996400);
+check('a negative number is unchanged', cleanNumber(-1500), -1500);
+check('a fraction is kept', cleanNumber(12.5), 12.5);
+
+// A number that is not a number is zero, not NaN.
+check('NaN is zero', cleanNumber(NaN), 0);
+check('undefined is zero', cleanNumber(undefined), 0);
+check('null is zero', cleanNumber(null), 0);
+check('a string number is read', cleanNumber('5996400'), 5996400);
+check('a word is zero', cleanNumber('not a number'), 0);
+check('Infinity is zero', cleanNumber(Infinity), 0);
+check('negative Infinity is zero', cleanNumber(-Infinity), 0);
+
+// The result is always a number, never a string.
+check('the result is a number', typeof cleanNumber('5996400'), 'number');
+
+// ---------------------------------------------------------------------------
+
 console.log('');
 console.log(`idFormat: ${passed} passed, ${failed} failed`);
 if (failed > 0) {
@@ -124,3 +167,6 @@ if (failed > 0) {
   }
   process.exit(1);
 }
+
+// ---------------------------------------------------------------------------
+// cleanNumber
