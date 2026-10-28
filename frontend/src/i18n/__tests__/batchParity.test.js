@@ -20,6 +20,7 @@ import { batch4 } from '../keys_batch4.js';
 import { batch5 } from '../keys_batch5.js';
 import { batch6 } from '../keys_batch6.js';
 import { batch7 } from '../keys_batch7.js';
+import { batch8 } from '../keys_batch8.js';
 
 const BATCHES = {
   batch1,
@@ -29,6 +30,7 @@ const BATCHES = {
   batch5,
   batch6,
   batch7,
+  batch8,
 };
 
 const LANGUAGES = ['id', 'en', 'ja'];

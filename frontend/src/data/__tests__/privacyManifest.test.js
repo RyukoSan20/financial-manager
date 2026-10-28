@@ -26,6 +26,7 @@ import {
   NEVER_SENT,
   STAYS_LOCAL,
 } from '../privacyManifest.js';
+import { batch8 } from '../../i18n/keys_batch8.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BACKEND = join(HERE, '..', '..', '..', '..', 'backend', 'app');
@@ -65,9 +66,10 @@ const allText = backend.map((f) => f.text).join('\n');
 
 console.log('the page is shaped properly:');
 
-// Every entry has the fields the screen reads.
+// Every entry has the facts the screen reads. The sentences that
+// explain them live in the words file, and are checked below.
 for (const entry of GOES_OUT) {
-  for (const field of ['id', 'host', 'who', 'what', 'when', 'why', 'carries']) {
+  for (const field of ['id', 'host']) {
     check(
       entry[field] !== undefined && String(entry[field]).trim().length > 0,
       `outgoing "${entry.id}" has no ${field}`
@@ -80,21 +82,17 @@ for (const entry of GOES_OUT) {
 }
 
 for (const entry of STAYS_LOCAL) {
-  for (const field of ['id', 'what', 'detail']) {
-    check(
-      entry[field] !== undefined && String(entry[field]).trim().length > 0,
-      `staying "${entry.id}" has no ${field}`
-    );
-  }
+  check(
+    entry.id !== undefined && String(entry.id).trim().length > 0,
+    `a staying entry has no id`
+  );
 }
 
 for (const entry of NEVER_SENT) {
-  for (const field of ['id', 'what', 'detail']) {
-    check(
-      entry[field] !== undefined && String(entry[field]).trim().length > 0,
-      `never "${entry.id}" has no ${field}`
-    );
-  }
+  check(
+    entry.id !== undefined && String(entry.id).trim().length > 0,
+    `a never entry has no id`
+  );
 }
 
 // The ids are unique, or the screen cannot tell them apart.
@@ -107,6 +105,51 @@ for (const [name, list] of [['outgoing', GOES_OUT], ['staying', STAYS_LOCAL], ['
 }
 
 console.log('  the lists are shaped properly');
+
+console.log('every entry is written in every language:');
+
+// The words that explain each fact live in the words file, keyed by
+// the same id. An entry with no words in some language would show an
+// empty space on that reader's screen, so it is checked here.
+const ENTRIES = [
+  ...GOES_OUT.map((e) => ({ id: e.id, fields: ['who', 'what', 'when', 'why'] })),
+  ...STAYS_LOCAL.map((e) => ({ id: e.id, fields: ['what', 'detail'] })),
+  ...NEVER_SENT.map((e) => ({ id: e.id, fields: ['what', 'detail'] })),
+];
+
+for (const language of ['id', 'en', 'ja']) {
+  const table = batch8?.[language]?.privacy_entries || {};
+  for (const entry of ENTRIES) {
+    const words = table[entry.id];
+    check(
+      Boolean(words),
+      `the ${language} words have nothing for "${entry.id}"`
+    );
+    if (!words) continue;
+    for (const field of entry.fields) {
+      check(
+        typeof words[field] === 'string' && words[field].trim().length > 0,
+        `"${entry.id}" has no ${field} in ${language}`
+      );
+    }
+  }
+}
+
+// The three languages must hold the same set of entries, or one
+// reader sees more of the page than another.
+for (const language of ['en', 'ja']) {
+  const ids = Object.keys(batch8?.[language]?.privacy_entries || {}).sort();
+  const expected = ENTRIES.map((e) => e.id).sort();
+  check(
+    ids.length === expected.length,
+    `the ${language} words hold ${ids.length} entries and there are ${expected.length}`
+  );
+  for (const id of expected) {
+    check(ids.includes(id), `the ${language} words have nothing for "${id}"`);
+  }
+}
+
+console.log('  every entry is written in every language');
 
 console.log('every host named on the page is really in the backend:');
 

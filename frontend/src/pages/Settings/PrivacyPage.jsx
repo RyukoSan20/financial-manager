@@ -12,6 +12,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from '../../i18n';
 import { batch7 } from '../../i18n/keys_batch7';
+import { batch8 } from '../../i18n/keys_batch8';
 import { buildFlag } from '../../utils/featureFlags';
 import {
   GOES_OUT,
@@ -25,6 +26,11 @@ export default function PrivacyPage() {
   const polished = buildFlag('UI_POLISH');
 
   const K = batch7[language] || batch7.id;
+
+  // The words that explain each fact. They are keyed by the id of the
+  // entry in the manifest, so the page looks them up by the fact they
+  // are describing.
+  const W = (batch8[language] || batch8.id)?.privacy_entries || {};
 
   // Which outgoing entries have their detail open.
   const [open, setOpen] = useState({});
@@ -49,8 +55,8 @@ export default function PrivacyPage() {
         <ul className="privacy-list">
           {STAYS_LOCAL.map((entry) => (
             <li key={entry.id} className="privacy-item">
-              <strong>{entry.what}</strong>
-              <span>{entry.detail}</span>
+              <strong>{W[entry.id]?.what}</strong>
+              <span>{W[entry.id]?.detail}</span>
             </li>
           ))}
         </ul>
@@ -69,7 +75,7 @@ export default function PrivacyPage() {
               <li key={entry.id} className="privacy-item privacy-item--out">
                 <div className="privacy-item__head">
                   <div className="privacy-item__title">
-                    <strong>{entry.who}</strong>
+                    <strong>{W[entry.id]?.who}</strong>
                     <span
                       className={`privacy-badge${
                         entry.carries ? ' privacy-badge--carries' : ''
@@ -94,11 +100,11 @@ export default function PrivacyPage() {
                     <dt>{K.privacy_host_label}</dt>
                     <dd>{entry.host}</dd>
                     <dt>{K.privacy_what_label}</dt>
-                    <dd>{entry.what}</dd>
+                    <dd>{W[entry.id]?.what}</dd>
                     <dt>{K.privacy_when_label}</dt>
-                    <dd>{entry.when}</dd>
+                    <dd>{W[entry.id]?.when}</dd>
                     <dt>{K.privacy_why_label}</dt>
-                    <dd>{entry.why}</dd>
+                    <dd>{W[entry.id]?.why}</dd>
                   </dl>
                 )}
               </li>
@@ -116,8 +122,8 @@ export default function PrivacyPage() {
         <ul className="privacy-list">
           {NEVER_SENT.map((entry) => (
             <li key={entry.id} className="privacy-item">
-              <strong>{entry.what}</strong>
-              <span>{entry.detail}</span>
+              <strong>{W[entry.id]?.what}</strong>
+              <span>{W[entry.id]?.detail}</span>
             </li>
           ))}
         </ul>
