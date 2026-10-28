@@ -64,6 +64,33 @@ export function isDismissed(jobId, storage = storageOf()) {
 }
 
 /**
+ * Should this job be shown as a notification?
+ *
+ * A job is shown when it has finished, has not been looked at yet, and
+ * is not in the list of scans that have been dealt with.
+ *
+ * The two ways of saying "already looked at" are both needed, and
+ * they cover different things:
+ *
+ * - `job.seen` is the flag the running client keeps in memory. It is
+ *   gone when the page is reloaded.
+ * - the dismissed list is written down, so it survives a reload.
+ *
+ * The bug this fixes: the reader opened the result, which set the
+ * in-memory flag, and then reloaded the page. The reload brought the
+ * job back from the server with the flag cleared, and the same bar was
+ * shown again for a scan that had already been read. Writing the job
+ * down when it is opened makes the two agree.
+ */
+export function shouldNotify(job, storage = storageOf()) {
+  if (!job) return false;
+  if (job.status !== 'completed') return false;
+  if (job.seen) return false;
+  if (isDismissed(job.jobId, storage)) return false;
+  return true;
+}
+
+/**
  * Remember that this scan has been dealt with.
  *
  * The list is capped, and the oldest goes first: the scan that was
@@ -104,6 +131,7 @@ export function clearDismissedScans(storage = storageOf()) {
 export default {
   dismissedScans,
   isDismissed,
+  shouldNotify,
   dismissScan,
   clearDismissedScans,
   STORAGE_KEY,

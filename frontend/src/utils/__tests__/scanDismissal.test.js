@@ -22,6 +22,7 @@ import {
   dismissedScans,
   dismissScan,
   isDismissed,
+  shouldNotify,
 } from '../scanDismissal.js';
 
 let checks = 0;
@@ -161,6 +162,79 @@ function fakeStorage(initial = {}) {
   };
   check(dismissScan('job-1', store) === false, 'a storage that refuses does not throw');
   check(clearDismissedScans(store) === false, 'a storage that refuses does not throw when clearing');
+}
+
+// --- When should the bar be shown? --------------------------------------
+//
+// The bug this covers: the reader opened the result of a scan, which
+// set the flag the running client keeps in memory, and then reloaded
+// the page. The reload brought the job back from the server with that
+// flag cleared, so the same bar was shown again for a scan that had
+// already been read.
+//
+// Two ways of saying "already looked at" have to agree: the in-memory
+// flag and the list that is written down.
+
+{
+  const store = fakeStorage();
+
+  // A finished scan nobody has looked at is shown.
+  check(
+    shouldNotify({ jobId: 'job-1', status: 'completed', seen: false }, store) === true,
+    'a finished scan that nobody looked at is not shown'
+  );
+
+  // The running client has looked at it: not shown.
+  check(
+    shouldNotify({ jobId: 'job-1', status: 'completed', seen: true }, store) === false,
+    'a scan the running client has seen is shown'
+  );
+
+  // Still running: not shown, it is not finished yet.
+  check(
+    shouldNotify({ jobId: 'job-1', status: 'running', seen: false }, store) === false,
+    'a scan that is still running is shown'
+  );
+  check(
+    shouldNotify({ jobId: 'job-1', status: 'queued', seen: false }, store) === false,
+    'a scan that is still queued is shown'
+  );
+
+  // Failed scans have nothing to show.
+  check(
+    shouldNotify({ jobId: 'job-1', status: 'failed', seen: false }, store) === false,
+    'a failed scan is shown'
+  );
+
+  // It was written down as dealt with: not shown. This is the case
+  // that survives a reload.
+  check(dismissScan('job-1', store) === true, 'the scan was not written down');
+  check(
+    shouldNotify({ jobId: 'job-1', status: 'completed', seen: false }, store) === false,
+    'a scan that was written down as dealt with is shown again'
+  );
+
+  // A different scan is still shown.
+  check(
+    shouldNotify({ jobId: 'job-2', status: 'completed', seen: false }, store) === true,
+    'a scan that was not dealt with is not shown'
+  );
+
+  // Nothing at all.
+  check(shouldNotify(null, store) === false, 'a missing job is shown');
+  check(shouldNotify(undefined, store) === false, 'an undefined job is shown');
+}
+
+// --- A job without an id is never shown --------------------------------
+
+{
+  const store = fakeStorage();
+  check(
+    shouldNotify({ status: 'completed', seen: false }, store) === true,
+    'a job without an id is treated as a normal one'
+  );
+  // A job with no id cannot be written down, so it stays visible.
+  check(dismissScan(undefined, store) === false, 'a job without an id is written down');
 }
 
 console.log('');

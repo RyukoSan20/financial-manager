@@ -20,7 +20,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { scanManager } from '../../services/scanManager';
-import { dismissScan, isDismissed } from '../../utils/scanDismissal';
+import { dismissScan, shouldNotify } from '../../utils/scanDismissal';
 import { useTranslation } from '../../i18n';
 import { batch3 } from '../../i18n/keys_batch3';
 
@@ -80,9 +80,11 @@ export const ScanNotification = () => {
   // A scan that has already been dealt with is skipped. Without this
   // the bar came back on every page, because closing the sheet hid the
   // sheet but did not mark the scan as dealt with.
-  const pending = jobs.find(
-    (job) => job.status === 'completed' && !job.seen && !isDismissed(job.jobId)
-  );
+  //
+  // The rule is in `shouldNotify`, because the two ways of saying
+  // "already looked at" have to agree: the flag the running client
+  // keeps, and the list that is written down and survives a reload.
+  const pending = jobs.find((job) => shouldNotify(job));
   const running = jobs.find((job) => job.status === 'running' || job.status === 'queued');
 
   // The bar that is shown when nothing is expanded.
@@ -118,7 +120,15 @@ export const ScanNotification = () => {
     setExpanded(job.jobId);
     setDragY(0);
     setDragging(false);
-    scanManager.markSeen(job.jobId);
+    // Opening the result is also saying the scan has been dealt with.
+    // The flag in the manager is forgotten when the page is reloaded,
+    // so it is written down as well: without this, a reader who opened
+    // the result, then reloaded the page, was shown the same bar
+    // again for a scan they had already read.
+    if (job.jobId) {
+      dismissScan(job.jobId);
+      scanManager.markSeen(job.jobId);
+    }
   };
 
   // Closing the sheet is also saying the scan has been dealt with, so
