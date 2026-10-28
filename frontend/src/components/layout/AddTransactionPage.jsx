@@ -15,7 +15,14 @@ import {
   formatAmountInput,
   parseAmount,
   addAmount,
+  amountStyle,
 } from '../../utils/amountInput';
+import {
+  isExpression,
+  evaluateExpression,
+  resolveAmountText,
+  sanitizeExpression,
+} from '../../utils/amountExpression';
 import { formatNative, currencyConfig } from '../../utils/currency';
 
 const AddTransactionPage = () => {
@@ -293,19 +300,51 @@ const AddTransactionPage = () => {
   // into. The helpers live in `utils/amountInput.js`, because the
   // rules about decimals and grouping are the same wherever money is
   // typed.
+  //
+  // An expression is written as it was typed, without the grouping:
+  // "25000+15000" grouped would read "25.000+15.000", which is
+  // harder to read, not easier. The grouping comes back when the
+  // expression is finished and becomes one number.
   const formatNumber = (num) => {
     if (!num) return "";
+    if (isExpression(num)) return String(num);
     return formatAmountInput(String(num), accountCurrency);
   };
 
   // Parse formatted number
   const parseNumber = (formatted) => {
-    return parseAmount(formatted, accountCurrency);
+    // An expression is worked out first. A text that cannot be read
+    // is read as zero, which is the same as an empty field.
+    const resolved = resolveAmountText(formatted);
+    const value = evaluateExpression(resolved);
+    if (value !== null) return value;
+    return parseAmount(resolved, accountCurrency);
   };
 
   // Handle amount input
+  //
+  // The field takes an expression, so the operators have to survive
+  // being typed. Everything else does not.
   const handleAmountChange = (e) => {
-    setAmount(sanitizeAmount(e.target.value, accountCurrency));
+    const typed = e.target.value;
+    // The field shows the amount with its grouping marks, so the
+    // text that comes back has the marks in it. They are taken off
+    // before the expression is read, and which mark is which depends
+    // on the currency: a rupiah amount is grouped with a dot and has
+    // no cents, and a dollar amount is grouped with a comma and has
+    // two decimals.
+    const style = amountStyle(accountCurrency);
+    const bare = typed.split(style.group).join('').split(style.decimal).join('.');
+    const cleaned = sanitizeExpression(bare);
+
+    // A plain amount keeps the old rule: the currency decides how
+    // many decimals there are.
+    if (!isExpression(cleaned)) {
+      setAmount(sanitizeAmount(cleaned, accountCurrency));
+      return;
+    }
+
+    setAmount(cleaned);
   };
 
   // Apply recent combo
@@ -323,8 +362,26 @@ const AddTransactionPage = () => {
   };
 
   // Quick add preset amount
+  //
+  // The chip adds to what is already there, so pressing it twice is
+  // twice that amount. When the field holds an expression that
+  // cannot be worked out yet - "25000+" - the chip is not added to
+  // it, because there is no number to add to. The reader's own text
+  // is left alone rather than being thrown away.
   const addPreset = (preset) => {
-    setAmount(addAmount(amount, preset, accountCurrency));
+    const current = resolveAmountText(amount);
+    // A plain amount is read as itself. An expression is worked out.
+    // A text that is neither - "25000+" - has no number in it yet.
+    const working = isExpression(current)
+      ? evaluateExpression(current)
+      : parseAmount(current, accountCurrency);
+    if (working === null) {
+      // The field is mid-expression. The chip is ignored rather than
+      // replacing what the reader is typing.
+      amountInputRef.current?.focus();
+      return;
+    }
+    setAmount(addAmount(String(working), preset, accountCurrency));
     amountInputRef.current?.focus();
   };
 
@@ -628,14 +685,28 @@ const AddTransactionPage = () => {
               className="text-4xl font-bold w-full bg-transparent outline-none"
             />
           </div>
-          
-          {/* Quick Amounts */}
+
+          {/* The hint under the field says what the field will accept,
+              so the reader knows that "+" is allowed before they
+              wonder whether it is. It is only shown when the field is
+              empty, because once there is a number in it, the hint is
+              in the way. */}
+          {!amount && (
+            <p className="text-xs text-gray-400 mb-3">
+              {K.amountExpressionHint}
+            </p>
+          )}
+
+          {/* Quick Amounts. The chip class is what gives them the
+              spring press: the chip goes down a little under the
+              finger and comes straight back. */}
           <div className="flex flex-wrap gap-2">
             {quickAmounts.map((preset) => (
               <button
                 key={preset}
+                type="button"
                 onClick={() => addPreset(preset)}
-                className="bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1.5 text-sm font-medium"
+                className="amount-chip bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1.5 text-sm font-medium"
               >
                 +{formatNumber(preset)}
               </button>

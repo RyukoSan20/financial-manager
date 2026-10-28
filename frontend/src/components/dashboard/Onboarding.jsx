@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../i18n';
 import { batch6 } from '../../i18n/keys_batch6';
 import { api } from '../../services/api';
+import FinBuddyMascot from '../common/FinBuddyMascot';
 import {
   Wallet, Target, Repeat, Receipt, Check, X, ChevronRight,
 } from 'lucide-react';
@@ -174,11 +175,18 @@ export default function Onboarding() {
         <X className="w-4 h-4" />
       </button>
 
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-        {K.onboarding_step_of
-          .replace('{current}', String(current + 1))
-          .replace('{total}', String(total))}
-      </p>
+      {/* The mascot sits beside the step counter, so the guide has a
+          face rather than being a row of text with a button on it. It
+          looks up while the reader is still working through the steps,
+          and it cheers when the last one is done. */}
+      <div className="flex items-center gap-2">
+        <FinBuddyMascot mood={current === total - 1 ? 'celebrating' : 'thinking'} size={32} />
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          {K.onboarding_step_of
+            .replace('{current}', String(current + 1))
+            .replace('{total}', String(total))}
+        </p>
+      </div>
 
       <div className="flex items-start gap-3 mt-3">
         <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center">

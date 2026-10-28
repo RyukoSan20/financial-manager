@@ -12,6 +12,7 @@ import {
 import { formatCurrency, formatNumber, formatPercent, formatNative } from '../utils/format';
 import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { cleanNumber } from '../utils/idFormat';
+import AnimatedNumber from '../components/common/AnimatedNumber';
 import { useCurrency } from '../utils/currency';
 import api, { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../config/url';
@@ -614,8 +615,8 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           time: timeVal,
           _idx: i + 1,
           _labelX: item.labelX || item.labelXShort || '',
-          income: item.totalIncome || item.income || 0,
-          expense: item.totalExpense || item.expense || 0,
+          income: cleanNumber(item.totalIncome || item.income || 0),
+          expense: cleanNumber(item.totalExpense || item.expense || 0),
           // The saving for the month. It is cleaned here as well, so
           // the line does not dip below zero by a fraction of a
           // rupiah.
@@ -1041,9 +1042,23 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   <p
                     className={`mt-2 font-numeric font-bold leading-none text-summary-value ${card.valueClass}`}
                   >
-                    {card.alreadyConverted
-                      ? formatNative(card.value || 0, card.currency)
-                      : formatCurrency(card.value || 0)}
+                    {/* The amount counts to its new value when the
+                        reader changes the date filter or picks another
+                        account. Without the count, the old number is
+                        gone and the new one is there in the same
+                        frame, so the reader sees that the balance
+                        changed but not how much. */}
+                    {card.alreadyConverted ? (
+                      <AnimatedNumber
+                        value={card.value || 0}
+                        format={(n) => formatNative(n, card.currency)}
+                      />
+                    ) : (
+                      <AnimatedNumber
+                        value={card.value || 0}
+                        format={(n) => formatCurrency(n)}
+                      />
+                    )}
                   </p>
                 </div>
                 <div
@@ -1105,7 +1120,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               </div>
             </div>
             <div className="text-center mb-4">
-              <p className={`text-4xl font-bold ${textPrimary}`}>{formatCurrency(safeToSpend.amount)}</p>
+              <p className={`text-4xl font-bold ${textPrimary}`}>
+                <AnimatedNumber value={safeToSpend.amount} format={(n) => formatCurrency(n)} />
+              </p>
               <p className={`text-sm ${textSecondary}`}>{t('dashboard.safe_to_spend_caption')}</p>
             </div>
             <div className={`grid grid-cols-3 gap-2 text-center text-xs ${textSecondary}`}>

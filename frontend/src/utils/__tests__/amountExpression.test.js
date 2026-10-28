@@ -17,6 +17,7 @@ import {
   isExpression,
   evaluateExpression,
   resolveAmountText,
+  sanitizeExpression,
 } from '../amountExpression.js';
 
 let passed = 0;
@@ -110,6 +111,23 @@ check('text that cannot be read is left as the reader typed it', resolveAmountTe
 check('text that cannot be read is left as the reader typed it', resolveAmountText('25000+'), '25000+');
 check('a division by zero is left as the reader typed it', resolveAmountText('25000/0'), '25000/0');
 check('the result has no long tail', resolveAmountText('0.1+0.2'), '0.3');
+
+// ---------------------------------------------------------------------------
+// The text as the reader types it
+// ---------------------------------------------------------------------------
+
+check('the digits survive', sanitizeExpression('25000'), '25000');
+check('the operators survive', sanitizeExpression('25000+15000'), '25000+15000');
+check('the operators survive', sanitizeExpression('45000*2'), '45000*2');
+check('a space is dropped', sanitizeExpression('25000 + 15000'), '25000+15000');
+check('a letter is dropped', sanitizeExpression('25abc000'), '25000');
+check('a second point is dropped', sanitizeExpression('2.5.0'), '2.50');
+check('a point after an operator starts a new number', sanitizeExpression('2.5+0.5'), '2.5+0.5');
+check('two operators in a row are dropped', sanitizeExpression('25000++15000'), '25000+15000');
+check('an operator with nothing before it is dropped', sanitizeExpression('+15000'), '15000');
+check('an operator with nothing after it is kept', sanitizeExpression('25000+'), '25000+');
+check('a currency symbol is dropped', sanitizeExpression('Rp25000'), '25000');
+check('an empty text stays empty', sanitizeExpression(''), '');
 
 // ---------------------------------------------------------------------------
 

@@ -226,6 +226,61 @@ export function evaluateExpression(text) {
 }
 
 /**
+ * Clean up what the reader typed into the amount field.
+ *
+ * The field accepts an expression, so the operators have to survive
+ * being typed. Everything else does not: a letter is not part of an
+ * amount, and a second point is not part of a number.
+ *
+ * The result is the reader's own text, tidied. It is not the value,
+ * because the value cannot be worked out until the reader has
+ * finished typing: "25000+" is not a number yet, and turning it into
+ * a zero would lose what they were in the middle of writing.
+ */
+export function sanitizeExpression(text) {
+  const source = String(text ?? '');
+  let kept = '';
+  // Whether the number being typed has already had its point. This
+  // belongs to one number, so it is reset by an operator.
+  let seenPoint = false;
+
+  for (const ch of source) {
+    if (isDigit(ch)) {
+      kept += ch;
+      continue;
+    }
+
+    if (ch === '.') {
+      // A number has one point. A second one is not part of it.
+      if (seenPoint) continue;
+      seenPoint = true;
+      kept += ch;
+      continue;
+    }
+
+    if (isOperator(ch)) {
+      // Two operators in a row are not something the reader can
+      // finish, so the second one is dropped rather than left there
+      // to be worked out later. An operator with nothing before it
+      // is dropped for the same reason.
+      const previous = kept[kept.length - 1];
+      if (previous === undefined || isOperator(previous)) continue;
+      kept += ch;
+      // The next number starts fresh, so it can have its own point.
+      seenPoint = false;
+      continue;
+    }
+
+    // A space is dropped. The tokenizer ignores spaces anyway, so
+    // keeping them would only make the number the reader sees longer
+    // than the number they typed.
+    if (ch === ' ') continue;
+  }
+
+  return kept;
+}
+
+/**
  * The text as a plain number, whatever it was written as.
  *
  * This is what the amount field reads back when the reader has typed
@@ -252,4 +307,5 @@ export default {
   isExpression,
   evaluateExpression,
   resolveAmountText,
+  sanitizeExpression,
 };
