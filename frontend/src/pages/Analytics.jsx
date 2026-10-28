@@ -394,28 +394,40 @@ export const Analytics = () => {
         if (!health) return null;
         return (
           <Widget id="health">
-            <div className="bg-gradient-to-r from-primary-600 to-primary-500 p-6">
+            {/* The header is a quiet surface rather than a block of
+                bright colour. A large block of colour says "look at
+                me" whether or not it has anything worth showing, and
+                the health card is often the one thing on the page
+                that has nothing to show yet. */}
+            <div className="layered-surface p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-primary-100 text-sm font-medium">{t('analytics.widget_health_label')}</p>
+                  <p className="text-gray-500 text-sm font-medium">{t('analytics.widget_health_label')}</p>
                   {/* The score is only shown when it could be measured.
                       A large "0/100" with the words "needs work" reads
                       as a verdict, and with one transaction there is
                       nothing to judge. */}
                   {showHealthScore ? (
                     <>
-                      <p className="text-5xl font-bold text-white mt-2 tabular-nums">{healthScore}/100</p>
+                      <p className="text-5xl font-bold text-gray-900 dark:text-gray-100 mt-2 tabular-nums">{healthScore}/100</p>
                       <Badge variant={getScoreLabel(healthScore).color} className="mt-2">
                         {getScoreLabel(healthScore).label}
                       </Badge>
                     </>
                   ) : (
-                    <p className="text-2xl font-bold text-white mt-2 max-w-md leading-snug">
-                      {t('analytics.health_score_not_ready')}
-                    </p>
+                    /* The reader is told what is missing and what to do
+                       about it, rather than being shown a zero. */
+                    <div className="mt-2 max-w-md">
+                      <p className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-snug">
+                        {t('analytics.health_need_transactions')}
+                      </p>
+                      <p className="text-gray-500 dark:text-gray-400 text-xs mt-2 leading-relaxed">
+                        {t('analytics.health_need_transactions_hint')}
+                      </p>
+                    </div>
                   )}
                   {(health.message_key || health.message) && (
-                    <p className="text-primary-100 text-xs mt-2 max-w-md">
+                    <p className="text-gray-500 dark:text-gray-400 text-xs mt-2 max-w-md">
                       {health.message_key ? t(health.message_key) : health.message}
                     </p>
                   )}
@@ -479,10 +491,15 @@ export const Analytics = () => {
               </div>
               {health.metrics && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100">
-                  <Metric label={t('analytics.metric_total_balance')} value={formatCurrency(health.metrics.total_balance)} />
-                  <Metric label={t('analytics.metric_saving_rate')} value={`${Number(health.metrics.saving_rate || 0).toFixed(1)}%`} />
-                  <Metric label={t('analytics.metric_total_debt')} value={formatCurrency(health.metrics.total_debt)} />
-                  <Metric label={t('analytics.metric_active_goals')} value={String(health.metrics.active_goals ?? 0)} />
+                  {/* These four are read through the same function the
+                      strip at the top of the page uses. They used to
+                      be read straight off the answer, which meant two
+                      places on one page could show two different
+                      balances. */}
+                  <Metric label={t('analytics.metric_total_balance')} value={formatCurrency(healthNums.totalBalance)} />
+                  <Metric label={t('analytics.metric_saving_rate')} value={`${healthNums.savingRate.toFixed(1)}%`} />
+                  <Metric label={t('analytics.metric_total_debt')} value={formatCurrency(healthNums.totalDebt)} />
+                  <Metric label={t('analytics.metric_active_goals')} value={String(healthNums.activeGoals)} />
                 </div>
               )}
             </CardBody>

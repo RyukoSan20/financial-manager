@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner } from '../components/ui';
+import { Card, Button, Input, Select, Modal, Badge, Spinner } from '../components/ui';
+import HonestEmptyState from '../components/common/HonestEmptyState';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { apiUrl as buildApiUrl } from '../config/url';
@@ -321,16 +322,13 @@ export const Recurring = () => {
 
       {/* Rules List */}
       {rules.length === 0 ? (
-        <EmptyState
-          icon={<Repeat className="w-8 h-8 text-gray-400" />}
+        <HonestEmptyState
           title={K.noRecurring}
           description={K.noRecurringDesc}
-          action={
-            <Button onClick={() => setShowModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              {K.createRecurring}
-            </Button>
-          }
+          hint={K.noRecurringHint}
+          primaryAction={K.createRecurring}
+          onPrimary={() => setShowModal(true)}
+          mascotMood="idle"
         />
       ) : (
         <div className="grid gap-4">

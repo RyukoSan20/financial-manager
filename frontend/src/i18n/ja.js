@@ -458,6 +458,7 @@ export default {
     avg: "カテゴリ平均",
     no_expenses: "支出が記録されていません",
     no_expenses_desc: "支出を記録するとカテゴリ別の内訳が表示されます",
+    no_expenses_hint: "このページは支出をカテゴリごとにまとめ、お金がどこに使われているかを見えるようにします。",
   },
 
   // Settings page
@@ -743,6 +744,8 @@ export default {
     health_not_measured: "未測定",
     health_not_enough_data: "Trackingはまだ十分なデータがありません。まずいくつかの取引を記録してください。",
     health_score_not_ready: "スコアはまだありません",
+    health_need_transactions: "健康度を判断するにはデータが足りません。より詳しい分析を開くには、少なくとも3件の取引を記録してください。",
+    health_need_transactions_hint: "健康度は支出と収入のパターンから計算されます。数件の取引で最初のパターンが見えてきます。",
     health_no_expense_data: "今月の支出記録がないため、緊急予備資金を計算できません。",
     health_savings_rate: "貯蓄率",
     health_savings_aim: "貯蓄率20%以上を目指しましょう",
@@ -839,6 +842,7 @@ export default {
     overall_progress: "全体の進捗",
     empty_title: "まだ金融目標がありません",
     empty_desc: "最初の貯蓄目標を設定して進捗を追跡しましょう",
+    empty_hint: "このページは貯蓄の進捗を追跡し、目標までどれくらいかも教えます。",
     create_goal: "目標を作成",
     edit_goal: "目標を編集",
     update_goal: "目標を更新",
@@ -1067,6 +1071,8 @@ export default {
     active_count: "進行中 %s 件",
     paid_off_count: "完済 %s 件",
     empty: "まだ負債データがありません",
+    empty_desc: "記録した借金は、完済までの道筋として、予定日とともに表示されます。",
+    empty_hint: "記録した借金は支払期日から逆算されるため、あとどれくらい残っているかが常に分かります。",
     add_first: "最初の負債を追加",
     status_paid_off: "完済",
     status_due: "期限到来",

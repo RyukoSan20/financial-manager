@@ -458,6 +458,7 @@ export default {
     avg: "Rata-rata/Kategori",
     no_expenses: "Belum ada pengeluaran tercatat",
     no_expenses_desc: "Mulai mencatat pengeluaran untuk melihat rincian per kategori",
+    no_expenses_hint: "Halaman ini mengelompokkan pengeluaran Anda per kategori, jadi Anda bisa melihat ke mana uang Anda pergi.",
   },
 
   // Settings page
@@ -743,6 +744,8 @@ export default {
     health_not_measured: "Belum ada data",
     health_not_enough_data: "Data belum cukup untuk menilai kesehatan keuangan Anda. Catat beberapa transaksi terlebih dahulu.",
     health_score_not_ready: "Belum ada skor",
+    health_need_transactions: "Belum cukup data untuk menilai kesehatan keuangan. Catat minimal 3 transaksi untuk membuka analisis mendalam.",
+    health_need_transactions_hint: "Kesehatan keuangan dihitung dari pola pengeluaran dan pemasukan Anda. Beberapa transaksi sudah cukup untuk melihat pola pertama.",
     health_no_expense_data: "Belum ada pengeluaran tercatat bulan ini, jadi dana darurat belum bisa dihitung.",
     health_savings_rate: "Tingkat Tabungan",
     health_savings_aim: "Usahakan tingkat tabungan 20%+",
@@ -839,6 +842,7 @@ export default {
     overall_progress: "Progres Keseluruhan",
     empty_title: "Belum ada target keuangan",
     empty_desc: "Tetapkan target tabungan pertama Anda untuk melacak progres",
+    empty_hint: "Halaman ini melacak progres tabungan Anda, dan memberi tahu seberapa jauh Anda dari target.",
     create_goal: "Buat Target",
     edit_goal: "Edit Target",
     update_goal: "Perbarui Target",
@@ -1067,6 +1071,8 @@ export default {
     active_count: "%s Aktif",
     paid_off_count: "%s Lunas",
     empty: "Belum ada data utang",
+    empty_desc: "Utang yang Anda catat tampil sebagai jalan menuju lunas, lengkap dengan perkiraan tanggalnya.",
+    empty_hint: "Setiap utang yang dicatat di sini dihitung mundur dari tanggal jatuh tempo, jadi Anda selalu tahu berapa lama lagi.",
     add_first: "Tambah Utang Pertama",
     status_paid_off: "LUNAS",
     status_due: "Jatuh Tempo",

@@ -44,6 +44,8 @@ export const batch1 = {
       noRecurring: 'Belum ada transaksi berulang',
       noRecurringDesc:
         'Atur pemasukan dan pengeluaran berulang seperti gaji, sewa, atau langganan',
+      noRecurringHint:
+        'Halaman ini memproses aturan berulang secara otomatis, jadi Anda tidak perlu mencatat hal yang sama setiap bulan.',
       createRecurring: 'Buat Transaksi Berulang',
       income: 'Pemasukan',
       expense: 'Pengeluaran',
@@ -254,6 +256,8 @@ export const batch1 = {
       noRecurring: 'No recurring transactions',
       noRecurringDesc:
         'Set up recurring income and expenses like salary, rent, or subscriptions',
+      noRecurringHint:
+        'This page runs your recurring rules for you, so you do not record the same thing every month.',
       createRecurring: 'Create Recurring',
       income: 'Income',
       expense: 'Expense',
@@ -464,6 +468,8 @@ export const batch1 = {
       noRecurring: '定期取引はまだありません',
       noRecurringDesc:
         '給与家賃サブスクリプションなど、繰り返し発生する収入と支出を設定しましょう',
+      noRecurringHint:
+        'このページが繰り返しのルールを自動で処理するので、同じ内容を毎月記録する必要はありません。',
       createRecurring: '定期取引を作成',
       income: '収入',
       expense: '支出',

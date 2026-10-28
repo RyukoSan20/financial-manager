@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Input, Select, Modal, ProgressBar, Badge, EmptyState, Spinner } from '../components/ui';
+import { Card, Button, Input, Select, Modal, ProgressBar, Badge, Spinner } from '../components/ui';
+import HonestEmptyState from '../components/common/HonestEmptyState';
 import { Plus, CreditCard, RefreshCw, Trash2, Edit2, Calendar, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import { formatCurrency, formatDate } from '../utils/format';
@@ -246,14 +247,14 @@ export const Debts = () => {
 
       {/* Debt List */}
       {debts.length === 0 ? (
-        <Card className="text-center py-12">
-          <CreditCard className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500 mb-4">{t('debts.empty')}</p>
-          <Button onClick={() => { setEditingDebt(null); setShowModal(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            {t('debts.add_first')}
-          </Button>
-        </Card>
+        <HonestEmptyState
+          titleKey="debts.empty"
+          descriptionKey="debts.empty_desc"
+          hintKey="debts.empty_hint"
+          primaryActionKey="debts.add_first"
+          onPrimary={() => { setEditingDebt(null); setShowModal(true); }}
+          mascotMood="idle"
+        />
       ) : (
         <div className="space-y-4">
           {debts.map((debt) => (

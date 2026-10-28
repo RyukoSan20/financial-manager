@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Spinner, Badge, EmptyState, Modal } from '../components/ui';
-import { 
-  TrendingDown, PieChart, ChevronRight, ChevronDown, 
+import { Card, Button, Spinner, Badge, Modal } from '../components/ui';
+import HonestEmptyState from '../components/common/HonestEmptyState';
+import {
+  TrendingDown, ChevronRight, ChevronDown,
   Filter, RefreshCw, Edit2, Trash2, Search
 } from 'lucide-react';
 import api from '../services/api';
@@ -272,10 +273,11 @@ export const CategoryExpenses = () => {
 
       {/* Category List */}
       {Object.keys(groupedByCategory).length === 0 ? (
-        <EmptyState
-          icon={<PieChart className="w-8 h-8 text-gray-400" />}
-          title={t('category_expenses.no_expenses', 'No expenses recorded')}
-          description={t('category_expenses.no_expenses_desc', 'Start tracking your expenses to see breakdown by category')}
+        <HonestEmptyState
+          titleKey="category_expenses.no_expenses"
+          descriptionKey="category_expenses.no_expenses_desc"
+          hintKey="category_expenses.no_expenses_hint"
+          mascotMood="idle"
         />
       ) : (
         <div className="space-y-3">

@@ -458,6 +458,7 @@ export default {
     avg: "Avg/Category",
     no_expenses: "No expenses recorded",
     no_expenses_desc: "Start tracking your expenses to see the breakdown by category",
+    no_expenses_hint: "This page groups your spending by category, so you can see where the money actually goes.",
   },
 
   // Settings page
@@ -743,6 +744,8 @@ export default {
     health_not_measured: "Not measured yet",
     health_not_enough_data: "There is not enough data to judge your financial health yet. Record a few transactions first.",
     health_score_not_ready: "No score yet",
+    health_need_transactions: "There is not enough data to judge your financial health yet. Record at least 3 transactions to open the deeper analysis.",
+    health_need_transactions_hint: "Financial health is worked out from the pattern of your spending and income. A few transactions are enough to see the first pattern.",
     health_no_expense_data: "No spending recorded this month, so the emergency fund cannot be measured.",
     health_savings_rate: "Savings Rate",
     health_savings_aim: "aim for 20%+ savings rate",
@@ -839,6 +842,7 @@ export default {
     overall_progress: "Overall Progress",
     empty_title: "No financial goals yet",
     empty_desc: "Set your first savings goal to track your progress",
+    empty_hint: "This page tracks your saving progress and tells you how far you are from the target.",
     create_goal: "Create Goal",
     edit_goal: "Edit Goal",
     update_goal: "Update Goal",
@@ -1067,6 +1071,8 @@ export default {
     active_count: "%s Active",
     paid_off_count: "%s Paid Off",
     empty: "No debt data yet",
+    empty_desc: "The debts you record here show up as a road to being clear, with an estimated date on each one.",
+    empty_hint: "Every debt you record is counted down from its due date, so you always know how long is left.",
     add_first: "Add Your First Debt",
     status_paid_off: "PAID OFF",
     status_due: "Due",

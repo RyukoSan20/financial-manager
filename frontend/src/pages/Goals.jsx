@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { chartPalette } from '../utils/appearance';
-import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner, StatCard } from '../components/ui';
+import { Card, Button, Input, Select, Modal, Badge, Spinner, StatCard } from '../components/ui';
+import HonestEmptyState from '../components/common/HonestEmptyState';
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp, TrendingDown, Clock, CheckCircle } from 'lucide-react';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import { formatCurrency, formatPercent, formatDate } from '../utils/format';
@@ -159,16 +160,13 @@ export const Goals = () => {
 
       {/* Goals List */}
       {goals.length === 0 ? (
-        <EmptyState
-          icon={<Target className="w-8 h-8 text-gray-400" />}
-          title={t('goals.empty_title')}
-          description={t('goals.empty_desc')}
-          action={
-            <Button onClick={() => setShowModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              {t('goals.create_goal')}
-            </Button>
-          }
+        <HonestEmptyState
+          titleKey="goals.empty_title"
+          descriptionKey="goals.empty_desc"
+          hintKey="goals.empty_hint"
+          primaryActionKey="goals.create_goal"
+          onPrimary={() => setShowModal(true)}
+          mascotMood="idle"
         />
       ) : (
         <div className="grid gap-4">

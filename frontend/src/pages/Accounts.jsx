@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Input, Select, Modal, Badge, EmptyState, Spinner } from '../components/ui';
+import { Card, Button, Input, Select, Modal, Badge, Spinner } from '../components/ui';
+import HonestEmptyState from '../components/common/HonestEmptyState';
 import { Plus, Wallet, Banknote, CreditCard, Smartphone, RefreshCw, Trash2, Edit2, PiggyBank } from 'lucide-react';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import api from '../services/api';
@@ -160,9 +161,9 @@ export const Accounts = () => {
       {/* Account Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="!p-4 text-center">
+          <Card className="!p-4 text-center layered-surface">
             <p className="text-sm text-gray-500">{t('accounts.total_balance')}</p>
-            <p className="text-xl font-bold text-gray-900 mt-1">
+            <p className="text-xl font-bold text-gray-900 mt-1 tabular-nums">
               {formatNative(summary.total_balance, summary.currency || displayCurrency)}
             </p>
           </Card>
@@ -171,16 +172,12 @@ export const Accounts = () => {
 
       {/* Accounts by Type */}
       {accounts.length === 0 ? (
-        <EmptyState
-          icon={<Wallet className="w-8 h-8 text-gray-400" />}
+        <HonestEmptyState
           title={K.empty}
           description={K.empty_hint}
-          action={
-            <Button onClick={() => setShowModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              {K.add_account}
-            </Button>
-          }
+          primaryAction={K.add_account}
+          onPrimary={() => setShowModal(true)}
+          mascotMood="idle"
         />
       ) : (
         <div className="space-y-6">
@@ -196,7 +193,15 @@ export const Accounts = () => {
                 </h3>
                 <div className="grid gap-3">
                   {accs.map((account) => (
-                    <Card key={account.id} className="!p-4 hover:shadow-md transition-shadow">
+                    // The layered surface is the quiet card: a faint
+                    // border, a soft shadow and a measured gradient,
+                    // rather than a flat block of colour. The amount
+                    // uses tabular figures so a column of balances
+                    // lines up and can be compared down the page.
+                    <Card
+                      key={account.id}
+                      className="!p-4 layered-surface layered-surface--interactive"
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
@@ -218,13 +223,13 @@ export const Accounts = () => {
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <p className={`font-bold text-lg ${
+                            <p className={`font-bold text-lg tabular-nums ${
                               parseFloat(account.balance) >= 0 ? 'text-gray-900' : 'text-danger-600'
                             }`}>
                               {formatNative(account.balance, account.currency)}
                             </p>
                             {account.currency && account.currency !== displayCurrency && (
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-gray-500 tabular-nums">
                                 {formatCurrency(account.balance, account.currency)}
                               </p>
                             )}
