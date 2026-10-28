@@ -38,4 +38,9 @@ build/
 .DS_Store
 Thumbs.db
 .vercel
+
+# The environment file holds a password, so it is not in the repository.
 .env*
+# The template is not the environment file. It has no secrets in it,
+# and it is what a new machine copies to make one.
+!.env.example
