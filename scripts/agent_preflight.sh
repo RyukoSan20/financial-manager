@@ -67,6 +67,10 @@ for test_file in \
   src/utils/__tests__/amountInput.test.js \
   src/utils/__tests__/transactionSign.test.js \
   src/components/layout/__tests__/navGrouping.test.js \
+  src/utils/__tests__/abTesting.test.js \
+  src/utils/__tests__/scanDismissal.test.js \
+  src/utils/__tests__/healthMetrics.test.js \
+  src/utils/__tests__/gmailState.test.js \
   src/data/__tests__/privacyManifest.test.js
 do
   if [ ! -f "$test_file" ]; then
