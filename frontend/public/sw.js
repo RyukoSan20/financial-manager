@@ -11,7 +11,7 @@
 // The SW file itself is served with no-store by nginx, and CACHE_NAME is
 // bumped on every release so old caches are purged on activate.
 
-const CACHE_NAME = 'finmanager-v22';
+const CACHE_NAME = 'finmanager-v23';
 const OFFLINE_FALLBACK = '/index.html';
 
 const PRECACHE_URLS = ['/manifest.json'];
