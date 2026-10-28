@@ -1309,6 +1309,7 @@ export default {
     subtitle: "銀行・電子マネーウォレットのメールから取引を自動インポート",
     connected_title: "✅ Gmail接続済み",
     not_connected_title: "Gmail未接続",
+    not_configured_title: "Gmail未設定",
     features_active: "✨ 有効な機能",
     feature_auto_scan: "✓ メールの自動スキャン",
     feature_bank_import: "✓ 銀行取引のインポート",

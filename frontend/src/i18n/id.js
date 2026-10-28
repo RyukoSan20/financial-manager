@@ -1309,6 +1309,7 @@ export default {
     subtitle: "Import otomatis transaksi dari email bank & e-wallet",
     connected_title: "✅ Gmail Terhubung",
     not_connected_title: "Gmail Belum Terhubung",
+    not_configured_title: "Gmail Belum Diatur",
     features_active: "✨ Fitur Aktif",
     feature_auto_scan: "✓ Pemindaian email otomatis",
     feature_bank_import: "✓ Import transaksi bank",

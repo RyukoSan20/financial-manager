@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from '../i18n';
 import { buildFlag } from '../utils/featureFlags';
+import { gmailView } from '../utils/gmailState';
 import { Banknote, Wallet } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -24,6 +25,15 @@ const GmailIntegration = () => {
   useEffect(() => {
     checkStatus();
   }, []);
+
+  // What the page shows. The state is worked out in one place, so the
+  // title and the message under it can never disagree with each other.
+  const view = gmailView({
+    checking,
+    connected: status.connected,
+    state: status.state,
+    configured: status.configured,
+  });
 
   // The message for a state, in the reader's language.
   const stateMessage = (code) => {
@@ -106,15 +116,15 @@ const GmailIntegration = () => {
           </div>
           <div className="flex-1">
             <h2 className="font-semibold text-lg">
-              {status.connected ? t('gmail_integration.connected_title') : t('gmail_integration.not_connected_title')}
+              {t(view.titleKey)}
             </h2>
             <p className="text-sm text-gray-500">
-              {checking ? t('gmail_integration.loading') : stateMessage(status.state)}
+              {stateMessage(view.state)}
             </p>
           </div>
         </div>
         
-        {status.connected ? (
+        {view.state === 'connected' ? (
           <div className="space-y-3">
             <div className="bg-green-50 rounded-xl p-4 mb-4">
               <h3 className="font-medium text-green-800 mb-2">{t('gmail_integration.features_active')}</h3>
@@ -134,7 +144,7 @@ const GmailIntegration = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {!status.configured && (
+            {view.showNotConfiguredNote && (
               <div className="bg-amber-50 rounded-xl p-4">
                 <p className="text-sm text-amber-800">
                   {t('gmail_integration.not_configured_note')}
@@ -182,7 +192,7 @@ const GmailIntegration = () => {
             
             <button
               onClick={connectGmail}
-              disabled={loading || !status.configured}
+              disabled={loading || !view.showConnect}
               className="w-full py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (

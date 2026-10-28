@@ -1309,6 +1309,7 @@ export default {
     subtitle: "Automatically import transactions from your bank and e-wallet emails",
     connected_title: "✅ Gmail Connected",
     not_connected_title: "Gmail Not Connected",
+    not_configured_title: "Gmail Not Set Up",
     features_active: "✨ Active Features",
     feature_auto_scan: "✓ Automatic email scanning",
     feature_bank_import: "✓ Bank transaction import",
