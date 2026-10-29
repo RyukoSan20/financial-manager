@@ -311,10 +311,11 @@ def check_batch_values_exist(root):
 
     batches = {}
     i18n = root / "i18n"
-    for name in ("keys_batch1", "keys_batch2", "keys_batch3"):
-        path = i18n / f"{name}.js"
-        if not path.exists():
-            continue
+    # Every batch file is read, not only the first three. A page that
+    # reads a key from a batch that was not read here would look like
+    # a page reading a key that does not exist.
+    for path in sorted(i18n.glob("keys_batch*.js")):
+        name = path.stem
         batches[name] = {}
         for lang in ("id", "en", "ja"):
             with tempfile.NamedTemporaryFile(suffix=".cjs", delete=False) as tmp:
@@ -337,6 +338,9 @@ def check_batch_values_exist(root):
             os.unlink(out)
 
     def lookup(table, path):
+        # An empty path means the top level of the table.
+        if not path:
+            return table
         current = table
         for part in path.split("."):
             if isinstance(current, dict) and part in current:
@@ -346,11 +350,18 @@ def check_batch_values_exist(root):
         return current
 
     problems = []
+    # The namespaced form: const K = batch3[language]?.navigation
     namespace_pattern = re.compile(
         r"const (K\w*) = (\w+)\[language\]\?\.((?:[A-Za-z0-9_]+\??\.?)+)"
     )
+    # The flat form: const K = batch7[language] || batch7.id
+    # The whole language table is the namespace, so the key is looked
+    # up at the top level of that table.
+    flat_pattern = re.compile(
+        r"const (K\w*) = (\w+)\[language\]\s*\|\|\s*\2\.id"
+    )
     import_pattern = re.compile(
-        r"import \{ (\w+)(?:, fill)? \} from ['\"][^'\"]*keys_(batch\d)['\"]"
+        r"import \{ (\w+)(?:, fill)? \} from ['\"][^'\"]*keys_(batch\d+)['\"]"
     )
 
     for path in sorted(root.glob("**/*.jsx")) + sorted(root.glob("**/*.js")):
@@ -373,6 +384,12 @@ def check_batch_values_exist(root):
                     part for part in chain.replace("?.", ".").split(".") if part
                 )
                 sources[kname] = (imports[variable], namespace)
+
+        for m in flat_pattern.finditer(text):
+            kname, variable = m.group(1), m.group(2)
+            if variable in imports:
+                # An empty namespace means the top level of the table.
+                sources[kname] = (imports[variable], "")
 
         for kname, key in re.findall(r"\{(K\w*)\.([A-Za-z_][A-Za-z0-9_]*)", text):
             if kname not in sources:
