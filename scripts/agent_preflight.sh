@@ -66,6 +66,7 @@ for test_file in \
   src/utils/__tests__/featureFlags.test.js \
   src/utils/__tests__/amountInput.test.js \
   src/utils/__tests__/amountExpression.test.js \
+  src/utils/__tests__/amountField.test.js \
   src/utils/__tests__/countUp.test.js \
   src/utils/__tests__/transactionSign.test.js \
   src/components/layout/__tests__/navGrouping.test.js \

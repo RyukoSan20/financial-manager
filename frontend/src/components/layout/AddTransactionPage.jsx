@@ -1,5 +1,5 @@
 // Smart Add Transaction Page - Quick, intuitive, professional
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, API_BASE_URL as API_URL, getToken } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -23,6 +23,7 @@ import {
   resolveAmountText,
   sanitizeExpression,
 } from '../../utils/amountExpression';
+import { readAmountField, isBrokenExpression } from '../../utils/amountField';
 import { formatNative, currencyConfig } from '../../utils/currency';
 
 // Category keyword mapping with word boundaries.
@@ -83,6 +84,17 @@ const AddTransactionPage = () => {
   
   // Form state
   const [amount, setAmount] = useState("");
+  // What the expression in the field comes to. It is worked out while
+  // the reader is still typing, so they can see that the field
+  // understood them without having to save first.
+  const amountPreview = useMemo(
+    () => readAmountField(amount, { currency: accountCurrency }),
+    [amount, accountCurrency]
+  );
+  const amountIsBroken = useMemo(
+    () => isBrokenExpression(amount),
+    [amount]
+  );
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState(null);
   const [accountId, setAccountId] = useState(null);
@@ -702,6 +714,23 @@ const AddTransactionPage = () => {
           {!amount && (
             <p className="text-xs text-gray-400 mb-3">
               {K.amountExpressionHint}
+            </p>
+          )}
+
+          {/* What the expression comes to. The reader writes a sum and
+              cannot see the sum, so the field says what it worked out,
+              while they are still typing it. */}
+          {amountPreview.isSum && amountPreview.value !== null && (
+            <p className="text-xs text-primary-600 dark:text-primary-400 mb-3 amount-preview">
+              {amountPreview.text} = {formatNative(amountPreview.value, accountCurrency)}
+            </p>
+          )}
+
+          {/* An expression that cannot be worked out says so, because
+              otherwise the reader presses save and nothing happens. */}
+          {amountIsBroken && (
+            <p className="text-xs text-danger-600 dark:text-danger-400 mb-3 amount-preview-error">
+              {K.amountExpressionError}
             </p>
           )}
 
