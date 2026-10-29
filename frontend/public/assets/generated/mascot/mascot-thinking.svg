@@ -1,0 +1,25 @@
+<!-- FinBuddy, thinking -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="FinBuddy, thinking">
+  <title>FinBuddy, thinking</title>
+  <g>
+    <!-- the body -->
+    <circle cx="80" cy="88" r="52" fill="#d1fae5" stroke="#059669" stroke-width="3"/>
+    <!-- a leaf, so it reads as something that grows -->
+    <path d="M80 36 Q86 22 102 24 Q98 38 80 40 Z" fill="#059669" stroke="#047857" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M80 38 L97 27" stroke="#047857" stroke-width="1.6" stroke-linecap="round"/>
+    <!-- the cheeks -->
+    <ellipse cx="52" cy="94" rx="7" ry="5" fill="#ffe4e6" opacity="0.9"/>
+    <ellipse cx="108" cy="94" rx="7" ry="5" fill="#ffe4e6" opacity="0.9"/>
+    <circle cx="68" cy="75" r="6.5" fill="#0f172a"/><circle cx="96" cy="75" r="6.5" fill="#0f172a"/><circle cx="70.5" cy="72.5" r="2.2" fill="#ffffff"/><circle cx="98.5" cy="72.5" r="2.2" fill="#ffffff"/>
+    <path d="M60 62 Q68 57 76 61" stroke="#0f172a" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M88 61 Q96 57 104 62" stroke="#0f172a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <path d="M73 103 H87" stroke="#0f172a" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <g fill="#ffffff" stroke="#334155" stroke-width="2.5">
+    <circle cx="126" cy="34" r="5"/>
+    <circle cx="138" cy="25" r="8"/>
+    <ellipse cx="154" cy="15" rx="13" ry="10"/>
+  </g>
+  <g stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" fill="none">
+    <path d="M146 15 Q150 10 154 15"/>
+  </g>
+</svg>

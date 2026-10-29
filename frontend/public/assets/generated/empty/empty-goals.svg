@@ -1,0 +1,10 @@
+<!-- No goal yet -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 140" width="160" height="140" role="img" aria-label="No goal yet">
+  <title>No goal yet</title>
+  <g fill="none" stroke-linecap="round">
+    <circle cx="80" cy="72" r="44" stroke="#cbd5e1" stroke-width="3"/>
+    <circle cx="80" cy="72" r="28" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="6 5"/>
+    <circle cx="80" cy="72" r="12" stroke="#cbd5e1" stroke-width="3"/>
+    <path d="M80 28 V14" stroke="#cbd5e1" stroke-width="3"/>
+    <path d="M118 100 L132 114" stroke="#cbd5e1" stroke-width="3"/>
+  </g></svg>

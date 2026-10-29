@@ -1,0 +1,8 @@
+<!-- No debts yet -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 140" width="160" height="140" role="img" aria-label="No debts yet">
+  <title>No debts yet</title>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="34" y="46" width="92" height="54" rx="8" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="7 6"/>
+    <path d="M34 66 H126" stroke="#cbd5e1" stroke-width="3"/>
+    <path d="M48 84 H82" stroke="#cbd5e1" stroke-width="3"/>
+  </g></svg>

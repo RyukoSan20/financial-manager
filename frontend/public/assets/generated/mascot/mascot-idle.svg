@@ -1,0 +1,17 @@
+<!-- FinBuddy, idle -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="FinBuddy, idle">
+  <title>FinBuddy, idle</title>
+  <g>
+    <!-- the body -->
+    <circle cx="80" cy="88" r="52" fill="#d1fae5" stroke="#059669" stroke-width="3"/>
+    <!-- a leaf, so it reads as something that grows -->
+    <path d="M80 36 Q86 22 102 24 Q98 38 80 40 Z" fill="#059669" stroke="#047857" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M80 38 L97 27" stroke="#047857" stroke-width="1.6" stroke-linecap="round"/>
+    <!-- the cheeks -->
+    <ellipse cx="52" cy="94" rx="7" ry="5" fill="#ffe4e6" opacity="0.9"/>
+    <ellipse cx="108" cy="94" rx="7" ry="5" fill="#ffe4e6" opacity="0.9"/>
+    <circle cx="66" cy="76" r="6.5" fill="#0f172a"/><circle cx="94" cy="76" r="6.5" fill="#0f172a"/><circle cx="68.5" cy="73.5" r="2.2" fill="#ffffff"/><circle cx="96.5" cy="73.5" r="2.2" fill="#ffffff"/>
+    
+    <path d="M70 100 Q80 110 90 100" stroke="#0f172a" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
