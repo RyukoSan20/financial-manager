@@ -29,7 +29,7 @@ from alembic import op
 import sqlalchemy as sa
 
 # The revision chain. This one follows the shopping pipeline.
-revision = "20261029_transaction_tags_and_drafts"
+revision = "20261029_transaction_tags"
 down_revision = "20261023_merchant_catalog"
 branch_labels = None
 depends_on = None

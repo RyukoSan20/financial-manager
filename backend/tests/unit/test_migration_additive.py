@@ -36,7 +36,7 @@ from alembic.script import ScriptDirectory  # noqa: E402
 
 ALEMBIC_INI = BACKEND_DIR / "alembic.ini"
 ALEMBIC_DIR = BACKEND_DIR / "alembic"
-REVISION = "20261029_transaction_tags_and_drafts"
+REVISION = "20261029_transaction_tags"
 
 
 def _config(url):
@@ -142,6 +142,47 @@ def test_the_revision_hangs_off_something():
     # Every revision in the chain must be reachable from the head.
     walked = {r.revision for r in script.walk_revisions()}
     assert REVISION in walked
+
+
+def test_every_revision_id_fits_in_the_column():
+    """
+    The revision id is stored in a column that is 32 characters wide.
+
+    A longer id is accepted by alembic until the moment it is
+    written down, and then the database refuses it: the revision
+    cannot be stamped, and every migration after it is stuck.
+    """
+    script = ScriptDirectory.from_config(_config("sqlite://"))
+
+    for rev in script.walk_revisions():
+        assert len(rev.revision) <= 32, (
+            f"the revision id {rev.revision!r} is {len(rev.revision)} characters; "
+            "the column that holds it is 32 wide"
+        )
+
+
+def test_the_environment_wins_over_the_placeholder_in_the_ini_file():
+    """
+    Alembic has to run against the database the environment names.
+
+    The alembic.ini file carries a placeholder URL so the file is not
+    empty. If that placeholder wins, alembic talks to a database that
+    nobody is using, and the migration is applied to the wrong place
+    while looking like it worked.
+    """
+    import os
+
+    env_path = BACKEND_DIR / "alembic" / "env.py"
+    source = env_path.read_text(encoding="utf-8")
+
+    # The environment has to be read first.
+    assert "DATABASE_URL" in source
+    assert source.index("os.environ.get(\"DATABASE_URL\")") < source.index(
+        "config.get_main_option(\"sqlalchemy.url\""
+    ), "the placeholder in the ini file is consulted before the environment"
+
+    # And the placeholder has to be recognised as a placeholder.
+    assert "***" in source, "the placeholder in the ini file is not recognised"
 
 
 def test_the_chain_has_no_dangling_parent():

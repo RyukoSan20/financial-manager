@@ -16,13 +16,29 @@ settings = get_settings()
 # this is the Alembic Config object
 config = context.config
 
-# Set database URL from environment.
+# Which database to run against.
 #
-# The URL that is already in the config wins, if there is one. A test
-# that says "run this migration against a database of my own" has to
-# get the database it asked for, and not the one the environment
-# happens to point at.
-if not config.get_main_option("sqlalchemy.url", None):
+# Three things can say. In order:
+#
+# 1. The DATABASE_URL in the environment. This is what the server and
+#    the container set, and it is the one that is right in production.
+# 2. The URL that is already in the config, if it is not the
+#    placeholder that is written into alembic.ini. That placeholder is
+#    not a real database; it is there so the file is not empty.
+# 3. The application's settings, which read the environment anyway.
+#
+# The environment comes first because the placeholder in alembic.ini
+# would otherwise win, and alembic would talk to a database that
+# nobody is using.
+from_env = os.environ.get("DATABASE_URL")
+from_config = config.get_main_option("sqlalchemy.url", None)
+
+if from_env:
+    config.set_main_option("sqlalchemy.url", from_env)
+elif from_config and "***" not in from_config and "user" not in from_config.split("@")[0]:
+    # A real URL, written by a caller that knows the database.
+    pass
+else:
     config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Interpret the config file for Python logging
