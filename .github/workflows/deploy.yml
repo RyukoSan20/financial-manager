@@ -391,6 +391,11 @@ jobs:
           done
 
           echo "--- the endpoints that need a reader ---"
+          # The reader is followed here, so that a route which lives at
+          # a trailing slash - /api/budgets is really /api/budgets/ -
+          # is judged by the answer it gives and not by the redirect
+          # that leads to it. A redirect says the route is there, and
+          # the smoke test is here to catch a route that is not.
           for url in \
             "https://my-financial-manager.online/api/integrations/gmail/status" \
             "https://my-financial-manager.online/api/ai/advice" \
@@ -399,7 +404,7 @@ jobs:
             "https://my-financial-manager.online/api/debts" \
             "https://my-financial-manager.online/api/insights/subscriptions" \
             "https://my-financial-manager.online/api/insights/duplicates" ; do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+            CODE=$(curl -sL -o /dev/null -w "%{http_code}" "$url")
             echo "$CODE  $url"
             if [ "$CODE" = "404" ] || [ "$CODE" = "000" ]; then
               echo "::error::The route is not mounted: $url ($CODE)"
