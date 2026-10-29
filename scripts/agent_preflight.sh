@@ -72,6 +72,7 @@ for test_file in \
   src/utils/__tests__/countUp.test.js \
   src/utils/__tests__/transactionSign.test.js \
   src/components/layout/__tests__/navGrouping.test.js \
+  src/components/layout/__tests__/navDisclosure.test.js \
   src/utils/__tests__/abTesting.test.js \
   src/utils/__tests__/budgetRecipes.test.js \
   src/utils/__tests__/scanDismissal.test.js \

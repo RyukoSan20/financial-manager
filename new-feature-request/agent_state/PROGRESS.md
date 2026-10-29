@@ -205,7 +205,31 @@ SESSION LOG
   Backend: 256 passed, 0 failed. Lint: 0 errors, 204 warnings.
   Build: PASS. Preflight: PASSED.
 
-  STILL NOT DONE, from the master prompt: ConfirmDialog, the inline
-  amount evaluator in the quick entry box, the nav grouping
-  refinement, the two Recipes sliders being interactive on every
-  recipe, and the A7 rows that need a mini-spec.
+  UI-10 987a0a6, 9ed9adf, 979b780: the artwork is now drawn by a
+    script. scripts/generate_assets.py writes eight SVGs from
+    numbers: four FinBuddy moods and four empty-state pictures. The
+    --check form runs in the preflight, so a drawing cannot drift
+    away from the code that draws it. FinBuddyMascot has two
+    drawings, the inline one and the generated one, and the reader
+    switch `mascotArt` chooses between them. The mascot now sits on
+    the AI Advisor button, on the receipt scanner while it reads, on
+    the onboarding header and on the empty pages.
+  UI-11 0f3c79f: a Japanese sentence had a Latin word in the middle
+    of it. Fixed, and a check now says no translation may carry a
+    letter from an alphabet it does not use.
+  UI-12 9133908: the health score card was a block of colour running
+    from the primary colour into purple, and the AI panel was a
+    gradient into purple. A large block of colour says "look at me"
+    whether or not it has anything to show. One colour and a border
+    says the same thing more quietly.
+  UI-13 3f42e62, f707cd1: two guests whose device ids started the
+    same way got the same username, so the second one was refused
+    with a 500. The username was cut to eight characters; it is now
+    the whole device id. And the guest button refused to do anything
+    unless Supabase was set up, even though the guest account is made
+    by the backend and never used Supabase. Both were found while
+    checking the interface in a browser, and both are now checked by
+    tests that fail when the bug comes back.
+
+  STILL NOT DONE, from the master prompt: the nav grouping
+  refinement, and the A7 rows that need a mini-spec.

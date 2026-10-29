@@ -71,5 +71,6 @@ same commit that introduces it.
 | Flag | Default | Batch | What it changes |
 |---|---|---|---|
 | `AI_CONFIRM_MUTATIONS` | OFF | A4.4 (Q4) | Server-side confirmation before an AI feature mutates data, with an audit-log entry. Nothing changes while off. |
+| `mascotArt` | OFF | UI-10 | The richer FinBuddy drawing, made by `scripts/generate_assets.py`. Off means the inline SVG drawing, which takes the colour of what it sits on and never waits for a file. The switch is read in one place, `FinBuddyMascot.jsx`, so every place that shows the mascot changes together. |
 | (delete-all safeguards) | OFF | A4.5 (Q5) | Confirmation token, rate limit and audit entry on delete-all. The endpoint contract does not change while off. |
 | (location consent) | OFF | A4.7 (Q7) | Opt-in screen and a persisted consent flag. No coordinates are stored without consent. |
