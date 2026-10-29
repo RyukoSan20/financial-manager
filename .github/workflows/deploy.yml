@@ -138,7 +138,11 @@ jobs:
       # job made, so the server receives the code that was tested.
       - name: Pack the backend
         if: steps.paths.outputs.backend == 'true'
-        run: tar -czf /tmp/backend.tar.gz -C backend app migrations scripts alembic.ini
+        # The alembic directory has to travel with the code. Without
+        # its versions the container keeps the revisions it already
+        # has, the new migration never reaches the database, and the
+        # upgrade says it succeeded while doing nothing.
+        run: tar -czf /tmp/backend.tar.gz -C backend app migrations scripts alembic alembic.ini
 
       - name: Upload the backend
         if: steps.paths.outputs.backend == 'true'
