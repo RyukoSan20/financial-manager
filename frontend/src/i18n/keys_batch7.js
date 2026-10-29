@@ -158,7 +158,7 @@ export const batch7 = {
 
   ja: {
     insights_title: "記録がすでに語っていること",
-    insights_subtitle: "記録の中にはあるものの、まだleveвается적으로示されていないこと",
+    insights_subtitle: "記録の中にはあるものの、まだ示されていないこと",
     insights_loading: "指摘を探しています...",
     insights_none: "指摘はありません。記録はすでに整っています。",
     insights_empty_short: "指摘なし",
