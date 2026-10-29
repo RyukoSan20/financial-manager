@@ -132,49 +132,19 @@ def test_every_route_file_has_its_router_in_the_application(app):
 # No path and method is registered twice
 # ---------------------------------------------------------------------------
 
-# The duplicates that are there on purpose.
+# The paths that used to be registered twice.
 #
-# The market router is registered twice because the real-time one has
-# to be first: FastAPI matches the first registration, and the older
-# one returns 429 from a datacenter address. The comment in main.py
-# says so. The location router is registered twice by accident, and
-# the second registration is the one that is reached, because the
-# first one is inside a try that swallows the import.
+# There were thirteen of them. They were fixed, one at a time, and the
+# fix was always the same shape: the router is mounted once now, and
+# the paths that only the second registration had are still there.
 #
-# This list is what the check below compares against. A duplicate that
-# is not on this list is a new one, and it fails the test.
-KNOWN_DUPLICATE_PATHS = {
-    # The market router, deliberately mounted twice. The comment in
-    # main.py says so: the real-time one has to be first, because
-    # FastAPI matches the first registration and the older one returns
-    # 429 from a datacenter address.
-    "/api/market/summary",
-    "/api/market/crypto",
-    "/api/market/commodities",
-    # The location router, mounted twice by accident. Both copies are
-    # the same file, so the first one is simply never reached.
-    "/api/location/search-places",
-    "/api/location/reverse-geocode",
-    "/api/location/static-map",
-    # The shopping router and the shopping module, both mounted. The
-    # route file is registered first, so the module's handlers are
-    # the ones that are never reached.
-    "/api/shopping/items",
-    "/api/shopping/items/{item_id}",
-    # The AI advisor, as a route file and as a module. The route file
-    # is registered first.
-    "/api/ai/chat",
-    "/api/ai/chat/stream",
-    # The dashboard summary and cash flow, as a route file and as the
-    # ledger analytics module. The route file is registered first.
-    "/api/dashboard/summary",
-    "/api/dashboard/cash-flow",
-    # The health check, written twice in main.py.
-    "/health",
-}
+# The list is kept so that the check below says "these are the ones we
+# know about" rather than failing, and so that a duplicate that comes
+# back is caught. It is empty, because there are none left.
+KNOWN_DUPLICATE_PATHS = set()
 
 
-def test_no_new_path_is_registered_twice(app):
+def test_no_path_is_registered_twice(app):
     """
     A path and method that is registered twice is a bug that says
     nothing.
@@ -183,8 +153,10 @@ def test_no_new_path_is_registered_twice(app):
     the routes of the second one are gone. There is no error and no
     warning.
 
-    The duplicates that are known and deliberate are on the list
-    above. Anything else is new, and it fails here.
+    There used to be thirteen of these. They were fixed by mounting
+    each router once, so that the paths which only one of the two
+    registrations had are still mounted. The list above is empty, and
+    this test says so.
     """
     seen = {}
     duplicated = set()
@@ -212,14 +184,14 @@ def test_no_new_path_is_registered_twice(app):
     )
 
 
-def test_the_known_duplicates_are_still_the_known_ones(app):
+def test_the_known_duplicates_list_is_empty(app):
     """
-    The list of known duplicates is not allowed to grow by accident.
+    The list of known duplicates is empty, and it stays empty.
 
-    If a duplicate is fixed, it is taken off the list, so the list
-    keeps saying what is actually true. A path that is on the list but
-    is no longer duplicated means the fix was made and the list was
-    not updated, which is the same kind of quiet wrongness.
+    When a duplicate is fixed, it is taken off the list. A path that
+    is still on the list but is no longer duplicated would mean the
+    fix was made and the list was not updated, which is the same kind
+    of quiet wrongness the list exists to prevent.
     """
     seen = set()
     duplicated = set()
@@ -241,6 +213,11 @@ def test_the_known_duplicates_are_still_the_known_ones(app):
         "these paths are on the known-duplicates list but are no longer "
         "duplicated, so the list should be updated:\n  "
         + "\n  ".join(gone)
+    )
+
+    assert not duplicated, (
+        "these paths are registered more than once:\n  "
+        + "\n  ".join(sorted(duplicated))
     )
 
 

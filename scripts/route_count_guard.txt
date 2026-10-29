@@ -16,4 +16,4 @@
 # To raise the number after adding routes deliberately: run
 #   backend/venv/bin/python -c "from app.main import app; print(len(app.routes))"
 # and write the answer below.
-EXPECTED_ROUTE_COUNT=337
+EXPECTED_ROUTE_COUNT=322
