@@ -107,6 +107,9 @@ export default {
     gmail: "Gmail Sync",
     merchant: "Toko / Merchant",
     categoryExpenses: "Kategori Pengeluaran",
+    profile: "Profil",
+    notifications: "Notifikasi",
+    helpSupport: "Bantuan & Dukungan",
   },
   
   // Dashboard
@@ -1103,6 +1106,14 @@ export default {
     notes: "Catatan",
     optional: "Opsional",
     pay_now: "Bayar Sekarang",
+    schedule_title: "Jadwal Angsuran",
+    schedule_month: "Bulan",
+    schedule_payment: "Angsuran",
+    schedule_principal: "Pokok",
+    schedule_interest: "Bunga",
+    schedule_balance: "Sisa Utang",
+    schedule_total_interest: "Total Bunga",
+    schedule_total_payment: "Total Bayar",
   },
 
 

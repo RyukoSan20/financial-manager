@@ -107,6 +107,9 @@ export default {
     gmail: "Gmail同期",
     merchant: "店舗・ULO",
     categoryExpenses: "カテゴリ別支出",
+    profile: "プロフィール",
+    notifications: "通知",
+    helpSupport: "ヘルプとサポート",
   },
   
   // Dashboard
@@ -1103,6 +1106,14 @@ export default {
     notes: "メモ",
     optional: "任意",
     pay_now: "今すぐ支払う",
+    schedule_title: "返済スケジュール",
+    schedule_month: "月",
+    schedule_payment: "返済額",
+    schedule_principal: "元本",
+    schedule_interest: "利息",
+    schedule_balance: "残高",
+    schedule_total_interest: "利息合計",
+    schedule_total_payment: "支払合計",
   },
 
 

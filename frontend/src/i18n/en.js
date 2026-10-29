@@ -107,6 +107,9 @@ export default {
     merchant: "Merchant",
     kanban: "Shopping Board",
     categoryExpenses: "Category Expenses",
+    profile: "Profile",
+    notifications: "Notifications",
+    helpSupport: "Help & Support",
   },
   
   // Dashboard
@@ -1103,6 +1106,14 @@ export default {
     notes: "Notes",
     optional: "Optional",
     pay_now: "Pay Now",
+    schedule_title: "Payment Schedule",
+    schedule_month: "Month",
+    schedule_payment: "Payment",
+    schedule_principal: "Principal",
+    schedule_interest: "Interest",
+    schedule_balance: "Balance",
+    schedule_total_interest: "Total Interest",
+    schedule_total_payment: "Total Payment",
   },
 
 

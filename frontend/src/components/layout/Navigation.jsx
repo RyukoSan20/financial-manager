@@ -283,7 +283,7 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
                   className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-50"
                 >
                   <Settings className="w-5 h-5" />
-                  <span className="font-medium">Settings</span>
+                  <span className="font-medium">{K.settings}</span>
                 </Link>
                 <button 
                   onClick={() => { localStorage.clear(); window.location.href = '/login'; }}
@@ -409,12 +409,12 @@ const BottomNav = ({ pendingScanResult }) => {
           >
             <div className="grid grid-cols-3 gap-2 p-3">
               {[
-                { icon: Target, label: 'Goals', href: '/goals', color: 'bg-purple-100 text-purple-600' },
-                { icon: CreditCard, label: 'Debts', href: '/debts', color: 'bg-orange-100 text-orange-600' },
-                { icon: Repeat, label: 'Recurring', href: '/recurring', color: 'bg-blue-100 text-blue-600' },
-                { icon: Calculator, label: 'Calculator', href: '/calculators', color: 'bg-green-100 text-green-600' },
-                { icon: BarChart3, label: 'Analytics', href: '/analytics', color: 'bg-pink-100 text-pink-600' },
-                { icon: Settings, label: 'Settings', href: '/settings', color: 'bg-gray-100 text-gray-600' },
+                { icon: Target, label: t('nav.goals'), href: '/goals', color: 'bg-purple-100 text-purple-600' },
+                { icon: CreditCard, label: t('nav.debts'), href: '/debts', color: 'bg-orange-100 text-orange-600' },
+                { icon: Repeat, label: t('nav.recurring'), href: '/recurring', color: 'bg-blue-100 text-blue-600' },
+                { icon: Calculator, label: t('nav.calculators'), href: '/calculators', color: 'bg-green-100 text-green-600' },
+                { icon: BarChart3, label: t('nav.analytics'), href: '/analytics', color: 'bg-pink-100 text-pink-600' },
+                { icon: Settings, label: t('nav.settings'), href: '/settings', color: 'bg-gray-100 text-gray-600' },
               ].map((item) => (
                 <Link
                   key={item.label}
@@ -439,24 +439,26 @@ const BottomNav = ({ pendingScanResult }) => {
 
 // More Page
 const MorePage = () => {
+  const { t } = useTranslation();
+
   const menuItems = [
-    { icon: ShoppingBag, label: 'Toko / Merchant', href: '/merchant', color: 'bg-indigo-100 text-indigo-600', desc: 'POS & Kasir Cepat' },
+    { icon: ShoppingBag, label: t('nav.merchant'), href: '/merchant', color: 'bg-indigo-100 text-indigo-600', desc: 'POS & Kasir Cepat' },
     { icon: Package, label: 'Katalog', href: '/catalog', color: 'bg-teal-100 text-teal-600', desc: 'Toko & produk yang dipelajari' },
-    { icon: PieChart, label: 'Category Expenses', href: '/category-expenses', color: 'bg-teal-100 text-teal-600', desc: 'View spending by category' },
-    { icon: Target, label: 'Goals', href: '/goals', color: 'bg-purple-100 text-purple-600', desc: 'Track your savings goals' },
-    { icon: CreditCard, label: 'Debts', href: '/debts', color: 'bg-orange-100 text-orange-600', desc: 'Manage loans & credits' },
-    { icon: Repeat, label: 'Recurring', href: '/recurring', color: 'bg-blue-100 text-blue-600', desc: 'Automated transactions' },
-    { icon: Calculator, label: 'Calculators', href: '/calculators', color: 'bg-green-100 text-green-600', desc: 'Financial calculators' },
-    { icon: BarChart3, label: 'Analytics', href: '/analytics', color: 'bg-pink-100 text-pink-600', desc: 'Insights & trends' },
-    { icon: Map, label: 'Spending Map', href: '/map', color: 'bg-red-100 text-red-600', desc: 'Merchant locations & patterns' },
-    { icon: Heart, label: 'Health Coach', href: '/health-coach', color: 'bg-green-100 text-green-600', desc: 'AI financial health assessment' },
-    { icon: ShoppingCart, label: 'Shopping', href: '/shopping', color: 'bg-purple-100 text-purple-600', desc: 'Track prices & wishlist' },
-    { icon: Mail, label: 'Gmail Sync', href: '/gmail', color: 'bg-orange-100 text-orange-600', desc: 'Auto-import from email' },
-    { icon: Sparkles, label: 'AI Advisor', href: '/advisor', color: 'bg-cyan-100 text-cyan-600', desc: 'AI-powered financial advice' },
-    { icon: User, label: 'Profile', href: '/settings/profile', color: 'bg-indigo-100 text-indigo-600', desc: 'Account settings' },
-    { icon: Bell, label: 'Notifications', href: '/settings/notifications', color: 'bg-yellow-100 text-yellow-600', desc: 'Alerts & reminders' },
-    { icon: Settings, label: 'Settings', href: '/settings/app', color: 'bg-gray-100 text-gray-600', desc: 'App configuration' },
-    { icon: HelpCircle, label: 'Help & Support', href: '/help', color: 'bg-teal-100 text-teal-600', desc: 'FAQs & contact' },
+    { icon: PieChart, label: t('nav.categoryExpenses'), href: '/category-expenses', color: 'bg-teal-100 text-teal-600', desc: 'View spending by category' },
+    { icon: Target, label: t('nav.goals'), href: '/goals', color: 'bg-purple-100 text-purple-600', desc: 'Track your savings goals' },
+    { icon: CreditCard, label: t('nav.debts'), href: '/debts', color: 'bg-orange-100 text-orange-600', desc: 'Manage loans & credits' },
+    { icon: Repeat, label: t('nav.recurring'), href: '/recurring', color: 'bg-blue-100 text-blue-600', desc: 'Automated transactions' },
+    { icon: Calculator, label: t('nav.calculators'), href: '/calculators', color: 'bg-green-100 text-green-600', desc: 'Financial calculators' },
+    { icon: BarChart3, label: t('nav.analytics'), href: '/analytics', color: 'bg-pink-100 text-pink-600', desc: 'Insights & trends' },
+    { icon: Map, label: t('nav.map'), href: '/map', color: 'bg-red-100 text-red-600', desc: 'Merchant locations & patterns' },
+    { icon: Heart, label: t('nav.healthCoach'), href: '/health-coach', color: 'bg-green-100 text-green-600', desc: 'AI financial health assessment' },
+    { icon: ShoppingCart, label: t('nav.shopping'), href: '/shopping', color: 'bg-purple-100 text-purple-600', desc: 'Track prices & wishlist' },
+    { icon: Mail, label: t('nav.gmail'), href: '/gmail', color: 'bg-orange-100 text-orange-600', desc: 'Auto-import from email' },
+    { icon: Sparkles, label: t('nav.advisor'), href: '/advisor', color: 'bg-cyan-100 text-cyan-600', desc: 'AI-powered financial advice' },
+    { icon: User, label: t('nav.profile'), href: '/settings/profile', color: 'bg-indigo-100 text-indigo-600', desc: 'Account settings' },
+    { icon: Bell, label: t('nav.notifications'), href: '/settings/notifications', color: 'bg-yellow-100 text-yellow-600', desc: 'Alerts & reminders' },
+    { icon: Settings, label: t('nav.settings'), href: '/settings/app', color: 'bg-gray-100 text-gray-600', desc: 'App configuration' },
+    { icon: HelpCircle, label: t('nav.helpSupport'), href: '/help', color: 'bg-teal-100 text-teal-600', desc: 'FAQs & contact' },
   ];
 
   return (
