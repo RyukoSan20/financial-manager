@@ -26,8 +26,10 @@
  * in one language only.
  */
 
+import { useState } from 'react';
 import { useTranslation } from '../../i18n';
 import FinBuddyMascot from './FinBuddyMascot';
+import { getVariant, readerKey } from '../../utils/abTesting';
 
 /**
  * The keys the component needs.
@@ -81,6 +83,51 @@ export default function HonestEmptyState({
   // A second action that is not named is not shown. An empty space on
   // the screen is not a button.
   const showSecondary = Boolean(secondary && (secondaryAction || secondaryActionKey) && onSecondary);
+
+  // Which version of an empty page this reader sees. It is decided on
+  // this device and never changes, so a reader who has seen the plain
+  // version keeps seeing it and the comparison means something.
+  const [version] = useState(() => getVariant('exp_empty_state', readerKey()));
+  const plain = version === 'control';
+
+  // The plain version: the words and one action, and no picture. It is
+  // the version that was already there, and it is here so the two can
+  // be compared.
+  if (plain) {
+    return (
+      <div
+        className={`honest-empty honest-empty--plain flex flex-col items-center justify-center text-center px-5 py-10 ${className}`.trim()}
+      >
+        <h3 className="honest-empty__title text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1.5">
+          {titleText}
+        </h3>
+
+        {descriptionText && (
+          <p className="honest-empty__description text-sm text-gray-600 dark:text-gray-300 max-w-md leading-relaxed">
+            {descriptionText}
+          </p>
+        )}
+
+        {hintText && (
+          <p className="honest-empty__hint text-xs text-gray-500 dark:text-gray-400 max-w-sm mt-2 leading-relaxed">
+            {hintText}
+          </p>
+        )}
+
+        {onPrimary && (
+          <div className="honest-empty__actions mt-5">
+            <button
+              type="button"
+              onClick={onPrimary}
+              className="honest-empty__primary inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform duration-150 hover:bg-primary-700 active:scale-95"
+            >
+              {primaryText}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

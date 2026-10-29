@@ -80,7 +80,8 @@ for test_file in \
   src/features/transactions/nlp/__tests__/fuzzy.test.js \
   src/features/transactions/nlp/__tests__/golden.test.js \
   src/utils/__tests__/marketFormat.test.js \
-  src/pages/__tests__/marketPage.test.js
+  src/pages/__tests__/marketPage.test.js \
+  src/components/common/__tests__/honestEmptyState.test.js
 do
   if [ ! -f "$test_file" ]; then
     echo "  SKIP $test_file (not present)"
@@ -95,6 +96,18 @@ do
 done
 if [ "$FAILED_FRONTEND" -ne 0 ]; then
   note_failure "frontend unit tests"
+fi
+cd "$ROOT"
+echo
+
+echo "--- frontend build ---------------------------------------------"
+cd "$ROOT/frontend"
+if npm run build > /tmp/preflight_build.log 2>&1; then
+  tail -4 /tmp/preflight_build.log
+  echo "  -> build OK"
+else
+  tail -25 /tmp/preflight_build.log
+  note_failure "frontend build"
 fi
 cd "$ROOT"
 echo
