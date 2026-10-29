@@ -63,7 +63,7 @@ export const CatalogPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();

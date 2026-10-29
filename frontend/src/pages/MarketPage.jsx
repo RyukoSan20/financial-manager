@@ -12,6 +12,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from '../i18n';
 import { IconText } from '../components/ui/IconText';
 import { buildFlag } from '../utils/featureFlags';
+import { formatChangePercent, filterQuotes, DEFAULT_TABLE_TAB } from '../utils/marketFormat';
 
 // Dark Mode Toggle Component
 const ThemeToggle = ({ isDark, onToggle, label }) => (
@@ -72,8 +73,7 @@ export const MarketPage = () => {
   const [selectedSymbol, setSelectedSymbol] = useState('FX_IDC:USDIDR');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('realtime'); // realtime, table, learn
-  const [activeTab, setActiveTab] = useState('all'); // all, idx, us, crypto, forex, commodities
-  const [activeMarketTab, setActiveMarketTab] = useState('forex');
+  const [activeTab, setActiveTab] = useState(DEFAULT_TABLE_TAB); // forex, idx, us, crypto, commodities
   const tvContainerRef = useRef(null);
 
   // Toggle dark mode - delegates to the global theme controller.
@@ -122,7 +122,7 @@ export const MarketPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchMarketData();
@@ -225,18 +225,10 @@ export const MarketPage = () => {
   // Get filtered stocks
   const getFilteredStocks = (stocks, type) => {
     if (!stocks) return [];
-    let filtered = [...stocks];
-    
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(s => 
-        s.symbol?.toLowerCase().includes(term) || 
-        s.name?.toLowerCase().includes(term) ||
-        s.pair?.toLowerCase().includes(term)
-      );
-    }
-    
-    return filtered;
+    // The search matches on the symbol, the name and the pair, so a
+    // reader can look for "AAPL", for "Apple" or for "USD/IDR" and
+    // find the same row.
+    return filterQuotes(stocks, searchTerm);
   };
 
   // Learning content
@@ -271,7 +263,6 @@ export const MarketPage = () => {
   const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-600';
   const textMuted = isDarkMode ? 'text-gray-500' : 'text-gray-400';
   const borderColor = isDarkMode ? 'border-gray-700' : 'border-gray-200';
-  const borderHover = isDarkMode ? 'hover:border-gray-600' : 'hover:border-gray-300';
 
   if (loading && !marketData) {
     return (
@@ -415,7 +406,7 @@ export const MarketPage = () => {
                 <p className={`text-xs ${textSecondary} font-medium`}>{idx.name}</p>
                 <p className={`text-lg font-bold ${textPrimary}`}>{idx.price?.toLocaleString()}</p>
                 <p className={`text-xs font-medium ${idx.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  {idx.change_percent >= 0 ? '+' : ''}{idx.change_percent?.toFixed(2)}%
+                  {formatChangePercent(idx.change_percent)}
                 </p>
               </div>
             ))}
@@ -470,7 +461,7 @@ export const MarketPage = () => {
                       <p className={`text-sm font-medium ${isDarkMode ? 'text-primary-300' : 'text-primary-600'}`}>🇮🇩 IHSG</p>
                       <p className={`text-3xl font-bold ${textPrimary}`}>{ihsg.price?.toLocaleString()}</p>
                       <p className={`text-sm font-semibold ${ihsg.change_percent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {ihsg.change >= 0 ? '+' : ''}{ihsg.change?.toFixed(2)} ({ihsg.change_percent >= 0 ? '+' : ''}{ihsg.change_percent?.toFixed(2)}%)
+                        {formatChangePercent(ihsg.change)} ({formatChangePercent(ihsg.change_percent)})
                       </p>
                     </div>
                     <div className={`text-4xl ${ihsg.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -487,11 +478,11 @@ export const MarketPage = () => {
             })()}
             
             {[
-              { name: 'USD/IDR', value: marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.price?.toFixed(0) || '-', change: marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.change_percent?.toFixed(2) + '%' || '-', positive: (marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.change_percent || 0) >= 0 },
-              { name: 'BTC/USD', value: '$' + (marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.price?.toLocaleString() || '-'), change: (marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.change_percent_24h?.toFixed(2) || '-') + '%', positive: (marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.change_percent_24h || 0) >= 0 },
-              { name: 'ETH/USD', value: '$' + (marketData?.crypto?.quotes?.find(c => c.symbol === 'ETH')?.price?.toLocaleString() || '-'), change: (marketData?.crypto?.quotes?.find(c => c.symbol === 'ETH')?.change_percent_24h?.toFixed(2) || '-') + '%', positive: (marketData?.crypto?.quotes?.find(c => c.symbol === 'ETH')?.change_percent_24h || 0) >= 0 },
-              { name: 'GOLD', value: '$' + (marketData?.commodities?.quotes?.find(c => c.symbol === 'GOLD')?.price?.toFixed(0) || '-'), change: (marketData?.commodities?.quotes?.find(c => c.symbol === 'GOLD')?.change_percent?.toFixed(2) || '-') + '%', positive: (marketData?.commodities?.quotes?.find(c => c.symbol === 'GOLD')?.change_percent || 0) >= 0 },
-              { name: 'BBCA', value: 'Rp ' + (marketData?.idx_stocks?.quotes?.find(s => s.symbol === 'BBCA')?.price?.toLocaleString() || '-'), change: (marketData?.idx_stocks?.quotes?.find(s => s.symbol === 'BBCA')?.change_percent?.toFixed(2) || '-') + '%', positive: (marketData?.idx_stocks?.quotes?.find(s => s.symbol === 'BBCA')?.change_percent || 0) >= 0 },
+              { name: 'USD/IDR', value: marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.price?.toFixed(0) || '-', change: formatChangePercent(marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.change_percent), positive: (marketData?.forex?.quotes?.find(f => f.pair === 'USD/IDR')?.change_percent || 0) >= 0 },
+              { name: 'BTC/USD', value: '$' + (marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.price?.toLocaleString() || '-'), change: formatChangePercent(marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.change_percent_24h), positive: (marketData?.crypto?.quotes?.find(c => c.symbol === 'BTC')?.change_percent_24h || 0) >= 0 },
+              { name: 'ETH/USD', value: '$' + (marketData?.crypto?.quotes?.find(c => c.symbol === 'ETH')?.price?.toLocaleString() || '-'), change: formatChangePercent(marketData?.crypto?.quotes?.find(c => c.symbol === 'ETH')?.change_percent_24h), positive: (marketData?.crypto?.quotes?.find(c => c.symbol === 'ETH')?.change_percent_24h || 0) >= 0 },
+              { name: 'GOLD', value: '$' + (marketData?.commodities?.quotes?.find(c => c.symbol === 'GOLD')?.price?.toFixed(0) || '-'), change: formatChangePercent(marketData?.commodities?.quotes?.find(c => c.symbol === 'GOLD')?.change_percent), positive: (marketData?.commodities?.quotes?.find(c => c.symbol === 'GOLD')?.change_percent || 0) >= 0 },
+              { name: 'BBCA', value: 'Rp ' + (marketData?.idx_stocks?.quotes?.find(s => s.symbol === 'BBCA')?.price?.toLocaleString() || '-'), change: formatChangePercent(marketData?.idx_stocks?.quotes?.find(s => s.symbol === 'BBCA')?.change_percent), positive: (marketData?.idx_stocks?.quotes?.find(s => s.symbol === 'BBCA')?.change_percent || 0) >= 0 },
             ].map((item, idx) => (
               <MarketCard key={idx} {...item} isDark={isDarkMode} />
             ))}
@@ -514,7 +505,7 @@ export const MarketPage = () => {
                         <span className={`font-semibold ${textPrimary}`}>{stock.symbol}</span>
                         <span className={`text-sm ${textMuted} ml-2`}>{stock.name}</span>
                       </div>
-                      <span className="text-green-500 font-bold">+{stock.change_percent?.toFixed(2)}%</span>
+                      <span className="text-green-500 font-bold">{formatChangePercent(stock.change_percent)}</span>
                     </div>
                   ))}
               </div>
@@ -535,7 +526,7 @@ export const MarketPage = () => {
                         <span className={`font-semibold ${textPrimary}`}>{stock.symbol}</span>
                         <span className={`text-sm ${textMuted} ml-2`}>{stock.name}</span>
                       </div>
-                      <span className="text-red-500 font-bold">{stock.change_percent?.toFixed(2)}%</span>
+                      <span className="text-red-500 font-bold">{formatChangePercent(stock.change_percent)}</span>
                     </div>
                   ))}
               </div>
@@ -623,7 +614,7 @@ export const MarketPage = () => {
                         <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>{stock.high > 0 ? formatPrice(stock.high) : '-'}</td>
                         <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>{stock.low > 0 ? formatPrice(stock.low) : '-'}</td>
                         <td className={`px-4 py-3 text-right font-mono font-semibold ${stock.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {stock.change_percent >= 0 ? '+' : ''}{stock.change_percent?.toFixed(2)}%
+                          {formatChangePercent(stock.change_percent)}
                         </td>
                         <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>{formatVolume(stock.volume)}</td>
                       </tr>
@@ -659,7 +650,7 @@ export const MarketPage = () => {
                         </td>
                         <td className={`px-4 py-3 text-right font-mono font-semibold ${textPrimary}`}>{formatPrice(stock.price, 'USD')}</td>
                         <td className={`px-4 py-3 text-right font-mono font-semibold ${stock.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {stock.change_percent >= 0 ? '+' : ''}{stock.change_percent?.toFixed(2)}%
+                          {formatChangePercent(stock.change_percent)}
                         </td>
                         <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>{formatVolume(stock.volume)}</td>
                       </tr>
@@ -691,7 +682,7 @@ export const MarketPage = () => {
                         <td className={`px-4 py-3 font-semibold ${textPrimary}`}>{fx.pair}</td>
                         <td className={`px-4 py-3 text-right font-mono font-semibold ${textPrimary}`}>{fx.price?.toFixed(4)}</td>
                         <td className={`px-4 py-3 text-right font-mono font-semibold ${fx.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {fx.change_percent >= 0 ? '+' : ''}{fx.change_percent?.toFixed(2)}%
+                          {formatChangePercent(fx.change_percent)}
                         </td>
                       </tr>
                     ))}
@@ -723,7 +714,7 @@ export const MarketPage = () => {
                         <td className={`px-4 py-3 font-semibold ${textPrimary}`}>{coin.symbol}</td>
                         <td className={`px-4 py-3 text-right font-mono font-semibold ${textPrimary}`}>{formatPrice(coin.price, 'USD')}</td>
                         <td className={`px-4 py-3 text-right font-mono font-semibold ${coin.change_percent_24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {coin.change_percent_24h >= 0 ? '+' : ''}{coin.change_percent_24h?.toFixed(2)}%
+                          {formatChangePercent(coin.change_percent_24h)}
                         </td>
                         <td className={`px-4 py-3 text-right font-mono ${textSecondary}`}>${formatVolume(coin.volume_24h)}</td>
                       </tr>
@@ -758,7 +749,7 @@ export const MarketPage = () => {
                         </td>
                         <td className={`px-4 py-3 text-right font-mono font-semibold ${textPrimary}`}>${item.price?.toFixed(2)}/{item.unit}</td>
                         <td className={`px-4 py-3 text-right font-mono font-semibold ${item.change_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {item.change_percent >= 0 ? '+' : ''}{item.change_percent?.toFixed(2)}%
+                          {formatChangePercent(item.change_percent)}
                         </td>
                       </tr>
                     ))}

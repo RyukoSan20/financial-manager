@@ -58,3 +58,11 @@ new-feature-request/files.zip
 .vercel
 .DS_Store
 .env*
+
+# The shared virtual environment and node_modules are symlinks into the
+# other checkout, so that both worktrees use the same installed
+# packages. Git stores a symlink as a file, and the patterns above
+# match a directory, so the symlink itself would be committed. These
+# two lines are here to stop that.
+backend/venv
+frontend/node_modules

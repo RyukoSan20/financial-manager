@@ -68,7 +68,7 @@ const ProfileSummary = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();

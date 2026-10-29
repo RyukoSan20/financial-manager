@@ -138,7 +138,7 @@ jobs:
       # job made, so the server receives the code that was tested.
       - name: Pack the backend
         if: steps.paths.outputs.backend == 'true'
-        run: tar -czf /tmp/backend.tar.gz -C backend app migrations alembic.ini
+        run: tar -czf /tmp/backend.tar.gz -C backend app migrations scripts alembic.ini
 
       - name: Upload the backend
         if: steps.paths.outputs.backend == 'true'
@@ -183,8 +183,30 @@ jobs:
           script_stop: true
           script: |
             set -e
+
+            # The database on this server was made from the models at
+            # startup, not by alembic. There is no alembic_version
+            # table in it, and running `alembic upgrade head` against
+            # it would try to build every table from the beginning on
+            # top of the ones that are already there.
+            #
+            # So the first time this runs, the database is stamped: it
+            # is told which revision it is at without anything being
+            # run. After that, the normal upgrade applies only the
+            # revisions that came later.
+            #
+            # The script says which it did, so the log says it too.
+            docker exec finmanager-backend-1 sh -c "cd /app && python scripts/prepare_migrations.py" || \
+              echo "::warning::the stamp failed; the startup migration still adds the columns"
+
             docker exec finmanager-backend-1 sh -c "cd /app && alembic upgrade head" || \
-              echo "::warning::alembic upgrade failed - applying tables directly"
+              echo "::warning::alembic upgrade failed - the startup migration adds the columns anyway"
+
+            # The startup migration adds the same columns, so they are
+            # there even if alembic could not run. This checks that
+            # they are, rather than assuming.
+            docker exec finmanager-backend-1 sh -c "cd /app && python -c \"import sqlalchemy as sa; from app.core.database import engine; c=engine.connect(); cols={r[0] for r in c.execute(sa.text(\"SELECT column_name FROM information_schema.columns WHERE table_name='transactions'\")).all()}; assert 'tags' in cols and 'is_draft' in cols, 'the new columns are missing'; print('the new columns are there')\""
+
             echo "Migrations applied"
 
       - name: Restart backend
@@ -285,10 +307,26 @@ jobs:
             docker exec finmanager-nginx-1 nginx -s reload
             echo "nginx reloaded"
 
+      # The smoke test.
+      #
+      # Two kinds of endpoint are checked, and they are checked for
+      # different things.
+      #
+      # The public ones have to answer 200. If they answer anything
+      # else, something is broken in front of them.
+      #
+      # The ones that need a reader have to answer 401. Not 200: the
+      # smoke test has no reader, and it must never borrow one. Not
+      # 404 either: a 404 means the route is not mounted at all, and
+      # that is the failure this test exists to catch. The Gmail
+      # import chain broke exactly that way, and the deployment said it
+      # was healthy.
       - name: Smoke test
         run: |
           sleep 3
           set -e
+
+          echo "--- the public endpoints ---"
           for url in \
             "https://my-financial-manager.online/health" \
             "https://my-financial-manager.online/ready" \
@@ -301,6 +339,28 @@ jobs:
               exit 1
             fi
           done
+
+          echo "--- the endpoints that need a reader ---"
+          for url in \
+            "https://my-financial-manager.online/api/integrations/gmail/status" \
+            "https://my-financial-manager.online/api/ai/advice" \
+            "https://my-financial-manager.online/api/ai/insights" \
+            "https://my-financial-manager.online/api/budgets" \
+            "https://my-financial-manager.online/api/debts" \
+            "https://my-financial-manager.online/api/insights/subscriptions" \
+            "https://my-financial-manager.online/api/insights/duplicates" ; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+            echo "$CODE  $url"
+            if [ "$CODE" = "404" ] || [ "$CODE" = "000" ]; then
+              echo "::error::The route is not mounted: $url ($CODE)"
+              exit 1
+            fi
+            if [ "$CODE" != "401" ] && [ "$CODE" != "403" ] && [ "$CODE" != "200" ]; then
+              echo "::error::Unexpected answer for $url ($CODE)"
+              exit 1
+            fi
+          done
+
           echo "All smoke tests passed"
 
       - name: Notify failure

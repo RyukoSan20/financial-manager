@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from app.core.database import init_db, seed_categories
+from app.core.router_registration import include_router_once
 from app.core.config import get_settings
 from app.api.routes import (
     accounts, categories, transactions, budgets,
@@ -286,8 +287,12 @@ app.include_router(insights.router, prefix="/api/insights", tags=["Insights"])
 # on the shared paths (/summary, /crypto, /commodities). FastAPI matches the
 # first registered route, and market.py only serves the legacy Yahoo-based
 # implementation which returns HTTP 429 from datacenter IPs.
+#
+# The market router is mounted once now. The three paths they share
+# answer from unified_market, exactly as they did before, and the
+# paths only market.py had are still there.
 app.include_router(unified_market.router, prefix="/api/market")
-app.include_router(market.router, prefix="/api/market")
+include_router_once(app, market.router, prefix="/api/market")
 app.include_router(finnhub.router, prefix="/api/finnhub")
 app.include_router(ninjas.router, prefix="")
 app.include_router(market_intel.router, prefix="")
@@ -299,15 +304,23 @@ app.include_router(location.router, prefix="/api/location", tags=["Location"])
 app.include_router(webhooks.router, prefix="/api", tags=["Webhooks"])
 
 # Enterprise modules
+# This router is mounted twice: the route file above, and this
+# module. FastAPI matches the first registration, so the second one
+# was never reached for the paths they share, and the paths only this
+# one had were reached through here.
+#
+# It is mounted once now, and the paths that are already there keep
+# answering exactly as they did.
 try:
     from app.modules.ledger.analytics_router import router as analytics_router
-    app.include_router(analytics_router, prefix="/api", tags=["Analytics"])
+    include_router_once(app, analytics_router, prefix="/api", tags=["Analytics"])
 except ImportError:
     print("[WARN] Analytics router not available")
 
+# Mounted twice, for the same reason as the analytics router above.
 try:
     from app.modules.ai_advisor.router import router as ai_advisor_router
-    app.include_router(ai_advisor_router, tags=["AI Advisor"])
+    include_router_once(app, ai_advisor_router, tags=["AI Advisor"])
 except ImportError:
     print("[WARN] AI Advisor router not available")
 
@@ -332,17 +345,19 @@ try:
 except ImportError as e:
     print(f"[WARN] Health Coach router not available: {e}")
 
-# Location module (API routes)
+# The location router is mounted above, with the other route files.
+# It was mounted a second time here, which meant the second
+# registration was never reached.
 try:
     from app.api.routes.location import router as location_router
-    app.include_router(location_router, prefix="/api/location", tags=["Location"])
+    include_router_once(app, location_router, prefix="/api/location", tags=["Location"])
 except ImportError as e:
     print(f"[WARN] Location router not available: {e}")
 
-# Shopping Tracker module
+# Mounted twice, for the same reason as the analytics router above.
 try:
     from app.modules.ledger.shopping.router import router as shopping_router
-    app.include_router(shopping_router, tags=["Shopping Tracker"])
+    include_router_once(app, shopping_router, tags=["Shopping Tracker"])
 except ImportError as e:
     print(f"[WARN] Shopping router not available: {e}")
 
@@ -355,16 +370,38 @@ app.include_router(user_settings.router, tags=["Settings"])
 # Recurring auto-generator cron endpoint (for Railway cron)
 from app.services.recurring_generator import process_due_recurring_rules
 
-@app.api_route("/api/cron/process-recurring", methods=["GET", "POST"], tags=["Cron"])
-def cron_process_recurring(request: Request):
-    """
-    Process all due recurring rules and auto-generate transactions.
-    GET = automatic cron (only process due rules)
-    POST = manual trigger (force process all active rules including future)
-    """
-    is_manual = request.method == "POST"
+def _process_recurring(is_manual: bool):
+    """Run the recurring generator. See the two routes below."""
     results = process_due_recurring_rules(force_today=is_manual)
     return {"status": "completed", **results}
+
+
+# Two routes rather than one route with two methods. The path and the
+# behaviour are the same, but the names are not, and FastAPI names an
+# operation after the function that serves it. One function serving two
+# methods gives the two operations the same name, and the OpenAPI
+# document ends up with two entries that cannot tell each other apart.
+@app.get("/api/cron/process-recurring", tags=["Cron"], operation_id="cron_process_recurring_get")
+def cron_process_recurring_get(request: Request):
+    """
+    Process all due recurring rules and auto-generate transactions.
+
+    This is the automatic one: it only handles the rules that are due
+    today, so it can be called as often as the scheduler likes.
+    """
+    return _process_recurring(is_manual=False)
+
+
+@app.post("/api/cron/process-recurring", tags=["Cron"], operation_id="cron_process_recurring_post")
+def cron_process_recurring_post(request: Request):
+    """
+    Process all due recurring rules and auto-generate transactions.
+
+    This is the manual one: it handles every active rule, including
+    the ones in the future, so it is for when somebody is waiting for
+    a rule to be written and does not want to wait for tomorrow.
+    """
+    return _process_recurring(is_manual=True)
 
 
 # Root endpoint
@@ -378,9 +415,21 @@ def root():
 
 
 # Health check endpoint
+#
+# There were two of these, and only one of them answered. FastAPI
+# matches the first registration, so the second one was never reached
+# and the version field it was supposed to return was missing from
+# the answer the deployment actually got.
+#
+# There is one now, and it returns everything either of them did.
 @app.get("/health", tags=["Health"])
-def health():
-    return {"status": "healthy", "version": settings.APP_VERSION}
+async def health_check():
+    """Liveness check - is the service running?"""
+    return {
+        "status": "healthy",
+        "version": settings.APP_VERSION,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
 
 
 # API info endpoint
@@ -422,11 +471,6 @@ async def global_exception_handler(request, exc):
 
 
 # Health check endpoints
-@app.get("/health")
-async def health_check():
-    """Liveness check - is the service running?"""
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
-
 @app.get("/ready")
 async def readiness_check():
     """Readiness check - is the service ready to accept traffic?"""

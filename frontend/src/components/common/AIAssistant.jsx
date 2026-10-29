@@ -17,6 +17,7 @@ import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 import { useTranslation } from '../../i18n';
 import { batch3 } from '../../i18n/keys_batch3';
+import FinBuddyMascot from './FinBuddyMascot';
 
 // Language configurations
 const LANGUAGES = {
@@ -507,10 +508,13 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed left-4 bottom-24 z-50 w-14 h-14 bg-gradient-to-br from-purple-500 to-primary-500 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+        className="fixed left-4 bottom-24 z-50 w-14 h-14 bg-primary-600 hover:bg-primary-700 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
         title={K.title}
       >
-        <Sparkles className="w-6 h-6 text-white" />
+        {/* The mascot, waiting to be asked. It is the same creature
+            that appears in the empty states, so the application has
+            one character rather than several. */}
+        <FinBuddyMascot mood="idle" size={40} />
         <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
       </button>
     );
@@ -519,7 +523,7 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
   return (
     <div className={`fixed left-4 bottom-24 z-50 w-96 max-h-[600px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all ${isMinimized ? 'h-14' : 'h-[500px]'}`}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-500 to-primary-500 p-4 flex items-center justify-between">
+      <div className="bg-primary-600 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Sparkles className="w-5 h-5 text-white" />
           <span className="font-semibold text-white">{K.title}</span>
@@ -549,7 +553,7 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
             <div className="relative">
               <button
                 onClick={() => setShowLanguagePicker(!showLanguagePicker)}
-                className="flex items-center gap-1 text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700"
+                className="flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700"
               >
                 <Globe className="w-4 h-4" />
                 {LANGUAGES[language].name}

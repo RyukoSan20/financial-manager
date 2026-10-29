@@ -176,3 +176,45 @@
 [data-ui="polish"] .honest-empty__mascot {
   opacity: 0.95;
 }
+
+/* -----------------------------------------------------------
+   The amount field, and the sum it is working out.
+   ----------------------------------------------------------- */
+
+/*
+ * The line under the amount field that says what the sum comes to.
+ *
+ * It appears while the reader is typing, so it has to be quiet. It
+ * is a note, not an announcement: it sits under the field, in the
+ * accent colour, and it is small enough to be read without being
+ * read.
+ *
+ * It appears with a short fade rather than a slide, because a slide
+ * would move the field itself.
+ */
+.amount-preview {
+  animation: amount-preview-in 180ms var(--ease-out-soft, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.amount-preview-error {
+  animation: amount-preview-in 180ms var(--ease-out-soft, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+@keyframes amount-preview-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * The number in the preview is a number, so it gets the figures that
+ * line up in a column. Without that, the digits jump about as the
+ * value changes, and the reader cannot read the value while it is
+ * still changing.
+ */
+.amount-preview {
+  font-variant-numeric: tabular-nums;
+}

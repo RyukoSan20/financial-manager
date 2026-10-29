@@ -1,5 +1,5 @@
 // Smart Add Transaction Page - Quick, intuitive, professional
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, API_BASE_URL as API_URL, getToken } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -23,7 +23,33 @@ import {
   resolveAmountText,
   sanitizeExpression,
 } from '../../utils/amountExpression';
+import { readAmountField, isBrokenExpression } from '../../utils/amountField';
 import { formatNative, currencyConfig } from '../../utils/currency';
+
+// Category keyword mapping with word boundaries.
+//
+// These live outside the component on purpose. A list written inside a
+// component is a new list on every render, and anything that depends
+// on it is then rebuilt every time, which makes the page fetch and
+// work again for no reason.
+const CATEGORY_KEYWORDS = [
+  { pattern: /\b(makan|food|cafe|coff|ristor|kopi|teh|makan|ayam|burger|pizza|sushi|nasgor|nasi)\b/i, category: "Makanan & Minuman" },
+  { pattern: /\b(grab|gojek|taxi|bensin|parkir|tol|ojek|bis|kereta|mrt|trans|transport|ride|hely)\b/i, category: "Transportasi" },
+  { pattern: /\b(indomaret|alfamart|carrefour|minimarket|toko|belanja|market)\b/i, category: "Belanja" },
+  { pattern: /\b(pulsa|data|internet|wifi|telkom|axis|three|im3|telkomsel)\b/i, category: "Pulsa & Data" },
+  { pattern: /\b(listrik|pln|pdam|bill|token|air\s*(?:listrik|pdam|token))\b/i, category: "Tagihan" },
+  { pattern: /\b(gym|fitness|olahraga|renang|yoga|workout)\b/i, category: "Kesehatan" },
+  { pattern: /\b(film|netflix|spotify|disney|gaming|steam|playstation|hiburan|music|spotify)\b/i, category: "Hiburan" },
+  { pattern: /\b(obat|apotek|dokter|rumah\s*sakit|klinik|vaksin|health)\b/i, category: "Kesehatan" },
+  { pattern: /\b(baju|pakaian|clothes|zara|uniqlo|fashion|pakaian)\b/i, category: "Fashion" },
+  { pattern: /\b(shopee|lazada|blibli|tokopedia)\b/i, category: "Fashion" },
+  { pattern: /\b(kado|hadi|gift|ulang\s*tahun)\b/i, category: "Hadiah" },
+  { pattern: /\b(kos|sewa|rumah|apart|kontrakan|rent)\b/i, category: "Tempat Tinggal" },
+  { pattern: /\b(gaji|slip|gaji|thr|bouns|bonus|pendapatan)\b/i, category: "Pendapatan" },
+];
+
+// The amounts the reader can reach with one tap.
+const QUICK_AMOUNTS = [5000, 10000, 15000, 25000, 50000, 100000, 200000, 500000, 1000000];
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
@@ -58,6 +84,17 @@ const AddTransactionPage = () => {
   
   // Form state
   const [amount, setAmount] = useState("");
+  // What the expression in the field comes to. It is worked out while
+  // the reader is still typing, so they can see that the field
+  // understood them without having to save first.
+  const amountPreview = useMemo(
+    () => readAmountField(amount, { currency: accountCurrency }),
+    [amount, accountCurrency]
+  );
+  const amountIsBroken = useMemo(
+    () => isBrokenExpression(amount),
+    [amount]
+  );
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState(null);
   const [accountId, setAccountId] = useState(null);
@@ -91,26 +128,9 @@ const AddTransactionPage = () => {
   const [locationCoords, setLocationCoords] = useState(null);
   
   const amountInputRef = useRef(null);
-  
-  // Category keyword mapping with word boundaries
-  const categoryKeywords = [
-    { pattern: /\b(makan|food|cafe|coff|ristor|kopi|teh|makan|ayam|burger|pizza|sushi|nasgor|nasi)\b/i, category: "Makanan & Minuman" },
-    { pattern: /\b(grab|gojek|taxi|bensin|parkir|tol|ojek|bis|kereta|mrt|trans|transport|ride|hely)\b/i, category: "Transportasi" },
-    { pattern: /\b(indomaret|alfamart|carrefour|minimarket|toko|belanja|market)\b/i, category: "Belanja" },
-    { pattern: /\b(pulsa|data|internet|wifi|telkom|axis|three|im3|telkomsel)\b/i, category: "Pulsa & Data" },
-    { pattern: /\b(listrik|pln|pdam|bill|token|air\s*(?:listrik|pdam|token))\b/i, category: "Tagihan" },
-    { pattern: /\b(gym|fitness|olahraga|renang|yoga|workout)\b/i, category: "Kesehatan" },
-    { pattern: /\b(film|netflix|spotify|disney|gaming|steam|playstation|hiburan|music|spotify)\b/i, category: "Hiburan" },
-    { pattern: /\b(obat|apotek|dokter|rumah\s*sakit|klinik|vaksin|health)\b/i, category: "Kesehatan" },
-    { pattern: /\b(baju|pakaian|clothes|zara|uniqlo|fashion|pakaian)\b/i, category: "Fashion" },
-    { pattern: /\b(shopee|lazada|blibli|tokopedia)\b/i, category: "Fashion" },
-    { pattern: /\b(kado|hadi|gift|ulang\s*tahun)\b/i, category: "Hadiah" },
-    { pattern: /\b(kos|sewa|rumah|apart|kontrakan|rent)\b/i, category: "Tempat Tinggal" },
-    { pattern: /\b(gaji|slip|gaji|thr|bouns|bonus|pendapatan)\b/i, category: "Pendapatan" },
-  ];
-  
+
   // Quick amount presets
-  const quickAmounts = [5000, 10000, 15000, 25000, 50000, 100000, 200000, 500000, 1000000];
+  const quickAmounts = QUICK_AMOUNTS;
   
   // NLP State
   const [quickEntry, setQuickEntry] = useState("");
@@ -196,7 +216,7 @@ const AddTransactionPage = () => {
   useEffect(() => {
     if (!description || categories.length === 0) return;
     
-    for (const { pattern, category } of categoryKeywords) {
+    for (const { pattern, category } of CATEGORY_KEYWORDS) {
       if (pattern.test(description)) {
         const matched = categories.find(c => c.name === category);
         if (matched && !categoryId) {
@@ -694,6 +714,23 @@ const AddTransactionPage = () => {
           {!amount && (
             <p className="text-xs text-gray-400 mb-3">
               {K.amountExpressionHint}
+            </p>
+          )}
+
+          {/* What the expression comes to. The reader writes a sum and
+              cannot see the sum, so the field says what it worked out,
+              while they are still typing it. */}
+          {amountPreview.isSum && amountPreview.value !== null && (
+            <p className="text-xs text-primary-600 dark:text-primary-400 mb-3 amount-preview">
+              {amountPreview.text} = {formatNative(amountPreview.value, accountCurrency)}
+            </p>
+          )}
+
+          {/* An expression that cannot be worked out says so, because
+              otherwise the reader presses save and nothing happens. */}
+          {amountIsBroken && (
+            <p className="text-xs text-danger-600 dark:text-danger-400 mb-3 amount-preview-error">
+              {K.amountExpressionError}
             </p>
           )}
 

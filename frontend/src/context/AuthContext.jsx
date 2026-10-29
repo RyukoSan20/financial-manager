@@ -167,11 +167,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   const guestLogin = async () => {
-    if (isSupabaseConfigured()) {
-      return supabaseGuestLogin();
-    } else {
-      throw new Error('Guest login belum tersedia. Gunakan login email.');
-    }
+    // Guest login is done by the backend, and the backend has always
+    // been able to do it. It used to be refused here unless Supabase
+    // was set up, which meant that on a machine without Supabase the
+    // button said "guest login is not available" even though the
+    // endpoint behind it was there and working.
+    //
+    // Supabase is only needed for the Google sign-in and for the
+    // email password path that goes through it. It is not needed to
+    // make a guest account.
+    return backendGuestLogin();
   };
 
   const logout = async () => {
@@ -243,8 +248,10 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const supabaseGuestLogin = async () => {
-    // Use backend guest login, not Supabase anonymous
+  const backendGuestLogin = async () => {
+    // The backend makes the guest account. This does not use
+    // Supabase at all: the account is a row in the same database as
+    // every other account.
     const res = await fetch(`${API_URL}/guest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

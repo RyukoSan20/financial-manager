@@ -57,6 +57,15 @@ const READER_FLAGS = {
   ADVANCED_FEATURES: 'advancedFeatures',
   /** Reminders, which send nothing until they are turned on. */
   REMINDERS: 'reminders',
+  /**
+   * The richer mascot drawing, made by the asset generator.
+   *
+   * Off by default. The inline drawing is the one that ships, because
+   * it takes the colour of what it sits on and never waits for a
+   * file. This one has more in it, so it is worth turning on to see
+   * whether it is worth shipping.
+   */
+  MASCOT_ART: 'mascotArt',
 };
 
 /** Where the reader switches are kept. */

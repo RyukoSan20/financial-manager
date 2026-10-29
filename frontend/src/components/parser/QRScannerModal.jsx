@@ -109,6 +109,20 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
     }
   }, []);
 
+  const onScanSuccess = useCallback((decodedText) => {
+    console.log('QR Scanned:', decodedText);
+
+    // Stop first so the camera light turns off, then report. The stop is
+    // fire-and-forget but fully guarded internally.
+    stopScanner();
+    onScan(decodedText);
+    onClose();
+  }, [onScan, onClose, stopScanner]);
+
+  const onScanFailure = useCallback(() => {
+    // Silently ignore scan failures (normal when no QR in frame)
+  }, []);
+
   const startScanner = useCallback(async () => {
     if (!Html5Qrcode || !selectedCamera) return;
 
@@ -156,21 +170,7 @@ export const QRScannerModal = ({ isOpen, onClose, onScan }) => {
     } finally {
       setLoading(false);
     }
-  }, [Html5Qrcode, selectedCamera]);
-
-  const onScanSuccess = useCallback((decodedText) => {
-    console.log('QR Scanned:', decodedText);
-
-    // Stop first so the camera light turns off, then report. The stop is
-    // fire-and-forget but fully guarded internally.
-    stopScanner();
-    onScan(decodedText);
-    onClose();
-  }, [onScan, onClose, stopScanner]);
-
-  const onScanFailure = () => {
-    // Silently ignore scan failures (normal when no QR in frame)
-  };
+  }, [Html5Qrcode, selectedCamera, onScanSuccess, onScanFailure, K]);
 
   const handleClose = () => {
     stopScanner();

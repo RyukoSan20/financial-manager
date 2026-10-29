@@ -1,15 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../services/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://my-financial-manager.online';
-
 // Generic data fetching hook
+//
+// The caller says what to fetch and what to wait for. The fetch
+// function is held in a ref, so that a function written in the body
+// of a component does not make the effect run again for nothing.
 export const useApi = (fetchFn, deps = [], options = {}) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const { skip = false, onSuccess, onError } = options;
+
+  const fetchRef = useRef(fetchFn);
+  fetchRef.current = fetchFn;
+  const callbacksRef = useRef({ onSuccess, onError });
+  callbacksRef.current = { onSuccess, onError };
 
   const fetchData = useCallback(async () => {
     if (skip) {
@@ -21,19 +28,22 @@ export const useApi = (fetchFn, deps = [], options = {}) => {
     setError(null);
 
     try {
-      const result = await fetchFn();
+      const result = await fetchRef.current();
       setData(result);
-      if (onSuccess) onSuccess(result);
+      if (callbacksRef.current.onSuccess) callbacksRef.current.onSuccess(result);
     } catch (err) {
       setError(err.message || 'An error occurred');
-      if (onError) onError(err);
+      if (callbacksRef.current.onError) callbacksRef.current.onError(err);
     } finally {
       setLoading(false);
     }
-  }, [fetchFn, skip, onSuccess, onError]);
+  }, [skip]);
 
   useEffect(() => {
     fetchData();
+    // The dependencies the caller gave are spread here on purpose:
+    // they are the caller's own list of things to wait for.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchData, ...deps]);
 
   return { data, loading, error, refetch: fetchData };
@@ -82,6 +92,13 @@ export const useTransactions = (filters = {}) => {
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, limit: 50 });
 
+  // The filters are held in a ref, so that a new object with the same
+  // values does not make the callback new, and the list is not
+  // fetched again for nothing. The values that are read are the ones
+  // from the last render, which is the point of the ref.
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -90,7 +107,7 @@ export const useTransactions = (filters = {}) => {
       const result = await api.transactions.list({
         skip: (pagination.page - 1) * pagination.limit,
         limit: pagination.limit,
-        ...filters,
+        ...filtersRef.current,
       });
       setTransactions(result);
     } catch (err) {
@@ -107,7 +124,7 @@ export const useTransactions = (filters = {}) => {
   const setPage = (page) => setPagination(prev => ({ ...prev, page }));
   const setFilters = () => fetchData();
 
-  return { transactions, loading, error, pagination, setPage, refetch: fetchData };
+  return { transactions, loading, error, pagination, setPage, setFilters, refetch: fetchData };
 };
 
 // Modal state hook

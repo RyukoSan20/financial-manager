@@ -1,7 +1,17 @@
 /**
  * Parse Indonesian currency amounts from text
  * Handles: "45rb", "1,5jt", "25.000", "100000", "1jt"
+ *
+ * The rules are the ones the server uses, so the quick entry box and
+ * the voice parser read the same sentence the same way:
+ *
+ * - a dot is a thousands separator, so "25.000" is twenty five
+ *   thousand and "1.500.000" is a million and a half;
+ * - a comma is a decimal mark, so "1,5jt" is one and a half million;
+ * - a number inside a date is a year or a day, and is not money.
  */
+
+import { toNumber, dateRanges, isInsideDate, findMath } from './amountScan.js';
 
 const MULTIPLIERS = {
   'k': 1000,
@@ -30,41 +40,52 @@ const NUMBER_WORDS = {
  */
 export function parseAmount(text) {
   if (!text) return null;
-  
+
+  const source = String(text);
+  const dates = dateRanges(source);
+
   // Pattern: number with optional unit (rb,jt,k) or Indonesian number words
   // Match: 45rb, 1.5jt, 25000, 1,5jt, seratus ribu
-  const RE = /(\d{1,3}(?:[.,]\d+)?)\s*(k|rb|ribu|jt|juta|rban|c)?(?!\w)/gi;
-  
+  const RE = /(\d+(?:[.,]\d+)*)\s*(k|rb|ribu|jt|juta|rban|c)?(?!\w)/gi;
+
   let match;
-  while ((match = RE.exec(text)) !== null) {
+  while ((match = RE.exec(source)) !== null) {
     const [raw, numStr, unit] = match;
+    const start = match.index;
+    const end = match.index + raw.length;
+
+    // A number that is part of a date is a year or a day, and the
+    // reader did not mean it as money.
+    if (isInsideDate(dates, start, end)) continue;
+
     let value;
-    
+
     if (unit) {
       // Has unit like "rb", "jt", "k"
-      const cleanNum = numStr.replace(',', '.');
-      const num = parseFloat(cleanNum);
+      const num = toNumber(numStr);
+      if (!Number.isFinite(num)) continue;
       value = Math.round(num * MULTIPLIERS[unit.toLowerCase()]);
     } else {
-      // No unit - treat as thousands with dots
-      const cleanNum = numStr.replace(/\./g, '');
-      value = parseInt(cleanNum, 10);
-      
+      // No unit - the dot is a thousands separator.
+      const num = toNumber(numStr);
+      if (!Number.isFinite(num)) continue;
+      value = Math.round(num);
+
       // Ignore values < 1000 without unit (likely not money)
       if (value < 1000) continue;
     }
-    
+
     if (value > 0 && value <= 1000000000) { // Max 1 billion
       return {
         value,
-        span: [match.index, match.index + raw.length],
+        span: [start, end],
         raw
       };
     }
   }
-  
+
   // Try parsing plain number (minimum 4 digits = 1000 in thousands)
-  const plainMatch = text.match(/^(\d{4,10})$/);
+  const plainMatch = source.match(/^(\d{4,10})$/);
   if (plainMatch) {
     const val = parseInt(plainMatch[1], 10);
     if (val >= 1000 && val <= 1000000000) {
@@ -75,7 +96,7 @@ export function parseAmount(text) {
       };
     }
   }
-  
+
   return null;
 }
 
@@ -86,7 +107,7 @@ export function parseAmount(text) {
  */
 export function parseNumberWords(text) {
   const lower = text.toLowerCase();
-  
+
   // Simple patterns
   if (lower.includes('seratus ribu') || lower.includes('seribu')) {
     return 1000;
@@ -99,33 +120,25 @@ export function parseNumberWords(text) {
       if (num) return num * 100 * 1000;
     }
   }
-  
+
   return null;
 }
 
 /**
  * Evaluate simple math expressions like "25000+15000" or "50000*2"
+ *
+ * The reader's own text is never run as code. The expression is read
+ * by the parser in `utils/amountExpression.js` and walked as a tree.
+ *
+ * A division by zero is not a number, so the sum is refused rather
+ * than the reader being shown an amount that came from nothing.
+ *
  * @param {string} text
  * @returns {number | null}
  */
 export function evalMath(text) {
-  // Match patterns like "25000+15000", "50000 * 2", "100000/2"
-  const mathMatch = text.match(/(\d[\d.,]*)\s*([+\-*/])\s*(\d[\d.,]*)/);
-  
-  if (mathMatch) {
-    const [, a, op, b] = mathMatch;
-    const numA = parseAmount(a)?.value || parseInt(a.replace(/\./g, ''), 10);
-    const numB = parseAmount(b)?.value || parseInt(b.replace(/\./g, ''), 10);
-    
-    switch (op) {
-      case '+': return numA + numB;
-      case '-': return numA - numB;
-      case '*': return numA * numB;
-      case '/': return numA / numB;
-    }
-  }
-  
-  return null;
+  const found = findMath(text);
+  return found ? found.value : null;
 }
 
 export default { parseAmount, parseNumberWords, evalMath };

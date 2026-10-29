@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import id from './id';
 import en from './en';
 import ja from './ja';
@@ -78,7 +78,7 @@ export const I18nProvider = ({ children }) => {
    * there is no English text either, because then there is nothing
    * better to say and the key at least says what was looked for.
    */
-  const t = (key, fallback = '', values = null) => {
+  const t = useCallback((key, fallback = '', values = null) => {
     // A key can be missing when it is built at run time, for example
     // when a list of options is read from a configuration. Returning
     // the fallback keeps the page on screen; throwing would leave a
@@ -126,15 +126,18 @@ export const I18nProvider = ({ children }) => {
     return leaf
       .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
       .replace(/^./, c => c.toUpperCase());
-  };
-  
+  }, [language]);
+
   // Format money. The amount is converted into the currency the
   // reader picked, using the live rates.
-  const formatCurrency = (amount, from = 'IDR', showSymbol = true) =>
-    formatMoney(amount, from, { showSymbol });
+  const formatCurrency = useCallback(
+    (amount, from = 'IDR', showSymbol = true) =>
+      formatMoney(amount, from, { showSymbol }),
+    [],
+  );
 
   // Format a plain number.
-  const formatNumber = (num) => formatPlainNumber(num);
+  const formatNumber = useCallback((num) => formatPlainNumber(num), []);
 
   // The currency the app is showing money in.
   const getCurrencyConfig = () => currencyConfig(currencyStore.currency);

@@ -62,20 +62,31 @@ FAILED_FRONTEND=0
 for test_file in \
   src/i18n/__tests__/terminology.test.js \
   src/i18n/__tests__/batchParity.test.js \
+  src/i18n/__tests__/scriptMix.test.js \
+  src/context/__tests__/guestLogin.test.js \
   src/utils/__tests__/idFormat.test.js \
   src/utils/__tests__/featureFlags.test.js \
   src/utils/__tests__/amountInput.test.js \
   src/utils/__tests__/amountExpression.test.js \
+  src/utils/__tests__/amountField.test.js \
   src/utils/__tests__/countUp.test.js \
   src/utils/__tests__/transactionSign.test.js \
   src/components/layout/__tests__/navGrouping.test.js \
+  src/components/layout/__tests__/navDisclosure.test.js \
   src/utils/__tests__/abTesting.test.js \
   src/utils/__tests__/budgetRecipes.test.js \
   src/utils/__tests__/scanDismissal.test.js \
   src/utils/__tests__/scanManager.test.js \
   src/utils/__tests__/healthMetrics.test.js \
   src/utils/__tests__/gmailState.test.js \
-  src/data/__tests__/privacyManifest.test.js
+  src/data/__tests__/privacyManifest.test.js \
+  src/features/transactions/nlp/__tests__/quickEntry.test.js \
+  src/features/transactions/nlp/__tests__/fuzzy.test.js \
+  src/features/transactions/nlp/__tests__/golden.test.js \
+  src/utils/__tests__/marketFormat.test.js \
+  src/pages/__tests__/marketPage.test.js \
+  src/components/common/__tests__/honestEmptyState.test.js \
+  src/components/ui/__tests__/confirmDialog.test.js
 do
   if [ ! -f "$test_file" ]; then
     echo "  SKIP $test_file (not present)"
@@ -94,6 +105,18 @@ fi
 cd "$ROOT"
 echo
 
+echo "--- frontend build ---------------------------------------------"
+cd "$ROOT/frontend"
+if npm run build > /tmp/preflight_build.log 2>&1; then
+  tail -4 /tmp/preflight_build.log
+  echo "  -> build OK"
+else
+  tail -25 /tmp/preflight_build.log
+  note_failure "frontend build"
+fi
+cd "$ROOT"
+echo
+
 echo "--- route smoke test ------------------------------------------"
 cd "$ROOT"
 if "$ROOT/backend/venv/bin/python" "$ROOT/scripts/smoke_test_routes.py" > /tmp/preflight_smoke.log 2>&1; then
@@ -102,6 +125,15 @@ if "$ROOT/backend/venv/bin/python" "$ROOT/scripts/smoke_test_routes.py" > /tmp/p
 else
   tail -30 /tmp/preflight_smoke.log
   note_failure "route smoke test"
+fi
+
+echo "--- generated assets -----------------------------------------"
+if "$ROOT/backend/venv/bin/python" "$ROOT/scripts/generate_assets.py" --check > /tmp/preflight_assets.log 2>&1; then
+  grep -E '^  OK' /tmp/preflight_assets.log
+  echo "  -> assets OK"
+else
+  tail -20 /tmp/preflight_assets.log
+  note_failure "generated assets"
 fi
 cd "$ROOT"
 echo

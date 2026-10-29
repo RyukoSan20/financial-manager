@@ -6,6 +6,7 @@
 
 import { normalize, tokenize } from './normalize.js';
 import { parseAmount, evalMath } from './parseAmount.js';
+import { findMath } from './amountScan.js';
 import { suggestCategory } from './suggestCategory.js';
 
 
@@ -65,11 +66,17 @@ export function parseQuickEntry(text, options = {}) {
   
   // Extract amount (before removing from text)
   let amountResult = parseAmount(normalized);
-  
+
   // Try math expression
   const mathResult = evalMath(normalized);
   if (mathResult && (!amountResult || mathResult > amountResult.value)) {
-    amountResult = { value: Math.round(mathResult), raw: 'math expression' };
+    // The sum carries its own span, so the text around it can be
+    // taken away the same way. A sum that cannot be read has no
+    // span and no amount, and the reader's own words stay.
+    const found = findMath(normalized);
+    if (found) {
+      amountResult = { value: Math.round(found.value), raw: 'math expression', span: found.span };
+    }
   }
   
   // Tokenize remaining text

@@ -102,14 +102,7 @@ export default function CurrencyInput({
       setDisplayValue(formatNumber(value, currency));
     }
   }, [value, currency, isFocused]);
-  
-  // Initialize display value
-  useEffect(() => {
-    if (value !== undefined && value !== null && !isFocused) {
-      setDisplayValue(formatNumber(value, currency));
-    }
-  }, []);
-  
+
   const handleFocus = () => {
     setIsFocused(true);
     // Show raw number for editing
@@ -224,13 +217,7 @@ export function NumberInput({
       setDisplayValue(formatNumber(value, currency));
     }
   }, [value, currency, isFocused]);
-  
-  useEffect(() => {
-    if (value !== undefined && value !== null && !isFocused) {
-      setDisplayValue(formatNumber(value, currency));
-    }
-  }, []);
-  
+
   const handleFocus = () => {
     setIsFocused(true);
     if (value !== undefined && value !== null) {

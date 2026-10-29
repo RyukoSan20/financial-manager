@@ -64,6 +64,11 @@ export default {
     search: "検索",
     filter: "フィルター",
     noData: "データなし",
+    confirm_title: "よろしいですか？",
+    confirm_message: "この操作は取り消せません。",
+    confirm_delete_title: "このデータを削除しますか？",
+    confirm_delete_message: "この操作は取り消せません。",
+    confirm_delete_action: "削除",
     confirm: "確認",
     yes: "はい",
     no: "いいえ",
@@ -107,6 +112,9 @@ export default {
     gmail: "Gmail同期",
     merchant: "店舗・ULO",
     categoryExpenses: "カテゴリ別支出",
+    profile: "プロフィール",
+    notifications: "通知",
+    helpSupport: "ヘルプとサポート",
   },
   
   // Dashboard
@@ -1103,6 +1111,14 @@ export default {
     notes: "メモ",
     optional: "任意",
     pay_now: "今すぐ支払う",
+    schedule_title: "返済スケジュール",
+    schedule_month: "月",
+    schedule_payment: "返済額",
+    schedule_principal: "元本",
+    schedule_interest: "利息",
+    schedule_balance: "残高",
+    schedule_total_interest: "利息合計",
+    schedule_total_payment: "支払合計",
   },
 
 

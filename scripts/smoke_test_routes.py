@@ -50,31 +50,18 @@ ROUTES_DIR = BACKEND_DIR / "app" / "api" / "routes"
 # mounted. The comment in main.py says the OCR was turned off.
 DELIBERATELY_UNMOUNTED = {"scan_jobs"}
 
-# The paths that are registered twice, and why.
+# The paths that used to be registered twice.
 #
-# The market router is registered twice on purpose: the real-time one
-# has to be first, because FastAPI matches the first registration and
-# the older one answers 429 from a datacenter address. The comment in
-# main.py says so.
+# There were thirteen of them: the market router, the location router,
+# the shopping router and the shopping module, the AI advisor and the
+# AI advisor module, the dashboard and the ledger analytics module, and
+# the health check, which was written twice in main.py.
 #
-# The rest are duplicates that were not intended. They are listed here
-# so that this script says "these are the ones we know about" instead
-# of failing, and so that a new duplicate is caught.
-KNOWN_DUPLICATE_PATHS = {
-    "/api/market/summary",
-    "/api/market/crypto",
-    "/api/market/commodities",
-    "/api/location/search-places",
-    "/api/location/reverse-geocode",
-    "/api/location/static-map",
-    "/api/shopping/items",
-    "/api/shopping/items/{item_id}",
-    "/api/ai/chat",
-    "/api/ai/chat/stream",
-    "/api/dashboard/summary",
-    "/api/dashboard/cash-flow",
-    "/health",
-}
+# They are fixed. Each router is mounted once now, and the paths that
+# only one of the two registrations had are still mounted, so nothing
+# was lost. The list is kept empty on purpose: a duplicate that comes
+# back fails this script.
+KNOWN_DUPLICATE_PATHS = set()
 
 # The endpoints the deployment depends on. The liveness check answers
 # without a database; the readiness check needs one, so it is only
@@ -176,9 +163,9 @@ def main():
     new_duplicates = sorted(duplicated - KNOWN_DUPLICATE_PATHS)
     if new_duplicates:
         for path in new_duplicates:
-            fail(f"this path is registered twice and is not on the known list: {path}")
+            fail(f"this path is registered twice: {path}")
     else:
-        ok(f"no new path is registered twice ({len(duplicated)} known ones)")
+        ok("no path is registered twice")
 
     # --- The endpoints the deployment depends on ----------------------
     print()

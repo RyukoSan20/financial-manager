@@ -64,7 +64,12 @@ export default {
     search: "Cari",
     filter: "Filter",
     noData: "Tidak ada data",
+    confirm_title: "Yakin?",
+    confirm_message: "Tindakan ini tidak dapat dibatalkan.",
     confirm: "Konfirmasi",
+    confirm_delete_title: "Hapus data ini?",
+    confirm_delete_message: "Tindakan ini tidak dapat dibatalkan.",
+    confirm_delete_action: "Hapus",
     yes: "Ya",
     no: "Tidak",
     all: "Semua",
@@ -107,6 +112,9 @@ export default {
     gmail: "Gmail Sync",
     merchant: "Toko / Merchant",
     categoryExpenses: "Kategori Pengeluaran",
+    profile: "Profil",
+    notifications: "Notifikasi",
+    helpSupport: "Bantuan & Dukungan",
   },
   
   // Dashboard
@@ -1103,6 +1111,14 @@ export default {
     notes: "Catatan",
     optional: "Opsional",
     pay_now: "Bayar Sekarang",
+    schedule_title: "Jadwal Angsuran",
+    schedule_month: "Bulan",
+    schedule_payment: "Angsuran",
+    schedule_principal: "Pokok",
+    schedule_interest: "Bunga",
+    schedule_balance: "Sisa Utang",
+    schedule_total_interest: "Total Bunga",
+    schedule_total_payment: "Total Bayar",
   },
 
 

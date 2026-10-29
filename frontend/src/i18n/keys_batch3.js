@@ -189,6 +189,9 @@ export const batch3 = {
       open_product: 'Buka produk',
       move_to: 'Pindahkan ke…',
       empty: 'Belum ada item.',
+      cancel_removes_expense_title: 'Batalkan pesanan ini?',
+      cancel_removes_expense_message: 'Pengeluaran yang tercatat untuk item ini akan dihapus dan saldo akun dikembalikan. Lanjutkan?',
+      cancel_removes_expense_action: 'Batalkan pesanan',
     },
     badge: {
     categories: {
@@ -227,6 +230,7 @@ export const batch3 = {
       best_variant: 'Varian terbaik:',
       tested_variants: 'Varian yang diuji:',
       teach_product: 'Ajarkan nama produk ini ke sistem',
+      teach_product_hint: 'Centang nama yang benar agar scan berikutnya mengenalinya, termasuk produk yang belum pernah dilihat sistem.',
     },
     ai_assistant: {
       title: 'AI Assistant',
@@ -423,6 +427,9 @@ export const batch3 = {
       open_product: 'Open product',
       move_to: 'Move to…',
       empty: 'No items yet.',
+      cancel_removes_expense_title: 'Cancel this order?',
+      cancel_removes_expense_message: 'The recorded spending for this item will be removed and the account balance will be returned. Continue?',
+      cancel_removes_expense_action: 'Cancel order',
     },
     badge: {
     categories: {
@@ -461,6 +468,7 @@ export const batch3 = {
       best_variant: 'Best variant:',
       tested_variants: 'Variants that were tried:',
       teach_product: 'Teach the system this product name',
+      teach_product_hint: 'Tick the right name so the next scan recognises it, including products the system has not seen before.',
     },
     ai_assistant: {
       title: 'AI Assistant',
@@ -657,6 +665,9 @@ export const batch3 = {
       open_product: '商品を開く',
       move_to: '移動先...',
       empty: 'アイテムはまだありません。',
+      cancel_removes_expense_title: 'この注文をキャンセルしますか？',
+      cancel_removes_expense_message: 'この品目に記録された支出は削除され、口座残高が戻ります。続行しますか？',
+      cancel_removes_expense_action: '注文をキャンセル',
     },
     badge: {
     categories: {
@@ -695,6 +706,7 @@ export const batch3 = {
       best_variant: '最良の候補:',
       tested_variants: '試行した候補:',
       teach_product: 'この商品名をシステムに教える',
+      teach_product_hint: '正しい名前をチェックしてください。次回のスキャンで認識されます。システムがまだ知らない商品も同様です。',
     },
     ai_assistant: {
       title: 'AIアシスタント',

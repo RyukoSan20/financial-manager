@@ -9,6 +9,7 @@ from decimal import Decimal
 import re
 import secrets
 from app.core.database import get_db
+from app.core.guest_identity import guest_email as make_guest_email, guest_username as make_guest_username
 from app.core.security import (
     verify_password, get_password_hash, create_access_token,
     get_current_user, get_current_user_optional
@@ -254,7 +255,7 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 def guest_login(guest_data: GuestLoginRequest, db: Session = Depends(get_db)):
     """Login as guest with unique device ID. Creates temporary account."""
     # Check if guest with this device already exists
-    guest_email = f"guest_{guest_data.device_id}@finmanager.local"
+    guest_email = make_guest_email(guest_data.device_id)
     existing = db.query(User).filter(User.email == guest_email).first()
     
     if existing:
@@ -277,7 +278,7 @@ def guest_login(guest_data: GuestLoginRequest, db: Session = Depends(get_db)):
     hashed_password = get_password_hash(secrets.token_urlsafe(32))
     guest_user = User(
         email=guest_email,
-        username=f"guest_{guest_data.device_id[:8]}",
+        username=make_guest_username(guest_data.device_id),
         full_name="Guest User",
         hashed_password=hashed_password,
         is_active=True,

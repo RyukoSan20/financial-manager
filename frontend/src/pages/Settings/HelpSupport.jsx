@@ -3,10 +3,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { useTranslation } from '../../i18n';
 import { batch2 } from '../../i18n/keys_batch2';
+// The version is read from the package, so the number on the screen
+// cannot drift away from the number that was actually built.
+import packageInfo from '../../../package.json';
 
 const HelpSupport = () => {
   const { t, language } = useTranslation();
   const K = batch2[language]?.help || batch2.id.help;
+  const APP_VERSION = packageInfo.version;
   const [expanded, setExpanded] = useState(null);
   const [contactForm, setContactForm] = useState({
     subject: '',
@@ -240,7 +244,7 @@ const HelpSupport = () => {
 
         {/* App Info */}
         <div className="bg-gray-100 rounded-xl p-4 text-center text-sm text-gray-500">
-          <p>Financial Manager v2.0</p>
+          <p>Financial Manager {APP_VERSION}</p>
           <p>{t('help_support.rights')}</p>
         </div>
       </div>

@@ -23,6 +23,8 @@
  * is small enough to sit beside a line of text.
  */
 
+import { readerFlag } from '../../utils/featureFlags';
+
 const MOODS = ['idle', 'scanning', 'thinking', 'celebrating'];
 
 /**
@@ -187,9 +189,48 @@ export default function FinBuddyMascot({
   size = 56,
   className = '',
   title,
+  // Which drawing to use.
+  //
+  // `inline` draws the mascot with SVG elements, so it takes the
+  // colour of what it sits on and never waits for a file to load.
+  //
+  // `generated` uses the drawing the asset generator writes. That
+  // one has more in it, so it is worth the file, but it does not
+  // follow the theme colour.
+  //
+  // The default is `inline`, because a mascot that is missing for a
+  // moment is worse than a mascot that is plain.
+  variant = 'auto',
 }) {
   // An unknown mood is treated as `idle` rather than crashing the page.
   const safeMood = MOODS.includes(mood) ? mood : 'idle';
+
+  // The switch is read in one place, here, so every place that shows
+  // the mascot switches over together. A caller can still ask for a
+  // specific drawing, but by default the reader decides.
+  const useGenerated =
+    variant === 'generated' ||
+    (variant === 'auto' && readerFlag('MASCOT_ART'));
+
+  if (useGenerated) {
+    return (
+      <span
+        className={`finbuddy finbuddy-generated inline-flex items-center justify-center ${className}`.trim()}
+        style={{ width: size, height: size }}
+        role="img"
+        aria-label={title || 'FinBuddy'}
+        data-mood={safeMood}
+      >
+        <img
+          src={`${import.meta.env.BASE_URL}assets/generated/mascot/mascot-${safeMood}.svg`}
+          width={size}
+          height={size}
+          alt=""
+          aria-hidden="true"
+        />
+      </span>
+    );
+  }
 
   // The body colour follows the theme: the primary colour of the
   // application, so the mascot belongs to it.

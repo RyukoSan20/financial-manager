@@ -1,0 +1,19 @@
+# The number of routes the application is expected to have.
+#
+# The application is built out of routers, and a router that fails to
+# import leaves the application healthy: it starts, it answers /health,
+# and the routes that router was supposed to add are simply not there.
+# Nothing says anything about it.
+#
+# So the number of routes is written down here, and the build checks
+# it. When a router stops being mounted, the count goes down, and the
+# build says so.
+#
+# The check is "at least", not "exactly". Adding routes is fine and
+# should not need this file changed. Losing routes is not fine, and
+# that is what this catches.
+#
+# To raise the number after adding routes deliberately: run
+#   backend/venv/bin/python -c "from app.main import app; print(len(app.routes))"
+# and write the answer below.
+EXPECTED_ROUTE_COUNT=322

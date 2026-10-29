@@ -52,7 +52,7 @@ const FeedPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, t]);
 
   const fetchStats = useCallback(async () => {
     setLoadingStats(true);

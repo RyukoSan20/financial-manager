@@ -20,6 +20,7 @@ import { scanManager, dataUrlToFile } from '../../services/scanManager';
 import { categoryName } from '../../utils/categoryName';
 import { useTranslation } from '../../i18n';
 import { batch1, fill } from '../../i18n/keys_batch1';
+import FinBuddyMascot from '../common/FinBuddyMascot';
 
 export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   const { language } = useTranslation();
@@ -52,6 +53,9 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   const canvasRef = useRef(null);
   const [usingCamera, setUsingCamera] = useState(false);
   const [stream, setStream] = useState(null);
+  // The camera that is running right now, kept in a ref so that it can
+  // be turned off from a cleanup that was set up before it started.
+  const streamRef = useRef(null);
   // When true the scan is queued on the server and the user is sent back
   // to what they were doing. The result arrives as a notification.
   const [backgroundMode, setBackgroundMode] = useState(true);
@@ -85,9 +89,13 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
 
   const startCamera = async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
       });
+      // The stream is kept in a ref as well as in the state, so that
+      // the camera can always be turned off, even from a cleanup that
+      // was set up before the camera was ever started.
+      streamRef.current = mediaStream;
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -100,8 +108,10 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+    const live = streamRef.current || stream;
+    if (live) {
+      live.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
       setStream(null);
     }
     setUsingCamera(false);
@@ -585,6 +595,10 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
           {/* Processing Status */}
           {loading && (
             <div className="flex items-center gap-3 p-4 bg-primary-50 dark:bg-primary-900/30 rounded-lg">
+              {/* The mascot, holding its magnifier. It says the same
+                  thing the spinner says, and it does it while the
+                  reader is waiting rather than after. */}
+              <FinBuddyMascot mood="scanning" size={40} className="shrink-0" />
               <Loader2 className="w-5 h-5 animate-spin text-primary-600" />
               <span className="text-primary-700 dark:text-primary-300">{processingStatus}</span>
             </div>

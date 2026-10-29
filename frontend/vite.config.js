@@ -22,7 +22,11 @@ export default defineConfig(({ mode }) => {
           // IPv6 address on some machines, and the backend only
           // listens on IPv4, so the proxy answered 404 for every
           // request and the browser reported "Failed to fetch".
-          target: 'http://127.0.0.1:8000',
+          //
+          // The port can be moved with VITE_PROXY_TARGET, because
+          // more than one backend may be running on this machine and
+          // the right one is not always the one on 8000.
+          target: process.env.VITE_PROXY_TARGET || 'http://127.0.0.1:8000',
           changeOrigin: true,
         },
       },

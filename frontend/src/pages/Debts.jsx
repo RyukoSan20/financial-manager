@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Card, Button, Input, Select, Modal, ProgressBar, Badge, Spinner } from '../components/ui';
+import { useState, useEffect, useCallback } from 'react';
+import { Card, Button, Input, Modal, ProgressBar, Badge, Spinner } from '../components/ui';
 import HonestEmptyState from '../components/common/HonestEmptyState';
 import { Plus, CreditCard, RefreshCw, Trash2, Edit2, Calendar, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
@@ -24,13 +24,12 @@ export const Debts = () => {
   const [selectedDebt, setSelectedDebt] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [amortization, setAmortization] = useState([]);
+  // The totals of the schedule: what a month costs, and what the whole
+  // debt costs once the interest is counted in.
+  const [amortizationSummary, setAmortizationSummary] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    fetchData();
-  }, [refreshKey]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -43,14 +42,31 @@ export const Debts = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData, refreshKey]);
 
   const fetchAmortization = async (debtId) => {
     try {
       const data = await api.debts.schedule(debtId);
-      setAmortization(Array.isArray(data) ? data : []);
+      // The server sends the whole schedule: the money of each month and
+      // the totals, all in one object. Only the months are a list.
+      setAmortization(Array.isArray(data?.schedule) ? data.schedule : []);
+      setAmortizationSummary(
+        data && typeof data === 'object'
+          ? {
+              monthlyPayment: Number(data.monthly_payment || 0),
+              totalInterest: Number(data.total_interest || 0),
+              totalPayment: Number(data.total_payment || 0),
+            }
+          : null
+      );
     } catch (err) {
       console.error('Failed to fetch amortization:', err);
+      setAmortization([]);
+      setAmortizationSummary(null);
     }
   };
 
@@ -362,6 +378,8 @@ export const Debts = () => {
       {showPaymentModal && selectedDebt && (
         <PaymentModal
           debt={selectedDebt}
+          amortization={amortization}
+          amortizationSummary={amortizationSummary}
           onClose={() => { setShowPaymentModal(false); setSelectedDebt(null); }}
           onSubmit={handlePayment}
         />
@@ -458,7 +476,7 @@ function DebtModal({ debt, onClose, onSubmit }) {
 }
 
 // Payment Modal Component
-function PaymentModal({ debt, onClose, onSubmit }) {
+function PaymentModal({ debt, amortization, amortizationSummary, onClose, onSubmit }) {
   const { t } = useTranslation();
   const [form, setForm] = useState({
     amount: debt.monthly_payment?.toString() || debt.current_balance?.toString() || '',
@@ -517,7 +535,63 @@ function PaymentModal({ debt, onClose, onSubmit }) {
             placeholder={t('debts.optional')}
           />
         </div>
-        
+
+        {/* The schedule of the debt: what each month costs, and what
+            the whole debt costs once the interest is counted in. */}
+        {amortization && amortization.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700">
+                {t('debts.schedule_title')}
+              </h3>
+            </div>
+            <div className="max-h-56 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50 text-gray-500 sticky top-0">
+                  <tr>
+                    <th className="text-left px-2 py-1.5 font-medium">{t('debts.schedule_month')}</th>
+                    <th className="text-right px-2 py-1.5 font-medium">{t('debts.schedule_payment')}</th>
+                    <th className="text-right px-2 py-1.5 font-medium">{t('debts.schedule_principal')}</th>
+                    <th className="text-right px-2 py-1.5 font-medium">{t('debts.schedule_interest')}</th>
+                    <th className="text-right px-2 py-1.5 font-medium">{t('debts.schedule_balance')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {amortization.map((row) => (
+                    <tr key={row.month} className="border-t border-gray-100">
+                      <td className="px-2 py-1.5 text-gray-700">{row.month}</td>
+                      <td className="px-2 py-1.5 text-right font-medium text-gray-800">
+                        {formatCurrency(Number(row.payment || 0), debt.currency)}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-gray-600">
+                        {formatCurrency(Number(row.principal || 0), debt.currency)}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-red-600">
+                        {formatCurrency(Number(row.interest || 0), debt.currency)}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-gray-600">
+                        {formatCurrency(Number(row.balance || 0), debt.currency)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {amortizationSummary && (
+              <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs flex justify-between">
+                <span className="text-gray-500">{t('debts.schedule_total_interest')}</span>
+                <span className="font-semibold text-red-600">
+                  {formatCurrency(amortizationSummary.totalInterest, debt.currency)}
+                </span>
+                <span className="text-gray-500">{t('debts.schedule_total_payment')}</span>
+                <span className="font-semibold text-gray-800">
+                  {formatCurrency(amortizationSummary.totalPayment, debt.currency)}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-2 justify-end pt-4">
           <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button type="submit" variant="success">{t('debts.pay_now')}</Button>

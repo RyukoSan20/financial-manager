@@ -56,13 +56,50 @@ jobs:
         run: |
           python -c "from app.main import app; print('App imported OK, routes:', len(app.routes))"
 
+      # The tests have to be able to fail the build. A test that
+      # reports a failure and is then ignored is not a test, and it is
+      # how the broken Gmail import got as far as a deployment.
       - name: Run unit tests
         working-directory: backend
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/financial_manager_test
           SECRET_KEY: ci-test-secret-key
         run: |
-          pytest tests/unit -q --tb=short || echo "unit tests reported failures (non-blocking)"
+          pytest tests/unit -q --tb=short
+
+      # The route check. It answers the question the import check above
+      # cannot: not "does the application import" but "are all the
+      # routers really in it". A router that failed to import leaves
+      # the application healthy and the routes missing.
+      - name: Route smoke test
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/financial_manager_test
+          SECRET_KEY: ci-test-secret-key
+        run: |
+          python ../scripts/smoke_test_routes.py
+
+      # The route count. The number is written down so that a router
+      # that quietly stops being mounted is caught by the diff, and not
+      # by a reader who gets a 404.
+      - name: Guard - the route count
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/financial_manager_test
+          SECRET_KEY: ci-test-secret-key
+        run: |
+          COUNT=$(python -c "from app.main import app; print(len(app.routes))")
+          echo "the application has $COUNT routes"
+          EXPECTED=$(grep -oE '^EXPECTED_ROUTE_COUNT=[0-9]+' ../scripts/route_count_guard.txt | cut -d= -f2)
+          if [ -z "$EXPECTED" ]; then
+            echo "::error::the expected route count is not written down"
+            exit 1
+          fi
+          if [ "$COUNT" -lt "$EXPECTED" ]; then
+            echo "::error::the route count went down: $COUNT, expected at least $EXPECTED"
+            exit 1
+          fi
+          echo "the route count is at least $EXPECTED"
 
       - name: Verify migrations import
         working-directory: backend
@@ -127,10 +164,33 @@ jobs:
             --rule 'no-debugger:error' \
             --rule 'no-dupe-class-members:error'
 
-      - name: Test (if present)
+      # The frontend tests. There is no `npm test` script in this
+      # project, so the tests are run by hand. They are plain node
+      # files, and each one prints its own count. A test that reports a
+      # failure and is then ignored is not a test.
+      - name: Run the frontend unit tests
         working-directory: frontend
-        continue-on-error: true
-        run: npm run test --if-present
+        run: |
+          set -e
+          for t in \
+            src/i18n/__tests__/terminology.test.js \
+            src/i18n/__tests__/batchParity.test.js \
+            src/utils/__tests__/idFormat.test.js \
+            src/utils/__tests__/featureFlags.test.js \
+            src/utils/__tests__/abTesting.test.js \
+            src/utils/__tests__/budgetRecipes.test.js \
+            src/utils/__tests__/scanDismissal.test.js \
+            src/utils/__tests__/healthMetrics.test.js \
+            src/utils/__tests__/gmailState.test.js \
+            src/utils/__tests__/marketFormat.test.js \
+            src/components/common/__tests__/honestEmptyState.test.js \
+            src/data/__tests__/privacyManifest.test.js \
+            src/pages/__tests__/marketPage.test.js
+          do
+            if [ -f "$t" ]; then
+              node "$t" || exit 1
+            fi
+          done
 
       - name: Build
         working-directory: frontend
