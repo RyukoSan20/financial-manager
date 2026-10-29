@@ -1329,7 +1329,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         {/* Achievement Progress Bar */}
         <div className={`w-full rounded-full h-2 mb-4 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
           <div 
-            className="h-2 rounded-full bg-gradient-to-r from-purple-500 to-primary-500 transition-all"
+            className="h-2 rounded-full bg-gradient-to-r from-primary-500 to-primary-400 transition-all"
             style={{ width: `${(achievements.length / ACHIEVEMENTS.length) * 100}%` }}
           />
         </div>

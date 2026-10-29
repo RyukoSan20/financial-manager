@@ -30,7 +30,7 @@ export const PixelProgress = ({
     success: 'bg-emerald-500',
     warning: 'bg-amber-500',
     danger: 'bg-red-500',
-    gradient: 'bg-gradient-to-r from-primary-500 to-purple-500',
+    gradient: 'bg-gradient-to-r from-primary-500 to-primary-400',
   };
 
   // Auto color based on percentage

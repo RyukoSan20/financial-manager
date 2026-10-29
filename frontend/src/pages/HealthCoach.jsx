@@ -114,40 +114,48 @@ const HealthCoach = () => {
     <div className="p-4 max-w-lg mx-auto pb-20">
       <h1 className="text-2xl font-bold mb-4">{t('nav.healthCoach')}</h1>
       
-      {/* Score Card */}
-      <div className="bg-gradient-to-r from-primary-500 to-purple-600 rounded-2xl p-6 text-white mb-4">
+      {/* Score Card.
+
+          This used to be a block of colour that ran from the primary
+          colour into purple. Two colours in one panel read as noise,
+          and the purple said nothing about the score.
+
+          It is now one colour with a border. The score is the thing
+          the reader came for, so it gets the contrast, and the
+          panel around it stays quiet. */}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-6 mb-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm opacity-80">{t('health_coach.score')}</p>
-            <p className="text-4xl font-bold">{healthData?.score || 0}</p>
-            <p className="text-sm opacity-80 mt-1">
-              {t('health_coach.grade')} <span className="font-bold">{healthData?.grade || "-"}</span>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('health_coach.score')}</p>
+            <p className="text-4xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">{healthData?.score || 0}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {t('health_coach.grade')} <span className="font-bold text-gray-900 dark:text-gray-100">{healthData?.grade || "-"}</span>
             </p>
           </div>
           <div className="text-center">
-            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${healthData?.grade ? 'bg-white/20' : 'bg-gray-600'}`}>
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${healthData?.grade ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-200' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>
               {healthData?.grade || "?"}
             </div>
           </div>
         </div>
         
         {/* Summary Stats */}
-        <div className="mt-4 pt-4 border-t border-white/20 grid grid-cols-2 gap-4">
+        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-4">
           <div>
-            <p className="text-xs opacity-70">{t('health_coach.monthly_income')}</p>
-            <p className="font-semibold">{formatCurrency(summary.monthly_income)}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('health_coach.monthly_income')}</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{formatCurrency(summary.monthly_income)}</p>
           </div>
           <div>
-            <p className="text-xs opacity-70">{t('health_coach.monthly_expense')}</p>
-            <p className="font-semibold">{formatCurrency(summary.monthly_expense)}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('health_coach.monthly_expense')}</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{formatCurrency(summary.monthly_expense)}</p>
           </div>
           <div>
-            <p className="text-xs opacity-70">{t('health_coach.total_cash')}</p>
-            <p className="font-semibold">{formatCurrency(summary.total_cash)}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('health_coach.total_cash')}</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{formatCurrency(summary.total_cash)}</p>
           </div>
           <div>
-            <p className="text-xs opacity-70">{t('health_coach.total_debt')}</p>
-            <p className="font-semibold">{formatCurrency(summary.total_debt)}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('health_coach.total_debt')}</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{formatCurrency(summary.total_debt)}</p>
           </div>
         </div>
       </div>
