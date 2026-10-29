@@ -146,6 +146,25 @@ jobs:
 
       - name: Upload the backend
         if: steps.paths.outputs.backend == 'true'
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          # An old tarball left on the server would be picked up
+          # instead of the new one, and the deploy would report
+          # success while shipping the code from weeks ago. So the
+          # old one goes first, and the new one is checked for size
+          # before anything is unpacked.
+          script: |
+            set -e
+            rm -f /tmp/backend.tar.gz /tmp/tmp/backend.tar.gz
+            echo "removed the old tarball"
+
+      - name: Send the backend
+        if: steps.paths.outputs.backend == 'true'
         uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -155,6 +174,13 @@ jobs:
           port: 22
           source: /tmp/backend.tar.gz
           target: /tmp
+          # drone-scp packs the source path into the tarball as it is
+          # written, so the file arrives as /tmp/tmp/backend.tar.gz
+          # unless the first path element is taken off. Without this
+          # the copy step found an older tarball that was already
+          # there and deployed it instead, and the log said it had
+          # worked.
+          strip_components: 1
 
       - name: Deploy backend
         if: steps.paths.outputs.backend == 'true'
@@ -169,8 +195,21 @@ jobs:
           script_stop: true
           script: |
             set -e
+
+            # The tarball has to be the one that was just sent. If
+            # it is not, the deploy would unpack an old copy and say
+            # it worked.
+            test -f /tmp/backend.tar.gz || { echo "::error::the backend tarball did not arrive"; exit 1; }
+            echo "the tarball is $(stat -c %s /tmp/backend.tar.gz) bytes"
+
             docker cp /tmp/backend.tar.gz finmanager-backend-1:/tmp/backend.tar.gz
             docker exec finmanager-backend-1 sh -c "cd /app && tar -xzf /tmp/backend.tar.gz"
+
+            # The migration revisions have to be in the container
+            # before the migration step runs, or the upgrade reads a
+            # chain that is missing links and stops.
+            docker exec finmanager-backend-1 sh -c "ls /app/alembic/versions/"
+
             docker exec finmanager-backend-1 python -c "from app.main import app; print('routes', len(app.routes))"
             echo "Backend files copied"
 
@@ -209,7 +248,12 @@ jobs:
             # The startup migration adds the same columns, so they are
             # there even if alembic could not run. This checks that
             # they are, rather than assuming.
-            docker exec finmanager-backend-1 sh -c "cd /app && python -c \"import sqlalchemy as sa; from app.core.database import engine; c=engine.connect(); cols={r[0] for r in c.execute(sa.text(\"SELECT column_name FROM information_schema.columns WHERE table_name='transactions'\")).all()}; assert 'tags' in cols and 'is_draft' in cols, 'the new columns are missing'; print('the new columns are there')\""
+            #
+            # The check is a script of its own, not a python -c on the
+            # command line: a one-liner with quotes inside quotes
+            # inside quotes is exactly the kind of thing that breaks
+            # when a shell reads it.
+            docker exec finmanager-backend-1 python /app/scripts/check_new_columns.py
 
             echo "Migrations applied"
 
@@ -260,6 +304,7 @@ jobs:
           port: 22
           source: /tmp/frontend.tar.gz
           target: /tmp
+          strip_components: 1
 
       - name: Deploy frontend
         if: steps.paths.outputs.frontend == 'true'
@@ -292,7 +337,8 @@ jobs:
           fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
           port: 22
           source: nginx.conf
-          target: /home/ubuntu/finmanager/nginx.conf
+          target: /home/ubuntu/finmanager
+          strip_components: 1
 
       - name: Deploy nginx config
         if: steps.paths.outputs.nginx == 'true'
