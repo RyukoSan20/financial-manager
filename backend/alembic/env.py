@@ -18,26 +18,47 @@ config = context.config
 
 # Which database to run against.
 #
-# Three things can say. In order:
+# Two things can say, and the one that is more specific wins.
 #
-# 1. The DATABASE_URL in the environment. This is what the server and
-#    the container set, and it is the one that is right in production.
-# 2. The URL that is already in the config, if it is not the
-#    placeholder that is written into alembic.ini. That placeholder is
-#    not a real database; it is there so the file is not empty.
-# 3. The application's settings, which read the environment anyway.
+# A URL written into the config by the caller is the most specific of
+# all: somebody said which database they meant, and they are the only
+# one who knows. A test that builds a throwaway database and points
+# alembic at it says exactly that.
 #
-# The environment comes first because the placeholder in alembic.ini
-# would otherwise win, and alembic would talk to a database that
-# nobody is using.
+# The DATABASE_URL in the environment comes next. This is what the
+# server and the container set, and it is the one that is right in
+# production.
+#
+# The placeholder in alembic.ini comes last. It is not a database at
+# all; it is there so the file is not empty, and if it were allowed to
+# win, alembic would talk to a database that nobody is using while
+# looking like it had worked.
+#
+# So: the config wins if it holds a real URL, otherwise the
+# environment does, and otherwise the application's settings do.
 from_env = os.environ.get("DATABASE_URL")
 from_config = config.get_main_option("sqlalchemy.url", None)
 
-if from_env:
-    config.set_main_option("sqlalchemy.url", from_env)
-elif from_config and "***" not in from_config and "user" not in from_config.split("@")[0]:
-    # A real URL, written by a caller that knows the database.
+
+def _is_a_placeholder(url):
+    """
+    Is this the stand-in in the ini file rather than a database?
+
+    The stand-in is the one written into alembic.ini: a url with the
+    password blanked out. Anything else is a real url, and a real url
+    has to be used even when it looks unusual - a SQLite file has no
+    account in it, and that is still a database somebody chose.
+    """
+    if not url:
+        return True
+    return "***" in url
+
+
+if from_config and not _is_a_placeholder(from_config):
+    # A caller that knows the database has already said which one.
     pass
+elif from_env:
+    config.set_main_option("sqlalchemy.url", from_env)
 else:
     config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 

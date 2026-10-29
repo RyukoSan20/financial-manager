@@ -38,6 +38,10 @@ ALEMBIC_INI = BACKEND_DIR / "alembic.ini"
 ALEMBIC_DIR = BACKEND_DIR / "alembic"
 REVISION = "20261029_transaction_tags"
 
+# The revision before the one under test. The database is stamped
+# here, so that only the revision under test is applied.
+PREVIOUS_REVISION = "20261023_merchant_catalog"
+
 
 def _config(url):
     """An alembic config pointed at a database of our own."""
@@ -120,6 +124,17 @@ def engine(tmp_path):
     db_path = tmp_path / "migration_test.db"
     eng = create_engine(f"sqlite:///{db_path}")
     private.create_all(bind=eng)
+
+    # The database is told which revision it is at without anything
+    # being run. This is what a real database that was made from the
+    # models looks like: the tables are there, and the revisions that
+    # made them are not.
+    #
+    # Without this the whole chain would run from the beginning, and
+    # the earlier revisions would try to build tables this test has
+    # not made.
+    command.stamp(_config(str(eng.url)), PREVIOUS_REVISION)
+
     yield eng
 
 
