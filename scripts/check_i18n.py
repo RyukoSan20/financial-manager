@@ -296,6 +296,181 @@ def check_batch_keys_in_scope(root):
                 )
     return problems
 
+# -----------------------------------------------------------------------
+# Reading a batch file without running it.
+#
+# The batch files hold nothing but object literals: one per language.
+# They used to be read by bundling them with esbuild and running the
+# result through node. That needs a node install and a bundler, and the
+# job that runs this guard has neither - so the bundling failed, the
+# file came back empty, and every key in it looked like a key that no
+# language had. The guard was reporting twenty-four problems for files
+# that were fine.
+#
+# So the file is read as plain data instead. It is a small, known
+# shape: a comment block, a helper function, then the language tables.
+# The tables are the only part that matters.
+# -----------------------------------------------------------------------
+
+
+def parse_batch_file(path):
+    """
+    Read one keys_batchN.js as plain data.
+
+    Returns {language: {namespace: {...}}} or None if the file does
+    not have the shape this expects.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+    tables = {}
+    for lang in ("id", "en", "ja"):
+        marker = re.search(rf"^\s{{2,}}{lang}:\s*\{{", text, re.MULTILINE)
+        if not marker:
+            continue
+        close = _read_balanced(text, marker.end() - 1)
+        if close is None:
+            continue
+        tables[lang] = _parse_js_object(text[marker.end():close])
+    return tables or None
+
+
+def _read_balanced(text, open_index):
+    """
+    Return the index of the brace that closes the one at open_index.
+
+    Returns None when the braces do not balance, which means the file
+    is not the shape this reader understands.
+    """
+    depth = 0
+    i = open_index
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if ch in "\"'":
+            i = _skip_string(text, i)
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return None
+
+
+def _skip_string(text, start):
+    """Return the index just past the string that begins at start."""
+    quote = text[start]
+    i = start + 1
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if ch == "\\":
+            i += 2
+            continue
+        if ch == quote:
+            return i + 1
+        i += 1
+    return n
+
+
+def _parse_js_object(body):
+    """
+    Turn the inside of an object literal into a Python dict.
+
+    The values here are strings, and a string is all that is needed to
+    answer whether a key is present.
+
+    A key is usually a plain name - `a5`, `sidebar_group_money` - and
+    sometimes a quoted one. Both are handled, because the browser
+    accepts both and a reader that only knows one of them reads half
+    the file as empty.
+    """
+    result = {}
+    i = 0
+    n = len(body)
+    pending_key = None
+
+    while i < n:
+        ch = body[i]
+
+        # A comment. Everything to the end of the line is not part of
+        # the object.
+        if ch == "/" and i + 1 < n and body[i + 1] == "/":
+            newline = body.find("\n", i)
+            i = n if newline == -1 else newline + 1
+            continue
+
+        if ch in "\"'":
+            end = _skip_string(body, i)
+            literal = body[i:end]
+            value = _string_value(literal)
+            i = end
+            # A string is either a key (followed by a colon) or a
+            # value (preceded by one).
+            j = i
+            while j < n and body[j] in " \t\r\n":
+                j += 1
+            if j < n and body[j] == ":":
+                pending_key = value
+                i = j + 1
+            else:
+                if pending_key is not None:
+                    result[pending_key] = value
+                    pending_key = None
+            continue
+
+        # A plain name: a key.
+        if ch.isalpha() or ch in "_$":
+            start = i
+            while i < n and (body[i].isalnum() or body[i] in "_$"):
+                i += 1
+            name = body[start:i]
+            j = i
+            while j < n and body[j] in " \t\r\n":
+                j += 1
+            if j < n and body[j] == ":":
+                pending_key = name
+                i = j + 1
+            continue
+
+        if ch == "{":
+            close = _read_balanced(body, i)
+            if close is None:
+                break
+            nested = _parse_js_object(body[i + 1:close])
+            if pending_key is not None:
+                result[pending_key] = nested
+                pending_key = None
+            i = close + 1
+            continue
+
+        i += 1
+    return result
+
+
+def _string_value(literal):
+    """Take the text out of a quoted string, undoing the escapes."""
+    quote = literal[0]
+    inner = literal[1:-1] if len(literal) >= 2 else ""
+    out = []
+    i = 0
+    while i < len(inner):
+        ch = inner[i]
+        if ch == "\\" and i + 1 < len(inner):
+            nxt = inner[i + 1]
+            out.append({"n": "\n", "t": "\t", "r": "\r"}.get(nxt, nxt))
+            i += 2
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def check_batch_values_exist(root):
     """
     Every K.name that a page reads has to be in the batch file.
@@ -306,8 +481,6 @@ def check_batch_values_exist(root):
     """
     import json
     import re
-    import subprocess
-    import tempfile
 
     batches = {}
     i18n = root / "i18n"
@@ -319,24 +492,11 @@ def check_batch_values_exist(root):
         name = path.stem
         batches[name] = {}
         for lang in ("id", "en", "ja"):
-            with tempfile.NamedTemporaryFile(suffix=".cjs", delete=False) as tmp:
-                out = tmp.name
-            subprocess.run(
-                ["npx", "--no-install", "esbuild", f"src/i18n/{name}.js",
-                 "--bundle", "--format=cjs", f"--outfile={out}"],
-                cwd=str(root.parent), capture_output=True, text=True,
-            )
-            try:
-                raw = subprocess.run(
-                    ["node", "-e",
-                     f"const m = require('{out}').default;"
-                     f"console.log(JSON.stringify(m['{lang}']));"],
-                    capture_output=True, text=True,
-                )
-                batches[name][lang] = json.loads(raw.stdout)
-            except (json.JSONDecodeError, ValueError):
+            tables = parse_batch_file(path)
+            if tables is None:
                 batches[name][lang] = {}
-            os.unlink(out)
+            else:
+                batches[name][lang] = tables.get(lang, {})
 
     def lookup(table, path):
         # An empty namespace is the whole table. A page that takes
