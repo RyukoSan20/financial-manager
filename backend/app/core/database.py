@@ -1,8 +1,12 @@
 """Database configuration - supports SQLite and PostgreSQL."""
 
+import logging
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -59,6 +63,39 @@ def init_db():
 def run_migrations():
     """Run database migrations for new columns."""
     with engine.connect() as conn:
+        # The words the reader put on a transaction, and whether the
+        # transaction has been confirmed yet. Both are added the way
+        # the ones above are: if the column is not there, it is put
+        # there; if it is, nothing happens. A reader whose database
+        # is a year old gets the columns without losing a row.
+        for statement in (
+            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS tags TEXT",
+            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS is_draft BOOLEAN NOT NULL DEFAULT false",
+            "ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_adjustment BOOLEAN NOT NULL DEFAULT false",
+        ):
+            try:
+                conn.execute(text(statement))
+                conn.commit()
+            except Exception as e:
+                # The column is already there, or the table is not.
+                # Neither is a reason to refuse to start.
+                conn.rollback()
+                logger.debug(f"Migration skipped: {statement[:60]} -> {e}")
+
+        # The index that makes a draft cheap to find. It is created
+        # on its own, because a table that has been running for a
+        # while has rows in it and the index cannot be added to the
+        # same statement as the column.
+        try:
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_transactions_user_draft
+                ON transactions (user_id, is_draft)
+            """))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.debug(f"Draft index skipped -> {e}")
+
         # Add receipt_scan_id column to transactions if not exists
         try:
             conn.execute(text("""

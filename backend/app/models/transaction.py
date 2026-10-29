@@ -72,6 +72,16 @@ class Transaction(Base):
     # Idempotency key - prevents duplicate transactions from double-tap/retry
     client_request_id = Column(String(64), nullable=True, index=True)
     
+    # Words the reader put on this transaction. It is a list held as
+    # text, so there is no table to join and nothing else to keep in
+    # step with it.
+    tags = Column(Text, nullable=True)
+    
+    # A transaction that has been entered but not yet confirmed. The
+    # receipt reader makes drafts so that a reading can be checked
+    # before it becomes a record.
+    is_draft = Column(Boolean, default=False, nullable=False)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

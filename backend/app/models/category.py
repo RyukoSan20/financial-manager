@@ -24,6 +24,12 @@ class Category(Base):
     parent_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
+    
+    # The category that holds the difference between what the bank
+    # says and what was recorded. It is a flag rather than a new
+    # category type, so the rules that work on categories keep
+    # working unchanged.
+    is_adjustment = Column(Boolean, default=False, nullable=False)
 
     # Self-referential relationship for subcategories
     subcategories = relationship("Category", backref="parent", remote_side=[id])
