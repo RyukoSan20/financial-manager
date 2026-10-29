@@ -119,7 +119,7 @@ export default function AnimatedNumber({
         frameRef.current = null;
       }
     };
-  }, [target, places, duration]);
+  }, [target, places, duration, finite]);
 
   return (
     <span className={`animated-number tabular-nums ${className}`.trim()}>

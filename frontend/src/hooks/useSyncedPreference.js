@@ -181,7 +181,7 @@ export const useSyncedPreference = (key, localKey, defaults, normalize) => {
     } catch {
       // Offline, or the server is not reachable. The local copy stands.
     }
-  }, [user, key, localKey]);
+  }, [user, key, localKey, pushLocal]);
 
   // Pull once when the user is there, and then on a timer so a change
   // made on another device shows up here.

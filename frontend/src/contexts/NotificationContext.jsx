@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 const NotificationContext = createContext(null);
 
@@ -13,30 +13,37 @@ export const useNotifications = () => {
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
 
+  // A counter that is only ever increased, so that two notifications
+  // never share a number.
+  const nextId = useRef(0);
+
+  const removeNotification = useCallback((id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
   const addNotification = useCallback((notification) => {
-    const id = Date.now();
+    // The number of the clock is not enough on its own: two
+    // notifications that arrive in the same millisecond would share a
+    // number, and the first one would then never be taken away.
+    const id = `${Date.now()}-${nextId.current++}`;
     const newNotification = {
       id,
       type: 'info',
       duration: 5000,
       ...notification,
     };
-    
+
     setNotifications(prev => [...prev, newNotification]);
-    
+
     // Auto remove after duration
     if (newNotification.duration > 0) {
       setTimeout(() => {
         removeNotification(id);
       }, newNotification.duration);
     }
-    
-    return id;
-  }, []);
 
-  const removeNotification = useCallback((id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  }, []);
+    return id;
+  }, [removeNotification]);
 
   const success = (message) => addNotification({ type: 'success', message });
   const error = (message) => addNotification({ type: 'error', message });
