@@ -123,6 +123,15 @@ else
   tail -30 /tmp/preflight_smoke.log
   note_failure "route smoke test"
 fi
+
+echo "--- generated assets -----------------------------------------"
+if "$ROOT/backend/venv/bin/python" "$ROOT/scripts/generate_assets.py" --check > /tmp/preflight_assets.log 2>&1; then
+  grep -E '^  OK' /tmp/preflight_assets.log
+  echo "  -> assets OK"
+else
+  tail -20 /tmp/preflight_assets.log
+  note_failure "generated assets"
+fi
 cd "$ROOT"
 echo
 

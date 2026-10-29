@@ -17,6 +17,7 @@ import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 import { useTranslation } from '../../i18n';
 import { batch3 } from '../../i18n/keys_batch3';
+import FinBuddyMascot from './FinBuddyMascot';
 
 // Language configurations
 const LANGUAGES = {
@@ -510,7 +511,10 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
         className="fixed left-4 bottom-24 z-50 w-14 h-14 bg-gradient-to-br from-purple-500 to-primary-500 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
         title={K.title}
       >
-        <Sparkles className="w-6 h-6 text-white" />
+        {/* The mascot, waiting to be asked. It is the same creature
+            that appears in the empty states, so the application has
+            one character rather than several. */}
+        <FinBuddyMascot mood="idle" size={40} />
         <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
       </button>
     );

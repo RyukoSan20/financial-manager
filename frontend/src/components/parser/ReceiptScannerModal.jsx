@@ -20,6 +20,7 @@ import { scanManager, dataUrlToFile } from '../../services/scanManager';
 import { categoryName } from '../../utils/categoryName';
 import { useTranslation } from '../../i18n';
 import { batch1, fill } from '../../i18n/keys_batch1';
+import FinBuddyMascot from '../common/FinBuddyMascot';
 
 export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
   const { language } = useTranslation();
@@ -587,6 +588,10 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
           {/* Processing Status */}
           {loading && (
             <div className="flex items-center gap-3 p-4 bg-primary-50 dark:bg-primary-900/30 rounded-lg">
+              {/* The mascot, holding its magnifier. It says the same
+                  thing the spinner says, and it does it while the
+                  reader is waiting rather than after. */}
+              <FinBuddyMascot mood="scanning" size={40} className="shrink-0" />
               <Loader2 className="w-5 h-5 animate-spin text-primary-600" />
               <span className="text-primary-700 dark:text-primary-300">{processingStatus}</span>
             </div>
