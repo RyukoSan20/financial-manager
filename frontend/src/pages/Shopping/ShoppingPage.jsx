@@ -62,7 +62,7 @@ const ShoppingPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchBoard();

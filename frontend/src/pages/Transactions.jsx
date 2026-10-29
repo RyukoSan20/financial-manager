@@ -641,9 +641,11 @@ export const Transactions = () => {
       {/* Parser Modals */}
       <TextParserModal
         isOpen={showTextParser}
-        onClose={() => setShowTextParser(false)}
+        initialText={prefillQRText}
+        onClose={() => { setShowTextParser(false); setPreFillQRText(''); }}
         onSuccess={() => {
           setShowTextParser(false);
+          setPreFillQRText('');
           fetchData();
         }}
       />

@@ -27,14 +27,17 @@ export const Settings = () => {
     return () => { alive = false; };
   }, []);
 
-  const tabs = [
+  // The tabs are built once per language, not once per render. A list
+  // written in the body of a component is a new list every time, and
+  // the search below is then filtered from scratch every time.
+  const tabs = useMemo(() => [
     { id: 'profile', label: t('settings.tabs.profile'), icon: User },
     { id: 'appearance', label: t('settings.tabs.appearance'), icon: Palette },
     { id: 'security', label: t('settings.tabs.security'), icon: Lock },
     { id: 'preferences', label: t('settings.tabs.preferences'), icon: Globe },
     { id: 'data', label: t('settings.tabs.data'), icon: Download },
     { id: 'privacy', label: t('settings.tabs.privacy'), icon: ShieldCheck },
-  ];
+  ], [t]);
 
   // The search filters the tabs as well as the rows inside them.
   const visibleTabs = useMemo(() => {

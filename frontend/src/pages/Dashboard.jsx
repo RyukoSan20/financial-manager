@@ -693,7 +693,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         window.removeEventListener('resize', handleResize);
       };
     }).catch(err => console.error('Failed to load chart:', err));
-  }, [cashFlowSeries, isDarkMode, displayMode, displayCurrency]);
+  }, [cashFlowSeries, isDarkMode, displayMode, displayCurrency, t]);
 
   // Initialize chart effect
   useEffect(() => {
