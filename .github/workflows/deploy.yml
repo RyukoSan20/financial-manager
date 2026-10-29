@@ -76,6 +76,11 @@ jobs:
           # that is deployed. Removing this line puts the old shapes
           # back.
           VITE_UI_AURORA: '1'
+          # The money layer: the feel. Glass surfaces, a bento
+          # dashboard, a card that leans, a budget that fills like a
+          # liquid. Off in the repository by default, on in the build
+          # that is deployed.
+          VITE_UI_MONEY: '1'
         run: |
           npm ci
           npm run build
