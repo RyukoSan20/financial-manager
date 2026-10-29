@@ -137,19 +137,19 @@ export const Goals = () => {
       {/* Summary Cards */}
       {goals.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="!p-4">
+          <Card tier="tile" hue="violet" className="!p-4">
             <p className="text-sm text-gray-500">{t('goals.total_target')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalTarget, displayCurrency)}</p>
           </Card>
-          <Card className="!p-4">
+          <Card tier="tile" hue="emerald" className="!p-4">
             <p className="text-sm text-gray-500">{t('goals.total_saved')}</p>
             <p className="text-xl font-bold text-success-600 mt-1">{formatCurrency(totalCurrent, displayCurrency)}</p>
           </Card>
-          <Card className="!p-4">
+          <Card tier="tile" hue="amber" className="!p-4">
             <p className="text-sm text-gray-500">{t('goals.remaining')}</p>
             <p className="text-xl font-bold text-warning-600 mt-1">{formatCurrency(totalTarget - totalCurrent, displayCurrency)}</p>
           </Card>
-          <Card className="!p-4">
+          <Card tier="tile" hue="sky" className="!p-4">
             <p className="text-sm text-gray-500">{t('goals.overall_progress')}</p>
             <p className="text-xl font-bold text-primary-600 mt-1">
               {totalTarget > 0 ? formatPercent((totalCurrent / totalTarget) * 100) : '0%'}

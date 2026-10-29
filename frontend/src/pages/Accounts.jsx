@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, Badge, Spinner } from '../components/ui';
+import TiltCard from '../components/ui/TiltCard';
+import { moneyLayerOn } from '../utils/animation';
 import HonestEmptyState from '../components/common/HonestEmptyState';
 import { Plus, Wallet, Banknote, CreditCard, Smartphone, RefreshCw, Trash2, Edit2, PiggyBank } from 'lucide-react';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
@@ -161,7 +163,7 @@ export const Accounts = () => {
       {/* Account Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="!p-4 text-center layered-surface">
+          <Card tier="hero" hue="emerald" className="!p-4 text-center">
             <p className="text-sm text-gray-500">{t('accounts.total_balance')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1 tabular-nums">
               {formatNative(summary.total_balance, summary.currency || displayCurrency)}
@@ -198,9 +200,27 @@ export const Accounts = () => {
                     // rather than a flat block of colour. The amount
                     // uses tabular figures so a column of balances
                     // lines up and can be compared down the page.
+                    // The hue says what kind of account this is, so a
+                    // column of accounts can be read by colour before
+                    // it is read by name.
+                    // The account card is the thing a reader wants to
+                    // pick up and look at, rather than a number to
+                    // scan, so it leans towards the pointer. The lean
+                    // is at most five degrees, and it does not happen
+                    // at all for a reader who has asked for less
+                    // movement.
+                    <TiltCard key={account.id} className="rounded-2xl">
                     <Card
-                      key={account.id}
-                      className="!p-4 layered-surface layered-surface--interactive"
+                      tier="tile"
+                      hover
+                      hue={
+                        type === 'bank' ? 'sky' :
+                        type === 'cash' ? 'emerald' :
+                        type === 'e-wallet' ? 'violet' :
+                        type === 'credit_card' ? 'amber' :
+                        'slate'
+                      }
+                      className="!p-4 h-full"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -259,6 +279,7 @@ export const Accounts = () => {
                         </div>
                       </div>
                     </Card>
+                    </TiltCard>
                   ))}
                 </div>
               </div>

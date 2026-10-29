@@ -370,16 +370,38 @@ app.include_router(user_settings.router, tags=["Settings"])
 # Recurring auto-generator cron endpoint (for Railway cron)
 from app.services.recurring_generator import process_due_recurring_rules
 
-@app.api_route("/api/cron/process-recurring", methods=["GET", "POST"], tags=["Cron"])
-def cron_process_recurring(request: Request):
-    """
-    Process all due recurring rules and auto-generate transactions.
-    GET = automatic cron (only process due rules)
-    POST = manual trigger (force process all active rules including future)
-    """
-    is_manual = request.method == "POST"
+def _process_recurring(is_manual: bool):
+    """Run the recurring generator. See the two routes below."""
     results = process_due_recurring_rules(force_today=is_manual)
     return {"status": "completed", **results}
+
+
+# Two routes rather than one route with two methods. The path and the
+# behaviour are the same, but the names are not, and FastAPI names an
+# operation after the function that serves it. One function serving two
+# methods gives the two operations the same name, and the OpenAPI
+# document ends up with two entries that cannot tell each other apart.
+@app.get("/api/cron/process-recurring", tags=["Cron"], operation_id="cron_process_recurring_get")
+def cron_process_recurring_get(request: Request):
+    """
+    Process all due recurring rules and auto-generate transactions.
+
+    This is the automatic one: it only handles the rules that are due
+    today, so it can be called as often as the scheduler likes.
+    """
+    return _process_recurring(is_manual=False)
+
+
+@app.post("/api/cron/process-recurring", tags=["Cron"], operation_id="cron_process_recurring_post")
+def cron_process_recurring_post(request: Request):
+    """
+    Process all due recurring rules and auto-generate transactions.
+
+    This is the manual one: it handles every active rule, including
+    the ones in the future, so it is for when somebody is waiting for
+    a rule to be written and does not want to wait for tomorrow.
+    """
+    return _process_recurring(is_manual=True)
 
 
 # Root endpoint

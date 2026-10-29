@@ -6,6 +6,8 @@ import './styles/polish.css'
 import './styles/motion.css'
 import './styles/insights.css'
 import './styles/privacy.css'
+import './styles/aurora.css'
+import './styles/money.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

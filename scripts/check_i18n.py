@@ -311,9 +311,10 @@ def check_batch_values_exist(root):
 
     batches = {}
     i18n = root / "i18n"
-    # Every batch file is read, not only the first three. A page that
-    # reads a key from a batch that was not read here would look like
-    # a page reading a key that does not exist.
+    # Every batch file, not just the first three. A page that reads
+    # its words from keys_batch7 is checked the same way as one that
+    # reads from keys_batch1, and a guard that only knows about the
+    # first three quietly stops guarding the rest.
     for path in sorted(i18n.glob("keys_batch*.js")):
         name = path.stem
         batches[name] = {}
@@ -338,7 +339,9 @@ def check_batch_values_exist(root):
             os.unlink(out)
 
     def lookup(table, path):
-        # An empty path means the top level of the table.
+        # An empty namespace is the whole table. A page that takes
+        # the table for the language rather than one namespace inside
+        # it has its words at the top level.
         if not path:
             return table
         current = table
@@ -350,18 +353,29 @@ def check_batch_values_exist(root):
         return current
 
     problems = []
-    # The namespaced form: const K = batch3[language]?.navigation
+
+    # How a page names the place its words come from. There are four
+    # ways it is written, and all four have to be understood:
+    #
+    #   batch3[language]?.kanban
+    #   batch6[language]?.a5 || batch6.id.a5
+    #   batch7[language] || batch7.id
+    #   batch2[language]?.action_sheet
+    #
+    # The optional-chaining form and the fallback form say the same
+    # thing: the namespace is the chain after the language. A page
+    # that falls back to the Indonesian table is naming the same
+    # namespace again, so it does not add a second source.
+    #
+    # The chain is optional because a page may take the whole table
+    # for the language rather than one namespace inside it. That is
+    # the `batch7[language] || batch7.id` form, where there is no
+    # namespace at all and the words sit at the top level.
     namespace_pattern = re.compile(
-        r"const (K\w*) = (\w+)\[language\]\?\.((?:[A-Za-z0-9_]+\??\.?)+)"
-    )
-    # The flat form: const K = batch7[language] || batch7.id
-    # The whole language table is the namespace, so the key is looked
-    # up at the top level of that table.
-    flat_pattern = re.compile(
-        r"const (K\w*) = (\w+)\[language\]\s*\|\|\s*\2\.id"
+        r"const (K\w*) = (\w+)\[language\](\??\.((?:[A-Za-z0-9_]+\??\.?)*))?"
     )
     import_pattern = re.compile(
-        r"import \{ (\w+)(?:, fill)? \} from ['\"][^'\"]*keys_(batch\d+)['\"]"
+        r"import \{ (\w+)(?:, fill)? \} from ['\"][^'\"]*keys_(batch\d)['\"]"
     )
 
     for path in sorted(root.glob("**/*.jsx")) + sorted(root.glob("**/*.js")):
@@ -378,18 +392,17 @@ def check_batch_values_exist(root):
 
         sources = {}
         for m in namespace_pattern.finditer(text):
-            kname, variable, chain = m.group(1), m.group(2), m.group(3)
+            kname, variable = m.group(1), m.group(2)
+            # Group 3 is the optional chain after the language. When it
+            # is absent the page takes the whole table for the
+            # language, so the namespace is empty and the words sit at
+            # the top level.
+            chain = m.group(4) or ""
             if variable in imports:
                 namespace = ".".join(
                     part for part in chain.replace("?.", ".").split(".") if part
                 )
                 sources[kname] = (imports[variable], namespace)
-
-        for m in flat_pattern.finditer(text):
-            kname, variable = m.group(1), m.group(2)
-            if variable in imports:
-                # An empty namespace means the top level of the table.
-                sources[kname] = (imports[variable], "")
 
         for kname, key in re.findall(r"\{(K\w*)\.([A-Za-z_][A-Za-z0-9_]*)", text):
             if kname not in sources:

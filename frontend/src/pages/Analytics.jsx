@@ -399,7 +399,7 @@ export const Analytics = () => {
                 me" whether or not it has anything worth showing, and
                 the health card is often the one thing on the page
                 that has nothing to show yet. */}
-            <div className="layered-surface p-6">
+            <div className="layered-surface p-6 aurora-panel">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500 text-sm font-medium">{t('analytics.widget_health_label')}</p>

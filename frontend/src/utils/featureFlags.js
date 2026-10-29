@@ -28,6 +28,18 @@
  */
 const BUILD_FLAGS = {
   UI_POLISH: 'VITE_UI_POLISH',
+  /**
+   * The aurora layer: the shape language with a few tiers - hero,
+   * tile, panel, row - instead of one shape for every card on the
+   * page. Off by default.
+   */
+  UI_AURORA: 'VITE_UI_AURORA',
+  /**
+   * The money layer: the feel. Glass surfaces, a balance that
+   * counts, a card that leans towards the pointer, a liquid fill, a
+   * floating button that breathes. Off by default.
+   */
+  UI_MONEY: 'VITE_UI_MONEY',
 };
 
 /**

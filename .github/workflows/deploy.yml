@@ -70,6 +70,17 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_URL: https://my-financial-manager.online/api
+          # The aurora layer: the shape language with a few tiers
+          # (hero, tile, panel, row) instead of one shape for every
+          # card. Off in the repository by default, on in the build
+          # that is deployed. Removing this line puts the old shapes
+          # back.
+          VITE_UI_AURORA: '1'
+          # The money layer: the feel. Glass surfaces, a bento
+          # dashboard, a card that leans, a budget that fills like a
+          # liquid. Off in the repository by default, on in the build
+          # that is deployed.
+          VITE_UI_MONEY: '1'
         run: |
           npm ci
           npm run build
@@ -79,53 +90,115 @@ jobs:
           fi
           test -f dist/sw.js || (echo "::error::sw.js missing" && exit 1)
 
-      - name: Configure SSH
-        uses: webfactory/ssh-agent@v0.9.0
+      # ----------------------------------------------------------------
+      # The connection to the server.
+      #
+      # The previous action was `webfactory/ssh-agent@v0.9.0` with
+      # `host`, `username` and `key` as inputs. That action has never
+      # accepted those names - it takes `ssh-private-key` - so the
+      # step failed on every run since it was written, and the
+      # deployment has been happening by hand ever since.
+      #
+      # `appleboy/ssh-action` takes the names the workflow was already
+      # using, so the rest of the steps did not have to change.
+      #
+      # The host key is pinned by fingerprint. Without it the action
+      # skips the check and trusts whatever answers on that address,
+      # and a server that has been moved is exactly the case where
+      # that matters.
+      # ----------------------------------------------------------------
+      - name: Check the connection
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          timeout: 30s
+          script: echo "connected to ${{ secrets.VPS_HOST }}"
 
       - name: Backup current deployment
-        run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          script: |
             set -e
             STAMP=$(date +%Y%m%d-%H%M%S)
             mkdir -p /home/ubuntu/backups/$STAMP
             sudo cp -r /home/ubuntu/finmanager/frontend/dist /home/ubuntu/backups/$STAMP/frontend-dist 2>/dev/null || true
             cp /home/ubuntu/finmanager/nginx.conf /home/ubuntu/backups/$STAMP/nginx.conf 2>/dev/null || true
             echo "Backup created at /home/ubuntu/backups/$STAMP"
-          '
+
+      # The backend files are packed here, from the checkout this
+      # job made, so the server receives the code that was tested.
+      - name: Pack the backend
+        if: steps.paths.outputs.backend == 'true'
+        run: tar -czf /tmp/backend.tar.gz -C backend app migrations alembic.ini
+
+      - name: Upload the backend
+        if: steps.paths.outputs.backend == 'true'
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          source: /tmp/backend.tar.gz
+          target: /tmp
 
       - name: Deploy backend
         if: steps.paths.outputs.backend == 'true'
-        run: |
-          tar -czf /tmp/backend.tar.gz -C backend app migrations alembic.ini
-          scp /tmp/backend.tar.gz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/backend.tar.gz
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          command_timeout: 10m
+          script_stop: true
+          script: |
             set -e
             docker cp /tmp/backend.tar.gz finmanager-backend-1:/tmp/backend.tar.gz
             docker exec finmanager-backend-1 sh -c "cd /app && tar -xzf /tmp/backend.tar.gz"
-            docker exec finmanager-backend-1 python -c "from app.main import app; print(chr(79)+chr(75), len(app.routes))"
+            docker exec finmanager-backend-1 python -c "from app.main import app; print('routes', len(app.routes))"
             echo "Backend files copied"
-          '
 
       - name: Run migrations
         if: steps.paths.outputs.backend == 'true'
-        run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          command_timeout: 10m
+          script_stop: true
+          script: |
             set -e
             docker exec finmanager-backend-1 sh -c "cd /app && alembic upgrade head" || \
-            echo "::warning::alembic upgrade failed - applying tables directly"
-            docker exec finmanager-postgres-1 psql -U finmanager -d finmanager -f /tmp/user_settings.sql 2>/dev/null || \
-            echo "::warning::settings SQL already applied or unavailable"
+              echo "::warning::alembic upgrade failed - applying tables directly"
             echo "Migrations applied"
-          '
 
       - name: Restart backend
         if: steps.paths.outputs.backend == 'true'
-        run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          command_timeout: 10m
+          script_stop: true
+          script: |
             set -e
             cd /home/ubuntu/finmanager
             docker compose restart backend
@@ -140,33 +213,77 @@ jobs:
             echo "::error::Backend did not become healthy"
             docker logs --tail 60 finmanager-backend-1
             exit 1
-          '
+
+      # The build that ran above produced the files that go to the
+      # server. The copy is made here rather than on the server,
+      # because the server's own `frontend/dist` is the last thing
+      # that was deployed - using it would redeploy the old build and
+      # call it a success.
+      - name: Pack the frontend
+        if: steps.paths.outputs.frontend == 'true'
+        run: tar -czf /tmp/frontend.tar.gz -C frontend/dist .
+
+      - name: Upload the frontend
+        if: steps.paths.outputs.frontend == 'true'
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          source: /tmp/frontend.tar.gz
+          target: /tmp
 
       - name: Deploy frontend
         if: steps.paths.outputs.frontend == 'true'
-        run: |
-          tar -czf /tmp/frontend.tar.gz -C frontend/dist .
-          scp /tmp/frontend.tar.gz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/frontend.tar.gz
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          command_timeout: 10m
+          script_stop: true
+          script: |
             set -e
-            DIST=/home/ubuntu/finmanager/frontend/dist
-            rm -rf $DIST/assets
-            tar -xzf /tmp/frontend.tar.gz -C $DIST
-            echo "Frontend deployed to $DIST"
-            ls -la $DIST/assets/*.js
-          '
+            rm -rf /home/ubuntu/finmanager/frontend/dist/assets
+            tar -xzf /tmp/frontend.tar.gz -C /home/ubuntu/finmanager/frontend/dist
+            echo "Frontend deployed to /home/ubuntu/finmanager/frontend/dist"
+            ls -la /home/ubuntu/finmanager/frontend/dist/assets/*.js
+
+      # The nginx configuration is a file in the repository, so it has
+      # to be sent to the server. The previous version copied the
+      # server's own file onto itself, which did nothing at all.
+      - name: Upload the nginx config
+        if: steps.paths.outputs.nginx == 'true'
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          source: nginx.conf
+          target: /home/ubuntu/finmanager/nginx.conf
 
       - name: Deploy nginx config
         if: steps.paths.outputs.nginx == 'true'
-        run: |
-          scp nginx.conf ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/nginx_new.conf
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          command_timeout: 5m
+          script_stop: true
+          script: |
             set -e
-            cp /tmp/nginx_new.conf /home/ubuntu/finmanager/nginx.conf
             docker exec finmanager-nginx-1 nginx -t
             docker exec finmanager-nginx-1 nginx -s reload
             echo "nginx reloaded"
-          '
 
       # The smoke test.
       #

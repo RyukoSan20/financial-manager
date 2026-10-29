@@ -407,6 +407,21 @@ export function applyAppearance(appearance = {}) {
     root.removeAttribute('data-ui');
   }
 
+  // The aurora layer. The shape language with a few tiers, so a page
+  // of cards reads as a set of pieces of different importance rather
+  // than a set of copies. It is off unless the build turned it on.
+  if (buildFlag('UI_MONEY')) {
+    root.setAttribute('data-ui-money', 'on');
+  } else {
+    root.removeAttribute('data-ui-money');
+  }
+
+  if (buildFlag('UI_AURORA')) {
+    root.setAttribute('data-ui-aurora', 'on');
+  } else {
+    root.removeAttribute('data-ui-aurora');
+  }
+
   // The shades, so a component can use any step of the accent. Every
   // step of the scale is set, including the ones the dark mode needs,
   // so a step never falls back to a stale value from another scheme.

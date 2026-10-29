@@ -1,0 +1,467 @@
+/*
+ * The aurora layer.
+ *
+ * The application had one shape for everything. Every card was a white
+ * rectangle with a one-pixel grey border, the same rounded corners, the
+ * same shadow, the same internal padding, and every number sat in the
+ * same kind of box. A page built from twenty of those reads as a wall:
+ * there is nothing to tell the eye which thing is the point and which
+ * thing is the detail.
+ *
+ * Aurora gives the page a shape language with a few tiers instead of
+ * one:
+ *
+ * - a **hero** for the one number the page is about, larger, deeper,
+ *   and standing apart from everything else;
+ * - a **tile** for a metric that is read at a glance, small, with a
+ *   coloured spine that says which kind of number it is;
+ * - a **panel** for a block of content, quiet, with a hairline edge;
+ * - a **row** for one line of a list, flat, with no edge of its own.
+ *
+ * The colours come from a set of named hues rather than from the
+ * reader's accent, because a metric has a meaning before it has a
+ * colour: money in is teal, money out is rose, a total is emerald. The
+ * reader's chosen accent still draws the buttons and the active tab,
+ * so nothing they picked is taken away from them.
+ *
+ * Nothing here is a bright block. Every surface is a faint wash of its
+ * own hue over the page, with a hairline border and a shadow that
+ * separates it from what is behind it. The gradient in the hero has a
+ * direction - it goes down and to the right, the way the numbers on
+ * the page go - and it is measured, so it does not shout.
+ *
+ * It is off by default. The application sets `data-ui-aurora="on"` on
+ * the root element only when the aurora switch is on, and every rule
+ * here is written to apply only when it is there. With the layer off,
+ * the page is exactly as it was.
+ */
+
+/* ---------------------------------------------------------------------------
+   The tokens
+   ------------------------------------------------------------------------- */
+
+[data-ui-aurora="on"] {
+  /* The shape scale. Four radii, one per tier, so that a glance at the
+     corners of a card tells the reader what kind of card it is. */
+  --aurora-radius-hero: 28px;
+  --aurora-radius-panel: 18px;
+  --aurora-radius-tile: 14px;
+  --aurora-radius-row: 12px;
+
+  /* The easing and the durations. Short: these are micro-interactions,
+     not a performance. */
+  --aurora-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --aurora-press: 150ms;
+  --aurora-settle: 240ms;
+
+  /* The elevation ladder. Three steps: a list row has none, a tile has
+     one, a hero has two. */
+  --aurora-elevation-1:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 4px 12px -8px rgba(15, 23, 42, 0.16);
+  --aurora-elevation-2:
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 12px 28px -16px rgba(15, 23, 42, 0.22);
+  --aurora-elevation-3:
+    0 2px 6px rgba(15, 23, 42, 0.06),
+    0 28px 64px -28px rgba(15, 23, 42, 0.34);
+
+  /* The hue a surface is tinted with, when the surface does not name
+     one of its own. */
+  --aurora-hue-rgb: 100 116 139;
+}
+
+/* ---------------------------------------------------------------------------
+   The hues
+
+   A named hue is a way of saying what a number means. The steps are
+   chosen so the text drawn on the tint clears the contrast minimum in
+   the light mode; in the dark mode the wash is deeper and the text is
+   the light step of the same hue.
+   ------------------------------------------------------------------------- */
+
+.aurora-hue-emerald { --aurora-hue-rgb: 16 185 129; }
+.aurora-hue-teal    { --aurora-hue-rgb: 20 184 166; }
+.aurora-hue-sky     { --aurora-hue-rgb: 14 165 233; }
+.aurora-hue-violet  { --aurora-hue-rgb: 139 92 246; }
+.aurora-hue-rose    { --aurora-hue-rgb: 244 63 94; }
+.aurora-hue-amber   { --aurora-hue-rgb: 245 158 11; }
+.aurora-hue-slate   { --aurora-hue-rgb: 100 116 139; }
+
+/* ---------------------------------------------------------------------------
+   The canvas
+
+   The page is not a flat sheet of grey. There is a wash of the accent
+   at the top, fading out before the middle of the page, so the content
+   sits on something rather than floating on a colour.
+   ------------------------------------------------------------------------- */
+
+[data-ui-aurora="on"] .aurora-canvas {
+  position: relative;
+  isolation: isolate;
+}
+
+[data-ui-aurora="on"] .aurora-canvas::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 320px;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--scheme-500-rgb, 16 185 129) / 0.10) 0%,
+    rgb(var(--scheme-500-rgb, 16 185 129) / 0.03) 45%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dark[data-ui-aurora="on"] .aurora-canvas::before {
+  background: linear-gradient(
+    180deg,
+    rgb(var(--scheme-500-rgb, 16 185 129) / 0.16) 0%,
+    rgb(var(--scheme-500-rgb, 16 185 129) / 0.04) 45%,
+    transparent 100%
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   The card
+
+   Every card in the application is one of the tiers. The tier is what
+   the shape and the depth follow from, so a page of cards reads as a
+   set of pieces of different importance rather than a set of copies.
+   ------------------------------------------------------------------------- */
+
+[data-ui-aurora="on"] .aurora-card {
+  border-radius: var(--aurora-radius-panel);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: var(--aurora-elevation-1);
+  background-color: var(--surface, #ffffff);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  transition:
+    box-shadow var(--aurora-settle) var(--aurora-ease),
+    border-color var(--aurora-settle) var(--aurora-ease),
+    transform var(--aurora-press) var(--aurora-ease);
+}
+
+/* A panel is quiet. It carries content, not a number, so it stays
+   close to the page. */
+[data-ui-aurora="on"] .aurora-card--panel {
+  border-radius: var(--aurora-radius-panel);
+}
+
+/* A tile is a metric. It is tinted with its own hue, so that a row of
+   tiles can be read by colour before it is read by number, and it
+   carries a spine along the top edge that names the hue again. */
+[data-ui-aurora="on"] .aurora-card--tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--aurora-radius-tile);
+  border-color: rgba(148, 163, 184, 0.16);
+  box-shadow: var(--aurora-elevation-1);
+  background-image:
+    linear-gradient(
+      180deg,
+      rgb(var(--aurora-hue-rgb) / 0.26) 0%,
+      rgb(var(--aurora-hue-rgb) / 0.08) 68%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0) 48%);
+}
+
+[data-ui-aurora="on"] .aurora-card--tile::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    rgb(var(--aurora-hue-rgb) / 1) 0%,
+    rgb(var(--aurora-hue-rgb) / 0.5) 100%
+  );
+}
+
+/* The hero is the one number the page is about. It is the only surface
+   on the page that is allowed to be large, so it has to earn it: it
+   is deeper, it has a glow behind it, and its amount is set larger
+   than anything else on the page. */
+[data-ui-aurora="on"] .aurora-card--hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: var(--aurora-radius-hero);
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: var(--aurora-elevation-3);
+  background-image:
+    linear-gradient(
+      135deg,
+      rgb(var(--aurora-hue-rgb) / 0.30) 0%,
+      rgb(var(--aurora-hue-rgb) / 0.10) 45%,
+      rgb(var(--aurora-hue-rgb) / 0.03) 100%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 55%);
+}
+
+/* The glow. It sits behind the content of the hero and is the only
+   soft light in the layer. */
+[data-ui-aurora="on"] .aurora-card--hero::before {
+  content: "";
+  position: absolute;
+  top: -55%;
+  right: -12%;
+  width: 62%;
+  height: 150%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgb(var(--aurora-hue-rgb) / 0.38) 0%,
+    rgb(var(--aurora-hue-rgb) / 0) 68%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* A row is one line of a list. It has no edge of its own - the list
+   has the edge, and the rows divide it. */
+[data-ui-aurora="on"] .aurora-card--row {
+  border-radius: var(--aurora-radius-row);
+  border-color: rgba(148, 163, 184, 0.12);
+  box-shadow: none;
+  background-image: none;
+}
+
+/* ---------------------------------------------------------------------------
+   The dark mode
+
+   A tint that is drawn with an alpha over a light page has to be drawn
+   with a different alpha over a dark one, or it disappears. The wash
+   here is deeper and the glow is weaker, which is what a surface lit
+   from behind looks like on a dark page.
+   ------------------------------------------------------------------------- */
+
+.dark[data-ui-aurora="on"] .aurora-card {
+  border-color: rgba(148, 163, 184, 0.16);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 6px 16px -10px rgba(0, 0, 0, 0.5);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.045) 0%,
+    rgba(255, 255, 255, 0) 55%
+  );
+}
+
+.dark[data-ui-aurora="on"] .aurora-card--tile {
+  border-color: rgba(148, 163, 184, 0.16);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 6px 16px -10px rgba(0, 0, 0, 0.5);
+  background-image:
+    linear-gradient(
+      180deg,
+      rgb(var(--aurora-hue-rgb) / 0.30) 0%,
+      rgb(var(--aurora-hue-rgb) / 0.08) 62%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 55%);
+}
+
+.dark[data-ui-aurora="on"] .aurora-card--tile::after {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--aurora-hue-rgb) / 0.9) 0%,
+    rgb(var(--aurora-hue-rgb) / 0.35) 100%
+  );
+}
+
+.dark[data-ui-aurora="on"] .aurora-card--hero {
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.32),
+    0 32px 70px -30px rgba(0, 0, 0, 0.6);
+  background-image:
+    linear-gradient(
+      135deg,
+      rgb(var(--aurora-hue-rgb) / 0.28) 0%,
+      rgb(var(--aurora-hue-rgb) / 0.08) 45%,
+      rgb(var(--aurora-hue-rgb) / 0.03) 100%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 60%);
+}
+
+.dark[data-ui-aurora="on"] .aurora-card--hero::before {
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgb(var(--aurora-hue-rgb) / 0.30) 0%,
+    rgb(var(--aurora-hue-rgb) / 0) 68%
+  );
+}
+
+.dark[data-ui-aurora="on"] .aurora-card--row {
+  border-color: rgba(148, 163, 184, 0.12);
+  background-image: none;
+}
+
+/* The hero is deeper than a tile, so it carries more air. The padding
+   is part of the tier, not something each page has to remember. */
+[data-ui-aurora="on"] .aurora-card--hero {
+  padding: 1.75rem;
+}
+
+[data-ui-aurora="on"] .aurora-card--hero .summary-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+[data-ui-aurora="on"] .aurora-card--hero .summary-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* ---------------------------------------------------------------------------
+   The row
+
+   One line of a list. The list has the edge, and the rows divide it,
+   so a row has no edge of its own - only a hairline between it and
+   the next one. A list of these reads as a list rather than as a
+   stack of separate cards.
+   ------------------------------------------------------------------------- */
+
+[data-ui-aurora="on"] .aurora-row {
+  border-radius: var(--aurora-radius-row);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: none;
+  background-color: var(--surface, #ffffff);
+  background-image: none;
+  transition:
+    border-color var(--aurora-settle) var(--aurora-ease),
+    box-shadow var(--aurora-settle) var(--aurora-ease);
+}
+
+.dark[data-ui-aurora="on"] .aurora-row {
+  border-color: rgba(148, 163, 184, 0.14);
+  background-color: var(--surface, #1f2937);
+  background-image: none;
+}
+
+[data-ui-aurora="on"] .aurora-row:hover {
+  border-color: rgba(148, 163, 184, 0.3);
+  box-shadow: var(--aurora-elevation-1);
+}
+
+/* ---------------------------------------------------------------------------
+   The panel
+
+   A block of content that is not a metric: a chart, a table, a form.
+   It stays quiet, so the numbers inside it are the loud part.
+   ------------------------------------------------------------------------- */
+
+[data-ui-aurora="on"] .aurora-panel {
+  border-radius: var(--aurora-radius-panel);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: var(--aurora-elevation-1);
+}
+
+/* ---------------------------------------------------------------------------
+   The lift
+
+   A card that can be hovered answers the pointer. The change is a
+   little, and it is quick, and it is a response rather than a
+   performance - nothing here moves on its own.
+   ------------------------------------------------------------------------- */
+
+[data-ui-aurora="on"] .aurora-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--aurora-elevation-2);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.dark[data-ui-aurora="on"] .aurora-lift:hover {
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 16px 36px -18px rgba(0, 0, 0, 0.6);
+}
+
+[data-ui-aurora="on"] .aurora-lift:active {
+  transform: translateY(0);
+}
+
+/* ---------------------------------------------------------------------------
+   The navigation
+
+   The active item is marked by a spine on its left edge, in the
+   accent the reader chose, rather than by a filled box. The box made
+   every active item a bright rectangle, which competed with the
+   content of the page for attention.
+   ------------------------------------------------------------------------- */
+
+[data-ui-aurora="on"] .aurora-nav-item {
+  position: relative;
+}
+
+[data-ui-aurora="on"] .aurora-nav-item--active::before {
+  content: "";
+  position: absolute;
+  left: -0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: var(--scheme-accent, #059669);
+  box-shadow: 0 0 12px -2px var(--scheme-accent, #059669);
+}
+
+[data-ui-aurora="on"] .aurora-nav-item--active {
+  background-color: rgb(var(--scheme-500-rgb, 16 185 129) / 0.08);
+  box-shadow: none;
+}
+
+/* The dot that marked the active item in the old sidebar is now
+   redundant: the spine says the same thing. */
+[data-ui-aurora="on"] .aurora-nav-item--active .aurora-active-dot {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   The hero's amount
+
+   The hero amount is set larger than the tile amounts, so the eye
+   knows before it reads that this is the number the page is about.
+   The size still follows the width of the card, so a long amount is
+   never cut off.
+   ------------------------------------------------------------------------- */
+
+[data-ui-aurora="on"] .aurora-hero-amount {
+  font-size: clamp(1.5rem, calc((100cqw - 120px) / 7.4), 2.75rem);
+  letter-spacing: -0.02em;
+}
+
+@container summary (max-width: 185px) {
+  [data-ui-aurora="on"] .aurora-hero-amount {
+    font-size: clamp(1.25rem, calc((100cqw - 36px) / 7.4), 1.75rem);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Respecting the reader
+
+   A reader who has asked the system for less movement gets none of
+   it. This is the system setting, not a switch in this project, and it
+   is checked here because the movement is all in CSS.
+   ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ui-aurora="on"] .aurora-card,
+  [data-ui-aurora="on"] .aurora-lift {
+    transition: none !important;
+  }
+
+  [data-ui-aurora="on"] .aurora-lift:hover,
+  [data-ui-aurora="on"] .aurora-lift:active {
+    transform: none !important;
+  }
+}

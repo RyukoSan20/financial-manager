@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, ProgressBar, Badge, Spinner } from '../components/ui';
+import FluidProgressBar from '../components/ui/FluidProgressBar';
+import { moneyLayerOn } from '../utils/animation';
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp } from 'lucide-react';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import { formatCurrency, formatDate } from '../utils/format';
@@ -132,25 +134,25 @@ export const Budgets = () => {
       {/* Summary */}
       {budgets.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="!p-4">
+          <Card tier="tile" hue="sky" className="!p-4">
             <p className="text-sm text-gray-500">{t('budgets.total_budget')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1">
               {formatCurrency(budgets.reduce((sum, b) => sum + parseFloat(b.amount), 0))}
             </p>
           </Card>
-          <Card className="!p-4">
+          <Card tier="tile" hue="rose" className="!p-4">
             <p className="text-sm text-gray-500">{t('budgets.total_spent')}</p>
             <p className="text-xl font-bold text-danger-600 mt-1">
               {formatCurrency(budgets.reduce((sum, b) => sum + parseFloat(b.spent || 0), 0))}
             </p>
           </Card>
-          <Card className="!p-4">
+          <Card tier="tile" hue="emerald" className="!p-4">
             <p className="text-sm text-gray-500">{t('budgets.total_remaining')}</p>
             <p className="text-xl font-bold text-success-600 mt-1">
               {formatCurrency(budgets.reduce((sum, b) => sum + (parseFloat(b.amount) - parseFloat(b.spent || 0)), 0))}
             </p>
           </Card>
-          <Card className="!p-4">
+          <Card tier="tile" hue="violet" className="!p-4">
             <p className="text-sm text-gray-500">{t('budgets.avg_utilization')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1">
               {Math.round(budgets.reduce((sum, b) => sum + (parseFloat(b.spent || 0) / parseFloat(b.amount) * 100), 0) / budgets.length)}%
@@ -231,11 +233,28 @@ export const Budgets = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <ProgressBar 
-                    value={Math.min(utilization, 100)} 
-                    color={utilization > 100 ? 'danger' : utilization > 80 ? 'warning' : 'primary'}
-                    size="md"
-                  />
+                  {/* The budget fills like a liquid rather than
+                      sliding like a block, so the reader can see the
+                      level of it. */}
+                  {moneyLayerOn() ? (
+                    <FluidProgressBar
+                      value={Math.min(utilization, 100)}
+                      colour={
+                        utilization > 100
+                          ? 'rgb(244 63 94)'
+                          : utilization > 80
+                          ? 'rgb(245 158 11)'
+                          : 'rgb(16 185 129)'
+                      }
+                      size="md"
+                    />
+                  ) : (
+                    <ProgressBar
+                      value={Math.min(utilization, 100)}
+                      color={utilization > 100 ? 'danger' : utilization > 80 ? 'warning' : 'primary'}
+                      size="md"
+                    />
+                  )}
                   
                   <div className="flex items-center justify-between text-sm">
                     <div>

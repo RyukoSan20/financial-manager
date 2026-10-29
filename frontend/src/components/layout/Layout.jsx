@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar, MobileHeader, BottomNav } from './Navigation';
+import { AuroraCanvas } from '../ui/AuroraCard';
 
 // Get page title from route
 const getPageTitle = (pathname) => {
@@ -33,7 +34,7 @@ export const Layout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Desktop Sidebar */}
       <Sidebar />
       
@@ -42,9 +43,9 @@ export const Layout = () => {
       
       {/* Main Content */}
       <main className="lg:pl-64 pt-16 pb-24 lg:pb-8 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        <AuroraCanvas className="max-w-7xl mx-auto px-4 py-6">
           <Outlet />
-        </div>
+        </AuroraCanvas>
       </main>
       
       {/* Mobile Bottom Nav */}
