@@ -13,6 +13,7 @@ import { formatCurrency, formatNumber, formatPercent, formatNative } from '../ut
 import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { cleanNumber } from '../utils/idFormat';
 import AnimatedNumber from '../components/common/AnimatedNumber';
+import { AuroraCard, auroraIsOn } from '../components/ui/AuroraCard';
 import { useCurrency } from '../utils/currency';
 import api, { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../config/url';
@@ -966,6 +967,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             currency: summary?.total_balance_currency || summary?.currency,
             alreadyConverted: true,
             icon: Wallet,
+            hue: 'emerald',
             gradient: 'from-green-50 to-green-100 dark:from-green-900/50 dark:to-green-800/40',
             // The classes are written out in full. A class built at
             // runtime, like `text-${color}-600`, is never seen by
@@ -981,6 +983,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             label: t('dashboard.total_income'),
             value: summary?.totalIncome || summary?.total_income,
             icon: TrendingUp,
+            hue: 'teal',
             gradient: 'from-primary-50 to-primary-100 dark:from-primary-900/50 dark:to-primary-800/40',
             labelClass: 'text-primary-700 dark:text-primary-300',
             valueClass: 'text-primary-800 dark:text-primary-100',
@@ -991,6 +994,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             label: t('dashboard.total_expense'),
             value: summary?.totalExpense || summary?.total_expense,
             icon: TrendingDown,
+            hue: 'rose',
             gradient: 'from-red-50 to-red-100 dark:from-red-900/50 dark:to-red-800/40',
             labelClass: 'text-red-700 dark:text-red-300',
             valueClass: 'text-red-800 dark:text-red-100',
@@ -1001,6 +1005,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             label: t('dashboard.cash_flow'),
             value: summary?.netSavings || summary?.net_cash_flow,
             icon: Activity,
+            hue: 'violet',
             gradient: 'from-purple-50 to-purple-100 dark:from-purple-900/50 dark:to-purple-800/40',
             labelClass: 'text-purple-700 dark:text-purple-300',
             valueClass: 'text-purple-800 dark:text-purple-100',
@@ -1009,14 +1014,33 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           },
         ].map((card, i) => {
           const Icon = card.icon;
+          // The first card is the one the page is about - the balance.
+          // It is the hero: it takes the full width of the row, it is
+          // set larger than anything else, and it is deeper than the
+          // rest. The three that follow are metrics read at a glance,
+          // so they are tiles: smaller, and tinted with the hue that
+          // says what the number means.
+          const isHero = i === 0;
           return (
             // The wrapper is what the container query measures. The
             // card cannot be the container itself: a card that is a
             // container cannot paint its own background image, so the
             // gradient would disappear.
-            <div key={i} className="summary-amount-measure">
-            <Card
-              className={`summary-amount p-4 bg-gradient-to-br ${card.gradient} border ${borderColor}`}
+            <div
+              key={i}
+              className={`summary-amount-measure ${isHero ? 'col-span-full' : ''}`}
+            >
+            <AuroraCard
+              tier={isHero ? 'hero' : 'tile'}
+              hue={isHero ? 'emerald' : card.hue}
+              className={`summary-amount p-4 ${
+                // The old gradient is a Tailwind background-image, and
+                // the aurora tile draws its own. Two background-images
+                // on one element do not stack - the later one wins -
+                // so the old gradient is dropped rather than left to
+                // fight with the hue that says what the number means.
+                auroraIsOn() ? '' : `bg-gradient-to-br ${card.gradient} border ${borderColor}`
+              }`}
             >
               <div className="flex items-start justify-between gap-2 sm:gap-3">
                 <div className="min-w-0 flex-1">
@@ -1040,7 +1064,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                       The amount still uses tabular figures, so the digits
                       do not move when the value changes. */}
                   <p
-                    className={`mt-2 font-numeric font-bold leading-none text-summary-value ${card.valueClass}`}
+                    className={`mt-2 font-numeric font-bold leading-none ${
+                      isHero ? 'aurora-hero-amount' : 'text-summary-value'
+                    } ${card.valueClass}`}
                   >
                     {/* The amount counts to its new value when the
                         reader changes the date filter or picks another
@@ -1067,7 +1093,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   <Icon className={`w-4 h-4 sm:w-4 sm:h-4 lg:w-5 lg:h-5 ${card.iconClass}`} />
                 </div>
               </div>
-            </Card>
+            </AuroraCard>
             </div>
           );
         })}

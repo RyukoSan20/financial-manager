@@ -28,6 +28,12 @@
  */
 const BUILD_FLAGS = {
   UI_POLISH: 'VITE_UI_POLISH',
+  /**
+   * The aurora layer: the shape language with a few tiers - hero,
+   * tile, panel, row - instead of one shape for every card on the
+   * page. Off by default.
+   */
+  UI_AURORA: 'VITE_UI_AURORA',
 };
 
 /**

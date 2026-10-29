@@ -161,7 +161,7 @@ export const Accounts = () => {
       {/* Account Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="!p-4 text-center layered-surface">
+          <Card tier="hero" hue="emerald" className="!p-4 text-center">
             <p className="text-sm text-gray-500">{t('accounts.total_balance')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1 tabular-nums">
               {formatNative(summary.total_balance, summary.currency || displayCurrency)}
@@ -198,9 +198,21 @@ export const Accounts = () => {
                     // rather than a flat block of colour. The amount
                     // uses tabular figures so a column of balances
                     // lines up and can be compared down the page.
+                    // The hue says what kind of account this is, so a
+                    // column of accounts can be read by colour before
+                    // it is read by name.
                     <Card
                       key={account.id}
-                      className="!p-4 layered-surface layered-surface--interactive"
+                      tier="tile"
+                      hover
+                      hue={
+                        type === 'bank' ? 'sky' :
+                        type === 'cash' ? 'emerald' :
+                        type === 'e-wallet' ? 'violet' :
+                        type === 'credit_card' ? 'amber' :
+                        'slate'
+                      }
+                      className="!p-4"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">

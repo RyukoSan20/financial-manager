@@ -190,7 +190,7 @@ export const Debts = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4">
+        <Card tier="tile" hue="rose" className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-red-100 rounded-lg">
               <CreditCard className="w-6 h-6 text-red-600" />
@@ -202,7 +202,7 @@ export const Debts = () => {
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card tier="tile" hue="sky" className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-primary-100 rounded-lg">
               <DollarSign className="w-6 h-6 text-primary-600" />
@@ -214,7 +214,7 @@ export const Debts = () => {
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card tier="tile" hue="emerald" className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-green-100 rounded-lg">
               <CheckCircle className="w-6 h-6 text-green-600" />

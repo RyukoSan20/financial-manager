@@ -132,25 +132,25 @@ export const Budgets = () => {
       {/* Summary */}
       {budgets.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="!p-4">
+          <Card tier="tile" hue="sky" className="!p-4">
             <p className="text-sm text-gray-500">{t('budgets.total_budget')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1">
               {formatCurrency(budgets.reduce((sum, b) => sum + parseFloat(b.amount), 0))}
             </p>
           </Card>
-          <Card className="!p-4">
+          <Card tier="tile" hue="rose" className="!p-4">
             <p className="text-sm text-gray-500">{t('budgets.total_spent')}</p>
             <p className="text-xl font-bold text-danger-600 mt-1">
               {formatCurrency(budgets.reduce((sum, b) => sum + parseFloat(b.spent || 0), 0))}
             </p>
           </Card>
-          <Card className="!p-4">
+          <Card tier="tile" hue="emerald" className="!p-4">
             <p className="text-sm text-gray-500">{t('budgets.total_remaining')}</p>
             <p className="text-xl font-bold text-success-600 mt-1">
               {formatCurrency(budgets.reduce((sum, b) => sum + (parseFloat(b.amount) - parseFloat(b.spent || 0)), 0))}
             </p>
           </Card>
-          <Card className="!p-4">
+          <Card tier="tile" hue="violet" className="!p-4">
             <p className="text-sm text-gray-500">{t('budgets.avg_utilization')}</p>
             <p className="text-xl font-bold text-gray-900 mt-1">
               {Math.round(budgets.reduce((sum, b) => sum + (parseFloat(b.spent || 0) / parseFloat(b.amount) * 100), 0) / budgets.length)}%

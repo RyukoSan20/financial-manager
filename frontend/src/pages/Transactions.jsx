@@ -482,7 +482,7 @@ export const Transactions = () => {
                         isHighlighted
                           ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900'
                           : ''
-                      }`}
+                      } aurora-row`}
                       onClick={() => hasItems && setExpandedTxId(isExpanded ? null : tx.id)}
                     >
                       <div className="flex items-center justify-between">

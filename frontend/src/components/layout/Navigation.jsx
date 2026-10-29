@@ -41,6 +41,7 @@ import { showNotification } from '../notifications/NotificationHelper';
 import AddTransactionPage from './AddTransactionPage';
 import { UserProfileSection } from './UserProfileSection';
 import { CurrencyBadge } from '../common/CurrencyBadge';
+import { auroraNavClass } from '../ui/AuroraCard';
 import GroupedNav, { buildNavMap, isGroupedNavOn } from './GroupedNav';
 
 // The icons by the name the grouped view uses them under.
@@ -117,16 +118,12 @@ const Sidebar = () => {
             <Link
               key={item.name}
               to={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
-                isActive
-                  ? 'bg-primary-50 text-primary-600 font-medium shadow-sm dark:bg-primary-900/30 dark:text-primary-400'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
-              }`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${auroraNavClass({ active: isActive })}`}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
               <span className="text-sm">{item.name}</span>
               {isActive && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary-500" />
+                <div className="aurora-active-dot ml-auto w-1.5 h-1.5 rounded-full bg-primary-500" />
               )}
             </Link>
           );
