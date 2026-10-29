@@ -206,7 +206,7 @@ export const LearnFromScan = ({ items, onLearned }) => {
       >
         <span className="flex items-center gap-2">
           <GraduationCap className="w-4 h-4 flex-shrink-0" />
-          Ajarkan nama produk ini ke sistem
+          {K.teach_product}
         </span>
         {open ? (
           <ChevronUp className="w-4 h-4 flex-shrink-0" />
@@ -218,8 +218,7 @@ export const LearnFromScan = ({ items, onLearned }) => {
       {open && (
         <div className="mt-3 pt-3 border-t border-current/20 space-y-2">
           <p className="text-xs opacity-80">
-            Centang nama yang benar agar scan berikutnya mengenalinya, termasuk
-            produk yang belum pernah dilihat sistem.
+            {K.teach_product_hint}
           </p>
 
           <ul className="space-y-1 max-h-40 overflow-y-auto">

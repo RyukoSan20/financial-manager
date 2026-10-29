@@ -227,6 +227,7 @@ export const batch3 = {
       best_variant: 'Varian terbaik:',
       tested_variants: 'Varian yang diuji:',
       teach_product: 'Ajarkan nama produk ini ke sistem',
+      teach_product_hint: 'Centang nama yang benar agar scan berikutnya mengenalinya, termasuk produk yang belum pernah dilihat sistem.',
     },
     ai_assistant: {
       title: 'AI Assistant',
@@ -461,6 +462,7 @@ export const batch3 = {
       best_variant: 'Best variant:',
       tested_variants: 'Variants that were tried:',
       teach_product: 'Teach the system this product name',
+      teach_product_hint: 'Tick the right name so the next scan recognises it, including products the system has not seen before.',
     },
     ai_assistant: {
       title: 'AI Assistant',
@@ -695,6 +697,7 @@ export const batch3 = {
       best_variant: '最良の候補:',
       tested_variants: '試行した候補:',
       teach_product: 'この商品名をシステムに教える',
+      teach_product_hint: '正しい名前をチェックしてください。次回のスキャンで認識されます。システムがまだ知らない商品も同様です。',
     },
     ai_assistant: {
       title: 'AIアシスタント',

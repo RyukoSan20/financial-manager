@@ -11,7 +11,7 @@ import { formatCurrency } from '../../utils/format';
 import { useTranslation } from '../../i18n';
 import { batch4 } from '../../i18n/keys_batch4';
 
-export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
+export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }) => {
   // The messages in this screen used to be written in Indonesian, so
   // a reader who picked English still read Indonesian. They are read
   // from the language the reader picked now.
@@ -54,6 +54,16 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess }) => {
       loadData();
     }
   }, [isOpen]);
+
+  // Text that came in from somewhere else, such as a QR code that was
+  // just scanned. It is put in the box so the person can read it and
+  // correct it before it is read.
+  useEffect(() => {
+    if (isOpen && initialText) {
+      setRawText(initialText);
+      setStep('input');
+    }
+  }, [isOpen, initialText]);
 
   const loadData = async () => {
     try {
