@@ -115,17 +115,20 @@ function skeletonMatch(token, categoryMap) {
 function fuzzyMatchTokens(token, categoryMap) {
   // Build flat dictionary of all terms
   const allTerms = [];
-  
+
   for (const [key, cat] of Object.entries(SEED_CATEGORIES)) {
     const weight = 0.5; // Lower weight for fuzzy matches
     for (const term of [...(cat.brand || []), ...(cat.generic || [])]) {
-      allTerms.push({ key, term, weight });
+      // The word that is looked up is the term itself. The category it
+      // belongs to travels with it, so the caller learns which
+      // category the word was matched to.
+      allTerms.push({ key: term, term, systemKey: key, weight });
     }
   }
-  
+
   const result = fuzzyMatch(token, allTerms, { minScore: 0.75 });
-  
-  if (result && categoryMap[result.systemKey]) {
+
+  if (result && result.systemKey && categoryMap[result.systemKey]) {
     return {
       systemKey: result.systemKey,
       categoryId: categoryMap[result.systemKey],
@@ -134,7 +137,7 @@ function fuzzyMatchTokens(token, categoryMap) {
       type: 'fuzzy'
     };
   }
-  
+
   return null;
 }
 
@@ -172,22 +175,25 @@ export function suggestCategory(tokens, userHints = {}, categoryMap = {}) {
       const norm = normalizeMatch(token, userHints, categoryMap);
       if (norm && norm.categoryId) {
         addScore(categoryScores, { ...norm, score: norm.score * 0.95 }); // Slight penalty
+        found = true;
       }
     }
-    
+
     // Layer 3: Skeleton match
     if (!found) {
       const skel = skeletonMatch(token, categoryMap);
       if (skel && skel.categoryId) {
         addScore(categoryScores, skel);
+        found = true;
       }
     }
-    
+
     // Layer 4: Fuzzy match
     if (!found) {
       const fuzzy = fuzzyMatchTokens(token, categoryMap);
       if (fuzzy && fuzzy.categoryId) {
         addScore(categoryScores, fuzzy);
+        found = true;
       }
     }
   }
@@ -298,19 +304,29 @@ export function buildCategoryMap(categories = []) {
  * Returns updated hints
  */
 export function learnFromCorrection(hints, token, correctSystemKey, wrongSystemKey = null) {
-  const updated = { ...hints };
-  
-  if (!updated[token]) updated[token] = {};
-  if (!updated[token][correctSystemKey]) updated[token][correctSystemKey] = { hits: 0 };
-  
+  // The hints the reader already taught are not changed. A copy is
+  // made of the one token that is being corrected, so a correction
+  // that is taken back does not leave the app remembering it.
+  const updated = {
+    ...hints,
+    [token]: { ...(hints[token] || {}) },
+  };
+
+  // The entry for the correct category is copied too, so the count
+  // that is added here does not land in the hints the reader taught.
+  updated[token][correctSystemKey] = {
+    ...(updated[token][correctSystemKey] || { hits: 0 }),
+  };
+
   // Add 2 for correction (more valuable than confirmation)
   updated[token][correctSystemKey].hits += 2;
-  
+
   // Penalize wrong suggestion if provided
   if (wrongSystemKey && updated[token][wrongSystemKey]) {
+    updated[token][wrongSystemKey] = { ...updated[token][wrongSystemKey] };
     updated[token][wrongSystemKey].hits = Math.max(0, updated[token][wrongSystemKey].hits - 1);
   }
-  
+
   return updated;
 }
 

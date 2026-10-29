@@ -97,6 +97,13 @@ export function similarityScore(str1, str2) {
 /**
  * Fuzzy match a token against a dictionary
  * Returns match with score and match type
+ *
+ * The dictionary is a list of entries. An entry carries the word that
+ * is looked up in `key` (and, for a caller that shows it, in `word`),
+ * and may carry a `systemKey` naming the thing the word belongs to.
+ * The systemKey is passed back on the result, so a caller that looks
+ * a token up in a dictionary of categories learns which category the
+ * word belongs to.
  */
 export function fuzzyMatch(token, dictionary, options = {}) {
   const {
@@ -104,55 +111,56 @@ export function fuzzyMatch(token, dictionary, options = {}) {
     maxEdits = 2,         // Max edit distance for short words
     checkSkeleton = true,  // Also check skeleton matching
   } = options;
-  
+
   let bestMatch = null;
-  
+
   for (const entry of dictionary) {
-    const dictWord = entry.word || entry;
+    const dictWord = entry.word || entry.term || entry;
     const dictKey = entry.key || dictWord;
-    
+    const systemKey = entry.systemKey;
+
     // 1. Exact match
     if (token === dictKey) {
-      return { word: dictWord, key: dictKey, score: 1.0, type: 'exact' };
+      return { word: dictWord, key: dictKey, systemKey, score: 1.0, type: 'exact' };
     }
-    
+
     // 2. Case-insensitive exact
     if (token.toLowerCase() === dictKey.toLowerCase()) {
-      return { word: dictWord, key: dictKey, score: 0.95, type: 'exact-case' };
+      return { word: dictWord, key: dictKey, systemKey, score: 0.95, type: 'exact-case' };
     }
-    
+
     // 3. Contains (token contains dict or vice versa)
     if (token.includes(dictKey) || dictKey.includes(token)) {
       const overlap = Math.min(token.length, dictKey.length) / Math.max(token.length, dictKey.length);
       if (overlap > 0.8) {
-        return { word: dictWord, key: dictKey, score: 0.85, type: 'contains' };
+        return { word: dictWord, key: dictKey, systemKey, score: 0.85, type: 'contains' };
       }
     }
-    
+
     // 4. Skeleton match
     if (checkSkeleton) {
       const tokenSkeleton = buildSkeleton(token);
       const dictSkeleton = buildSkeleton(dictKey);
-      
+
       if (tokenSkeleton === dictSkeleton && tokenSkeleton.length >= 3) {
-        return { word: dictWord, key: dictKey, score: 0.8, type: 'skeleton' };
+        return { word: dictWord, key: dictKey, systemKey, score: 0.8, type: 'skeleton' };
       }
     }
-    
+
     // 5. Edit distance (for short words)
     const editDist = damerauDistance(token, dictKey);
     const maxAllowedEdits = Math.max(maxEdits, Math.floor(dictKey.length * 0.3)); // 30% tolerance
-    
+
     if (editDist <= maxAllowedEdits) {
       const score = 1 - (editDist / Math.max(token.length, dictKey.length));
       if (score >= minScore) {
         if (!bestMatch || score > bestMatch.score) {
-          bestMatch = { word: dictWord, key: dictKey, score, type: 'fuzzy', edits: editDist };
+          bestMatch = { word: dictWord, key: dictKey, systemKey, score, type: 'fuzzy', edits: editDist };
         }
       }
     }
   }
-  
+
   return bestMatch;
 }
 

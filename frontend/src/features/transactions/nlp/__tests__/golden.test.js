@@ -58,9 +58,13 @@ function runTests() {
               { id: 3, name: 'Pendapatan', system_key: 'income' },
             ]
           });
-          
+
+          // A case that says what it expects is checked on that
+          // alone. A case that says nothing about the type is not
+          // failed for having the wrong type.
+          success = true;
           if (tc.expectedType) {
-            success = result.type === tc.expectedType;
+            success = success && result.type === tc.expectedType;
           }
           if (tc.expectedAmount) {
             success = success && result.amount === tc.expectedAmount;
@@ -86,8 +90,19 @@ function runTests() {
     }
   }
   
+  // The results are printed above, so that a person can see what the
+  // parser made of each phrase. The checks below are the ones that
+  // decide whether the run passed.
   console.log(`\n📊 Results: ${passed} passed, ${failed} failed`);
   return failed === 0;
+}
+
+// The run is started here, so that the file checks the parser when it
+// is run and not only when a person reads it. A failure ends the run
+// with a non-zero code, so a script that calls this file cannot
+// mistake a broken parser for a working one.
+if (!runTests()) {
+  process.exit(1);
 }
 
 // Quick validation tests
