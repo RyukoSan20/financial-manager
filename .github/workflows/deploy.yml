@@ -70,6 +70,12 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_URL: https://my-financial-manager.online/api
+          # The aurora layer: the shape language with a few tiers
+          # (hero, tile, panel, row) instead of one shape for every
+          # card. Off in the repository by default, on in the build
+          # that is deployed. Removing this line puts the old shapes
+          # back.
+          VITE_UI_AURORA: '1'
         run: |
           npm ci
           npm run build
