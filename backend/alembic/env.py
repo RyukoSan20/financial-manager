@@ -16,8 +16,14 @@ settings = get_settings()
 # this is the Alembic Config object
 config = context.config
 
-# Set database URL from environment
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Set database URL from environment.
+#
+# The URL that is already in the config wins, if there is one. A test
+# that says "run this migration against a database of my own" has to
+# get the database it asked for, and not the one the environment
+# happens to point at.
+if not config.get_main_option("sqlalchemy.url", None):
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:
