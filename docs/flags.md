@@ -15,6 +15,7 @@ of the build, so every part of the bundle agrees about them.
 | Flag | Default | Batch | What it changes |
 |---|---|---|---|
 | `VITE_UI_POLISH` | OFF | A2 | The tidied-up page headers (`PageHeader`) and the single icon family in place of emoji. Also gates the A7 insights panel and the A7 privacy page. Absent or `"0"` is off; `"1"` is on. |
+| `VITE_UI_MONEY` | OFF | A9 | The money layer: the feel. Glass surfaces for the things that float (the balance header, the bottom navigation, a sheet), a dashboard laid out as a bento grid so the balance is the wide end of the row and the three metrics beside it are tiles, a card that leans towards the pointer, a budget that fills like a liquid, a floating button that breathes, and a line of light that goes down a receipt while it is being read. The motion answers a gesture; nothing moves on its own except the one thing that is meant to be alive, and a reader who has asked for less movement gets none of it. Absent or `"0"` is off; `"1"` is on. |
 | `VITE_UI_AURORA` | OFF | A8 | The aurora layer: the shape language with a few tiers - `hero`, `tile`, `panel`, `row` - instead of one shape for every card on the page. A tile carries a hue that says what its number means (money in is teal, money out is rose, a total is emerald); a hero is the one number a page is about. The reader's chosen accent still draws the buttons and the active tab. Absent or `"0"` is off; `"1"` is on. |
 
 ## Reader switches

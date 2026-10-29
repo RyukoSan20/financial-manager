@@ -14,6 +14,9 @@ import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { cleanNumber } from '../utils/idFormat';
 import AnimatedNumber from '../components/common/AnimatedNumber';
 import { AuroraCard, auroraIsOn } from '../components/ui/AuroraCard';
+import BentoGrid, { BentoItem } from '../components/dashboard/BentoGrid';
+import BalanceHero from '../components/dashboard/BalanceHero';
+import { moneyLayerOn } from '../utils/animation';
 import { useCurrency } from '../utils/currency';
 import api, { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../config/url';
@@ -955,7 +958,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           on it. `auto-fit` fits as many cards as there is room for, each
           at least 240px wide, so the cards stay readable and the
           fourth one wraps to the next row when there is no room. */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+      <BentoGrid>
         {[
           {
             label: t('dashboard.total_balance'),
@@ -1026,14 +1029,17 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             // card cannot be the container itself: a card that is a
             // container cannot paint its own background image, so the
             // gradient would disappear.
-            <div
+            <BentoItem
               key={i}
+              span={isHero ? 'half' : 'normal'}
               className={`summary-amount-measure ${isHero ? 'col-span-full' : ''}`}
             >
             <AuroraCard
               tier={isHero ? 'hero' : 'tile'}
               hue={isHero ? 'emerald' : card.hue}
               className={`summary-amount p-4 ${
+                isHero && moneyLayerOn() ? 'money-balance money-glass' : ''
+              } ${
                 // The old gradient is a Tailwind background-image, and
                 // the aurora tile draws its own. Two background-images
                 // on one element do not stack - the later one wins -
@@ -1094,10 +1100,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                 </div>
               </div>
             </AuroraCard>
-            </div>
+            </BentoItem>
           );
         })}
-      </div>
+      </BentoGrid>
 
       {/* ================================================================ */}
       {/* ADVANCED: Budget & Safe-to-Spend */}

@@ -563,6 +563,13 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
               className="w-full max-h-64 object-contain"
               style={{ transform: `rotate(${rotation}deg)` }}
             />
+
+            {/* The line of light that goes down the receipt while it
+                is being read. It is the one thing in the
+                application that is meant to look like it is
+                working, so it is the one thing that is allowed to
+                move on its own. */}
+            {loading && <div className="money-scan-line" />}
             
             {/* Controls */}
             <div className="absolute top-2 right-2 flex gap-2">

@@ -1,0 +1,642 @@
+/*
+ * The money layer.
+ *
+ * Aurora gave the page a shape language. This layer gives it a feel:
+ * surfaces that catch the light, a balance that moves when it changes,
+ * a progress bar that fills like a liquid, a card that leans towards
+ * the pointer, and a floating button that breathes.
+ *
+ * The rules this layer follows are the ones the motion layer already
+ * set, because they are the rules that keep a finance application
+ * readable:
+ *
+ * - the motion answers a gesture. Nothing moves on its own except
+ *   the one thing that is meant to be alive.
+ * - a number that changes counts to its new value instead of jumping.
+ * - the durations are 120-260ms. A longer movement is a performance,
+ *   and the reader is waiting for it.
+ * - every animation respects `prefers-reduced-motion`.
+ * - nothing animates `width`, `height`, `top` or `left`.
+ *
+ * It sits on top of the aurora layer and is off by default, behind
+ * the `VITE_UI_MONEY` build switch. With the switch off, none of
+ * these rules match anything and the page is exactly as it was.
+ */
+
+/* ---------------------------------------------------------------------------
+   The tokens
+
+   The durations and the easing are the ones the motion layer already
+   defined. Reusing them is the point: a movement in this layer
+   settles the same way a movement anywhere else in the application
+   settles, so the page feels like one thing.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] {
+  --money-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --money-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --money-press: 150ms;
+  --money-settle: 240ms;
+  --money-slow: 900ms;
+
+  /* How much the glass is blurred, and how much of what is behind it
+     comes through. On a phone the blur is smaller, because a large
+     blur over a small screen costs more than it gives. */
+  --money-blur: 18px;
+  --money-glass-tint: rgba(255, 255, 255, 0.62);
+  --money-glass-edge: rgba(255, 255, 255, 0.75);
+
+  /* The light that catches the top edge of a glass surface. */
+  --money-sheen: rgba(255, 255, 255, 0.55);
+}
+
+@media (max-width: 640px) {
+  [data-ui-money="on"] {
+    --money-blur: 12px;
+  }
+}
+
+.dark[data-ui-money="on"] {
+  --money-glass-tint: rgba(17, 24, 39, 0.62);
+  --money-glass-edge: rgba(255, 255, 255, 0.09);
+  --money-sheen: rgba(255, 255, 255, 0.14);
+}
+
+/* ---------------------------------------------------------------------------
+   The bento grid
+
+   The dashboard was a stack of equal rows. A bento grid lets the
+   important things be big and lets the rest fit in around them, so
+   the eye is told which is which without anything having to shout.
+
+   Four columns on a wide screen, two on a tablet, one on a phone.
+   The spans are named in the component's own vocabulary so the same
+   item reads the same way on every page.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .fm-bento {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+[data-ui-money="on"] .fm-bento-item {
+  grid-column: span 1 / span 1;
+  min-width: 0;
+}
+
+/* The spans are sixths, so the balance can be three sixths and the
+   three tiles that follow can be one sixth each: one row, filled
+   exactly, with the balance as the wide end of it. */
+[data-ui-money="on"] .fm-span-half {
+  grid-column: span 3 / span 3;
+}
+
+[data-ui-money="on"] .fm-span-third {
+  grid-column: span 2 / span 2;
+}
+
+[data-ui-money="on"] .fm-span-two-thirds {
+  grid-column: span 4 / span 4;
+}
+
+[data-ui-money="on"] .fm-span-full {
+  grid-column: 1 / -1;
+}
+
+[data-ui-money="on"] .fm-span-tall {
+  grid-row: span 2 / span 2;
+}
+
+@media (max-width: 1023px) {
+  [data-ui-money="on"] .fm-bento {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  [data-ui-money="on"] .fm-span-two-thirds {
+    grid-column: span 2 / span 2;
+  }
+
+  [data-ui-money="on"] .fm-span-full {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 639px) {
+  [data-ui-money="on"] .fm-bento {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-ui-money="on"] .fm-span-half,
+  [data-ui-money="on"] .fm-span-third,
+  [data-ui-money="on"] .fm-span-two-thirds,
+  [data-ui-money="on"] .fm-span-full {
+    grid-column: 1 / -1;
+  }
+
+  /* The height of a tall cell means nothing on one column, where
+     there is no row to span into. */
+  [data-ui-money="on"] .fm-span-tall {
+    grid-row: auto;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The glass surface
+
+   A surface that takes a faint impression of what is behind it. It
+   is used for the things that float - the navigation bar, the
+   balance header, a modal - and not for the content itself, because
+   text on glass is harder to read than text on a flat surface.
+
+   The blur is real, so the layer needs the browser to composite it
+   once rather than on every frame of an animation.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .money-glass {
+  background-color: var(--money-glass-tint);
+  -webkit-backdrop-filter: blur(var(--money-blur)) saturate(150%);
+  backdrop-filter: blur(var(--money-blur)) saturate(150%);
+  border: 1px solid var(--money-glass-edge);
+  box-shadow:
+    0 1px 0 0 var(--money-sheen) inset,
+    0 8px 24px -12px rgba(15, 23, 42, 0.28);
+}
+
+.dark[data-ui-money="on"] .money-glass {
+  box-shadow:
+    0 1px 0 0 var(--money-sheen) inset,
+    0 10px 30px -14px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------------------------------------------------------------------------
+   The balance header
+
+   The one place the glass is used for a number, because the balance
+   is the number a reader came for. It is large, and it counts.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .money-balance {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/*
+ * The light that moves across the surface. It is a sheen - a wide,
+ * very soft band of light that sits at the top of the card and
+ * fades down. It does not travel. A travelling sheen is a
+ * performance, and the balance is not a performance.
+ */
+[data-ui-money="on"] .money-balance::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 62%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0.06) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dark[data-ui-money="on"] .money-balance::after {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.02) 55%,
+    transparent 100%
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   The tilt card
+
+   A card that leans towards the pointer. It is the account card: the
+   thing a reader wants to pick up and look at, rather than a number
+   to scan.
+
+   The lean is done by the pointer, in JavaScript, because CSS cannot
+   know where the pointer is. The CSS owns the parts that do not need
+   the pointer: how it settles back, and how it looks when it is
+   leaning.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .money-tilt {
+  transform-style: preserve-3d;
+  transition: transform var(--money-settle) var(--money-ease);
+  will-change: transform;
+}
+
+[data-ui-money="on"] .money-tilt:hover {
+  --money-tilt-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.34);
+}
+
+/*
+ * The glow that follows the pointer. It is a radial gradient whose
+ * position is written by the pointer handler, so it sits where the
+ * reader's finger is.
+ */
+[data-ui-money="on"] .money-tilt {
+  --money-glow-x: 50%;
+  --money-glow-y: 50%;
+}
+
+[data-ui-money="on"] .money-tilt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    18rem circle at var(--money-glow-x) var(--money-glow-y),
+    rgba(255, 255, 255, 0.42),
+    transparent 62%
+  );
+  opacity: 0;
+  transition: opacity var(--money-settle) var(--money-ease);
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-ui-money="on"] .money-tilt:hover::before {
+  opacity: 1;
+}
+
+.dark[data-ui-money="on"] .money-tilt::before {
+  background: radial-gradient(
+    18rem circle at var(--money-glow-x) var(--money-glow-y),
+    rgba(255, 255, 255, 0.14),
+    transparent 62%
+  );
+}
+
+/* The content of a leaning card is lifted a little further than the
+   card itself, which is what gives the depth. */
+[data-ui-money="on"] .money-tilt-content {
+  transform: translateZ(28px);
+  transition: transform var(--money-settle) var(--money-ease);
+}
+
+/* ---------------------------------------------------------------------------
+   The liquid fill
+
+   A progress bar that fills like a liquid rather than sliding like a
+   block. The surface of the liquid is a band that moves.
+
+   The fill is drawn with a pseudo-element on the bar, so the width
+   of the bar is never animated - only the position of the wave
+   inside it. That keeps the animation off the layout path.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .money-liquid {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+[data-ui-money="on"] .money-liquid-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--money-liquid-colour, rgb(16 185 129));
+  transition: width var(--money-slow) var(--money-ease);
+  /* The wave inside is wider than the fill, so the fill clips it.
+     Without this the wave spreads over whatever is behind it. */
+  overflow: hidden;
+}
+
+/*
+ * The wave. Two bands of the same colour, one shifted a little to
+   the right of the other, moving in opposite directions, so the
+   surface never looks like it is sliding as a whole.
+ */
+[data-ui-money="on"] .money-liquid-fill::before,
+[data-ui-money="on"] .money-liquid-fill::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  left: 0;
+  width: 200%;
+  background: inherit;
+  border-radius: 44% 46% 48% 42%;
+}
+
+[data-ui-money="on"] .money-liquid-fill::before {
+  animation: money-wave 3.4s linear infinite;
+  opacity: 0.5;
+}
+
+[data-ui-money="on"] .money-liquid-fill::after {
+  animation: money-wave 4.6s linear infinite reverse;
+  opacity: 0.3;
+}
+
+@keyframes money-wave {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/*
+ * The highlight along the top of the liquid, so the fill has a
+   surface rather than being a flat block of colour.
+ */
+[data-ui-money="on"] .money-liquid-fill::after {
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.55);
+}
+
+/* The sheen along the top of the liquid, so the fill has a surface
+   rather than being a flat block of colour. */
+[data-ui-money="on"] .money-liquid-fill {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.34) 0%,
+    rgba(255, 255, 255, 0) 55%
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   The floating button
+
+   The one button that adds something. It breathes, slowly, because
+   it is the one thing on a phone screen that is meant to be
+   reachable.
+
+   The pulse is a ring that grows and fades. It does not scale the
+   button, because a button that grows and shrinks under the finger
+   is harder to hit.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .money-fab {
+  position: relative;
+  isolation: isolate;
+}
+
+[data-ui-money="on"] .money-fab::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  background: var(--money-fab-colour, rgb(16 185 129));
+  opacity: 0;
+  z-index: -1;
+  animation: money-pulse 2.8s var(--money-ease-in-out) infinite;
+}
+
+@keyframes money-pulse {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.45;
+  }
+  70% {
+    transform: scale(1.22);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.22);
+    opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The morph
+
+   A button that opens a sheet does not swap one thing for another.
+   It turns into the thing it opens. The icon rotates and the label
+   appears, and the button's own padding is what changes.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .money-morph {
+  transition:
+    padding var(--money-settle) var(--money-ease),
+    border-radius var(--money-settle) var(--money-ease),
+    background-color var(--money-settle) var(--money-ease);
+}
+
+[data-ui-money="on"] .money-morph-icon {
+  transition: transform var(--money-settle) var(--money-ease);
+}
+
+[data-ui-money="on"] .money-morph[data-open="true"] .money-morph-icon {
+  transform: rotate(135deg);
+}
+
+/* ---------------------------------------------------------------------------
+   The bottom navigation
+
+   The bar floats above the page rather than being a strip of colour
+   at the bottom of the screen. It is glass, and it is a little
+   narrower than the screen, so the page shows through on either
+   side of it.
+
+   The active tab is marked by a dot that moves, not by a colour
+   change: the colour is the reader's accent and stays the same, and
+   the dot says which one is current.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .money-bottom-nav {
+  border-radius: 22px 22px 0 0;
+  border-left: 1px solid var(--money-glass-edge);
+  border-right: 1px solid var(--money-glass-edge);
+  border-top: 1px solid var(--money-glass-edge);
+}
+
+[data-ui-money="on"] .money-bottom-nav-item {
+  position: relative;
+  transition:
+    transform var(--money-press) var(--money-ease),
+    color var(--money-press) var(--money-ease);
+}
+
+[data-ui-money="on"] .money-bottom-nav-item:active {
+  transform: scale(0.92);
+}
+
+[data-ui-money="on"] .money-bottom-nav-dot {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity var(--money-settle) var(--money-ease),
+    transform var(--money-settle) var(--money-ease);
+}
+
+[data-ui-money="on"] .money-bottom-nav-item[data-active="true"] .money-bottom-nav-dot {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ---------------------------------------------------------------------------
+   The spring modal
+
+   A sheet that arrives with a spring rather than a slide. The
+   overshoot is small - about 3% - because a large one reads as a
+   toy rather than as an application.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .money-sheet {
+  animation: money-sheet-in var(--money-settle) var(--money-ease) both;
+}
+
+@keyframes money-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+[data-ui-money="on"] .money-sheet-backdrop {
+  animation: money-fade-in var(--money-press) var(--money-ease) both;
+}
+
+@keyframes money-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The scan line
+
+   The receipt scanner draws a line of light down the receipt. It is
+   the one thing in the application that is meant to look like it is
+   working, so it is the one thing that is allowed to move on its
+   own.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .money-scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--scheme-500-rgb, 16 185 129) / 0.9),
+    transparent
+  );
+  box-shadow: 0 0 14px rgb(var(--scheme-500-rgb, 16 185 129) / 0.55);
+  animation: money-scan 2.1s var(--money-ease-in-out) infinite;
+  pointer-events: none;
+}
+
+@keyframes money-scan {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(240px);
+    opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The list
+
+   A list that reorders does so with a move rather than a jump. The
+   rows get a short lift as they arrive, staggered, so a page of
+   numbers reads as a list rather than as a stack.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .money-list-row {
+  animation: money-row-in var(--money-settle) var(--money-ease) both;
+  animation-delay: calc(var(--money-row-index, 0) * 24ms);
+}
+
+@keyframes money-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The settle
+
+   A number that has just changed gets a moment of emphasis, so the
+   reader notices that it moved without the number itself moving.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .money-flash {
+  animation: money-flash var(--money-slow) var(--money-ease) 1;
+}
+
+@keyframes money-flash {
+  0% {
+    background-color: rgb(var(--scheme-500-rgb, 16 185 129) / 0.16);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Respecting the reader
+
+   A reader who has asked the system for less movement gets none of
+   it. This is the system setting, so it is checked here. Everything
+   in this layer is CSS, so one guard covers all of it.
+   ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ui-money="on"] .money-fab::before,
+  [data-ui-money="on"] .money-liquid-fill::before,
+  [data-ui-money="on"] .money-liquid-fill::after,
+  [data-ui-money="on"] .money-scan-line,
+  [data-ui-money="on"] .money-list-row,
+  [data-ui-money="on"] .money-sheet,
+  [data-ui-money="on"] .money-sheet-backdrop,
+  [data-ui-money="on"] .money-flash {
+    animation: none !important;
+  }
+
+  [data-ui-money="on"] .money-tilt,
+  [data-ui-money="on"] .money-tilt-content,
+  [data-ui-money="on"] .money-bottom-nav-item,
+  [data-ui-money="on"] .money-morph,
+  [data-ui-money="on"] .money-morph-icon,
+  [data-ui-money="on"] .money-bottom-nav-dot {
+    transition: none !important;
+  }
+
+  [data-ui-money="on"] .money-tilt:hover {
+    transform: none !important;
+  }
+
+  [data-ui-money="on"] .money-bottom-nav-item:active {
+    transform: none !important;
+  }
+}

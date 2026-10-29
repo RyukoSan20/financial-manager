@@ -34,6 +34,12 @@ const BUILD_FLAGS = {
    * page. Off by default.
    */
   UI_AURORA: 'VITE_UI_AURORA',
+  /**
+   * The money layer: the feel. Glass surfaces, a balance that
+   * counts, a card that leans towards the pointer, a liquid fill, a
+   * floating button that breathes. Off by default.
+   */
+  UI_MONEY: 'VITE_UI_MONEY',
 };
 
 /**

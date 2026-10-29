@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, Badge, Spinner } from '../components/ui';
+import TiltCard from '../components/ui/TiltCard';
+import { moneyLayerOn } from '../utils/animation';
 import HonestEmptyState from '../components/common/HonestEmptyState';
 import { Plus, Wallet, Banknote, CreditCard, Smartphone, RefreshCw, Trash2, Edit2, PiggyBank } from 'lucide-react';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
@@ -201,8 +203,14 @@ export const Accounts = () => {
                     // The hue says what kind of account this is, so a
                     // column of accounts can be read by colour before
                     // it is read by name.
+                    // The account card is the thing a reader wants to
+                    // pick up and look at, rather than a number to
+                    // scan, so it leans towards the pointer. The lean
+                    // is at most five degrees, and it does not happen
+                    // at all for a reader who has asked for less
+                    // movement.
+                    <TiltCard key={account.id} className="rounded-2xl">
                     <Card
-                      key={account.id}
                       tier="tile"
                       hover
                       hue={
@@ -212,7 +220,7 @@ export const Accounts = () => {
                         type === 'credit_card' ? 'amber' :
                         'slate'
                       }
-                      className="!p-4"
+                      className="!p-4 h-full"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -271,6 +279,7 @@ export const Accounts = () => {
                         </div>
                       </div>
                     </Card>
+                    </TiltCard>
                   ))}
                 </div>
               </div>

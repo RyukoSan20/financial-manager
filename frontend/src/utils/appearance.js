@@ -410,6 +410,12 @@ export function applyAppearance(appearance = {}) {
   // The aurora layer. The shape language with a few tiers, so a page
   // of cards reads as a set of pieces of different importance rather
   // than a set of copies. It is off unless the build turned it on.
+  if (buildFlag('UI_MONEY')) {
+    root.setAttribute('data-ui-money', 'on');
+  } else {
+    root.removeAttribute('data-ui-money');
+  }
+
   if (buildFlag('UI_AURORA')) {
     root.setAttribute('data-ui-aurora', 'on');
   } else {

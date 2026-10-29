@@ -397,7 +397,7 @@ export const Transactions = () => {
             <div key={date}>
               <p className="text-sm font-medium text-gray-500 mb-2 px-1">{formatDate(date, 'full')}</p>
               <div className="space-y-2">
-                {txs.map((tx) => {
+                {txs.map((tx, index) => {
                   const account = accounts.find(a => a.id === tx.account_id);
                   const category = categories.find(c => c.id === tx.category_id);
                   const isEditing = editingTx === tx.id;
@@ -482,7 +482,8 @@ export const Transactions = () => {
                         isHighlighted
                           ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900'
                           : ''
-                      } aurora-row`}
+                      } aurora-row money-list-row`}
+                      style={{ '--money-row-index': Math.min(index, 12) }}
                       onClick={() => hasItems && setExpandedTxId(isExpanded ? null : tx.id)}
                     >
                       <div className="flex items-center justify-between">

@@ -42,6 +42,7 @@ import AddTransactionPage from './AddTransactionPage';
 import { UserProfileSection } from './UserProfileSection';
 import { CurrencyBadge } from '../common/CurrencyBadge';
 import { auroraNavClass } from '../ui/AuroraCard';
+import { moneyLayerOn } from '../../utils/animation';
 import GroupedNav, { buildNavMap, isGroupedNavOn } from './GroupedNav';
 
 // The icons by the name the grouped view uses them under.
@@ -328,7 +329,11 @@ const BottomNav = ({ pendingScanResult }) => {
 
   return (
     <>
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 safe-area-bottom dark:bg-gray-900 dark:border-gray-800">
+      <nav
+        className={`lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 safe-area-bottom dark:bg-gray-900 dark:border-gray-800 ${
+          moneyLayerOn() ? 'money-bottom-nav money-glass' : ''
+        }`}
+      >
         <div className="flex items-center justify-around h-full px-2">
           {items.map((item) => {
             const isActive = location.pathname === item.href;
@@ -374,19 +379,21 @@ const BottomNav = ({ pendingScanResult }) => {
               );
             }
             
+            // The dot marks the current tab rather than the colour.
+            // The colour is the reader's accent and it stays the
+            // same; the dot says which one is current.
             return (
               <Link
                 key={item.name}
                 to={item.href}
-                className={`flex flex-col items-center justify-center w-16 h-full touch-manipulation transition-colors ${
+                data-active={isActive ? 'true' : 'false'}
+                className={`flex flex-col items-center justify-center w-16 h-full touch-manipulation transition-colors money-bottom-nav-item ${
                   isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                 }`}
               >
                 <item.icon className="w-6 h-6" />
                 <span className="text-[10px] mt-1 font-medium">{item.name}</span>
-                {isActive && (
-                  <div className="absolute bottom-1 w-1 h-1 rounded-full bg-primary-500" />
-                )}
+                <span className="money-bottom-nav-dot" />
               </Link>
             );
           })}
