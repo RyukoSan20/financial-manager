@@ -75,7 +75,12 @@ for test_file in \
   src/utils/__tests__/scanManager.test.js \
   src/utils/__tests__/healthMetrics.test.js \
   src/utils/__tests__/gmailState.test.js \
-  src/data/__tests__/privacyManifest.test.js
+  src/data/__tests__/privacyManifest.test.js \
+  src/features/transactions/nlp/__tests__/quickEntry.test.js \
+  src/features/transactions/nlp/__tests__/fuzzy.test.js \
+  src/features/transactions/nlp/__tests__/golden.test.js \
+  src/utils/__tests__/marketFormat.test.js \
+  src/pages/__tests__/marketPage.test.js
 do
   if [ ! -f "$test_file" ]; then
     echo "  SKIP $test_file (not present)"
