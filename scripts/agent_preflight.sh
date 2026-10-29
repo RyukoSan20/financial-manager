@@ -63,6 +63,7 @@ for test_file in \
   src/i18n/__tests__/terminology.test.js \
   src/i18n/__tests__/batchParity.test.js \
   src/i18n/__tests__/scriptMix.test.js \
+  src/context/__tests__/guestLogin.test.js \
   src/utils/__tests__/idFormat.test.js \
   src/utils/__tests__/featureFlags.test.js \
   src/utils/__tests__/amountInput.test.js \
