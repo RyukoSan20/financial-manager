@@ -3,6 +3,7 @@ import { STAGES, STAGE_LABEL, idr, safeUrl } from '../constants';
 import { categoryName } from '../../../utils/categoryName';
 import { useTranslation } from '../../../i18n';
 import { batch3 } from '../../../i18n/keys_batch3';
+import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 
 const META = Object.fromEntries(STAGES.map((s) => [s.key, s]));
 
@@ -81,6 +82,12 @@ export default function KanbanBoard({ columns, onMove, onPurchase, onDetails }) 
   const [dragId, setDragId] = useState(null);
   const [overKey, setOverKey] = useState(null);
 
+  // The item that is waiting to be cancelled, and whether the reader
+  // has said yes. The question is asked by the application, not by
+  // the browser, so it can say what is about to happen in the
+  // reader's own language.
+  const [pendingCancel, setPendingCancel] = useState(null);
+
   const dragging = useMemo(
     () => columns.flatMap((c) => c.items).find((i) => i.id === dragId) || null,
     [columns, dragId],
@@ -90,14 +97,20 @@ export default function KanbanBoard({ columns, onMove, onPurchase, onDetails }) 
     if (!target || target === item.stage || !item.allowed_next.includes(target)) return;
     if (target === 'ordered') return onPurchase(item);
     if (target === 'shipped' || target === 'received') return onDetails(item, target);
-    if (
-      target === 'cancelled' &&
-      item.transaction_id &&
-      !window.confirm('Pengeluaran yang tercatat untuk item ini akan dihapus dan saldo akun dikembalikan. Lanjutkan?')
-    ) {
+    if (target === 'cancelled' && item.transaction_id) {
+      // The question is asked by the dialog below, and the move
+      // happens when the reader says yes.
+      setPendingCancel({ item, target });
       return;
     }
     return onMove(item, target);
+  };
+
+  // The reader said yes: the item is cancelled and the recorded
+  // spending is undone.
+  const confirmCancel = () => {
+    if (pendingCancel) onMove(pendingCancel.item, pendingCancel.target);
+    setPendingCancel(null);
   };
 
   return (
@@ -159,6 +172,17 @@ export default function KanbanBoard({ columns, onMove, onPurchase, onDetails }) 
           </section>
         );
       })}
+
+      <ConfirmDialog
+        open={Boolean(pendingCancel)}
+        onConfirm={confirmCancel}
+        onCancel={() => setPendingCancel(null)}
+        titleKey="kanban.cancel_removes_expense_title"
+        messageKey="kanban.cancel_removes_expense_message"
+        confirmLabelKey="kanban.cancel_removes_expense_action"
+        cancelLabelKey="common.cancel"
+        tone="danger"
+      />
     </div>
   );
 }

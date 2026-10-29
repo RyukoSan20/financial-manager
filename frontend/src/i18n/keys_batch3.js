@@ -189,6 +189,9 @@ export const batch3 = {
       open_product: 'Buka produk',
       move_to: 'Pindahkan ke…',
       empty: 'Belum ada item.',
+      cancel_removes_expense_title: 'Batalkan pesanan ini?',
+      cancel_removes_expense_message: 'Pengeluaran yang tercatat untuk item ini akan dihapus dan saldo akun dikembalikan. Lanjutkan?',
+      cancel_removes_expense_action: 'Batalkan pesanan',
     },
     badge: {
     categories: {
@@ -424,6 +427,9 @@ export const batch3 = {
       open_product: 'Open product',
       move_to: 'Move to…',
       empty: 'No items yet.',
+      cancel_removes_expense_title: 'Cancel this order?',
+      cancel_removes_expense_message: 'The recorded spending for this item will be removed and the account balance will be returned. Continue?',
+      cancel_removes_expense_action: 'Cancel order',
     },
     badge: {
     categories: {
@@ -659,6 +665,9 @@ export const batch3 = {
       open_product: '商品を開く',
       move_to: '移動先...',
       empty: 'アイテムはまだありません。',
+      cancel_removes_expense_title: 'この注文をキャンセルしますか？',
+      cancel_removes_expense_message: 'この品目に記録された支出は削除され、口座残高が戻ります。続行しますか？',
+      cancel_removes_expense_action: '注文をキャンセル',
     },
     badge: {
     categories: {

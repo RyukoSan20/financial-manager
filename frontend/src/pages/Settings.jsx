@@ -4,6 +4,7 @@ import { Card, Button, Input, Select } from '../components/ui';
 import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut, Palette, Coins, Search, X, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import api from '../services/api';
 import { useCurrency, CURRENCIES, CURRENCY_CODES } from '../utils/currency';
 import ReadinessChecklist from '../components/ReadinessChecklist';
@@ -492,6 +493,9 @@ const DataTab = ({ logout }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  // Whether the reader has been asked whether they really want to
+  // delete everything.
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleExportJSON = async () => {
     setLoading(true);
@@ -547,12 +551,15 @@ const DataTab = ({ logout }) => {
     }
   };
 
-  const handleDelete = async () => {
-    // First confirmation
-    if (!window.confirm(t('settings.data.confirm_delete_warning'))) {
-      return;
-    }
-    
+  // The delete is two questions, not one.
+  //
+  // The first one is the dialog: the reader is told what is about to
+  // happen, in their own language, and the way out is the way in.
+  //
+  // The second one asks them to type a word. That is the one that
+  // really protects the data, because it cannot be dismissed by a
+  // stray keypress, so it stays as it was.
+  const doDelete = async () => {
     // Second confirmation with explicit action. The word to type is
     // given in the language of the page, so it is one the person can
     // actually read and copy.
@@ -606,6 +613,10 @@ const DataTab = ({ logout }) => {
     }
   };
 
+  // The first question. The reader says yes here, and then the word
+  // is asked for.
+  const handleDelete = () => setShowDeleteDialog(true);
+
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-6">{t('settings.data.title')}</h2>
@@ -643,6 +654,22 @@ const DataTab = ({ logout }) => {
           </Button>
         </div>
       </div>
+
+      {/* The first of the two questions. The second one asks for the
+          word, and stays as it was. */}
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onConfirm={() => {
+          setShowDeleteDialog(false);
+          doDelete();
+        }}
+        onCancel={() => setShowDeleteDialog(false)}
+        titleKey="common.confirm_delete_title"
+        messageKey="settings.data.confirm_delete_warning"
+        confirmLabelKey="common.confirm_delete_action"
+        cancelLabelKey="common.cancel"
+        tone="danger"
+      />
     </Card>
   );
 };

@@ -81,7 +81,8 @@ for test_file in \
   src/features/transactions/nlp/__tests__/golden.test.js \
   src/utils/__tests__/marketFormat.test.js \
   src/pages/__tests__/marketPage.test.js \
-  src/components/common/__tests__/honestEmptyState.test.js
+  src/components/common/__tests__/honestEmptyState.test.js \
+  src/components/ui/__tests__/confirmDialog.test.js
 do
   if [ ! -f "$test_file" ]; then
     echo "  SKIP $test_file (not present)"
