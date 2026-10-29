@@ -1,51 +1,26 @@
 # PROGRESS
 
-Last updated (2026-10-28T06:47:50+0700, reconcile-state session)
+Last updated (2026-10-29, anti-slop redesign session)
 
 NEXT ACTION
-Send the reconcile-state report (section 8 format) and STOP. Wait for
-the owner's choice on 3.6 (privacy manifest: restore-and-redo versus
-finish the refactor), and for approval of the next queue item (Q1).
+The redesign batch is built and the tree is green. Nothing is in
+flight. The next thing to do is the owner's review of this batch, and
+then the remaining items of the master prompt that were not reached:
+the `ConfirmDialog`, the inline amount evaluator in the quick entry,
+the nav grouping refinement, and the four A7 rows that are still
+waiting for a mini-spec.
 
 IN-FLIGHT
-Nothing. The previous session was interrupted during a privacy-manifest
-refactor. The tree is NOT red because the broken work was never
-committed: the working tree holds it as unstaged changes, and the last
-commit (1e590f4) is green.
+Nothing. The tree is clean and the preflight passes.
 
-  - Frontend file left mid-refactor, uncommitted, owned by the agent:
-      frontend/src/data/privacyManifest.js   (+400 / -40 vs HEAD)
-    What was being done: the manifest's fact text was English-only, so
-    the privacy page showed English facts on an Indonesian screen. The
-    refactor moves that text into the existing i18n mechanism.
-    State: STAYS_LOCAL converted. GOES_OUT corrupted - the agent's
-    regex wrote three entries per item instead of one entry holding a
-    three-language text block, so the file now has 30 GOES_OUT entries
-    where it should have 10. NEVER_SENT not yet converted.
-    How to continue: the owner has been asked to choose between
-    (a) restore this one file to HEAD and redo the text through the
-    existing i18n, or (b) finish the refactor. See 3.6 in the report.
+  The privacy manifest question (3.6) is RESOLVED. The file was
+  restored to its last green state and the text was moved into the
+  existing i18n through frontend/src/i18n/keys_batch8.js. The manifest
+  now holds facts only; the page holds the wording. Test: 322/322.
 
-  - Frontend uncommitted files owned by the agent, from the A6
-    transfer-sign work that was never committed:
-      backend/app/api/routes/dashboard.py
-      frontend/public/sw.js
-      frontend/src/components/common/ErrorBoundary.tsx
-      frontend/src/components/dashboard/MonthTimeline.jsx
-      frontend/src/components/layout/AddTransactionPage.jsx
-      frontend/src/components/ui/PixelBadge.jsx
-      frontend/src/features/shopping/api.js
-      frontend/src/pages/CategoryExpenses.jsx
-      frontend/src/pages/Dashboard.jsx
-      frontend/src/pages/Feed/FeedPage.jsx
-      frontend/src/pages/ProfileSummary.jsx
-      frontend/src/pages/Recurring.jsx
-      frontend/src/pages/Transactions.jsx
-      frontend/src/utils/transactionSign.js            (untracked)
-      frontend/src/utils/__tests__/transactionSign.test.js (untracked)
-    These are NOT part of the privacy manifest. They are the A6
-    transfer-sign change (a transfer is not income and not an
-    expense) plus two small fixes found alongside it.
+  The A6 transfer-sign work is COMMITTED. It was reviewed as one
+  coherent change and committed per purpose, without mixing in other
+  files. It is no longer uncommitted work.
 
 BATCH LEDGER
 
@@ -69,10 +44,27 @@ BATCH LEDGER
   A7-2  | insights panel on the dashboard | built-unapproved  | 3b0c7ce                                   | batchParity 5411/5411
   A7-3  | privacy page                    | built-unapproved  | 1e590f4                                   | privacyManifest 128/128
         |                                |                   |                                           | VITE_UI_POLISH (default OFF)
-  A7-4  | privacy manifest multilingual  | not-started        | (none)                                    | BLOCKED on owner choice 3.6
+  A7-4  | privacy manifest multilingual  | done              | fca9d1e                                   | privacyManifest 322/322
   A7-5  | A7 rows 2, 6, 21, 27, 38, 79   | not-started        | (none)                                    | needs mini-spec + approval
   A7-6  | A7 migration-backed rows        | not-started        | (none)                                    | needs ADR + approval
         |   (24, 25, 32, 33, 36, 40, 76)  |                   |                                           | migrations NOT executed
+  UI-1  | anti-slop components           | done              | bc938cb                                  | mascot + honest empty state
+        |   (mascot, empty state, motion) |                   |                                           | + motion.css, layered surface
+  UI-2  | local A/B testing               | done              | a202779                                  | abTesting 34/34
+        |                                |                   |                                           | 2 experiments, nothing sent
+  UI-3  | budget recipes + empty page     | done              | 398ec69 e90eb0b                          | budgetRecipes 48/48
+        |   (50/30/20 and three others)  |                   |                                           | + 5 pages use the empty state
+  UI-4  | route smoke test                | done              | c72edd2                                  | smoke_all_routers 8/8
+        |                                |                   |                                           | + scripts/smoke_test_routes.py
+  UI-5  | the scan notification          | done              | (earlier session)                         | scanDismissal 38/38
+  UI-6  | the charts and the analytics    | done              | (earlier session)                         | idFormat 63/63
+        |                                |                   |                                           | healthMetrics 22/22
+  UI-7  | the market page numbers         | done              | 2b289f2                                  | marketFormat 32/32
+        |                                |                   |                                           | marketPage 8/8
+  UI-8  | the hooks and the i18n of the   | done              | 7f10204 c41453c 9674dac 494725d         | preflight green
+        |   navigation                    |                   | 2e910fe 2bb84d2 5f27e85                 | backend 256 passed
+  UI-9  | the build has to be able to     | done              | e6c758c                                  | route count guard
+        |   fail                          |                   |                                           | + post-deploy smoke test
 
   Every A1-A7 batch is "built-unapproved". Nothing after Stage 0 has
   been signed off. The owner has accepted only the Stage 0 report.
@@ -171,3 +163,49 @@ SESSION LOG
   c4edc01 163) and 20 commits exceed 40 lines on a single existing
   file. All are listed in the report for the owner to accept or cut.
   STOPPED here to send the report.
+
+  2026-10-29T00:00:00+0700  Anti-slop redesign session. Picked up
+  from a green tree. Work in this session, all committed, preflight
+  green at the end:
+
+  UI-1 bc938cb: FinBuddyMascot (4 moods), HonestEmptyState, and
+    styles/motion.css. The layered card surface and the tabular
+    figures went into styles/polish.css.
+  UI-2 a202779: frontend/src/utils/abTesting.js. Two experiments,
+    exp_budget_wizard and exp_empty_state. The split is decided by a
+    hash of the reader's own key with the experiment name, so it is
+    even (987/1013 over a thousand readers) and a reader keeps the
+    same version. Nothing leaves the device.
+  UI-3 398ec69, e90eb0b: the four budget recipes (Si Seimbang
+    50/30/20, Si Pejuang Cuan 40/20/40, Si Anak Kota 60/20/20, Si
+    Pelunas 50/20/30) with the amount per day worked out from them.
+    Five pages now use the honest empty state.
+  UI-4 c72edd2: scripts/smoke_test_routes.py and
+    backend/tests/unit/test_smoke_all_routers.py. The check found
+    thirteen paths registered twice. Thirteen are on the known list,
+    with the reason for each; the market one is deliberate, the rest
+    are not, and the second registration of each is the one that is
+    never reached. That is a finding about main, not a change to it.
+  UI-7 2b289f2: the market page was writing "undefined%" and "-%"
+    where a change was missing, and the table view opened on a tab the
+    page cannot draw. Fixed through a shared formatter.
+  UI-8: seven commits of real fixes found while the tree was dirty:
+    the market page, the stale-closure hooks, the duplicate
+    notification ids, the navigation labels, the debt schedule (it is
+    an object, and it was read as an array), the amount parser, and
+    the i18n checker.
+  UI-9 e6c758c: the CI ran the backend tests with "|| echo", so a
+    failing test could not fail the build. That is how the broken
+    Gmail import reached a deployment. The tests block now. The route
+    count is written down in scripts/route_count_guard.txt and the
+    build checks it. The post-deploy smoke test now probes the
+    endpoints that need a reader and fails on a 404, which is the
+    failure that is worth catching.
+
+  Backend: 256 passed, 0 failed. Lint: 0 errors, 204 warnings.
+  Build: PASS. Preflight: PASSED.
+
+  STILL NOT DONE, from the master prompt: ConfirmDialog, the inline
+  amount evaluator in the quick entry box, the nav grouping
+  refinement, the two Recipes sliders being interactive on every
+  recipe, and the A7 rows that need a mini-spec.
