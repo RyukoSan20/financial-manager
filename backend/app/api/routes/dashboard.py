@@ -18,6 +18,7 @@ from app.models.account import Account
 from app.services.currency import converter, BASE
 from app.models.category import Category
 from app.models.user import User
+from app.services.transaction_filter import counted_transactions_filter
 
 router = APIRouter()
 
@@ -152,28 +153,50 @@ def get_month_timeline(
 async def get_dashboard_summary(
     start_date: Optional[str] = Query(default=None),
     end_date: Optional[str] = Query(default=None),
+    timeframe: Optional[str] = Query(
+        default=None,
+        description="The period to cover, as a name: 1D, 1W, 1M, 3M, YTD, 1Y, 3Y, 5Y",
+    ),
+    account_id: Optional[int] = Query(
+        default=None, description="Only this account's money"
+    ),
     currency: Optional[str] = Query(default=None, description="The currency to show the totals in"),
     current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    """Get dashboard summary data."""
+    """
+    Get dashboard summary data.
+
+    The period is the one the reader is looking at.
+
+    This used to cover thirty days whatever else was asked for, so a
+    reader who chose three months saw a chart of three months and a
+    total of one month, and the two did not agree. The timeframe the
+    chart uses is used here as well, and so is the account the reader
+    narrowed the page down to.
+    """
     from datetime import datetime
-    
-    # Parse dates or use default
-    if start_date:
+
+    # Parse dates or use the timeframe
+    if start_date and end_date:
         start = datetime.strptime(start_date, '%Y-%m-%d').date()
-    else:
+        end = datetime.strptime(end_date, '%Y-%m-%d').date()
+    elif timeframe:
+        start, end = get_date_range(timeframe)
+    elif start_date:
+        start = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end = date.today()
+    elif end_date:
         start = date.today() - timedelta(days=30)
-    
-    if end_date:
         end = datetime.strptime(end_date, '%Y-%m-%d').date()
     else:
+        start = date.today() - timedelta(days=30)
         end = date.today()
-    
+
     user_id = current_user.id if current_user else None
     
     # Get totals
-    totals = get_totals_by_date(db, start, end, user_id)
+    totals = get_totals_by_date(db, start, end, user_id, account_id)
     
     # Get category breakdown
     income_cats = get_category_breakdown_by_date(db, start, end, 'income', user_id)
@@ -224,15 +247,17 @@ async def get_dashboard_summary(
         budget_query = budget_query.filter(Budget.user_id == user_id)
     total_budget = float(budget_query.scalar() or 0)
     
-    # Calculate total spent this month
+    # The spending over the period being looked at.
     spent_query = db.query(func.sum(Transaction.amount)).filter(
         Transaction.type == 'expense',
-        Transaction.date >= first_day,
+        Transaction.date >= start,
         Transaction.date <= end,
         *counted_transactions_filter(),
     )
     if user_id:
         spent_query = spent_query.filter(Transaction.user_id == user_id)
+    if account_id:
+        spent_query = spent_query.filter(Transaction.account_id == account_id)
     total_spent = float(spent_query.scalar() or 0)
     
     return {
@@ -299,22 +324,6 @@ def get_date_range(timeframe: str) -> tuple:
     }
     
     return ranges.get(timeframe, (today - timedelta(days=90), today))
-
-
-def counted_transactions_filter():
-    """
-    The transactions that actually count towards the user's money.
-
-    A transaction only counts once it is approved. A pending transaction is
-    waiting in the Feed & Review queue and a rejected one was thrown away -
-    neither of them has moved the balance, so neither of them may show up
-    in the totals, the category breakdown or the cash flow. Soft-deleted
-    rows are excluded too.
-    """
-    return [
-        Transaction.status.in_(("approved", None, "")),
-        Transaction.is_deleted.is_(False),
-    ]
 
 
 def get_category_breakdown_by_date(

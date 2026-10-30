@@ -331,11 +331,18 @@ export const api = {
 
   // Dashboard
   dashboard: {
-    summary: (startDate, endDate, currency) => {
+    // The period and the account are given so that the totals are
+    // about the same thing the chart next to them is about. Without
+    // them the totals covered thirty days and the chart covered
+    // whatever period the reader had chosen, and the two did not
+    // agree.
+    summary: (startDate, endDate, currency, timeframe, accountId) => {
       let url = '/dashboard/summary';
       const params = [];
       if (startDate) params.push(`start_date=${startDate}`);
       if (endDate) params.push(`end_date=${endDate}`);
+      if (timeframe) params.push(`timeframe=${encodeURIComponent(timeframe)}`);
+      if (accountId && accountId !== 'all') params.push(`account_id=${encodeURIComponent(accountId)}`);
       // The totals are shown in the currency that is on display.
       if (currency) params.push(`currency=${encodeURIComponent(currency)}`);
       if (params.length) url += `?${params.join('&')}`;

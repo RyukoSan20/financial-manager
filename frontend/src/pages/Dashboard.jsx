@@ -472,7 +472,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         debtsData,
         recurringData,
       ] = await Promise.allSettled([
-        api.dashboard.summary(null, null, displayCurrency),
+        api.dashboard.summary(null, null, displayCurrency, timeframe, selectedAccount),
         api.transactions.list({ limit: 10 }),
         api.budgets?.list ? api.budgets.list() : Promise.resolve([]),
         api.accounts?.list ? api.accounts.list() : Promise.resolve([]),
@@ -518,15 +518,27 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // When that choice changes the summary has to be asked for again.
   useEffect(() => {
     if (!displayCurrency) return;
-    api.dashboard.summary(null, null, displayCurrency)
+    api.dashboard.summary(null, null, displayCurrency, timeframe, selectedAccount)
       .then((value) => setSummary(value))
       .catch(() => {});
-  }, [displayCurrency]);
+  }, [displayCurrency, timeframe, selectedAccount]);
 
   // Fetch cash flow when timeframe changes
   useEffect(() => {
     fetchCashFlow();
   }, [fetchCashFlow]);
+
+  // The four tiles above the chart have to be asked for again when
+  // the period or the account changes. They were left showing the
+  // old figures, so a reader who changed the period saw the chart
+  // move while the numbers stayed where they were.
+  useEffect(() => {
+    let cancelled = false;
+    api.dashboard.summary(null, null, displayCurrency, timeframe, selectedAccount)
+      .then((value) => { if (!cancelled) setSummary(value); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [timeframe, selectedAccount]);
 
   // ==========================================================================
   // CHART INITIALIZATION - LIGHTWEIGHT-CHARTS
