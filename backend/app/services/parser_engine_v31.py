@@ -269,6 +269,27 @@ def _split_into_words_and_numbers(text):
     return pieces
 
 
+def _is_a_product_code(piece: str) -> bool:
+    """
+    Is this a product code rather than an amount of money?
+
+    A supermarket prints the code of the product before its name, and
+    the code is a long run of digits. A price is never that long
+    without a separator in it, so a bare run of seven digits or more
+    is a code.
+
+    The codes are the numbers at the LEFT of the line, and this is
+    only ever asked about the leftmost one.
+    """
+    digits = piece.replace(".", "").replace(",", "")
+    if not digits.isdigit():
+        return False
+    if len(digits) < 7:
+        return False
+    # A price is written with a separator in it. A code is not.
+    return "." not in piece and "," not in piece
+
+
 def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     """
     Parse single-line item with RIGHT-TO-LEFT number extraction:
@@ -315,7 +336,17 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     
     # Parse numbers from RIGHT
     numbers = [parse_number_indonesia(n) for n in numeric_parts]
-    
+
+    # A supermarket prints the product's code before the name. The
+    # code is a long run of digits and it is not money.
+    #
+    # It was read as the price, so a line whose price was 103.390 was
+    # priced at 35.597.816 and the total of the receipt came out as
+    # forty-three million instead of half a million.
+    if len(numeric_parts) > 1 and _is_a_product_code(numeric_parts[0]):
+        numeric_parts = numeric_parts[1:]
+        numbers = numbers[1:]
+
     # Single number item (e.g., "PLASTIK SDG 1")
     if len(numeric_parts) == 1:
         name = " ".join(text_parts) if text_parts else "Item"
@@ -360,6 +391,12 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     # Everything left (text_parts) is the product name
     name_parts = [p for p in text_parts if len(p) > 0]
     item_name = " ".join(name_parts)
+
+    # A code that was printed as part of the name is not part of the
+    # name. "61836173 GREENFIELDS" is GREENFIELDS.
+    if name_parts and _is_a_product_code(name_parts[0]):
+        name_parts = name_parts[1:]
+        item_name = " ".join(name_parts)
     
     if total_price < 1 or not item_name:
         return None
@@ -496,6 +533,18 @@ def _numbers_in(line):
     return found
 
 
+def _is_an_item_count_line(upper: str) -> bool:
+    """
+    Is this the line that says how many items there were?
+
+    A restaurant prints "ITEMS: 8 212,733" - the count and the sum.
+    The count is not money.
+    """
+    if "ITEM" not in upper:
+        return False
+    return upper.startswith("ITEMS") or upper.startswith("ITEM ") or " ITEMS" in upper
+
+
 def find_total(lines):
     """
     Work out what the receipt came to.
@@ -523,6 +572,14 @@ def find_total(lines):
         # the reader their shopping cost three rupiah.
         if any(bad in upper for bad in NOT_A_TOTAL):
             continue
+
+        # "ITEMS: 8 212,733" holds the number of items and the sum of
+        # them, and the sum is the money. The count is the smaller of
+        # the two, so the biggest is taken.
+        if _is_an_item_count_line(upper):
+            counts = _numbers_in(cleaned)
+            if len(counts) >= 2:
+                return max(counts), index
 
         if not any(good in upper for good in TOTAL_LABELS):
             continue

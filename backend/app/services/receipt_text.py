@@ -39,11 +39,18 @@ from typing import Any, List
 # Reading "4 4500" as one number gave the item a price of 4.450
 # instead of a quantity of 4 and a price of 4.500, and the reader was
 # told the wrong amount.
-_SPACED_NUMBER = re.compile(r'(\d{1,3})[.,]?\s+(\d{3}(?:\s+\d{3})*)(?!\d)')
+# A thousands group is exactly three digits, and it is not
+# followed by a comma or a dot - that punctuation belongs to the
+# number after it. "ITEMS: 8 212,733" is a count of eight and a
+# sum of 212.733, and joining them gave 8.212.733.
+_SPACED_NUMBER = re.compile(r'(\d{1,3})[.,]?\s+(\d{3}(?:\s+\d{3})*)(?![\d,])')
 
 # A number with the printer's grid still in it: "33 900 00". The same
 # shape as above, but the group after the first may repeat.
-_SPACED_NUMBER_REPEATED = re.compile(r'(\d{1,3})\s+((?:\d{3}\s+)*\d{3})(?!\d)')
+# A thousands group is three digits and it is not followed by a
+# comma, because the comma belongs to the number after it.
+# "ITEMS: 8 212,733" is a count of eight and a sum of 212.733.
+_SPACED_NUMBER_REPEATED = re.compile(r'(\d{1,3})\s+((?:\d{3}\s+)*\d{3})(?![\d,])')
 
 
 def normalize_spaced_amounts(text: str) -> str:

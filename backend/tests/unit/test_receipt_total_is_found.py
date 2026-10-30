@@ -200,3 +200,37 @@ def test_a_dot_that_is_not_a_thousands_group_is_the_decimal_point():
 
     assert parse_number_indonesia("35.200") == 35200
     assert parse_number_indonesia("12.50") == 12.5
+
+
+# ---------------------------------------------------------------------------
+# A product code is not a price
+# ---------------------------------------------------------------------------
+
+
+def test_a_long_product_code_is_not_the_price():
+    """
+    A supermarket prints the product's code before the name. The code
+    is eight digits long and it is not money.
+
+    Reading it as the price put 35.597.816 rupiah into a line whose
+    price was 103.390, and the total came out as forty-three million
+    instead of half a million.
+    """
+    from app.services.parser_engine_v31 import parse_single_line_item
+
+    item = parse_single_line_item("35597816 TSSUNFLOKEFBTL 5M 103,390")
+
+    assert item is not None
+    assert item["total_price"] == 103390
+    assert item["price_per_unit"] != 35597816
+
+
+def test_a_long_product_code_is_not_the_name_either():
+    """The code is not part of what the item is called."""
+    from app.services.parser_engine_v31 import parse_single_line_item
+
+    item = parse_single_line_item("61836173 GREENFIELDS 45,990")
+
+    assert item is not None
+    assert "61836173" not in item["name"]
+    assert item["total_price"] == 45990
