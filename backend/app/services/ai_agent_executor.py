@@ -33,6 +33,7 @@ from app.models.transaction import Transaction
 from app.models.recurring import RecurringRule
 
 from app.services.direction_classifier import classify_direction
+from app.services.transaction_filter import counted_transactions_filter
 from app.services.ai_agent import (
     AgentAction,
     AgentPlan,
@@ -1067,8 +1068,7 @@ class AgentExecutor:
             .where(
                 Transaction.user_id == self.user_id,
                 Transaction.type == "expense",
-                Transaction.status.in_(("approved", None, "")),
-                Transaction.is_deleted.is_(False),
+                *counted_transactions_filter(),
                 Transaction.date >= start,
             )
             .group_by(Transaction.category_id)
@@ -1190,8 +1190,7 @@ class AgentExecutor:
                     Transaction.user_id == self.user_id,
                     Transaction.category_id == budget.category_id,
                     Transaction.type == "expense",
-                    Transaction.status.in_(("approved", None, "")),
-                    Transaction.is_deleted.is_(False),
+                    *counted_transactions_filter(),
                 )
             ).scalar()
             return float(total or 0)

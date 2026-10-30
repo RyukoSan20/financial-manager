@@ -20,6 +20,8 @@ from typing import Any, Dict, Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.services.transaction_filter import counted_transactions_filter
+
 
 def _days_until(target: Optional[date], today: date) -> Optional[int]:
     if not target:
@@ -109,8 +111,7 @@ def build_reminder(db: Session, user_id: int, today: Optional[date] = None) -> D
         spent_query = db.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == user_id,
             Transaction.type == "expense",
-            Transaction.status.in_(("approved", None, "")),
-            Transaction.is_deleted.is_(False),
+            *counted_transactions_filter(),
             Transaction.date >= budget.start_date,
         )
         if budget.end_date:

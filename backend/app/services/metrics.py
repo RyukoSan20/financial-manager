@@ -27,10 +27,7 @@ from app.models.debt import Debt
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.services.currency_totals import total_in_currency
-
-# A transaction only counts once it is approved. `None` and the empty
-# string are what older rows hold, and they mean approved too.
-APPROVED_STATUSES = ("approved", None, "")
+from app.services.transaction_filter import counted_transactions_filter
 
 # The four parts of the health score, each worth the same.
 HEALTH_PART_MAX = 25
@@ -157,8 +154,7 @@ def period_totals(
                 Transaction.user_id == user_id,
                 Transaction.date >= start_date,
                 Transaction.date <= end_date,
-                Transaction.is_deleted == False,
-                Transaction.status.in_(APPROVED_STATUSES),
+                *counted_transactions_filter(),
             )
             .scalar()
         )

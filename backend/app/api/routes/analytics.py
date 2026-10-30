@@ -10,6 +10,7 @@ from collections import defaultdict
 
 from app.services.currency_totals import total_in_currency
 from app.services.metrics import transaction_count as metrics_transaction_count
+from app.services.transaction_filter import counted_transactions_filter
 from app.core.database import get_db
 from app.core.security import get_current_user_optional
 from app.models.transaction import Transaction
@@ -120,8 +121,7 @@ def get_cash_flow_trend(
             Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False,
-            Transaction.status.in_(('approved', None, ''))
+            *counted_transactions_filter(),
         ).scalar() or Decimal("0")
         
         expense = db.query(func.sum(Transaction.amount)).filter(
@@ -129,8 +129,7 @@ def get_cash_flow_trend(
             Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False,
-            Transaction.status.in_(('approved', None, ''))
+            *counted_transactions_filter(),
         ).scalar() or Decimal("0")
         
         # Transfer totals (for reference)
@@ -139,8 +138,7 @@ def get_cash_flow_trend(
             Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False,
-            Transaction.status.in_(('approved', None, ''))
+            *counted_transactions_filter(),
         ).scalar() or Decimal("0")
         
         transfer_in = db.query(func.sum(Transaction.amount)).filter(
@@ -148,8 +146,7 @@ def get_cash_flow_trend(
             Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False,
-            Transaction.status.in_(('approved', None, ''))
+            *counted_transactions_filter(),
         ).scalar() or Decimal("0")
         
         monthly_data.append({
@@ -230,8 +227,7 @@ def get_expense_breakdown(
         Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= end_date,
-        Transaction.is_deleted == False,
-        Transaction.status.in_(('approved', None, ''))
+        *counted_transactions_filter(),
     ).all()
     
     total_expense = sum(t.amount for t in transactions)
@@ -301,8 +297,7 @@ def get_top_expenses(
         Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= end_date,
-        Transaction.is_deleted == False,
-        Transaction.status.in_(('approved', None, ''))
+        *counted_transactions_filter(),
     ).order_by(Transaction.amount.desc()).limit(limit).all()
     
     return {
@@ -401,8 +396,7 @@ def get_income_breakdown(
         Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= end_date,
-        Transaction.is_deleted == False,
-        Transaction.status.in_(('approved', None, ''))
+        *counted_transactions_filter(),
     ).all()
     
     total_income = sum(t.amount for t in transactions)
@@ -506,8 +500,7 @@ def get_budget_vs_actual(
             Transaction.user_id == user_id,
             Transaction.date >= budget.start_date,
             Transaction.date <= (budget.end_date or end_date),
-            Transaction.is_deleted == False,
-        Transaction.status.in_(('approved', None, ''))
+            *counted_transactions_filter(),
         )
         
         if budget.category_id:
@@ -565,8 +558,7 @@ def get_spending_patterns(
         Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= today,
-        Transaction.is_deleted == False,
-        Transaction.status.in_(('approved', None, ''))
+        *counted_transactions_filter(),
     ).all()
     
     if not transactions:
@@ -820,8 +812,7 @@ def get_monthly_comparison(
             Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False,
-            Transaction.status.in_(('approved', None, ''))
+            *counted_transactions_filter(),
         ).scalar() or Decimal("0")
         
         expense = db.query(func.sum(Transaction.amount)).filter(
@@ -829,8 +820,7 @@ def get_monthly_comparison(
             Transaction.user_id == user_id,
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.is_deleted == False,
-            Transaction.status.in_(('approved', None, ''))
+            *counted_transactions_filter(),
         ).scalar() or Decimal("0")
         
         # Budget comparison
@@ -895,8 +885,7 @@ async def get_financial_health(
         Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= end_date,
-        Transaction.is_deleted == False,
-        Transaction.status.in_(('approved', None, ''))
+        *counted_transactions_filter(),
     ).scalar() or Decimal("0")
     
     expense = db.query(func.sum(Transaction.amount)).filter(
@@ -904,8 +893,7 @@ async def get_financial_health(
         Transaction.user_id == user_id,
         Transaction.date >= start_date,
         Transaction.date <= end_date,
-        Transaction.is_deleted == False,
-        Transaction.status.in_(('approved', None, ''))
+        *counted_transactions_filter(),
     ).scalar() or Decimal("0")
     
     # Get accounts
