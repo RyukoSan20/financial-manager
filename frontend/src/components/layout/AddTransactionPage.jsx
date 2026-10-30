@@ -1035,7 +1035,14 @@ const AddTransactionPage = () => {
                         setLocationCoords({ lat: latitude, lng: longitude });
                         // Reverse geocode
                         try {
-                          const res = await fetch(`${API_URL}/location/reverse-geocode?lat=${latitude}&lng=${longitude}`);
+                          // The server needs to know who is asking: the
+                          // endpoint reads the paid geocoding key, so it
+                          // is not open to anyone.
+                          const token = getToken();
+                          const res = await fetch(
+                            `${API_URL}/location/reverse-geocode?lat=${latitude}&lng=${longitude}`,
+                            token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+                          );
                           if (res.ok) {
                             const data = await res.json();
                             setLocation(data.address || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);

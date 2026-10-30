@@ -1,13 +1,15 @@
 """FastAPI main application."""
 
 from datetime import datetime
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from app.core.database import init_db, seed_categories
 from app.core.router_registration import include_router_once
 from app.core.config import get_settings
+from app.core.security import get_current_user_optional
+from app.models.user import User
 from app.api.routes import (
     accounts, categories, transactions, budgets,
     dashboard, calculators,
@@ -370,10 +372,39 @@ app.include_router(user_settings.router, tags=["Settings"])
 # Recurring auto-generator cron endpoint (for Railway cron)
 from app.services.recurring_generator import process_due_recurring_rules
 
-def _process_recurring(is_manual: bool):
-    """Run the recurring generator. See the two routes below."""
-    results = process_due_recurring_rules(force_today=is_manual)
-    return {"status": "completed", **results}
+def _process_recurring(is_manual: bool, request: Request, current_user):
+    """
+    Run the recurring generator, for the readers the caller may act for.
+
+    Two callers are allowed, and nobody else.
+
+    The scheduler sends the cron secret. It runs for every reader,
+    because that is the job it has to do.
+
+    A reader sends their own token. Then only that reader's rules are
+    processed, and the reader can never touch anybody else's.
+
+    Without either of the two, the request is refused. This endpoint
+    used to be open to anyone, which meant that anybody on the
+    internet could ask it to write transactions.
+    """
+    cron_secret = get_settings().CRON_SECRET
+    presented = request.headers.get("X-Cron-Secret") or ""
+    if cron_secret and presented and presented == cron_secret:
+        results = process_due_recurring_rules(force_today=is_manual)
+        return {"status": "completed", **results}
+
+    if current_user is not None:
+        results = process_due_recurring_rules(
+            force_today=is_manual, user_id=current_user.id
+        )
+        return {"status": "completed", **results}
+
+    raise HTTPException(
+        status_code=401,
+        detail="Authentication required",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 # Two routes rather than one route with two methods. The path and the
@@ -382,18 +413,24 @@ def _process_recurring(is_manual: bool):
 # methods gives the two operations the same name, and the OpenAPI
 # document ends up with two entries that cannot tell each other apart.
 @app.get("/api/cron/process-recurring", tags=["Cron"], operation_id="cron_process_recurring_get")
-def cron_process_recurring_get(request: Request):
+def cron_process_recurring_get(
+    request: Request,
+    current_user: User = Depends(get_current_user_optional),
+):
     """
     Process all due recurring rules and auto-generate transactions.
 
     This is the automatic one: it only handles the rules that are due
     today, so it can be called as often as the scheduler likes.
     """
-    return _process_recurring(is_manual=False)
+    return _process_recurring(is_manual=False, request=request, current_user=current_user)
 
 
 @app.post("/api/cron/process-recurring", tags=["Cron"], operation_id="cron_process_recurring_post")
-def cron_process_recurring_post(request: Request):
+def cron_process_recurring_post(
+    request: Request,
+    current_user: User = Depends(get_current_user_optional),
+):
     """
     Process all due recurring rules and auto-generate transactions.
 
@@ -401,7 +438,7 @@ def cron_process_recurring_post(request: Request):
     the ones in the future, so it is for when somebody is waiting for
     a rule to be written and does not want to wait for tomorrow.
     """
-    return _process_recurring(is_manual=True)
+    return _process_recurring(is_manual=True, request=request, current_user=current_user)
 
 
 # Root endpoint

@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     
     # Gmail Integration
     GMAIL_REDIRECT_URI: str = os.getenv("GMAIL_REDIRECT_URI", "https://my-financial-manager.online/api/integrations/gmail/callback")
+
+    # The secret that lets the scheduler run the recurring generator
+    # without being a reader. It is a separate value from the JWT
+    # secret on purpose: the scheduler is not a reader and must not
+    # be able to act as one.
+    CRON_SECRET: str = os.getenv("CRON_SECRET", "")
     
     # Calculation defaults
     DAYS_IN_MONTH: int = 30

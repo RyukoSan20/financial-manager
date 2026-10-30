@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.guest_identity import guest_email as make_guest_email, guest_username as make_guest_username
 from app.core.security import (
     verify_password, get_password_hash, create_access_token,
-    get_current_user, get_current_user_optional
+    get_current_user
 )
 from app.models.user import User
 from app.schemas.user import Token, MessageResponse

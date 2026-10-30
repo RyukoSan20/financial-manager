@@ -13,7 +13,7 @@ from datetime import date as date_type
 
 from app.core.database import get_db
 from app.services.currency_rules import assert_record_currency
-from app.core.security import get_current_user_optional, get_current_user
+from app.core.security import get_current_user
 from app.models.debt import Debt, DebtPayment
 from app.models.user import User
 from app.models.account import Account

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 from app.core.database import get_db
-from app.core.security import get_current_user_optional, get_current_user
+from app.core.security import get_current_user
 from app.models.user import User
 from app.models.account import Account
 from app.models.transaction import Transaction
@@ -30,13 +30,10 @@ DELETE_CONFIRMATION_WORDS = {"HAPUS", "DELETE", "削除"}
 
 @router.get("/export")
 def export_data(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Export all user data as JSON."""
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
     user_id = current_user.id
     
     # Get all user data
@@ -145,13 +142,10 @@ def export_data(
 
 @router.get("/export/csv")
 def export_transactions_csv(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Export transactions as CSV format."""
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
     transactions = db.query(Transaction).filter(
         Transaction.user_id == current_user.id
     ).order_by(Transaction.date.desc()).all()

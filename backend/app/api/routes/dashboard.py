@@ -12,7 +12,7 @@ from decimal import Decimal
 from calendar import month_abbr, monthrange
 
 from app.core.database import get_db
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user
 from app.models.transaction import Transaction
 from app.models.account import Account
 from app.services.currency import converter, BASE
@@ -28,7 +28,7 @@ def get_month_timeline(
         description="The month to show, as YYYY-MM. The current month when it is left out.",
     ),
     currency: Optional[str] = Query(default=None, description="The currency to show the totals in"),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -43,7 +43,7 @@ def get_month_timeline(
     transaction is waiting in the review queue and a rejected one was
     thrown away, so neither has moved the balance.
     """
-    user_id = current_user.id if current_user else None
+    user_id = current_user.id
 
     if month:
         try:
@@ -78,10 +78,9 @@ def get_month_timeline(
     query = db.query(Transaction).filter(
         Transaction.date >= first_day,
         Transaction.date <= last_day,
+        Transaction.user_id == user_id,
         *counted_transactions_filter(),
     )
-    if user_id:
-        query = query.filter(Transaction.user_id == user_id)
 
     rows = query.order_by(Transaction.date.asc(), Transaction.id.asc()).all()
 
@@ -153,7 +152,7 @@ async def get_dashboard_summary(
     start_date: Optional[str] = Query(default=None),
     end_date: Optional[str] = Query(default=None),
     currency: Optional[str] = Query(default=None, description="The currency to show the totals in"),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get dashboard summary data."""
@@ -170,7 +169,7 @@ async def get_dashboard_summary(
     else:
         end = date.today()
     
-    user_id = current_user.id if current_user else None
+    user_id = current_user.id
     
     # Get totals
     totals = get_totals_by_date(db, start, end, user_id)
@@ -183,9 +182,10 @@ async def get_dashboard_summary(
     # The accounts do not all hold the same currency, so the raw
     # numbers cannot simply be added up. Each balance is converted into
     # the currency that is being shown, with a live rate.
-    account_query = db.query(Account).filter(Account.is_active == True)
-    if user_id:
-        account_query = account_query.filter(Account.user_id == user_id)
+    account_query = db.query(Account).filter(
+        Account.is_active == True,
+        Account.user_id == user_id,
+    )
     account_rows = account_query.all()
 
     display_currency = (currency or "IDR").upper()
@@ -219,9 +219,9 @@ async def get_dashboard_summary(
     _, last_day = monthrange(end.year, end.month)
     month_end = date(end.year, end.month, last_day)
     
-    budget_query = db.query(func.sum(Budget.amount))
-    if user_id:
-        budget_query = budget_query.filter(Budget.user_id == user_id)
+    budget_query = db.query(func.sum(Budget.amount)).filter(
+        Budget.user_id == user_id
+    )
     total_budget = float(budget_query.scalar() or 0)
     
     # Calculate total spent this month
@@ -231,8 +231,7 @@ async def get_dashboard_summary(
         Transaction.date <= end,
         *counted_transactions_filter(),
     )
-    if user_id:
-        spent_query = spent_query.filter(Transaction.user_id == user_id)
+    spent_query = spent_query.filter(Transaction.user_id == user_id)
     total_spent = float(spent_query.scalar() or 0)
     
     return {
@@ -318,13 +317,18 @@ def counted_transactions_filter():
 
 
 def get_category_breakdown_by_date(
-    db: Session, 
-    start: date, 
-    end: date, 
+    db: Session,
+    start: date,
+    end: date,
     tx_type: str,
-    user_id: Optional[int] = None
+    user_id: int
 ) -> Dict[str, float]:
-    """Get category breakdown for a date range."""
+    """
+    Get category breakdown for a date range.
+
+    The user is not optional here: a breakdown without a user is the
+    breakdown of everybody.
+    """
     # Use LEFT JOIN to include transactions without category
     query = db.query(
         func.coalesce(Category.name, 'Lainnya').label('category_name'),
@@ -333,11 +337,9 @@ def get_category_breakdown_by_date(
         Transaction.type == tx_type,
         Transaction.date >= start,
         Transaction.date <= end,
+        Transaction.user_id == user_id,
         *counted_transactions_filter(),
     )
-    
-    if user_id:
-        query = query.filter(Transaction.user_id == user_id)
     
     results = query.group_by(func.coalesce(Category.name, 'Lainnya')).all()
     return {row.category_name: float(row.total) for row in results}
@@ -347,19 +349,22 @@ def get_totals_by_date(
     db: Session,
     start: date,
     end: date,
-    user_id: Optional[int] = None,
+    user_id: int,
     account_id: Optional[int] = None
 ) -> Dict:
-    """Get income and expense totals for a date range."""
+    """
+    Get income and expense totals for a date range.
+
+    The user is not optional here. A total without a user is the total
+    of everybody, and one reader's number is never another reader's.
+    """
     base_filter = [
         Transaction.date >= start,
         Transaction.date <= end,
+        Transaction.user_id == user_id,
         *counted_transactions_filter(),
     ]
-    
-    if user_id:
-        base_filter.append(Transaction.user_id == user_id)
-    
+
     if account_id:
         base_filter.append(Transaction.account_id == account_id)
     
@@ -388,7 +393,7 @@ def get_cash_flow(
     account_id: Optional[int] = Query(default=None),
     start_date: Optional[date] = Query(default=None),
     end_date: Optional[date] = Query(default=None),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -419,7 +424,7 @@ def get_cash_flow(
         start, end = get_date_range(timeframe)
     
     granularity = GRANULARITY_CONFIG[timeframe]['granularity']
-    user_id = current_user.id if current_user else 1  # Default to user 1 if not authenticated
+    user_id = current_user.id
     
     series = []
     running_balance = 0
@@ -666,14 +671,14 @@ def get_cash_flow(
 
 @router.get("/accounts")
 def get_accounts_for_filter(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all accounts for filter dropdown."""
-    query = db.query(Account).filter(Account.is_active == True)
-    
-    if current_user:
-        query = query.filter(Account.user_id == current_user.id)
+    query = db.query(Account).filter(
+        Account.is_active == True,
+        Account.user_id == current_user.id,
+    )
     
     accounts = query.all()
     

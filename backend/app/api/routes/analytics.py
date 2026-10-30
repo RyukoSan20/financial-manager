@@ -11,7 +11,7 @@ from collections import defaultdict
 from app.services.currency_totals import total_in_currency
 from app.services.metrics import transaction_count as metrics_transaction_count
 from app.core.database import get_db
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user
 from app.models.transaction import Transaction
 from app.models.account import Account
 from app.models.category import Category
@@ -96,7 +96,7 @@ def _display_currency(current_user, db) -> str:
 @router.get("/cash-flow-trend")
 def get_cash_flow_trend(
     months: int = Query(default=6, ge=1, le=24),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get monthly cash flow trend for N months."""
@@ -214,7 +214,7 @@ def get_expense_breakdown(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     group_by: str = Query(default="category", regex="^(category|account|day|week)$"),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get expense breakdown by category, account, or time period."""
@@ -286,7 +286,7 @@ def get_top_expenses(
     limit: int = Query(default=10, ge=1, le=50),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get top individual expenses."""
@@ -325,7 +325,7 @@ def get_top_expenses(
 
 @router.get("/recurring-expenses")
 def get_recurring_expenses(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get summary of recurring expenses (from recurring rules)."""
@@ -333,7 +333,8 @@ def get_recurring_expenses(
     
     rules = db.query(RecurringRule).filter(
         RecurringRule.type == "expense",
-        RecurringRule.is_active == True
+        RecurringRule.is_active == True,
+        RecurringRule.user_id == current_user.id
     ).all()
     
     monthly_total = Decimal("0")
@@ -386,7 +387,7 @@ def get_recurring_expenses(
 def get_income_breakdown(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get income breakdown by category."""
@@ -430,7 +431,7 @@ def get_income_breakdown(
 
 @router.get("/income-sources")
 def get_income_sources(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get recurring income sources."""
@@ -438,7 +439,8 @@ def get_income_sources(
     
     rules = db.query(RecurringRule).filter(
         RecurringRule.type == "income",
-        RecurringRule.is_active == True
+        RecurringRule.is_active == True,
+        RecurringRule.user_id == current_user.id
     ).all()
     
     monthly_total = Decimal("0")
@@ -479,7 +481,7 @@ def get_income_sources(
 def get_budget_vs_actual(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Compare budgets vs actual spending."""
@@ -491,6 +493,7 @@ def get_budget_vs_actual(
     
     budgets = db.query(Budget).filter(
         Budget.is_active == True,
+        Budget.user_id == current_user.id,
         Budget.start_date <= end_date,
         or_(Budget.end_date == None, Budget.end_date >= start_date)
     ).all()
@@ -552,7 +555,7 @@ def get_budget_vs_actual(
 
 @router.get("/spending-patterns")
 def get_spending_patterns(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Analyze spending patterns by day of week and time of month."""
@@ -634,7 +637,7 @@ def get_spending_patterns(
 @router.get("/net-worth-history")
 async def get_net_worth_history(
     months: int = Query(default=12, ge=1, le=36),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get historical net worth data."""
@@ -709,7 +712,7 @@ async def get_net_worth_history(
 
 @router.post("/net-worth-snapshot")
 async def create_net_worth_snapshot(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create a net worth snapshot for today."""
@@ -796,7 +799,7 @@ async def create_net_worth_snapshot(
 @router.get("/monthly-comparison")
 def get_monthly_comparison(
     months: int = Query(default=3, ge=2, le=6),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Compare current month with previous N months."""
@@ -836,6 +839,7 @@ def get_monthly_comparison(
         # Budget comparison
         budgets = db.query(Budget).filter(
             Budget.is_active == True,
+            Budget.user_id == current_user.id,
             Budget.start_date <= end
         ).all()
         
@@ -881,7 +885,7 @@ def get_monthly_comparison(
 
 @router.get("/financial-health")
 async def get_financial_health(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Calculate overall financial health score."""
@@ -1137,7 +1141,7 @@ def get_merchant_analytics(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     limit: int = Query(default=20, ge=1, le=100),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -1170,8 +1174,7 @@ def get_merchant_analytics(
         Transaction.date <= end_date,
     )
     
-    if current_user:
-        query = query.filter(Transaction.user_id == current_user.id)
+    query = query.filter(Transaction.user_id == current_user.id)
     
     # Group by merchant
     query = query.group_by(Transaction.merchant_name)
@@ -1199,7 +1202,7 @@ def get_merchant_analytics(
 
 @router.get("/merchants/map")
 def get_merchant_map_data(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -1349,7 +1352,7 @@ def get_merchant_map_data(
 def get_top_merchants(
     metric: str = Query(default="spending", regex="^(spending|frequency)$"),
     limit: int = Query(default=10, ge=1, le=50),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -1375,8 +1378,7 @@ def get_top_merchants(
         Transaction.type == "expense",
     )
     
-    if current_user:
-        query = query.filter(Transaction.user_id == current_user.id)
+    query = query.filter(Transaction.user_id == current_user.id)
     
     query = query.group_by(Transaction.merchant_name)
     query = query.order_by(order_col)
@@ -1400,7 +1402,7 @@ def get_top_merchants(
 
 @router.get("/spending/heatmap")
 def get_spending_heatmap(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -1419,8 +1421,7 @@ def get_spending_heatmap(
         Transaction.type == "expense",
     )
     
-    if current_user:
-        query = query.filter(Transaction.user_id == current_user.id)
+    query = query.filter(Transaction.user_id == current_user.id)
     
     query = query.group_by(
         Transaction.merchant_name,

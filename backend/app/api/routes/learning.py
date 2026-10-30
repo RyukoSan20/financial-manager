@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user
 from app.models.user import User
 
 router = APIRouter(tags=["Learning"])
@@ -41,7 +41,7 @@ class ClassifyResponse(BaseModel):
 @router.post("/learn", response_model=LearnResponse)
 def learn_terms(
     request: LearnRequest,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     """Store user-confirmed item names so future scans recognise them."""
     try:
@@ -64,7 +64,7 @@ def learn_terms(
 @router.post("/classify", response_model=ClassifyResponse)
 def classify_words(
     request: ClassifyRequest,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     """Classify arbitrary words into semantic buckets.
 
@@ -96,7 +96,7 @@ def classify_words(
 
 @router.get("/status")
 def learning_status(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     """Report which parsing engines are active."""
     try:

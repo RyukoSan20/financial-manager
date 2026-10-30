@@ -6,7 +6,7 @@ from typing import List, Optional
 from decimal import Decimal
 
 from app.core.database import get_db
-from app.core.security import get_current_user, get_current_user_optional
+from app.core.security import get_current_user
 from app.models.account import Account
 from app.models.user import User
 from app.schemas.account import AccountCreate, AccountUpdate, AccountResponse
@@ -26,8 +26,7 @@ def list_accounts(
 ):
     """Get all accounts for current user (or all if not authenticated)."""
     query = db.query(Account)
-    if current_user:
-        query = query.filter(Account.user_id == current_user.id)
+    query = query.filter(Account.user_id == current_user.id)
     accounts = query.offset(skip).limit(limit).all()
     return accounts
 
@@ -50,7 +49,7 @@ async def get_account_kinds(currency: str):
 
 @router.get("/summary/total-balance")
 async def get_total_balance(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     display_currency: str = "IDR",
     currency: Optional[str] = None,
@@ -67,8 +66,7 @@ async def get_total_balance(
     never a mixture of converted and unconverted money.
     """
     query = db.query(Account).filter(Account.is_active == True)
-    if current_user:
-        query = query.filter(Account.user_id == current_user.id)
+    query = query.filter(Account.user_id == current_user.id)
     accounts = query.all()
 
     # The caller may say which currency to show in either name. The

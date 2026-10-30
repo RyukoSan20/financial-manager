@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from typing import Optional, List
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user
 from app.models.user import User
 from app.services.integrations.google_maps import (
     get_location_name,
@@ -33,7 +33,7 @@ class PlaceResult(BaseModel):
 async def reverse_geocode(
     lat: float = Query(..., description="Latitude"),
     lng: float = Query(..., description="Longitude"),
-    current_user: User = Depends(get_current_user_optional)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Reverse geocode coordinates to address using Google Maps.
@@ -59,7 +59,7 @@ async def search_nearby_places(
     lat: Optional[float] = Query(None, description="Latitude for nearby search"),
     lng: Optional[float] = Query(None, description="Longitude for nearby search"),
     radius: int = Query(1000, description="Search radius in meters"),
-    current_user: User = Depends(get_current_user_optional)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Search for places using Google Places API.
@@ -91,7 +91,7 @@ async def get_map_image(
     lng: float = Query(...),
     zoom: int = Query(15, ge=1, le=21),
     size: str = Query("400x300", pattern=r"^\d+x\d+$"),
-    current_user: User = Depends(get_current_user_optional)
+    current_user: User = Depends(get_current_user)
 ):
     """Get static map image URL for a location."""
     return {"url": get_static_map_url(lat, lng, zoom, size)}

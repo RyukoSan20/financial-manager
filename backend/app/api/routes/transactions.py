@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.services.currency_rules import assert_record_currency
-from app.core.security import get_current_user_optional, get_current_user
+from app.core.security import get_current_user
 from app.models.transaction import Transaction
 from app.models.account import Account
 from app.models.user import User
@@ -55,8 +55,7 @@ def list_transactions(
     query = db.query(Transaction)
     
     # Multi-tenancy filter
-    if current_user:
-        query = query.filter(Transaction.user_id == current_user.id)
+    query = query.filter(Transaction.user_id == current_user.id)
     
     if type:
         query = query.filter(Transaction.type == type)
@@ -147,7 +146,7 @@ def get_transactions_by_period(
     start_date: date,
     end_date: date,
     group_by: str = "day",
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get transaction summary grouped by period."""
@@ -156,8 +155,7 @@ def get_transactions_by_period(
         Transaction.date <= end_date
     )
     
-    if current_user:
-        query = query.filter(Transaction.user_id == current_user.id)
+    query = query.filter(Transaction.user_id == current_user.id)
     
     transactions = query.all()
     
@@ -192,7 +190,7 @@ def get_transactions_by_category(
     start_date: date,
     end_date: date,
     type: str,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get transaction summary grouped by category."""
@@ -204,8 +202,7 @@ def get_transactions_by_category(
         Transaction.type == type
     )
     
-    if current_user:
-        query = query.filter(Transaction.user_id == current_user.id)
+    query = query.filter(Transaction.user_id == current_user.id)
     
     transactions = query.all()
     

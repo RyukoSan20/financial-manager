@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user
 from app.models.user import User
 from app.models.account import Account
 from app.models.transaction import Transaction
@@ -88,7 +88,7 @@ class DirectionResponse(BaseModel):
 @router.post("/direction", response_model=DirectionResponse)
 def classify_direction_endpoint(
     request: DirectionRequest,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -126,7 +126,7 @@ class DirectionFeedbackRequest(BaseModel):
 @router.post("/direction/feedback")
 def record_direction_feedback(
     request: DirectionFeedbackRequest,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -138,9 +138,6 @@ def record_direction_feedback(
     classification before the transaction was saved: the wording is
     written down as a note of its own, so the correction is not lost.
     """
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     direction = (request.direction or "").strip().lower()
     if direction not in ("income", "expense", "transfer"):
         raise HTTPException(
@@ -177,7 +174,7 @@ def record_direction_feedback(
 @router.post("/parse-text", response_model=List[ParsedTransactionResponse])
 def parse_text(
     request: dict,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -362,7 +359,7 @@ def _process_receipt_cpu_bound(
 @router.post("/parse-receipt")
 async def parse_receipt_image_endpoint(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -574,7 +571,7 @@ async def parse_receipt_image_endpoint(
 @router.post("/parse-receipt-base64")
 def parse_receipt_base64_endpoint(
     request: dict,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -624,7 +621,7 @@ def parse_receipt_base64_endpoint(
 @router.post("/confirm")
 def confirm_transaction(
     request: dict,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -632,9 +629,6 @@ def confirm_transaction(
     
     Accepts JSON with transaction details extracted from parser.
     """
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    
     # Validate required fields
     required = ["amount", "transaction_type", "description", "date", "account_id"]
     for field in required:
@@ -686,7 +680,7 @@ def confirm_transaction(
 
 @router.get("/detection-types")
 def get_detection_types(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get list of supported detection types.
