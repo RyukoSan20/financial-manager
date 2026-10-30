@@ -291,6 +291,12 @@ def _extract_with_multivariant_ocr(image_bytes: bytes) -> Tuple[List[str], float
                 best_lines = lines
                 best_conf = conf
                 best_variant = variant.name
+
+            if best_score >= 400:
+                # The receipt was read. Another version of the same
+                # picture will not do better, and the reader is
+                # waiting.
+                break
         except Exception as e:
             logger.warning(f"OCR variant {variant.name} failed: {e}")
             continue
@@ -312,93 +318,234 @@ def _extract_with_multivariant_ocr(image_bytes: bytes) -> Tuple[List[str], float
     return best_lines, best_conf, diagnostics
 
 
+def _tesseract_lines(image, psm: int, lang: str = "eng+ind") -> List[str]:
+    """
+    Read an image in one of Tesseract's page-segmentation modes.
+
+    The mode is what tells Tesseract what kind of page it is looking
+    at. Mode 3 is "a page of a document": it looks for columns, blocks
+    and paragraphs. A receipt is none of those - it is one narrow
+    column of text with almost no space between the lines - so mode 3
+    finds nothing on it.
+
+    Mode 6 is "a single uniform block of text", which is what a
+    receipt actually is. Mode 11 is "sparse text", which is what a
+    receipt becomes when it is creased or badly lit and the lines
+    break up.
+
+    Returns the words, grouped into lines by their position.
+    """
+    import pytesseract
+
+    try:
+        data = pytesseract.image_to_data(
+            image, lang=lang, config=f"--psm {psm}",
+            output_type=pytesseract.Output.DICT,
+        )
+    except Exception as e:  # noqa: BLE001 - any failure means "this mode is no use"
+        logger.debug("Tesseract mode %s failed: %s", psm, e)
+        return []
+
+    elements = []
+    confidences = []
+    count = len(data["text"])
+
+    for i in range(count):
+        text = (data["text"][i] or "").strip()
+        if not text:
+            continue
+        try:
+            conf = int(data["conf"][i])
+        except (TypeError, ValueError):
+            conf = 0
+        if conf < 0:
+            continue
+
+        height = data["height"][i]
+        elements.append({
+            "text": text,
+            "y_center": data["top"][i] + (height / 2.0),
+            "x_min": data["left"][i],
+            "height": height,
+        })
+        confidences.append(conf)
+
+    if not elements:
+        return []
+
+    # The words are put back into the lines they were printed on.
+    # How far apart two words can be and still be on the same line
+    # depends on how big the writing is, so the threshold is worked
+    # out from the words themselves.
+    median_height = _median([e["height"] for e in elements])
+    threshold = max(6.0, median_height * 0.4)
+
+    elements.sort(key=lambda item: item["y_center"])
+
+    lines = []
+    current = []
+    for element in elements:
+        if not current:
+            current.append(element)
+            continue
+        average_y = sum(e["y_center"] for e in current) / len(current)
+        if abs(element["y_center"] - average_y) <= threshold:
+            current.append(element)
+        else:
+            current.sort(key=lambda e: e["x_min"])
+            lines.append(" ".join(e["text"] for e in current))
+            current = [element]
+
+    if current:
+        current.sort(key=lambda e: e["x_min"])
+        lines.append(" ".join(e["text"] for e in current))
+
+    return lines
+
+
+def _median(values):
+    """The middle of a list of numbers, without needing numpy."""
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return float(ordered[middle])
+    return (float(ordered[middle - 1]) + float(ordered[middle])) / 2.0
+
+
 def _extract_with_tesseract_fallback(image_bytes: bytes) -> Tuple[List[str], float]:
-    """Fallback to Tesseract OCR with spatial clustering."""
+    """
+    Read the receipt with Tesseract, trying more than one way.
+
+    A receipt is read in several ways and the best one is kept. The
+    ways are:
+
+    - the picture as it is;
+    - the picture with the contrast pushed up, which helps a photo
+      taken in a dim shop;
+    - the picture with the levels stretched out, which helps a
+      receipt that is grey rather than black on white.
+
+    And each of those is read in more than one of Tesseract's modes,
+    because a receipt and a page of a document are read in different
+    ways and only one of the two modes fits.
+
+    The best result is the one that recovered the most text. Ties go
+    to the one Tesseract was more sure of.
+    """
     try:
         import pytesseract
-        import numpy as np
-        
-        # Preprocess image
+    except ImportError:
+        logger.error("Tesseract is not installed")
+        return [], 0.0
+
+    try:
+        from PIL import Image, ImageEnhance, ImageOps
+    except ImportError:
+        logger.error("Pillow is not installed")
+        return [], 0.0
+
+    try:
         image = Image.open(io.BytesIO(image_bytes))
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-        
-        # Resize if too large
+        if image.mode != "L":
+            image = image.convert("L")
+
+        # A picture that is bigger than this is not a receipt, and
+        # reading it slowly helps nobody.
         width, height = image.size
         if width > 1600:
             scale = 1600 / width
             image = image.resize((1600, int(height * scale)), Image.LANCZOS)
-        
-        # Convert to grayscale
-        gray = image.convert('L')
-        
-        # Enhance
-        enhancer = ImageEnhance.Contrast(gray)
-        gray = enhancer.enhance(1.3)
-        
-        # Get OCR data with bounding boxes
-        data = pytesseract.image_to_data(gray, lang='eng+ind', output_type=pytesseract.Output.DICT)
-        
-        elements = []
-        box_heights = []
-        confidences = []
-        n_boxes = len(data['text'])
-        
-        for i in range(n_boxes):
-            text = data['text'][i].strip()
-            conf = int(data['conf'][i])
-            
-            if conf > 20 and text:
-                x = data['left'][i]
-                y = data['top'][i]
-                w = data['width'][i]
-                h = data['height'][i]
-                
-                y_center = y + (h / 2.0)
-                box_heights.append(h)
-                
-                elements.append({
-                    'text': text,
-                    'y_center': y_center,
-                    'x_min': x,
-                    'height': h
-                })
-                confidences.append(conf)
-        
-        if not elements:
+        elif width < 600:
+            # A small picture of a receipt has to be made bigger,
+            # or the writing on it is too small to read.
+            scale = 600 / max(width, 1)
+            image = image.resize(
+                (int(width * scale), int(height * scale)), Image.LANCZOS
+            )
+
+        preparations = [
+            ("as-is", image),
+            ("contrast", ImageEnhance.Contrast(image).enhance(1.6)),
+            ("levels", ImageOps.autocontrast(image, cutoff=1)),
+            ("levels+contrast", ImageEnhance.Contrast(
+                ImageOps.autocontrast(image, cutoff=1)
+            ).enhance(1.4)),
+        ]
+
+        # The modes, in the order they are tried. Mode 6 reads a
+        # receipt as one block of text, which is what a receipt is,
+        # and mode 11 reads it as sparse text, which is what a
+        # creased or badly lit receipt becomes.
+        modes = (6, 11, 3, 4)
+
+        best_lines: List[str] = []
+        best_score = -1.0
+        best_conf = 0.0
+
+        # Enough characters means the receipt was read, and there is
+        # no point in reading it again in another way. This is what
+        # keeps a photograph from taking half a minute.
+        enough = 400
+
+        for name, prepared in preparations:
+            for psm in modes:
+                lines = _tesseract_lines(prepared, psm)
+                if not lines:
+                    continue
+
+                # How much was recovered, and how sure the reader was.
+                characters = sum(len(line) for line in lines)
+                score = characters
+                if score > best_score:
+                    best_score = score
+                    best_lines = lines
+                    best_conf = _confidence_of(prepared, psm)
+
+                logger.debug(
+                    "tesseract %s psm %s: %d lines",
+                    name, psm, len(lines),
+                )
+
+                if best_score >= enough:
+                    # The receipt was read. Stop here.
+                    return best_lines, best_conf
+
+        if not best_lines:
             return [], 0.0
-        
-        # Dynamic Y-Threshold
-        median_h = np.median(box_heights) if box_heights else 15
-        dynamic_y_threshold = max(6.0, median_h * 0.4)
-        
-        # Sort and group
-        elements.sort(key=lambda item: item['y_center'])
-        lines = []
-        current_line = []
-        
-        for elem in elements:
-            if not current_line:
-                current_line.append(elem)
-            else:
-                avg_y = sum(e['y_center'] for e in current_line) / len(current_line)
-                if abs(elem['y_center'] - avg_y) <= dynamic_y_threshold:
-                    current_line.append(elem)
-                else:
-                    current_line.sort(key=lambda e: e['x_min'])
-                    lines.append(" ".join([e['text'] for e in current_line]))
-                    current_line = [elem]
-        
-        if current_line:
-            current_line.sort(key=lambda e: e['x_min'])
-            lines.append(" ".join([e['text'] for e in current_line]))
-        
-        avg_conf = sum(confidences) / len(confidences) if confidences else 0
-        return lines, min(avg_conf, 100)
-        
+
+        return best_lines, best_conf
+
     except Exception as e:
         logger.error(f"Tesseract fallback failed: {e}")
         return [], 0.0
+
+
+def _confidence_of(image, psm: int) -> float:
+    """How sure Tesseract was, in the way the rest of the code expects."""
+    try:
+        import pytesseract
+
+        data = pytesseract.image_to_data(
+            image, lang="eng+ind", config=f"--psm {psm}",
+            output_type=pytesseract.Output.DICT,
+        )
+        values = []
+        for i, text in enumerate(data["text"]):
+            if not (text or "").strip():
+                continue
+            try:
+                value = int(data["conf"][i])
+            except (TypeError, ValueError):
+                continue
+            if value >= 0:
+                values.append(value)
+        if not values:
+            return 0.0
+        return float(min(100.0, sum(values) / len(values)))
+    except Exception:  # noqa: BLE001 - the confidence is a nicety, not a must
+        return 0.0
 
 
 # ============================================================
@@ -506,9 +653,24 @@ class OCRService:
                 
                 logger.info(f"Parser v3.1 result: items={len(parsed.get('items', []))}, amount={parsed.get('amount')}, conf={parsed.get('confidence_score')}")
                 
+                # A receipt that says what it came to has been read,
+                # whatever the parser thinks of its own confidence.
+                #
+                # The confidence is lowered when there are no item
+                # lines, and a short receipt often has none: it is a
+                # till slip with three lines on it. Throwing that
+                # result away and asking something else to read the
+                # picture threw away the reading too, and the reader
+                # was told their receipt was worth nothing.
+                #
+                # So the result is used when there is an amount in it,
+                # and the other reader is only asked when there is
+                # not.
+                has_amount = float(parsed.get('amount') or 0) > 0
+
                 # Check if Gemini fallback is needed (tightened triggers)
                 should_fallback, reason = should_use_gemini_fallback_v31(parsed, len(text))
-                if should_fallback:
+                if should_fallback and not has_amount:
                     logger.warning(f"Parser v3.1 failed ({reason}) - attempting dynamic parse")
                     dynamic = self._dynamic_parse_fallback(lines, ocr_diagnostics, confidence)
                     if dynamic is not None:
@@ -517,6 +679,11 @@ class OCRService:
                     result = self._gemini_vision_fallback(image_bytes)
                     result.ocr_diagnostics = ocr_diagnostics
                     return result
+                if should_fallback:
+                    logger.info(
+                        "Parser v3.1 was unsure (%s) but found an amount of %s; using it",
+                        reason, parsed.get('amount'),
+                    )
                 
                 items = []
                 for item in parsed.get('items', []):

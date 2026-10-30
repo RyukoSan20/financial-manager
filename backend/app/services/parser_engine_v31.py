@@ -66,29 +66,68 @@ def normalize_receipt_line(line: str) -> str:
 
 def parse_number_indonesia(val_str: str) -> float:
     """
-    Parse Indonesian number format handling:
+    Read a number written the way money is written in Indonesia.
+
     - Thousand separators: 18.000 -> 18000
-    - Decimal: 35.200 -> 35200
+    - The written form with a decimal point: 200.000,00 -> 200000
+    - A dot that is not a thousands group is a decimal point:
+      12.50 -> 12.5
     - Discount parentheses: (1,300) -> -1300 or (1) -> -1
+
+    The two separators are told apart by where they are. A dot that
+    groups three digits and is followed by more groups is a thousands
+    separator. Anything else is a decimal point.
+
+    Getting this wrong is not a small mistake. "Rp 200.000,00" read as
+    two hundred million instead of two hundred thousand tells the
+    reader that their withdrawal was a thousand times bigger than it
+    was.
     """
     if not val_str:
         return 0.0
-    
+
     val_str = str(val_str).strip()
-    
+
     # Check for discount parentheses (negative)
     is_negative = '(' in val_str and ')' in val_str
-    
-    # Remove parentheses and commas
-    clean = val_str.replace('(', '').replace(')', '').replace(',', '').replace('.', '')
-    
-    # Extract digits
-    digits = re.sub(r'[^\d]', '', clean)
-    
-    if not digits:
+
+    # Take out everything that is not part of the number, and keep
+    # the separators for a moment.
+    clean = re.sub(r'[^\d.,]', '', val_str)
+    if not clean:
         return 0.0
-    
-    value = float(digits)
+
+    has_comma = ',' in clean
+    has_dot = '.' in clean
+
+    if has_comma and has_dot:
+        # Written the Indonesian way: 1.234.567,50
+        if clean.rfind(',') > clean.rfind('.'):
+            # The comma comes last, so it is the decimal point.
+            whole = clean.replace('.', '').replace(',', '.')
+        else:
+            # The dot comes last, so it is the decimal point.
+            whole = clean.replace(',', '')
+    elif has_comma:
+        # Either 1,234,567 or 12,50
+        if re.fullmatch(r'\d{1,3}(,\d{3})+', clean):
+            whole = clean.replace(',', '')
+        else:
+            whole = clean.replace(',', '.')
+    elif has_dot:
+        # Either 1.234.567 or 12.50
+        if re.fullmatch(r'\d{1,3}(\.\d{3})+', clean):
+            whole = clean.replace('.', '')
+        else:
+            whole = clean
+    else:
+        whole = clean
+
+    try:
+        value = float(whole)
+    except ValueError:
+        return 0.0
+
     return -value if is_negative else value
 
 
@@ -190,6 +229,46 @@ def detect_merchant(full_text: str) -> str:
 # STAGE 3: SINGLE-LINE ITEM PARSING
 # ============================================================
 
+# A number in the middle of a word of text.
+#
+# The separator in a number is a comma or a dot, and the digits either
+# side of it have to be there: "8,500" is one number and "8,50" is one
+# number, while "TOTAL" is not a number at all.
+_NUMBER_TOKEN = re.compile(r'^\d[\d.,]*\d$|^\d$')
+
+# A word with a number stuck to it: "72G", "225ML", "4.000KG". The
+# number is part of the name and not a price.
+_WORD_WITH_NUMBER = re.compile(r'^[A-Za-z][\w]*\d[\w.]*$')
+
+
+def _split_into_words_and_numbers(text):
+    """
+    Split a line into its numbers and its words.
+
+    A number is one piece even when it has a thousands separator in
+    it. The amount 8.500 is printed as "8,500" and splitting it in two
+    made the parser read the price as 500 and lose the eight - so the
+    reader was told their shopping cost 500 instead of 8.500.
+
+    Returns a list of (is_number, piece) in the order they were
+    printed.
+    """
+    pieces = []
+    for word in text.split():
+        # "8,500" or "50.000.000" - one number.
+        if _NUMBER_TOKEN.match(word):
+            pieces.append((True, word))
+            continue
+        # "8," or "500," - a number that the printer put a separator
+        # next to. The separator is not part of the number.
+        stripped = word.rstrip(",.")
+        if stripped and _NUMBER_TOKEN.match(stripped):
+            pieces.append((True, stripped))
+            continue
+        pieces.append((False, word))
+    return pieces
+
+
 def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     """
     Parse single-line item with RIGHT-TO-LEFT number extraction:
@@ -208,31 +287,27 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
     # BLACKLIST: Skip summary/footer lines
     upper_clean = cleaned.upper()
     blacklist = ['HARGA JUAL', 'TOTAL', 'TUNAI', 'KEMBALI', 'ANDA HEMAT', 
-                 'DISKON', 'BAYAR', 'TAGIHAN', 'SALDO', 'REF ']
+                 'DISKON', 'BAYAR', 'TAGIHAN', 'SALDO', 'REF ',
+                 'JUMLAH', 'QTY', 'ITEM', 'ITEMS', 'TOA', 'KUANTITAS']
     for kw in blacklist:
         if kw in upper_clean:
             return None
     
-    # Split by whitespace
-    parts = cleaned.split()
-    if len(parts) < 2:
-        return None
-    
-    # RIGHT-TO-LEFT: Extract numbers from RIGHT side only
-    # Numbers embedded in product names (like "72G", "225ML") are on the LEFT
+    # The line is split into words and numbers.
+    #
+    # A number is one token even when it has a separator in it. The
+    # amount 8.500 is written as "8,500" on a receipt, and splitting
+    # it into two made the parser read the price as 500 and lose the
+    # eight. So the split is done on the separators that are not part
+    # of a number.
     numeric_parts = []
     text_parts = []
     
-    for part in reversed(parts):
-        clean_part = part.replace(',', '')
-        if clean_part.replace('-', '').isdigit():
+    for is_number, part in _split_into_words_and_numbers(cleaned):
+        if is_number:
             numeric_parts.append(part)
         else:
             text_parts.append(part)
-    
-    # Reverse back to correct order
-    numeric_parts.reverse()  # Now: [qty?, unit_price?, total]
-    text_parts.reverse()      # Now: [name words in order]
     
     # Need at least 1 number (price 1 for plastic bags)
     if len(numeric_parts) < 1:
@@ -347,6 +422,125 @@ def extract_date(text: str) -> Optional[str]:
             except (ValueError, IndexError):
                 pass
     return None
+
+
+# ============================================================
+# FINDING THE TOTAL
+# ============================================================
+
+# The words a receipt uses for the amount that was actually paid.
+#
+# "TOTAL" on its own is only one of them. A supermarket receipt says
+# "TOTAL BELANJA", a receipt from a machine says "TOTAL BAYAR", a
+# school receipt says "JUMLAH", and an ATM slip says "Nominal". A
+# parser that knows only "TOTAL" reads nothing on those, and tells
+# the reader their receipt was worth nothing.
+TOTAL_LABELS = (
+    "TOTAL",
+    "JUMLAH",
+    "NOMINAL",
+    "GRAND TOTAL",
+    "TOTAL BAYAR",
+    "TOTAL BELANJA",
+    "TOTAL HARUS BAYAR",
+    "JUMLAH BAYAR",
+    "JUMLAH BELANJA",
+    "AMOUNT",
+    "TOTAL AMOUNT",
+    # A supermarket prints the total as the count of items and the sum
+    # of them: "15 ITEMS TOA, : 503.510". That line is the total, and
+    # it is the only place the real figure appears.
+    "ITEMS TOA",
+    "ITEM TOA",
+    "ITEM TO A",
+)
+
+# Words that look like a total but are not one. They are checked
+# first, because "TOTAL QTY" holds a count and "SUBTOTAL" holds the
+# price before the discount.
+NOT_A_TOTAL = (
+    "SUBTOTAL",
+    "SUB TOTAL",
+    "TOTAL QTY",
+    "TOTAL ITEM",
+    "TOTAL ITEM(S)",
+    "TOTAL BARANG",
+    "HARGA JUAL",
+    "HARGA",
+    "PPN",
+    "DISKON",
+    "DISC",
+    "VOUCHER",
+    "VOUCHER BERLAKU",
+    "TUNAI",
+    "CASH",
+    "KEMBALI",
+    "CHANGE",
+    "NO. ",
+    "NO:",
+)
+
+
+def _numbers_in(line):
+    """
+    The numbers on a line, read the way this parser reads them.
+
+    The numbers are returned in the order they were printed, so that
+    the caller can choose between the first and the biggest.
+    """
+    found = []
+    for piece in re.findall(r"[\d][\d.,]*", line):
+        value = parse_number_indonesia(piece)
+        if value > 0:
+            found.append(value)
+    return found
+
+
+def find_total(lines):
+    """
+    Work out what the receipt came to.
+
+    The label and the amount are looked for together, and the amount
+    may be on the line after the label: a thermal printer runs them
+    together, but a receipt printed on paper puts them apart.
+
+    On the line that is found, the biggest number is taken rather than
+    the last one. A receipt line often holds a voucher and a change
+    beside the total, and the total is the biggest of them.
+
+    Returns (amount, line_index) or (0.0, None).
+    """
+    for index, raw in enumerate(lines):
+        cleaned = normalize_receipt_line(raw)
+        if not cleaned:
+            continue
+
+        upper = cleaned.upper()
+
+        # A line that says what is NOT the total wins over one that
+        # says what is. "TOTAL QTY 3" holds a count, and the count is
+        # the smaller number, so reading it as the amount would tell
+        # the reader their shopping cost three rupiah.
+        if any(bad in upper for bad in NOT_A_TOTAL):
+            continue
+
+        if not any(good in upper for good in TOTAL_LABELS):
+            continue
+
+        numbers = _numbers_in(cleaned)
+        if numbers:
+            return max(numbers), index
+
+        # The label is on its own. The amount is on the next line.
+        for ahead in range(index + 1, min(index + 3, len(lines))):
+            next_line = normalize_receipt_line(lines[ahead])
+            if not next_line:
+                continue
+            next_numbers = _numbers_in(next_line)
+            if next_numbers:
+                return max(next_numbers), ahead
+
+    return 0.0, None
 
 
 # ============================================================
@@ -501,11 +695,17 @@ class ReceiptParserV31:
                             subtotal = parse_number_indonesia(nums[-1])
                     
                     # Extract total
-                    if 'TOTAL' in upper and 'SUBTOTAL' not in upper and 'HARGA' not in upper:
-                        if total == 0:
-                            nums = re.findall(r'[\d,.]+', cleaned)
-                            if nums:
-                                total = parse_number_indonesia(nums[-1])
+                    #
+                    # The same rules as everywhere else: a line that
+                    # says what is not a total is not read as one, and
+                    # the biggest number on the line is the total.
+                    # "TOTAL QTY 3" is a count of the items, and
+                    # reading it as the amount told the reader their
+                    # shopping cost three rupiah.
+                    if total == 0:
+                        line_total, _ = find_total([cleaned])
+                        if line_total > 0:
+                            total = line_total
                     
                     # Detect payment
                     if 'GOPAY' in upper:
@@ -521,6 +721,19 @@ class ReceiptParserV31:
                     elif 'DEBIT' in upper or 'CARD' in upper:
                         payment_method = "Debit"
             
+            # The total is looked for across the whole receipt, not
+            # only in the footer.
+            #
+            # A receipt is not always laid out so that the total ends
+            # up in the footer. There is no separator line on some of
+            # them, and on others the total sits above the payment
+            # line. Looking in the footer only meant that a receipt
+            # which had a perfectly good TOTAL on it was read as
+            # having no total at all.
+            found_total, _found_at = find_total(lines)
+            if found_total > 0:
+                total = found_total
+
             # Stage 4: Math Validation & Confidence
             item_sum = sum(item['total_price'] for item in items)
             

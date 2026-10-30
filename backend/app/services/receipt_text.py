@@ -32,11 +32,18 @@ from typing import Any, List
 # group starts. The second is exactly three digits, which is how a
 # thousands group ends. Both have to be there, and they have to be
 # adjacent, so "12 34" is left alone: that is two numbers, not one.
-_SPACED_NUMBER = re.compile(r'(\d{1,3})[.,]?\s+(\d{3}(?:\s+\d{3})*)')
+# A thousands group is exactly three digits. "33 900" is one number
+# and "4 4500" is two: the second group is four digits long, so it is
+# a number of its own and not the rest of a thousands group.
+#
+# Reading "4 4500" as one number gave the item a price of 4.450
+# instead of a quantity of 4 and a price of 4.500, and the reader was
+# told the wrong amount.
+_SPACED_NUMBER = re.compile(r'(\d{1,3})[.,]?\s+(\d{3}(?:\s+\d{3})*)(?!\d)')
 
 # A number with the printer's grid still in it: "33 900 00". The same
 # shape as above, but the group after the first may repeat.
-_SPACED_NUMBER_REPEATED = re.compile(r'(\d{1,3})\s+((?:\d{3}\s+)*\d{3})')
+_SPACED_NUMBER_REPEATED = re.compile(r'(\d{1,3})\s+((?:\d{3}\s+)*\d{3})(?!\d)')
 
 
 def normalize_spaced_amounts(text: str) -> str:
