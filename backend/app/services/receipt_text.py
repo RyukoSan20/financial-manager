@@ -43,14 +43,14 @@ from typing import Any, List
 # followed by a comma or a dot - that punctuation belongs to the
 # number after it. "ITEMS: 8 212,733" is a count of eight and a
 # sum of 212.733, and joining them gave 8.212.733.
-_SPACED_NUMBER = re.compile(r'(\d{1,3})[.,]?\s+(\d{3}(?:\s+\d{3})*)(?![\d,])')
+_SPACED_NUMBER = re.compile(r'(\d{1,3})[.,]?\s+(\d{3}(?:\s+\d{3})*)(?![\d,.])')
 
 # A number with the printer's grid still in it: "33 900 00". The same
 # shape as above, but the group after the first may repeat.
 # A thousands group is three digits and it is not followed by a
 # comma, because the comma belongs to the number after it.
 # "ITEMS: 8 212,733" is a count of eight and a sum of 212.733.
-_SPACED_NUMBER_REPEATED = re.compile(r'(\d{1,3})\s+((?:\d{3}\s+)*\d{3})(?![\d,])')
+_SPACED_NUMBER_REPEATED = re.compile(r'(\d{1,3})\s+((?:\d{3}\s+)*\d{3})(?![\d,.])')
 
 
 def normalize_spaced_amounts(text: str) -> str:

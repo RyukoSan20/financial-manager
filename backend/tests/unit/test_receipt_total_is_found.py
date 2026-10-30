@@ -234,3 +234,37 @@ def test_a_long_product_code_is_not_the_name_either():
     assert item is not None
     assert "61836173" not in item["name"]
     assert item["total_price"] == 45990
+
+
+# ---------------------------------------------------------------------------
+# A quantity and a price are two numbers
+# ---------------------------------------------------------------------------
+
+
+def test_a_quantity_and_a_price_are_not_one_number():
+    """
+    "ab total; 1 184.003" is a count of one and a sum of 184.003.
+
+    Joining them gave 1.184.003, which is six times the price.
+    """
+    from app.services.receipt_text import normalize_printed_amounts
+    from app.services.parser_engine_v31 import find_total
+
+    assert normalize_printed_amounts("1 184.003") == "1 184.003"
+
+    amount, _index = find_total(["ab total; 1 184.003"])
+    assert amount == 184003
+
+
+def test_a_count_and_a_sum_stay_apart():
+    """
+    "ITEMS: 8 212,733" is a count of eight items and a sum of
+    212.733. Joining them gave 8.212.733.
+    """
+    from app.services.receipt_text import normalize_printed_amounts
+    from app.services.parser_engine_v31 import find_total
+
+    assert normalize_printed_amounts("ITEMS: 8 212,733") == "ITEMS: 8 212,733"
+
+    amount, _index = find_total(["ITEMS: 8 212,733"])
+    assert amount == 212733
