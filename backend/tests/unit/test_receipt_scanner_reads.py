@@ -345,3 +345,47 @@ def test_a_photograph_of_the_app_is_not_a_receipt():
     assert result["amount"] == 0, (
         f"a screenshot of the app was read as a transaction of {result['amount']}"
     )
+
+
+# ---------------------------------------------------------------------------
+# 4. The shop is read off the receipt
+# ---------------------------------------------------------------------------
+
+
+def test_the_shop_is_read_off_the_receipt():
+    """
+    A receipt names its shop. The name is at the top, in the first
+    few lines.
+
+    The lines were joined into one long string before the shop was
+    looked for, so the shop was never found and every receipt came
+    back as "Unknown Merchant".
+    """
+    from app.services.parser_engine_v31 import parse_receipt_text_v31
+
+    lines = [
+        "BEEPOS",
+        "Cafe Bee",
+        "Jl. Kemang Selatan 1 No. 20",
+        "Surabaya",
+        "Bakso 2 x 12,000 24,000",
+        "Total 24,000",
+    ]
+
+    result = parse_receipt_text_v31(lines)
+
+    assert result["merchant_name"] != "Unknown Merchant", (
+        f"the shop was not read: {result['merchant_name']}"
+    )
+
+
+def test_the_end_of_the_receipt_is_not_taken_for_the_shop():
+    """A line at the end of a receipt is not the name of a shop."""
+    from app.services.catalog_autodiscovery import find_merchant_candidates
+
+    lines = ["BEEPOS", "Total 24,000", "Terima kasih atas kunjungan Anda"]
+
+    names = [c.name for c in find_merchant_candidates(lines)]
+
+    assert "BEEPOS" in names
+    assert "Terima kasih atas kunjungan Anda" not in names

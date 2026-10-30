@@ -186,7 +186,7 @@ MERCHANT_PATTERNS = [
     (r'\b(SHOPEE)\b', "Shopee"),
 ]
 
-def detect_merchant(full_text: str) -> str:
+def detect_merchant(lines: Any) -> str:
     """
     The shop this receipt is from.
 
@@ -200,7 +200,17 @@ def detect_merchant(full_text: str) -> str:
     point. What the receipt itself says comes first when it is clear
     enough, and the words a machine prints at the end of a receipt are
     never taken for a shop.
+
+    The lines are read as lines. They used to be joined into one long
+    string first, and a shop's name is a line - so it was never found
+    and every receipt came back as "Unknown Merchant".
     """
+    if isinstance(lines, str):
+        receipt_lines = [line for line in lines.split("\n") if line.strip()]
+    else:
+        receipt_lines = [str(line).strip() for line in (lines or []) if str(line).strip()]
+
+    full_text = " ".join(receipt_lines)
     upper_text = full_text.upper()
 
     # The shop as the receipt says it. A company name at the top, or
@@ -208,8 +218,7 @@ def detect_merchant(full_text: str) -> str:
     # entry, because it is what this receipt actually says.
     from app.services.catalog_autodiscovery import best_merchant
 
-    lines = [line for line in full_text.split("\n") if line.strip()]
-    candidate = best_merchant(lines)
+    candidate = best_merchant(receipt_lines)
     if candidate is not None and candidate.source in ("company_line", "paid_to"):
         return candidate.name
 
@@ -658,7 +667,7 @@ class ReceiptParserV31:
             full_text = ' '.join(lines)
             
             # Stage 1: Detect merchant from FULL text
-            merchant_name = detect_merchant(full_text)
+            merchant_name = detect_merchant(lines)
             
             # Extract date
             extracted_date = extract_date(full_text)
