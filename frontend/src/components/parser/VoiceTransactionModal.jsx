@@ -112,9 +112,16 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
     setParsing(true);
     setError('');
     try {
+      // The token is sent so the server knows which reader the
+      // parsed transaction belongs to. Without it the endpoint is
+      // refused, because a parsed transaction is written to somebody.
+      const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
       const response = await fetch(apiUrl('voice/parse'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ text: clean }),
       });
 

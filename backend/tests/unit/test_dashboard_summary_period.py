@@ -123,16 +123,28 @@ def db(tmp_path):
     session.close()
 
 
+class _TheReader:
+    """Whoever is signed in while the test runs."""
+
+    id = 1
+    email = "reader@example.test"
+    is_active = True
+
+
 def _summary(db, **params):
     """Ask the summary endpoint for its figures."""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
     from app.api.routes import dashboard as dashboard_route
+    from app.core.security import get_current_user
 
     app = FastAPI()
     app.include_router(dashboard_route.router, prefix="/api/dashboard")
     app.dependency_overrides[get_db] = lambda: db
+    # The endpoint needs a reader. A request without one is refused,
+    # which is the point of the other test.
+    app.dependency_overrides[get_current_user] = lambda: _TheReader()
 
     client = TestClient(app)
     response = client.get("/api/dashboard/summary", params=params)

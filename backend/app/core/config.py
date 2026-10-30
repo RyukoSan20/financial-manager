@@ -53,6 +53,22 @@ class Settings(BaseSettings):
     
     # Gmail Integration
     GMAIL_REDIRECT_URI: str = os.getenv("GMAIL_REDIRECT_URI", "https://my-financial-manager.online/api/integrations/gmail/callback")
+
+    # The secret that lets the scheduler run the recurring generator
+    # without being a reader. It is a separate value from the JWT
+    # secret on purpose: the scheduler is not a reader and must not
+    # be able to act as one.
+    CRON_SECRET: str = os.getenv("CRON_SECRET", "")
+
+    # API-Ninjas. The key used to be written into the source of
+    # three route modules, which put it in the repository and in
+    # every build of the image. It belongs in the environment.
+    API_NINJAS_KEY: str = os.getenv("API_NINJAS_KEY", "")
+
+    # The secret the payment gateway signs its notifications with.
+    # Without it a webhook cannot be trusted, so the webhook refuses
+    # to write anything.
+    QRIS_WEBHOOK_SECRET: str = os.getenv("QRIS_WEBHOOK_SECRET", "")
     
     # Calculation defaults
     DAYS_IN_MONTH: int = 30

@@ -48,7 +48,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.api.routes.dashboard import router
 from app.core.database import Base, get_db
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user, get_current_user_optional
 from app.models.account import Account
 from app.models.budget import Budget  # noqa: F401
 from app.models.category import Category  # noqa: F401
@@ -127,6 +127,8 @@ def client():
 
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_current_user_optional] = lambda: FakeUser()
+    # The endpoints need a reader, so the request is signed in.
+    app.dependency_overrides[get_current_user] = lambda: FakeUser()
 
     try:
         with TestClient(app) as test_client:

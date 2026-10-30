@@ -43,12 +43,15 @@ def calculate_next_occurrence(rule: RecurringRule, from_date: date = None) -> da
         return from_date + timedelta(days=30)
 
 
-def process_due_recurring_rules(force_today: bool = False):
+def process_due_recurring_rules(force_today: bool = False, user_id: int = None):
     """
     Process all due recurring rules and auto-generate transactions.
     This should be called by a cron job (e.g., every hour or daily).
     Args:
         force_today: If True, process rules even if next_occurrence > today (for manual "Process Now")
+        user_id: When given, only the rules of that user are processed.
+            A caller that acts on behalf of one reader must never touch
+            another reader's rules.
     Returns: dict with processed count and results
     """
     db = SessionLocal()
@@ -64,9 +67,12 @@ def process_due_recurring_rules(force_today: bool = False):
         today = date.today()
         
         # Get all active recurring rules
-        due_rules = db.query(RecurringRule).filter(
+        due_query = db.query(RecurringRule).filter(
             RecurringRule.is_active == True
-        ).all()
+        )
+        if user_id is not None:
+            due_query = due_query.filter(RecurringRule.user_id == user_id)
+        due_rules = due_query.all()
         
         results["processed"] = len(due_rules)
         

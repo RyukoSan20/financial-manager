@@ -27,12 +27,29 @@ class StockCache:
         self.cache_duration_seconds = 60  # 1 minute cache
     
     def is_valid(self, key: str) -> bool:
+        """
+        Whether the cached answer is still fresh.
+
+        The age is taken from "updated", which is when the answer was
+        written. The other timestamp in the entry is the exchange's
+        own clock, sent as a number of seconds since the epoch, and
+        subtracting that from a date used to crash this method.
+        """
         if key not in self.quotes:
             return False
         entry = self.quotes[key]
         if not entry:
             return False
-        age = (datetime.utcnow() - entry.get('timestamp', datetime.min)).total_seconds()
+
+        updated = entry.get('updated')
+        if not updated:
+            return False
+        try:
+            when = datetime.fromisoformat(updated)
+        except (TypeError, ValueError):
+            return False
+
+        age = (datetime.utcnow() - when).total_seconds()
         return age < self.cache_duration_seconds
 
 stock_cache = StockCache()

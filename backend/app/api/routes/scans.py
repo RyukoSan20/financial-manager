@@ -27,7 +27,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user
 from app.models.user import User
 from app.services.scan_jobs import (
     STATUS_CANCELLED,
@@ -295,7 +295,7 @@ def _save_scan_to_db(
 @router.post("/receipt")
 async def create_receipt_scan_job(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -316,9 +316,9 @@ async def create_receipt_scan_job(
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    user_id = int(current_user.id) if current_user else None
+    user_id = int(current_user.id)
     manager = get_scan_manager()
-    job = manager.create(user_id or 0, kind="receipt", payload={"content": content})
+    job = manager.create(user_id, kind="receipt", payload={"content": content})
 
     def worker(scan_job):
         from app.api.routes.parser import _process_receipt_cpu_bound
@@ -394,7 +394,7 @@ async def create_receipt_scan_job(
 @router.post("/qr")
 def create_qr_scan_job(
     payload: QRJobRequest,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -404,9 +404,9 @@ def create_qr_scan_job(
     client has one code path for both the camera receipt and the camera
     QR capture, and the notification sheet works the same way for both.
     """
-    user_id = int(current_user.id) if current_user else None
+    user_id = int(current_user.id)
     manager = get_scan_manager()
-    job = manager.create(user_id or 0, kind="qr", payload={"qr_data": payload.qr_data})
+    job = manager.create(user_id, kind="qr", payload={"qr_data": payload.qr_data})
 
     def worker(scan_job):
         from app.core.database import SessionLocal
@@ -463,7 +463,7 @@ def create_qr_scan_job(
 @router.get("/{job_id}")
 def get_scan_job(
     job_id: str,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Poll a scan job.
@@ -471,7 +471,7 @@ def get_scan_job(
     A job belongs to the user who created it; another user gets a 404.
     """
     manager = get_scan_manager()
-    user_id = int(current_user.id) if current_user else None
+    user_id = int(current_user.id)
     job = manager.get(job_id, user_id=user_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Scan job not found")
@@ -480,7 +480,7 @@ def get_scan_job(
 
 @router.get("/")
 def list_scan_jobs(
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     """
     The jobs of the current user, newest first.
@@ -489,7 +489,7 @@ def list_scan_jobs(
     was on another screen is not lost.
     """
     manager = get_scan_manager()
-    user_id = int(current_user.id) if current_user else None
+    user_id = int(current_user.id)
     jobs = manager.list_for_user(user_id)
     jobs.sort(key=lambda j: j["created_at"], reverse=True)
     return {"jobs": jobs[:20]}
@@ -498,11 +498,11 @@ def list_scan_jobs(
 @router.post("/{job_id}/cancel")
 def cancel_scan_job(
     job_id: str,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     """Cancel a job that has not started yet."""
     manager = get_scan_manager()
-    user_id = int(current_user.id) if current_user else None
+    user_id = int(current_user.id)
     job = manager.get(job_id, user_id=user_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Scan job not found")

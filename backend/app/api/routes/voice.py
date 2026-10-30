@@ -21,7 +21,7 @@ import re
 import logging
 
 from app.core.database import get_db
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user
 from app.models.user import User
 from sqlalchemy.orm import Session
 
@@ -446,7 +446,7 @@ class VoiceParseResponse(BaseModel):
 @router.post("/parse", response_model=VoiceParseResponse)
 def parse_voice_text(
     request: VoiceParseRequest,
-    current_user: User = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Parse a spoken phrase into a structured transaction."""
