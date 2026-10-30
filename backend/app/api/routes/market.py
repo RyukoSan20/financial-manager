@@ -4,6 +4,8 @@ Integrates CoinGecko, Finnhub, API-Ninjas for comprehensive market data.
 """
 
 from fastapi import APIRouter, HTTPException
+
+from app.core.config import get_settings
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 import httpx
@@ -13,7 +15,7 @@ import os
 router = APIRouter()
 
 # API-Ninjas Configuration  
-API_NINJAS_KEY = os.getenv("API_NINJAS_KEY", "v8IqqlPhChYtBosWQNRD6CNAdmulvLC7zpdJYZH1")
+API_NINJAS_KEY = get_settings().API_NINJAS_KEY
 FINNHUB_KEY = os.getenv("FINNHUB_API_KEY", "")
 
 # Cache for market data

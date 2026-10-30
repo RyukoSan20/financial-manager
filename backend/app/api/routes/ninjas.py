@@ -4,6 +4,8 @@ Includes: Interest rates, GDP, Commodities, Crypto, Stock prices
 """
 
 from fastapi import APIRouter, HTTPException
+
+from app.core.config import get_settings
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import httpx
@@ -12,13 +14,55 @@ import os
 
 router = APIRouter(prefix="/api/ninjas", tags=["ninjas"])
 
-API_NINJAS_KEY = os.getenv("API_NINJAS_KEY", "v8IqqlPhChYtBosWQNRD6CNAdmulvLC7zpdJYZH1")
+API_NINJAS_KEY = get_settings().API_NINJAS_KEY
+
+
+def _require_key() -> None:
+    """
+    Refuse to call the provider without a key.
+
+    The key used to be written into this file, so it was never
+    missing. Now it lives in the environment, and calling the
+    provider without it only produces a confusing "not found".
+    """
+    if not API_NINJAS_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="API-Ninjas is not configured on this server "
+                   "(API_NINJAS_KEY is not set)",
+        )
+
+
+def _provider_error(response, what: str) -> HTTPException:
+    """
+    Say what the provider said, not what we guessed.
+
+    These routes used to answer "Country not found" or "Crypto not
+    found" for every failure, including a spent quota and a missing
+    key. That sent people looking for a typo in a country name when
+    the real problem was the plan.
+    """
+    try:
+        body = response.json()
+        message = body.get("error") or body.get("message") or response.text
+    except Exception:
+        message = response.text or response.reason_phrase
+
+    if response.status_code in (401, 403):
+        detail = f"API-Ninjas refused the key: {message}"
+    elif response.status_code == 400 and "quota" in str(message).lower():
+        detail = f"API-Ninjas monthly quota used up: {message}"
+    else:
+        detail = f"API-Ninjas could not answer for {what}: {message}"
+
+    return HTTPException(status_code=502, detail=detail)
 
 
 # ============ INTEREST RATES ============
 @router.get("/interest-rates")
 async def get_interest_rates():
     """Get central bank interest rates worldwide."""
+    _require_key()
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
@@ -40,15 +84,18 @@ async def get_interest_rates():
                     }
                 }
             else:
-                raise HTTPException(status_code=response.status_code, detail="API-Ninjas error")
+                raise _provider_error(response, "interest rates")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 # ============ GDP DATA ============
 @router.get("/gdp/{country}")
 async def get_gdp(country: str = "usa"):
     """Get GDP data for a country."""
+    _require_key()
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
@@ -66,15 +113,18 @@ async def get_gdp(country: str = "usa"):
                     "data": data
                 }
             else:
-                raise HTTPException(status_code=404, detail="Country not found")
+                raise _provider_error(response, f"country {country}")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 # ============ COMMODITY PRICES ============
 @router.get("/commodity/{name}")
 async def get_commodity(name: str):
     """Get commodity price (gold, silver, copper, natural_gas)."""
+    _require_key()
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
@@ -91,15 +141,18 @@ async def get_commodity(name: str):
                     "data": data
                 }
             else:
-                raise HTTPException(status_code=404, detail=f"Commodity '{name}' not found")
+                raise _provider_error(response, f"commodity {name}")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 # ============ CRYPTO PRICE ============
 @router.get("/crypto/{symbol}")
 async def get_crypto_price(symbol: str):
     """Get crypto price from API-Ninjas."""
+    _require_key()
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
@@ -121,15 +174,18 @@ async def get_crypto_price(symbol: str):
                     }
                 }
             else:
-                raise HTTPException(status_code=404, detail="Crypto not found")
+                raise _provider_error(response, f"crypto {symbol}")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 # ============ STOCK PRICE ============
 @router.get("/stock/{symbol}")
 async def get_stock_price(symbol: str):
     """Get stock price from API-Ninjas."""
+    _require_key()
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
@@ -146,7 +202,9 @@ async def get_stock_price(symbol: str):
                     "data": data
                 }
             else:
-                raise HTTPException(status_code=404, detail=f"Stock '{symbol}' not found")
+                raise _provider_error(response, f"stock {symbol}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

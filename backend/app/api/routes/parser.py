@@ -698,17 +698,30 @@ def get_detection_types(
 @router.get("/ocr-status")
 def get_ocr_status():
     """
-    Check OCR service status - is EasyOCR ready?
+    Check OCR service status - is the engine ready?
+
+    The service moved to RapidOCR with a Tesseract fallback, so the
+    old EasyOCR flags this used to read are gone. Asking for them
+    made this route answer 500.
     """
-    from app.services.ocr_service import ocr_initialized, ocr_init_error, easyocr_reader
-    
-    is_ready = easyocr_reader is not None and ocr_init_error is None
-    
+    from app.services.ocr_service import ocr_service
+
+    try:
+        status = ocr_service.get_status()
+    except Exception as exc:
+        return {
+            "status": "error",
+            "ready": False,
+            "error": str(exc),
+            "message": "OCR error",
+        }
+
     return {
-        "status": "ready" if is_ready else ("loading" if not ocr_initialized else "error"),
-        "ready": is_ready,
-        "error": str(ocr_init_error) if ocr_init_error else None,
-        "message": "OCR ready" if is_ready else ("Downloading models..." if not ocr_initialized else "OCR error"),
+        "status": status.get("status", "unknown"),
+        "ready": status.get("status") == "ready",
+        "engine": status.get("engine"),
+        "error": None,
+        "message": status.get("message", "OCR ready"),
     }
 
 
@@ -716,21 +729,21 @@ def get_ocr_status():
 def warmup_ocr():
     """
     Trigger OCR model download/warmup.
-    This pre-loads the EasyOCR models so the first scan is fast.
+    This pre-loads the OCR engine so the first scan is fast.
     """
     import threading
-    
+
     def init_ocr():
-        from app.services.ocr_service import get_easyocr_reader
+        from app.services.ocr_service import _get_ocr_engine
         try:
-            get_easyocr_reader(timeout_seconds=120)
-        except Exception as e:
+            _get_ocr_engine()
+        except Exception:
             pass
-    
+
     # Start in background thread
     thread = threading.Thread(target=init_ocr, daemon=True)
     thread.start()
-    
+
     return {"status": "started", "message": "OCR warmup started in background"}
 
 

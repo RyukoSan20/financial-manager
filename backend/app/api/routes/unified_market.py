@@ -25,6 +25,8 @@ The response shape matches what frontend/src/pages/MarketPage.jsx expects:
 """
 
 from fastapi import APIRouter
+
+from app.core.config import get_settings
 from typing import Optional, List, Dict, Any
 import httpx
 import asyncio
@@ -46,7 +48,7 @@ TV_HEADERS = {
     ),
 }
 
-API_NINJAS_KEY = os.getenv("API_NINJAS_KEY", "v8IqqlPhChYtBosWQNRD6CNAdmulvLC7zpdJYZH1")
+API_NINJAS_KEY = get_settings().API_NINJAS_KEY
 
 
 # --- Symbol universe -------------------------------------------------------
