@@ -623,7 +623,7 @@ def parse_receipt_base64_endpoint(
                 "merchant_name": merchant,
                 "amount": str(total) if total else "0",
                 "transaction_type": "DEBIT",
-                "date": date_value.isoformat() if date_value else None,
+                "date": date_value or None,
                 "payment_method": receipt.get("payment_method") or "Cash",
                 "confidence_score": receipt.get("confidence"),
                 "category_hint": receipt.get("category"),
@@ -641,12 +641,14 @@ def parse_receipt_base64_endpoint(
         # is no payment method and no category on it. The answer is
         # built from the fields that are actually there.
         receipt_date = receipt.date_time
+        if receipt_date is not None and not isinstance(receipt_date, str):
+            receipt_date = receipt_date.isoformat()
         return {
             "status": "success",
             "merchant_name": receipt.merchant_name,
             "amount": str(receipt.amount) if receipt.amount else "0",
             "transaction_type": "DEBIT",
-            "date": receipt_date.isoformat() if receipt_date else None,
+            "date": receipt_date or None,
             "payment_method": receipt.account_source or "Cash",
             "confidence_score": receipt.confidence_score,
             "category_hint": None,

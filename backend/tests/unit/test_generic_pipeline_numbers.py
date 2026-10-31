@@ -570,3 +570,69 @@ def test_a_number_that_is_already_a_number_is_left_alone():
     assert parser._parse_amount(38000.0) == Decimal("38000")
     assert parser._parse_amount(503510.0) == Decimal("503510")
     assert parser._parse_amount("38000") == Decimal("38000")
+
+
+def test_the_date_comes_back_whole(monkeypatch):
+    """
+    The receipt is read, and the date on it is handed back.
+
+    The date is sometimes a date and sometimes a string, and when it
+    was a string the route asked it for something only a date can give,
+    so the scan failed with "str object has no attribute isoformat".
+    """
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from app.api.routes import parser as parser_module
+    from app.services import receipt_service
+
+    class _Receipt:
+        merchant_name = "TOKO SENJA"
+        total_amount = 42000
+        transaction_date = "2026-01-15"
+        payment_method = "Cash"
+        confidence = 0.9
+        category = "Belanja"
+        items = []
+
+    monkeypatch.setattr(
+        receipt_service,
+        "process_receipt_hybrid",
+        lambda *args, **kwargs: _Receipt(),
+    )
+    monkeypatch.setattr(
+        receipt_service,
+        "receipt_to_dict",
+        lambda receipt: {
+            "merchant_name": receipt.merchant_name,
+            "total_amount": receipt.total_amount,
+            "transaction_date": receipt.transaction_date,
+            "payment_method": receipt.payment_method,
+            "confidence": receipt.confidence,
+            "category": receipt.category,
+            "items": receipt.items,
+        },
+    )
+
+    from app.api.routes.parser import get_current_user
+
+    class _Reader:
+        id = 1
+        email = "reader@example.com"
+
+    app = FastAPI()
+    app.include_router(parser_module.router, prefix="/api/parser")
+    app.dependency_overrides[get_current_user] = lambda: _Reader()
+
+    import base64 as _base64
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/parser/parse-receipt-base64",
+        json={"image_base64": _base64.b64encode(b"a-picture").decode()},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["date"] == "2026-01-15", body
+    assert body["amount"] == "42000", body
