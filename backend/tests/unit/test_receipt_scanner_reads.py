@@ -450,3 +450,26 @@ def test_a_product_code_alone_is_not_the_price():
         assert item.get("total_price", 0) < 1_000_000, (
             f"a product code was taken for a price: {item}"
         )
+
+
+def test_a_street_address_is_not_the_shop():
+    """
+    The shop and its street are both printed on the receipt.
+
+    The street is longer and is written in capitals, so it was being
+    taken for the name of the shop, and the name of the shop - which
+    was written with the telephone number beside it - was thrown away.
+    """
+    from app.services.catalog_autodiscovery import best_merchant
+
+    lines = [
+        "TLOGOMAS 44 MALANG 08113336422",
+        "JLN RAYA TLOGOMAS NO. 44 RT. 001 RW. 004,",
+        "65144",
+    ]
+
+    found = best_merchant(lines)
+
+    assert found is not None
+    assert "TLOGOMAS 44 MALANG" in found.name, found.name
+    assert "JLN RAYA" not in found.name, found.name

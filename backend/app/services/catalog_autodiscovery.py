@@ -191,6 +191,12 @@ def clean_company_name(text: str) -> str:
     # Take off a trailing amount.
     name = re.sub(r"\s+(rp\.?\s*)?[\d.,]+\s*$", "", name).strip()
 
+    # Take off a telephone number.
+    #
+    # "TLOGOMAS 44 MALANG 08113336422" is the name of the shop and
+    # the number beside it, not a name that happens to end in digits.
+    name = re.sub(r"\s*0\d{2,}[\s\-]?\d{3,}[\s\-]?\d{3,}\s*$", "", name).strip()
+
     return name
 
 
@@ -382,6 +388,10 @@ def find_merchant_candidates(
         if re.fullmatch(r"[\d.,\s]+", line):
             continue
 
+        # Where the shop is, not what it is called.
+        if _is_a_street_address(line):
+            continue
+
         # The name after "dibayarkan ke" is the most certain of all.
         paid_to = _after_paid_to_label(line)
         if paid_to:
@@ -427,6 +437,11 @@ def find_merchant_candidates(
                 # The camera often leaves a mark of punctuation at the
                 # end of a name. It is not part of the name.
                 tidy = line.strip(" \t.,;:!?*\"'|\u201d\u2019-_")
+                # The telephone number is printed beside the name; it
+                # is not part of the name.
+                tidy = re.sub(
+                    r"\s*0\d{2,}[\s\-]?\d{3,}[\s\-]?\d{3,}\s*$", "", tidy
+                ).strip()
                 if not tidy:
                     continue
                 candidates.append(
@@ -441,6 +456,30 @@ def find_merchant_candidates(
 
     candidates.sort(key=lambda c: c.confidence, reverse=True)
     return candidates[:max_candidates]
+
+
+# The words a street address begins with.
+_STREET_WORDS = ("JL", "JLN", "JALAN", "JALAN RAYA", "RAYA", "ALAMAT", "LOKASI")
+
+
+def _is_a_street_address(line: str) -> bool:
+    """
+    True when the line is a street address rather than a name.
+
+    "JLN RAYA TLOGOMAS NO. 44 RT. 001 RW. 004" is where the shop is,
+    not what it is called. The address is often the longer line, and
+    often in capitals, so it has to be recognised on its own words.
+    """
+    words = re.findall(r"[A-Za-z]+", line)
+    if not words:
+        return False
+    first = words[0].upper()
+    if first in _STREET_WORDS:
+        return True
+    # "RT. 001 RW. 004" on its own is an address part.
+    if first in ("RT", "RW", "NO", "KAMPUNG", "KEL", "KEC"):
+        return True
+    return False
 
 
 def _normalised_key(name: str) -> str:
