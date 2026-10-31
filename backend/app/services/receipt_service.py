@@ -515,15 +515,33 @@ def enrich_with_gemini(receipt: ParsedReceipt, image_bytes: bytes = None) -> Par
             # Convert Gemini result to ParsedReceipt
             ocr_result = format_gemini_result(gemini_result)
             
-            # Update receipt with Gemini data
-            if gemini_result.get('merchant'):
-                receipt.merchant_name = gemini_result['merchant'].get('name') or receipt.merchant_name
-                receipt.merchant_type = gemini_result['merchant'].get('type', 'Other')
-                receipt.merchant_location = gemini_result['merchant'].get('location')
+            cloud_total = float(gemini_result.get('total_amount', 0) or 0)
+            cloud_items = gemini_result.get('items') or []
+            cloud_merchant = (gemini_result.get('merchant') or {}).get('name')
             
-            if gemini_result.get('items'):
+            # A cloud answer that holds no sum and no lines is not an
+            # answer.
+            #
+            # It used to be used anyway, and it replaced the receipt
+            # that had already been read on the server. So a receipt
+            # that was read perfectly came back as worth nothing, and
+            # the reason was that the cloud reader was busy.
+            if cloud_total <= 0 and not cloud_items:
+                logger.warning(
+                    "The cloud reader answered with nothing; the receipt "
+                    "that was read on the server is kept"
+                )
+                return receipt
+            
+            # Update receipt with Gemini data
+            if cloud_merchant:
+                receipt.merchant_name = cloud_merchant
+                receipt.merchant_type = (gemini_result.get('merchant') or {}).get('type', 'Other')
+                receipt.merchant_location = (gemini_result.get('merchant') or {}).get('location')
+            
+            if cloud_items:
                 receipt.items = []
-                for item_data in gemini_result['items']:
+                for item_data in cloud_items:
                     receipt.items.append(ParsedItem(
                         name=item_data.get('name', 'Unknown'),
                         quantity=int(item_data.get('quantity', 1)),
@@ -532,7 +550,7 @@ def enrich_with_gemini(receipt: ParsedReceipt, image_bytes: bytes = None) -> Par
                         category=item_data.get('category')
                     ))
             
-            receipt.total_amount = float(gemini_result.get('total_amount', receipt.total_amount))
+            receipt.total_amount = cloud_total or receipt.total_amount
             receipt.parse_method = "gemini_fallback"
 
     except Exception as e:

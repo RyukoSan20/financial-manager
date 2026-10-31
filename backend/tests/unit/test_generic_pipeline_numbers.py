@@ -136,3 +136,50 @@ def test_the_base64_route_answers():
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["status"] == "success"
+
+
+# ---------------------------------------------------------------------------
+# The cloud reader must not erase what was already read
+# ---------------------------------------------------------------------------
+
+
+def test_a_cloud_answer_with_nothing_in_it_does_not_erase_the_receipt(monkeypatch):
+    """
+    The receipt is read on the server, and it comes out right: the shop
+    is Alfamart and the sum is 38.000.
+
+    Then the cloud reader is asked as well, and it answers with
+    nothing - no shop, no sum, no lines. It answers "success" even so.
+
+    The answer that was already read was thrown away and the empty one
+    was used instead, so the reader was told the receipt was worth
+    nothing. A cloud answer that holds nothing must not replace an
+    answer that holds everything.
+    """
+    import asyncio
+
+    from app.services import gemini_vision
+    from app.services.generic_pipeline import GenericPipeline
+
+    lines = [
+        "Alfamart",
+        "Alfanart Jogja",
+        "Cimory 2.000",
+        "1x2.000",
+        "Total Rp38.000",
+    ]
+
+    def _an_answer_with_nothing_in_it(image_bytes, api_key):
+        return {"merchant": {}, "items": [], "total_amount": 0}
+
+    monkeypatch.setattr(
+        gemini_vision, "extract_receipt_with_gemini", _an_answer_with_nothing_in_it
+    )
+    monkeypatch.setenv("GEMINI_API_KEY", "a-key-for-the-test")
+
+    result = asyncio.run(GenericPipeline().parse({"ocr_lines": lines}, b"not-empty"))
+
+    assert result.total_amount == 38000, (
+        f"the sum that was read was thrown away: {result.total_amount}"
+    )
+    assert result.merchant_name, "the shop that was read was thrown away"

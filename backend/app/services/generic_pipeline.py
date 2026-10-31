@@ -1138,8 +1138,15 @@ class GenericPipeline:
                 logger.info(f"Gemini fallback partial: merchant={gemini_result.merchant_name}, total={gemini_result.total_amount}")
         
         # Return partial if we have usable data
-        if result.total_amount > 0 and result.items:
-            result.message = f"Partial: {', '.join(issues)}"
+        #
+        # A receipt whose sum was read is a receipt that was read, even
+        # when the lines of the products were not understood. This used
+        # to require the products as well, so a receipt with a sum and
+        # no products came back as worth nothing at all - and the sum
+        # that had been read was thrown away with it.
+        if result.total_amount > 0 and (result.items or result.merchant_name):
+            result.success = True
+            result.message = f"Partial: {', '.join(issues)}" if issues else "Read on the server"
             logger.info("=== PARSE END: PARTIAL ===")
             return result
         
@@ -1315,11 +1322,13 @@ class GenericPipeline:
             
             result = ExtractionResult(source=ExtractionSource.GEMINI_FALLBACK)
             
+            cloud_total = float(gemini_data.get("total_amount", 0) or 0)
+            
             if gemini_data.get("merchant"):
                 result.merchant_name = gemini_data["merchant"].get("name", "Merchant")
                 result.merchant_type = gemini_data["merchant"].get("type", "Other")
             
-            result.total_amount = float(gemini_data.get("total_amount", 0) or 0)
+            result.total_amount = cloud_total
             result.date = gemini_data.get("transaction_date")
             
             for item_data in gemini_data.get("items", []):
@@ -1329,6 +1338,22 @@ class GenericPipeline:
                     price_per_unit=float(item_data.get("price_per_unit", 0)),
                     total_price=float(item_data.get("total_price", 0))
                 ))
+            
+            # An answer that holds no sum and no lines is not an answer.
+            #
+            # It used to be marked as a success anyway, and it was then
+            # used in place of the receipt that had already been read
+            # on the server. So a receipt that was read perfectly came
+            # back as worth nothing, and the reason was that the cloud
+            # reader was busy.
+            if cloud_total <= 0 and not result.items:
+                result.success = False
+                result.message = "The cloud reader answered with nothing"
+                logger.warning(
+                    "Gemini returned no total and no items; the receipt "
+                    "that was read on the server is kept"
+                )
+                return None
             
             # Always mark as success if we got a result
             result.success = True
@@ -1341,13 +1366,12 @@ class GenericPipeline:
             
         except Exception as e:
             logger.error(f"Gemini fallback error: {e}")
-            # Never return None - try to return partial result with inferred merchant
-            result = ExtractionResult(source=ExtractionSource.GEMINI_FALLBACK)
-            result.merchant_name = "Minimarket/Retail"
-            result.merchant_type = "Retail"
-            result.success = False
-            result.message = f"Gemini failed: {str(e)}"
-            return result
+            # Nothing was read, so nothing is claimed.
+            #
+            # This used to answer with a made-up shop and no sum, and
+            # the made-up shop was then shown as though it had been
+            # read off the receipt.
+            return None
 
 
 # Global instance
