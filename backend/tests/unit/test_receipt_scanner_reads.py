@@ -425,3 +425,28 @@ def test_a_scrap_of_noise_is_not_the_shop():
     assert "alfamart" in merchant.lower(), (
         f"the shop the receipt names was not found: {merchant!r}"
     )
+
+
+def test_a_product_code_alone_is_not_the_price():
+    """
+    A supermarket line: a code, a name, and a quantity.
+
+    "42000828 KANTONG PLASTIK BERS x0" holds one number, and that
+    number is the code of the plastic bags. It was taken for the
+    price, so the receipt came to forty-two million instead of half a
+    million.
+    """
+    from app.services.parser_engine_v31 import parse_receipt_text_v31
+
+    lines = [
+        "35597816 TSSUNFLOKEFBTL 5M 103,390",
+        "42000828 KANTONG PLASTIK BERS x0",
+        '"SMS WIA: 503,510',
+    ]
+
+    parsed = parse_receipt_text_v31(lines)
+
+    for item in parsed.get("items", []):
+        assert item.get("total_price", 0) < 1_000_000, (
+            f"a product code was taken for a price: {item}"
+        )

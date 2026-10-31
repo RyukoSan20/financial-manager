@@ -419,6 +419,12 @@ def parse_single_line_item(line: str) -> Optional[Dict[str, Any]]:
 
     # Single number item (e.g., "PLASTIK SDG 1")
     if len(numeric_parts) == 1:
+        # A line with one number on it can still be a product code and
+        # a name: "42000828 KANTONG PLASTIK BERS x0". There is no
+        # price on that line at all, and the code was being taken for
+        # the price.
+        if _is_a_product_code(numeric_parts[0]):
+            return None
         name = " ".join(text_parts) if text_parts else "Item"
         return {
             "name": name,
