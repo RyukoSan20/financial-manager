@@ -592,21 +592,64 @@ def parse_receipt_base64_endpoint(
     
     try:
         if image_base64:
-            # Process image with OCR
-            receipt = parse_receipt_image(image_base64)
-        else:
-            # Parse pre-OCR'd text
-            receipt = parse_receipt_text(ocr_text)
-        
+            # A picture is read the same way the upload route reads
+            # it, so a receipt that comes in this way is read exactly
+            # as well as one that is uploaded.
+            #
+            # This used to call a function that was never imported,
+            # so every request to this route failed with a 500 and the
+            # picture was never read at all.
+            import base64 as _base64
+
+            image_bytes = _base64.b64decode(image_base64)
+
+            from app.services.receipt_service import (
+                process_receipt_hybrid,
+                receipt_to_dict,
+            )
+
+            parsed = process_receipt_hybrid(
+                image_bytes=image_bytes,
+                use_gemini_fallback=True,
+                use_gemini_enrichment=True,
+            )
+            receipt = receipt_to_dict(parsed)
+
+            merchant = receipt.get("merchant_name")
+            total = receipt.get("total_amount")
+            date_value = receipt.get("transaction_date")
+            return {
+                "status": "success",
+                "merchant_name": merchant,
+                "amount": str(total) if total else "0",
+                "transaction_type": "DEBIT",
+                "date": date_value.isoformat() if date_value else None,
+                "payment_method": receipt.get("payment_method") or "Cash",
+                "confidence_score": receipt.get("confidence"),
+                "category_hint": receipt.get("category"),
+                "suggested_type": "expense",
+                "description": (
+                    f"Pembelian di {merchant}" if merchant else "Pembelian"
+                ),
+                "items": receipt.get("items") or [],
+            }
+
+        # Parse pre-OCR'd text
+        receipt = parse_receipt(ocr_text)
+
+        # The record holds the date and the time together, and there
+        # is no payment method and no category on it. The answer is
+        # built from the fields that are actually there.
+        receipt_date = receipt.date_time
         return {
             "status": "success",
             "merchant_name": receipt.merchant_name,
-            "amount": str(receipt.total_amount) if receipt.total_amount else "0",
+            "amount": str(receipt.amount) if receipt.amount else "0",
             "transaction_type": "DEBIT",
-            "date": receipt.date.isoformat() if receipt.date else None,
-            "payment_method": receipt.payment_method,
+            "date": receipt_date.isoformat() if receipt_date else None,
+            "payment_method": receipt.account_source or "Cash",
             "confidence_score": receipt.confidence_score,
-            "category_hint": receipt.category_hint,
+            "category_hint": None,
             "suggested_type": "expense",
             "description": f"Pembelian di {receipt.merchant_name}" if receipt.merchant_name else "Pembelian",
         }

@@ -21,6 +21,10 @@ class ParsedTransaction:
     account_source: Optional[str] = None
     card_number: Optional[str] = None
     reference_number: Optional[str] = None
+    # The address the receipt prints. It was being read and then given
+    # to the record, which had no place for it, so every receipt that
+    # carried an address failed and the route answered 500.
+    address: Optional[str] = None
     confidence_score: float = 0.0
     detection_type: str = "TEXT"
     raw_text: str = ""

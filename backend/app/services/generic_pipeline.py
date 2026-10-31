@@ -156,19 +156,33 @@ class CurrencyNormalizer:
         Normalize line for parsing - REMOVE thousand separators.
         Handles: 33,900 / 33.900 / 33 900 / 33, 900 -> 33900
         Only normalizes comma/dot/space that is FOLLOWED by exactly 3 digits.
+
+        A separator that is followed by more than three digits is not a
+        separator. "4 4500" is a count of four and a price of 4.500,
+        and joining them gave 44.500.
+
+        The joining of the printed numbers is done by the one routine
+        that already knows the rules, so both parsers read a receipt
+        the same way.
         """
         if not line:
             return line
-        
-        # Pattern: digit followed by comma/dot/space AND exactly 3 digits after
-        # "33,900" -> "33900"
-        # "33.900" -> "33900"  
-        # "33 900" -> "33900"
-        # "33, 900" -> "33900"
-        # But NOT "72G" or "4500" (not followed by 3 more digits)
-        line = re.sub(r'(\d)[,\.\s]+(\d{3})(?=\D|$)', r'\1\2', line)
-        
-        return line
+
+        from app.services.receipt_text import normalize_printed_amounts
+
+        # "1 234 567" and "33, 900" are put back together.
+        joined = normalize_printed_amounts(line)
+
+        # What is left is a separator inside a number, and it is
+        # removed: "33.900" is one number.
+        #
+        # A separator that is followed by a comma or a dot belongs to
+        # the number after it, so "1 184.003" is left alone - the
+        # count and the price are two numbers.
+        joined = re.sub(r'(\d)[,\.](\d{3})(?!\d)', r'\1\2', joined)
+        joined = re.sub(r'(\d),(\d{3})(?!\d)', r'\1\2', joined)
+
+        return joined
     
     @staticmethod
     def extract_amounts(line: str) -> List[float]:
@@ -184,16 +198,14 @@ class CurrencyNormalizer:
         # Check if discount (in parentheses or with minus)
         is_discount = '(' in line or line.startswith('-')
         
-        # Extract positive amounts
-        pattern = r'(\d+)'
-        matches = re.findall(pattern, line)
-        for m in matches:
-            try:
-                val = int(m)
-                if val > 0:
-                    amounts.append(float(val))
-            except ValueError:
-                continue
+        # A number is one piece even when it has a separator in it,
+        # and a decimal comma is part of the number.
+        from app.services.parser_engine_v31 import parse_number_indonesia
+
+        for piece in re.findall(r'\d[\d.,]*', line):
+            value = parse_number_indonesia(piece)
+            if value and value > 0:
+                amounts.append(float(value))
         
         return amounts
     
