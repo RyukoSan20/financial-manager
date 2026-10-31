@@ -786,14 +786,29 @@ class AnchorEngine:
         return None
     
     def find_date(self, lines: List[str]) -> Optional[str]:
-        """Extract date. Accepts dd/mm/yyyy, dd.mm.yyyy and dd-mm-yyyy."""
+        """
+        Extract date. Accepts dd/mm/yyyy, dd.mm.yyyy and dd-mm-yyyy.
+
+        A date that is written the other way round - 2025-10-15 - is
+        read the right way round too. It used to be read as the 25th
+        of October 2015, because the first two digits of the year were
+        taken for the day.
+        """
         for line in lines:
-            match = re.search(r"(\d{1,2})[\.\-\/](\d{1,2})[\.\-\/](\d{2,4})", line)
+            # Written the year first: 2025-10-15
+            match = re.search(r"\b(\d{4})[\.\-\/](\d{1,2})[\.\-\/](\d{1,2})\b", line)
+            if match:
+                y, m, d = match.groups()
+                if int(m) <= 12 and int(d) <= 31:
+                    return f"{y}-{m.zfill(2)}-{d.zfill(2)}"
+
+            match = re.search(r"\b(\d{1,2})[\.\-\/](\d{1,2})[\.\-\/](\d{2,4})\b", line)
             if match:
                 d, m, y = match.groups()
                 if len(y) == 2:
                     y = "20" + y
-                return f"{y}-{m.zfill(2)}-{d.zfill(2)}"
+                if int(m) <= 12 and int(d) <= 31:
+                    return f"{y}-{m.zfill(2)}-{d.zfill(2)}"
         return None
     
     def parse_with_state_machine(self, lines: List[str]) -> Dict[str, Any]:
@@ -1340,8 +1355,18 @@ class GenericPipeline:
         # Use STATE MACHINE for strict boundary enforcement
         state_result = self.anchor_engine.parse_with_state_machine(lines)
         
-        # Merchant from state machine
-        result.merchant_name = state_result.get("merchant") or "Merchant"
+        # The shop.
+        #
+        # The state machine takes the first line it sees, which on a
+        # receipt that opens with the camera's noise is the noise. The
+        # shop is looked for properly, and the state machine only
+        # speaks when nothing better was found.
+        found_merchant = self.anchor_engine.find_merchant_top(lines)
+        result.merchant_name = (
+            found_merchant
+            or state_result.get("merchant")
+            or "Merchant"
+        )
         
         # Find total (bottom-up)
         found, total, _ = self.anchor_engine.find_total_bottom_up(lines)

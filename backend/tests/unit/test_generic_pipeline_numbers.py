@@ -286,3 +286,28 @@ def test_a_hyphen_in_a_number_is_not_thrown_away():
     assert amounts == [1476.0], (
         f"the number was changed: {normalized!r} -> {amounts}"
     )
+
+
+def test_a_date_written_with_the_year_first_is_read_the_right_way_round():
+    """
+    "Waktu : 2025-10-15" is the 15th of October 2025.
+
+    It was read as the 25th of October 2015, because the first two
+    digits of the year were taken for the day. A receipt that was
+    filed under the wrong date was a receipt that could not be found
+    again.
+    """
+    from app.services.generic_pipeline import AnchorEngine
+
+    date_value = AnchorEngine().find_date(["Waktu : 2025-10-15 10:34:34"])
+
+    assert date_value == "2025-10-15", (
+        f"the date was read the wrong way round: {date_value!r}"
+    )
+
+
+def test_a_date_written_the_usual_way_is_still_read():
+    """The day first is the day first."""
+    from app.services.generic_pipeline import AnchorEngine
+
+    assert AnchorEngine().find_date(["Tanggal: 24-05-2023 16:45"]) == "2023-05-24"
