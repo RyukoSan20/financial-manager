@@ -231,5 +231,28 @@ SESSION LOG
     checking the interface in a browser, and both are now checked by
     tests that fail when the bug comes back.
 
+  DATA-1 42f1427, cba9e85: the reader who came back was given a
+    different token every time, so the same device did not look like
+    the same reader. The token now expires at a moment taken from
+    the account itself, not from the clock of the moment. A test
+    says the token of a guest does not change with the clock.
+
+  DATA-2: three transactions of the reader of this app were gone
+    from the server. Found by looking, not by guessing: the account
+    held Rp 6.000.000 while the oldest backup held Rp 5.975.000,
+    and the difference was exactly the Rp 25.000 of transaction 109.
+    The server's own log said who had removed it: DELETE
+    /api/transactions/109 on 26 October, from a browser session
+    during a QA run. Three more (451, 482, 483) were removed on
+    31 October; those were the fixtures written by the QA run
+    itself, so they were not put back. Transaction 109 was restored
+    from the backup, with its client_request_id and its dates, and
+    the balance went back to Rp 5.975.000. A full pg_dump was taken
+    before the write.
+    The lesson, written down so it does not happen again: a QA run
+    that talks to the real server deletes the real reader's rows.
+    The reader's rows were not in the app's own log before this,
+    because the log does not keep the request body.
+
   STILL NOT DONE, from the master prompt: the nav grouping
   refinement, and the A7 rows that need a mini-spec.
