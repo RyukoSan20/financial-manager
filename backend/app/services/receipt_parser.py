@@ -23,18 +23,30 @@ def _read_the_receipt_on_the_server(image_base64: str) -> Optional[Dict[str, Any
     than a receipt that was refused.
     """
     import base64
+    import concurrent.futures
 
-    try:
-        from app.services.ocr_service import ocr_service
+    def _read() -> Optional[Dict[str, Any]]:
         from app.services.receipt_service import (
             process_receipt_hybrid,
             receipt_to_dict,
         )
 
         image_bytes = base64.b64decode(image_base64)
-        parsed = receipt_to_dict(
-            process_receipt_hybrid(image_bytes=image_bytes)
+        return receipt_to_dict(
+            process_receipt_hybrid(
+                image_bytes=image_bytes,
+                use_gemini_fallback=False,
+                use_gemini_enrichment=False,
+                use_llm_structuring=False,
+            )
         )
+
+    try:
+        # The reader is an async one, and this is called from inside a
+        # request that is already running its own loop, so it is done
+        # on another thread.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            parsed = pool.submit(_read).result()
     except Exception as exc:  # noqa: BLE001 - the scan must not crash
         logger.warning(f"The receipt could not be read on the server: {exc}")
         return None
