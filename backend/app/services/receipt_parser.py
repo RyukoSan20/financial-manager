@@ -1,6 +1,7 @@
 """Enterprise Receipt Parser using Gemini 1.5 Flash with Structured Outputs."""
 
 import json
+import logging
 import re
 from typing import Optional, Dict, Any, List
 from decimal import Decimal, InvalidOperation
@@ -8,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.models.transaction import Transaction
 from app.models.transaction_item import TransactionItem
+
+logger = logging.getLogger(__name__)
 
 
 class ReceiptParser:

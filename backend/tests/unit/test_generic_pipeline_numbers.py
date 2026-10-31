@@ -336,12 +336,16 @@ def test_the_scan_from_the_feed_answers():
             calls.append(image_base64)
             return {"success": True, "data": {"amount": 100}, "confidence": 90}
 
+    original_parser = receipt_parser.ReceiptParser
     receipt_parser.ReceiptParser = _Parser
 
     async def _call_it():
         return receipt_parser.parse_receipt_sync(None, "an-image")
 
-    result = asyncio.run(_call_it())
+    try:
+        result = asyncio.run(_call_it())
+    finally:
+        receipt_parser.ReceiptParser = original_parser
 
     assert result["success"] is True
     assert calls == ["an-image"]
@@ -439,6 +443,7 @@ def test_the_phone_scan_route_answers():
                 "confidence": 88,
             }
 
+    original_parser = receipt_parser.ReceiptParser
     receipt_parser.ReceiptParser = _Parser
 
     app = FastAPI()
@@ -446,7 +451,60 @@ def test_the_phone_scan_route_answers():
     app.dependency_overrides[get_current_user] = lambda: _TheReader()
     app.dependency_overrides[get_db] = lambda: database
 
-    client = TestClient(app)
-    response = client.post("/api/feed/scan-receipt", json={"image": "an-image"})
+    try:
+        client = TestClient(app)
+        response = client.post("/api/feed/scan-receipt", json={"image": "an-image"})
+    finally:
+        receipt_parser.ReceiptParser = original_parser
 
     assert response.status_code < 500, response.text
+
+
+def test_the_vision_model_is_asked_without_a_library(monkeypatch):
+    """
+    The receipt is read by the vision model over http.
+
+    It used to be read through a library that is not installed on the
+    server, so the answer was always "No module named". And when that
+    was fixed, the module had no logger at all, so the next failure
+    was "name 'logger' is not defined". Both are checked here.
+    """
+    import asyncio
+    import json
+
+    from app.services import receipt_parser
+
+    asked = {}
+
+    class _Answer:
+        def __init__(self, body):
+            self._body = body
+
+        def read(self):
+            return json.dumps(self._body).encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def _fake_urlopen(request, timeout=None):
+        asked["url"] = request.full_url
+        return _Answer({
+            "candidates": [{
+                "content": {"parts": [{"text": '{"total_amount": 42000}'}]}
+            }]
+        })
+
+    monkeypatch.setenv("GEMINI_API_KEY", "a-key-for-the-test")
+
+    import urllib.request
+
+    monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen)
+
+    parser = receipt_parser.ReceiptParser(None)
+    text = parser._ask_gemini("a-key-for-the-test", "gemini-1.5-flash", "an-image")
+
+    assert text is not None, "the vision model was not asked"
+    assert "generateContent" in asked["url"]
