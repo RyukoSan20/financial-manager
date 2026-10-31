@@ -326,7 +326,15 @@ class ReceiptParser:
         """Parse amount string to Decimal."""
         if not amount_str:
             return Decimal("0")
-        
+
+        # A number that is already a number is taken as it is.
+        #
+        # It used to be read as text, and the dot in "38000.0" was
+        # taken for a separator between thousands, which made every
+        # receipt worth ten times what it was.
+        if isinstance(amount_str, (int, float, Decimal)):
+            return Decimal(str(amount_str))
+
         # Remove currency symbols and whitespace
         cleaned = re.sub(r"[Rp\s]", "", str(amount_str))
         

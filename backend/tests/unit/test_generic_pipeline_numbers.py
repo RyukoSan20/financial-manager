@@ -551,3 +551,22 @@ def test_the_receipt_is_read_even_when_the_cloud_is_busy(monkeypatch):
     assert result["success"] is True, result
     assert result["data"]["total_amount"] == 42000
     assert result["data"]["merchant_name"] == "TOKO SENJA"
+
+
+def test_a_number_that_is_already_a_number_is_left_alone():
+    """
+    The server-side reading gives the total as a number.
+
+    It used to be read as if it were text, and the dot in "38000.0"
+    was taken for a separator between thousands, which made a receipt
+    of 38.000 read as a receipt of 380.000.
+    """
+    from decimal import Decimal
+
+    from app.services.receipt_parser import ReceiptParser
+
+    parser = ReceiptParser(None)
+
+    assert parser._parse_amount(38000.0) == Decimal("38000")
+    assert parser._parse_amount(503510.0) == Decimal("503510")
+    assert parser._parse_amount("38000") == Decimal("38000")
