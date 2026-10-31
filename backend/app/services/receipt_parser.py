@@ -55,40 +55,35 @@ class ReceiptParser:
         """
         try:
             import os
-            import google.generativeai as genai
-            
-            # Configure Gemini
+
             api_key = os.getenv("GEMINI_API_KEY", "")
             model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(model_name)
-            
+
             # Clean base64 (remove data URI prefix if present)
             clean_base64 = image_base64
             if "base64," in image_base64:
                 clean_base64 = image_base64.split("base64,")[1]
-            
-            # Generate content with JSON response
-            response = model.generate_content(
-                contents=[{
-                    "parts": [
-                        {"text": self.PROMPT_TEMPLATE},
-                        {
-                            "inline_data": {
-                                "mime_type": "image/jpeg",
-                                "data": clean_base64
-                            }
-                        }
-                    ]
-                }],
-                generation_config={
-                    "response_mime_type": "application/json",
-                    "temperature": 0.1,
-                }
+
+            # The vision model is asked over HTTP, the same way the rest
+            # of the application asks it.
+            #
+            # It used to be asked through a library that is not
+            # installed on the server, so the answer was always "No
+            # module named 'google.generativeai'" and the scan from the
+            # phone never worked.
+            text = self._ask_gemini(
+                api_key, model_name, clean_base64
             )
+            if text is None:
+                return {
+                    "success": False,
+                    "error": "Gemini did not answer",
+                    "confidence": 0.0,
+                    "data": {}
+                }
             
             # Parse JSON response
-            text = response.text.strip()
+            text = text.strip()
             if text.startswith("```json"):
                 text = text.replace("```json", "").replace("```", "").strip()
             elif text.startswith("```"):
@@ -123,6 +118,70 @@ class ReceiptParser:
                 "confidence": 0.0,
                 "data": {}
             }
+
+    def _ask_gemini(
+        self, api_key: str, model_name: str, image_base64: str
+    ) -> Optional[str]:
+        """
+        Ask the vision model to read the receipt, and return its answer
+        as text.
+
+        The question is put over HTTP. The library that used to be used
+        for this is not installed on the server, and a scan that needs
+        a library that is not there is a scan that never works.
+        """
+        import urllib.error
+        import urllib.request
+
+        if not api_key:
+            logger.warning("GEMINI_API_KEY not configured")
+            return None
+
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": self.PROMPT_TEMPLATE},
+                    {
+                        "inline_data": {
+                            "mime_type": "image/jpeg",
+                            "data": image_base64,
+                        }
+                    },
+                ]
+            }],
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 4096,
+                "responseMimeType": "application/json",
+            },
+        }
+
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model_name}:generateContent?key={api_key}"
+        )
+        request = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                body = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            logger.error(f"Gemini answered with an error: {exc}")
+            return None
+        except Exception as exc:  # noqa: BLE001 - the cloud is optional
+            logger.error(f"Gemini could not be reached: {exc}")
+            return None
+
+        try:
+            return body["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError, TypeError):
+            logger.warning("Gemini answered with nothing usable")
+            return None
 
     def _normalize_fields(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize field names to English format."""

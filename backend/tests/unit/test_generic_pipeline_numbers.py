@@ -345,3 +345,108 @@ def test_the_scan_from_the_feed_answers():
 
     assert result["success"] is True
     assert calls == ["an-image"]
+
+
+def test_the_phone_scan_route_answers():
+    """
+    The route that the scan button on the phone calls answers.
+
+    It failed twice over: it started a second event loop inside a
+    request that already had one running, and then it asked the vision
+    model through a library that is not installed on the server. The
+    reader was told the server had a problem, and their receipt was
+    never read.
+    """
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
+
+    from app.api.routes import feed as feed_route
+    from app.core.database import get_db
+    from app.core.security import get_current_user
+    from app.services import receipt_parser
+
+    # A small database of its own, so the route can find the account
+    # it is going to put the receipt into.
+    #
+    # The table is made by hand, because the model's own table has
+    # columns that SQLite cannot hold.
+    from sqlalchemy.pool import StaticPool
+
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    with engine.begin() as connection:
+        connection.execute(text(
+            "CREATE TABLE accounts ("
+            "id INTEGER PRIMARY KEY, user_id INTEGER, name VARCHAR(255),"
+            "account_type VARCHAR(50), balance NUMERIC, currency VARCHAR(10),"
+            "is_active BOOLEAN, is_credit BOOLEAN, credit_limit NUMERIC,"
+            "initial_balance NUMERIC, icon VARCHAR(255), color VARCHAR(50),"
+            "bank_name VARCHAR(255), account_kind VARCHAR(50),"
+            "created_at TIMESTAMP, updated_at TIMESTAMP)"
+        ))
+        connection.execute(text(
+            "CREATE TABLE transactions ("
+            "id INTEGER PRIMARY KEY, user_id INTEGER, type VARCHAR(20),"
+            "amount NUMERIC, currency VARCHAR(10), date DATE,"
+            "description VARCHAR(500), notes VARCHAR(500), account_id INTEGER,"
+            "category_id INTEGER, transfer_id INTEGER,"
+            "transfer_to_transaction_id INTEGER, is_recurring BOOLEAN,"
+            "recurring_rule_id INTEGER, receipt_scan_id INTEGER,"
+            "is_deleted BOOLEAN, merchant_name VARCHAR(255),"
+            "raw_source_text VARCHAR(500), confidence_score FLOAT,"
+            "latitude FLOAT, longitude FLOAT, merchant_address VARCHAR(500),"
+            "detection_type VARCHAR(50), status VARCHAR(20),"
+            "source VARCHAR(50), raw_data VARCHAR(500),"
+            "is_merchant BOOLEAN, merchant_id INTEGER,"
+            "payment_method VARCHAR(50), reference_number VARCHAR(255),"
+            "client_request_id VARCHAR(255), tags VARCHAR(500),"
+            "is_draft BOOLEAN, created_at TIMESTAMP, updated_at TIMESTAMP)"
+        ))
+    database = sessionmaker(bind=engine)()
+    database.execute(text(
+        "INSERT INTO accounts (id, user_id, name, account_type, balance,"
+        " currency, is_active) VALUES (1, 1, 'Cash', 'cash', 0, 'IDR', 1)"
+    ))
+    database.commit()
+
+    class _TheReader:
+        id = 1
+        email = "reader@example.test"
+        is_active = True
+
+    class _Account:
+        id = 1
+        user_id = 1
+        name = "Cash"
+
+    class _Parser:
+        def __init__(self, db):
+            self.db = db
+
+        async def parse_with_gemini(self, image_base64):
+            return {
+                "success": True,
+                "data": {
+                    "merchant_name": "TOKO SENJA",
+                    "total_amount": 42000,
+                    "items": [],
+                },
+                "confidence": 88,
+            }
+
+    receipt_parser.ReceiptParser = _Parser
+
+    app = FastAPI()
+    app.include_router(feed_route.router, prefix="/api/feed")
+    app.dependency_overrides[get_current_user] = lambda: _TheReader()
+    app.dependency_overrides[get_db] = lambda: database
+
+    client = TestClient(app)
+    response = client.post("/api/feed/scan-receipt", json={"image": "an-image"})
+
+    assert response.status_code < 500, response.text
