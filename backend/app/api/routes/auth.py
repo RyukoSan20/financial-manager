@@ -262,7 +262,11 @@ def guest_login(guest_data: GuestLoginRequest, db: Session = Depends(get_db)):
         # Update last login
         existing.last_login = datetime.utcnow()
         db.commit()
-        access_token = create_access_token(existing.id)
+        # The token of a guest is the same every time, so the browser
+        # keeps the token it is holding and the account it belongs to.
+        access_token = create_access_token(
+            existing.id, expires_at=_guest_token_expiry(existing)
+        )
         return Token(
             access_token=access_token,
             user={
@@ -288,7 +292,9 @@ def guest_login(guest_data: GuestLoginRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(guest_user)
     
-    access_token = create_access_token(guest_user.id)
+    access_token = create_access_token(
+        guest_user.id, expires_at=_guest_token_expiry(guest_user)
+    )
     
     return Token(
         access_token=access_token,
@@ -300,6 +306,24 @@ def guest_login(guest_data: GuestLoginRequest, db: Session = Depends(get_db)):
             "is_active": guest_user.is_active,
         }
     )
+
+
+def _guest_token_expiry(user) -> datetime:
+    """
+    The moment a guest's token stops being valid.
+
+    It is counted from the moment the account was made, not from the
+    moment the token was asked for, so that the same guest is given
+    the same token every time.
+    """
+    from datetime import timedelta
+
+    from app.core.security import ACCESS_TOKEN_EXPIRE_DAYS
+
+    made = getattr(user, "created_at", None)
+    if isinstance(made, datetime):
+        return made + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    return datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
 
 
 # === Google OAuth ===

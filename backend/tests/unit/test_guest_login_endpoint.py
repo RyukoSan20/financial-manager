@@ -149,3 +149,46 @@ def test_a_device_id_with_awkward_characters_still_works(client):
     assert user is not None
     assert " " not in user.username
     assert "'" not in user.username
+
+
+def test_the_token_of_a_guest_does_not_change_with_the_clock(client, monkeypatch):
+    """
+    A guest who comes back keeps the same token.
+
+    The token was made from the moment it was asked for, down to the
+    microsecond, so two asks made two different tokens. The test above
+    only failed when the two asks landed on different microseconds,
+    which is why it was passed half the time and failed half the time.
+
+    Here the clock is moved on between the two asks, so the token must
+    still be the same one.
+    """
+    import datetime as _datetime
+
+    test_client, session = client
+
+    first = test_client.post("/api/guest", json={"device_id": "clockdevice"})
+
+    # The clock moves on. The clock in the module that makes the token
+    # is the one that is moved, because that is the one that used to
+    # decide when the token stops being valid.
+    moved = []
+
+    class _Clock:
+        @staticmethod
+        def utcnow():
+            moment = _datetime.datetime.utcnow() + _datetime.timedelta(
+                hours=3 * (len(moved) + 1)
+            )
+            moved.append(moment)
+            return moment
+
+    monkeypatch.setattr("app.core.security.datetime", _Clock)
+
+    second = test_client.post("/api/guest", json={"device_id": "clockdevice"})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert (
+        first.json()["access_token"] == second.json()["access_token"]
+    ), "the same device was given a different token"

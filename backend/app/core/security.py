@@ -32,9 +32,20 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(user_id: int) -> str:
-    """Create JWT access token for user."""
-    expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+def create_access_token(user_id: int, expires_at: Optional[datetime] = None) -> str:
+    """
+    Create JWT access token for user.
+
+    The moment the token stops being valid can be given. It is given
+    for a guest account, so that the same guest is given the same
+    token every time they come back.
+
+    Without it, the token was made from the moment it was asked for,
+    down to the microsecond, so every asking made a different token.
+    A guest who came back was given a new one, and the token the
+    browser was holding stopped being the token of the account.
+    """
+    expire = expires_at or (datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS))
     payload = {"sub": str(user_id), "exp": expire}
     return jwt.encode(payload, settings.APP_NAME, algorithm=ALGORITHM)
 
