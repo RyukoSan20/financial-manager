@@ -254,7 +254,11 @@ def test_the_migration_can_be_undone(engine):
             )
         )
 
-    command.downgrade(_config(url), "-1")
+    # The downgrade is to the revision before this one, not to the
+    # revision before the head. The head moves on as new work is
+    # added, and a test that goes down one step would then stop
+    # testing the thing it was written for.
+    command.downgrade(_config(url), PREVIOUS_REVISION)
 
     transaction_columns = _columns(engine, "transactions")
     assert "tags" not in transaction_columns

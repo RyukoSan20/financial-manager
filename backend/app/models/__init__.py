@@ -20,6 +20,11 @@ from app.models.learning_note import LearningNote
 from app.models.breakdown_item import BreakdownItem
 from app.models.catalog_icon import CatalogIcon
 from app.models.gmail_credentials import GmailCredentials
+from app.models.split_bill import (
+    SplitGroup, SplitMember, SplitExpense, SplitPayer,
+    SplitItem, SplitItemClaim, SplitCalculatedShare,
+    SplitSettlement, SplitPaymentMethod,
+)
 
 __all__ = [
     "Account",
@@ -53,4 +58,13 @@ __all__ = [
     "BreakdownItem",
     "CatalogIcon",
     "GmailCredentials",
+    "SplitGroup",
+    "SplitMember",
+    "SplitExpense",
+    "SplitPayer",
+    "SplitItem",
+    "SplitItemClaim",
+    "SplitCalculatedShare",
+    "SplitSettlement",
+    "SplitPaymentMethod",
 ]

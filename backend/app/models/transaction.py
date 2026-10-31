@@ -81,6 +81,30 @@ class Transaction(Base):
     # receipt reader makes drafts so that a reading can be checked
     # before it becomes a record.
     is_draft = Column(Boolean, default=False, nullable=False)
+
+    # The shared bill this transaction came from, when it came from
+    # one. It is null for an ordinary transaction, and it stays null
+    # for a bill that was shared but never recorded.
+    #
+    # There is no foreign key here on purpose. The link the other way
+    # round - from `split_expenses` to `transactions` - carries one,
+    # and that one is enough to keep the two honest. A column cannot
+    # be added to an existing table with a foreign key on it in every
+    # database this application runs on, and a column that some
+    # databases can hold and others cannot is a column that breaks
+    # the deployment.
+    split_expense_id = Column(Integer, nullable=True, index=True)
+
+    # Which part of a shared bill this transaction is:
+    #
+    # - PERSONAL_SHARE: the reader own part of the bill. This is
+    #   spending, and it counts towards the month.
+    # - FRONTED_RECEIVABLE: money the reader put in for somebody
+    #   else. It is not spending, and it must not make the month look
+    #   bigger than it was.
+    # - SPLIT_REIMBURSEMENT: money coming back from somebody else.
+    #   It is not income, because the reader never lost it.
+    split_tx_type = Column(String(30), nullable=True, index=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

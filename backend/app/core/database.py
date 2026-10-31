@@ -72,6 +72,12 @@ def run_migrations():
             "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS tags TEXT",
             "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS is_draft BOOLEAN NOT NULL DEFAULT false",
             "ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_adjustment BOOLEAN NOT NULL DEFAULT false",
+            # The shared bill a transaction came from, and which part
+            # of it the transaction is. A transaction that did not
+            # come from a shared bill has neither, and that is the
+            # ordinary case.
+            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS split_expense_id INTEGER REFERENCES split_expenses(id)",
+            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS split_tx_type VARCHAR(30)",
         ):
             try:
                 conn.execute(text(statement))
@@ -95,6 +101,19 @@ def run_migrations():
         except Exception as e:
             conn.rollback()
             logger.debug(f"Draft index skipped -> {e}")
+
+        # The index that makes a shared bill cheap to find from a
+        # transaction. It is created on its own, because the column
+        # and the index cannot be added in the same statement.
+        try:
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_transactions_split_expense
+                ON transactions (split_expense_id)
+            """))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.debug(f"Split index skipped -> {e}")
 
         # Add receipt_scan_id column to transactions if not exists
         try:
