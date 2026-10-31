@@ -699,6 +699,15 @@ class AnchorEngine:
             if len(line_clean) > 30:
                 continue
             
+            # A name is written in capitals, or it begins with the
+            # words a company is written with.
+            #
+            # "Nasi Dan Salad" is a dish on a menu, written the way a
+            # dish is written, and it was being filed as the name of
+            # the shop.
+            if not self._is_written_as_a_name(line_clean):
+                continue
+            
             return line_clean
         
         # The head of the receipt had no name on it. The name is looked
@@ -723,9 +732,48 @@ class AnchorEngine:
                 continue
             if len(line_clean) > 30:
                 continue
+            if not self._is_written_as_a_name(line_clean):
+                continue
             return line_clean
         
         return None
+
+    # The words a company is written with.
+    _COMPANY_WORDS = ("PT", "CV", "UD", "TOKO", "TAN", "KEDAI", "WARUNG", "RM")
+
+    @classmethod
+    def _is_written_as_a_name(cls, line_clean: str) -> bool:
+        """
+        True when the line is written the way a shop's name is written.
+
+        A shop writes its name in capitals: "KOTALEGENDA MUSTIKAJAYA",
+        "PT ALBANY CORONA LESTARI", "BEEPOS". A shop whose name begins
+        with a company word is written that way too: "Toko Abang",
+        "Warung Pasta".
+
+        A line of ordinary words is something the receipt says, not the
+        name of the shop: "Nasi Dan Salad" is a dish.
+        """
+        upper = line_clean.upper()
+        words = upper.split()
+        if words and words[0].rstrip(".,") in cls._COMPANY_WORDS:
+            return True
+
+        letters = [c for c in line_clean if c.isalpha()]
+        if not letters:
+            return False
+
+        # Every letter is a capital one.
+        if all(c.isupper() for c in letters):
+            return True
+
+        # Or the line is one word that begins with a capital, which is
+        # how a name of one word is written: "Berghotel", "BEEPOS".
+        words = [w for w in line_clean.split() if any(c.isalpha() for c in w)]
+        if len(words) != 1:
+            return False
+        letters_in_word = [c for c in words[0] if c.isalpha()]
+        return bool(letters_in_word) and letters_in_word[0].isupper()
 
     @classmethod
     def _describes_the_receipt(cls, line_clean: str) -> bool:
