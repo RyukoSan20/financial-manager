@@ -13,6 +13,52 @@ from app.models.transaction_item import TransactionItem
 logger = logging.getLogger(__name__)
 
 
+def _read_the_receipt_on_the_server(image_base64: str) -> Optional[Dict[str, Any]]:
+    """
+    Read the receipt here, without the cloud.
+
+    The picture is read by the optical reader and then by the parser
+    that runs on the server. It is not as sharp as the cloud reader,
+    but it is always there, and a receipt that was read is worth more
+    than a receipt that was refused.
+    """
+    import base64
+
+    try:
+        from app.services.ocr_service import ocr_service
+        from app.services.receipt_service import (
+            process_receipt_hybrid,
+            receipt_to_dict,
+        )
+
+        image_bytes = base64.b64decode(image_base64)
+        parsed = receipt_to_dict(
+            process_receipt_hybrid(image_bytes=image_bytes)
+        )
+    except Exception as exc:  # noqa: BLE001 - the scan must not crash
+        logger.warning(f"The receipt could not be read on the server: {exc}")
+        return None
+
+    if not parsed:
+        return None
+
+    total = parsed.get("total_amount") or 0
+    if not total:
+        return None
+
+    date_value = parsed.get("transaction_date")
+    if hasattr(date_value, "isoformat"):
+        date_value = date_value.isoformat()
+
+    return {
+        "merchant_name": parsed.get("merchant_name"),
+        "total_amount": total,
+        "date": date_value,
+        "items": parsed.get("items") or [],
+        "category": parsed.get("category"),
+    }
+
+
 class ReceiptParser:
     """Parse receipt images using Gemini 1.5 Flash with JSON structured outputs."""
 
@@ -78,6 +124,23 @@ class ReceiptParser:
                 api_key, model_name, clean_base64
             )
             if text is None:
+                # The cloud was busy or could not be reached. The
+                # receipt is read on the server as well, and that
+                # reading is used instead.
+                #
+                # The scan used to depend on the cloud alone, so
+                # whenever the cloud was busy the reader was told the
+                # server had a problem and their receipt was never
+                # read at all.
+                local = _read_the_receipt_on_the_server(clean_base64)
+                if local:
+                    normalized = self._normalize_fields(local)
+                    return {
+                        "success": True,
+                        "data": normalized,
+                        "confidence": self._calculate_confidence(normalized),
+                        "raw_response": "read on the server",
+                    }
                 return {
                     "success": False,
                     "error": "Gemini did not answer",

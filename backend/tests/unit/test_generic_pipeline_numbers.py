@@ -508,3 +508,46 @@ def test_the_vision_model_is_asked_without_a_library(monkeypatch):
 
     assert text is not None, "the vision model was not asked"
     assert "generateContent" in asked["url"]
+
+
+def test_the_receipt_is_read_even_when_the_cloud_is_busy(monkeypatch):
+    """
+    The cloud reader is busy - it answers "too many requests" - and
+    the receipt still comes back.
+
+    The scan used to depend on the cloud alone, so whenever the cloud
+    was busy the reader was told the server had a problem and their
+    receipt was never read. The receipt is read on the server as well,
+    and that reading is used when the cloud cannot answer.
+    """
+    import asyncio
+
+    from app.services import receipt_parser
+
+    class _Parser:
+        def __init__(self, db):
+            self.db = db
+
+    parser = receipt_parser.ReceiptParser(None)
+
+    monkeypatch.setattr(
+        parser, "_ask_gemini", lambda *args, **kwargs: None
+    )
+
+    monkeypatch.setattr(
+        receipt_parser,
+        "_read_the_receipt_on_the_server",
+        lambda image: {
+            "merchant_name": "TOKO SENJA",
+            "total_amount": 42000,
+            "date": "2026-01-15",
+            "items": [],
+            "category": "Belanja",
+        },
+    )
+
+    result = asyncio.run(parser.parse_with_gemini("an-image"))
+
+    assert result["success"] is True, result
+    assert result["data"]["total_amount"] == 42000
+    assert result["data"]["merchant_name"] == "TOKO SENJA"
