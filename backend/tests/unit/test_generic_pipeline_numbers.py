@@ -311,3 +311,37 @@ def test_a_date_written_the_usual_way_is_still_read():
     from app.services.generic_pipeline import AnchorEngine
 
     assert AnchorEngine().find_date(["Tanggal: 24-05-2023 16:45"]) == "2023-05-24"
+
+
+def test_the_scan_from_the_feed_answers():
+    """
+    The route that the "scan" button on the phone uses answers.
+
+    It ran an async parser by starting a second event loop, inside a
+    request that already had one running. The server said "Cannot run
+    the event loop while another loop is running" and answered 500, so
+    the scan from the phone never worked at all.
+    """
+    import asyncio
+
+    from app.services import receipt_parser
+
+    calls = []
+
+    class _Parser:
+        def __init__(self, db):
+            self.db = db
+
+        async def parse_with_gemini(self, image_base64):
+            calls.append(image_base64)
+            return {"success": True, "data": {"amount": 100}, "confidence": 90}
+
+    receipt_parser.ReceiptParser = _Parser
+
+    async def _call_it():
+        return receipt_parser.parse_receipt_sync(None, "an-image")
+
+    result = asyncio.run(_call_it())
+
+    assert result["success"] is True
+    assert calls == ["an-image"]

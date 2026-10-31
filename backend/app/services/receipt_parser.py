@@ -345,15 +345,41 @@ class ReceiptParser:
 
 # Synchronous wrapper for API routes
 def parse_receipt_sync(db: Session, image_base64: str) -> Dict[str, Any]:
-    """Synchronous wrapper for receipt parsing."""
+    """
+    Synchronous wrapper for receipt parsing.
+
+    The parser reads the receipt with a vision model, and that is an
+    async call. This function is called from a route that is itself
+    async, so there is already an event loop running when it gets
+    here.
+
+    Starting a second loop and running the call in it failed with
+    "Cannot run the event loop while another loop is running", so the
+    scan from the phone answered 500 every single time.
+
+    The call is made in a thread of its own when a loop is already
+    running, and in the ordinary way when there is none.
+    """
     import asyncio
-    
+
     parser = ReceiptParser(db)
-    
-    # Run async method in sync context
-    loop = asyncio.new_event_loop()
+
+    def _run() -> Dict[str, Any]:
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(parser.parse_with_gemini(image_base64))
+        finally:
+            loop.close()
+
     try:
-        result = loop.run_until_complete(parser.parse_with_gemini(image_base64))
-        return result
-    finally:
-        loop.close()
+        asyncio.get_running_loop()
+    except RuntimeError:
+        # No loop is running here, so the ordinary way is the right one.
+        return _run()
+
+    # A loop is running. The work goes to a thread of its own, where
+    # there is no loop to collide with.
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(_run).result()
