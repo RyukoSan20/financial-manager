@@ -278,6 +278,81 @@ def merchant_tokens(name: str) -> List[str]:
     return [t for t in tokens if len(t) > 1 and not t.isdigit()]
 
 
+def _is_scrap_of_noise(line: str) -> bool:
+    """
+    True when the line is a scrap of the camera's noise rather than a
+    name.
+
+    A receipt that opens with "| wy" or "KI (c) 7) ha" was filmed with
+    a camera that made a mess of the top of the sign. Those lines are
+    not a shop, and the shop is printed further down.
+    """
+    stripped = line.strip()
+    if len(stripped) < 5:
+        return True
+
+    # How many of the characters are letters? A name is mostly letters.
+    letters = sum(1 for c in stripped if c.isalpha())
+    if letters < 3:
+        return True
+
+    # A line that is mostly punctuation and numbers is noise.
+    if letters < len(stripped) * 0.5:
+        return True
+
+    return False
+
+
+def _looks_like_a_name(line: str) -> bool:
+    """
+    True when the line is written like a name.
+
+    A shop writes its name in capitals at the first letter of each
+    word: "Alfanart Jogja", "PT ALBANY CORONA LESTARI", "BEEPOS".
+    A sentence of ordinary words does not: "Beranya yua harga pas"
+    is something the receipt says, not the name of the shop.
+    """
+    words = [
+        w for w in re.split(r"\s+", line.strip())
+        if w and any(c.isalpha() for c in w)
+    ]
+    if not words:
+        return False
+
+    capitalised = 0
+    for word in words:
+        letters = [c for c in word if c.isalpha()]
+        if not letters:
+            continue
+        if letters[0].isupper():
+            capitalised += 1
+
+    # Every word begins with a capital, or at least most of them.
+    return capitalised >= len(words) - 1
+
+
+def _header_line_confidence(line: str, index: int) -> float:
+    """
+    How sure we are that this line names the shop.
+
+    The top of the receipt is worth more than the bottom, but a line
+    that is a scrap of noise is worth very little however high up the
+    receipt it is.
+
+    A line written like a name is worth much more than a line of
+    ordinary words. The camera turned "Alfamart" into "Attamart" and
+    the line below it said "Beranya yua harga pas", which is ordinary
+    words and not a shop.
+    """
+    if _is_scrap_of_noise(line):
+        return 0.05
+
+    position = max(0.15, 0.4 - index * 0.05)
+    if _looks_like_a_name(line):
+        return round(position + 0.45, 4)
+    return round(position + 0.05, 4)
+
+
 def find_merchant_candidates(
     lines: Sequence[str],
     max_candidates: int = 5,
@@ -349,13 +424,18 @@ def find_merchant_candidates(
             key = _normalised_key(line)
             if key and key not in seen:
                 seen.add(key)
+                # The camera often leaves a mark of punctuation at the
+                # end of a name. It is not part of the name.
+                tidy = line.strip(" \t.,;:!?*\"'|\u201d\u2019-_")
+                if not tidy:
+                    continue
                 candidates.append(
                     MerchantCandidate(
-                        name=line,
-                        confidence=max(0.15, 0.4 - index * 0.05),
+                        name=tidy,
+                        confidence=_header_line_confidence(line, index),
                         source="header_line",
                         merchant_type=guess_merchant_type(line),
-                        tokens=merchant_tokens(line),
+                        tokens=merchant_tokens(tidy),
                     )
                 )
 

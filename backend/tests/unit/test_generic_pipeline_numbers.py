@@ -183,3 +183,106 @@ def test_a_cloud_answer_with_nothing_in_it_does_not_erase_the_receipt(monkeypatc
         f"the sum that was read was thrown away: {result.total_amount}"
     )
     assert result.merchant_name, "the shop that was read was thrown away"
+
+
+# ---------------------------------------------------------------------------
+# Which line is the shop on
+# ---------------------------------------------------------------------------
+
+
+def test_the_date_line_is_not_the_shop():
+    """
+    A restaurant receipt opens with the date, then the receipt number,
+    then the word "Cashier". The shop is not on any of those lines.
+
+    The first line was taken as the shop, so the receipt was filed
+    under "Date: 10 October 2026 12:14:41".
+    """
+    from app.services.generic_pipeline import AnchorEngine
+
+    lines = [
+        "Date: 10 0ctober 2026 12:14:41",
+        "Receipt No.:08. .u1 H.: L:I.2",
+        "Cashier:",
+        "No Customer:1 DINE IN",
+        "Total 234,000",
+    ]
+
+    merchant = AnchorEngine().find_merchant_top(lines)
+
+    assert merchant != "Date: 10 0ctober 2026 12:14:41", (
+        "the date was taken for the shop"
+    )
+    assert merchant is None or "Date" not in merchant
+    assert merchant is None or "Cashier" not in merchant
+
+
+def test_the_shop_is_found_when_it_is_on_the_receipt():
+    """
+    The shop that is printed is the shop that is taken.
+    """
+    from app.services.generic_pipeline import AnchorEngine
+
+    lines = [
+        "Alfamart",
+        "Alfanart Jogja",
+        "Total Rp38.000",
+    ]
+
+    merchant = AnchorEngine().find_merchant_top(lines)
+
+    assert merchant and "alfamart" in merchant.lower()
+
+
+def test_a_line_of_only_noise_is_not_the_shop():
+    """"ME" is a scrap of a word, not a shop."""
+    from app.services.generic_pipeline import AnchorEngine
+
+    lines = ["ME", "GACOAN", "PALU-RE MARTADINATA", "Total 184.003"]
+
+    merchant = AnchorEngine().find_merchant_top(lines)
+
+    assert merchant != "ME"
+    assert merchant and "gacoan" in merchant.lower()
+
+
+def test_a_known_chain_is_recognised_from_anywhere_on_the_receipt():
+    """
+    "JLUOLLATAAHGOR-SUMECANG Jndomaret" is a picture of a word with
+    the shop in it. The shop is Indomaret, and the noise in front of
+    it is what the camera made of the rest of the sign.
+    """
+    from app.services.generic_pipeline import AnchorEngine
+
+    lines = [
+        "Download 口品★",
+        "Q PEKNGFOOO",
+        "JLUOLLATAAHGOR-SUMECANG Jndomaret",
+        "NPWP21.15L.107.6-446.001",
+        "Total 33,900",
+    ]
+
+    merchant = AnchorEngine().find_merchant_top(lines)
+
+    assert merchant and "indomaret" in merchant.lower(), (
+        f"the shop was not found: {merchant!r}"
+    )
+
+
+def test_a_hyphen_in_a_number_is_not_thrown_away():
+    """
+    An older till prints a number with a hyphen in it: "1-476.00".
+
+    The hyphen used to be swept away with the rest of the punctuation,
+    which left "1476.00" - and a receipt whose sum is written with a
+    hyphen came back a different number from the one on the till.
+    """
+    from app.services.generic_pipeline import CurrencyNormalizer
+
+    normalized = CurrencyNormalizer.normalize_line("JumlahRp 1-476.00")
+
+    amounts = CurrencyNormalizer.extract_amounts(normalized)
+
+    assert amounts == [1476.0], (
+        f"the number was changed: {normalized!r} -> {amounts}"
+    )

@@ -91,6 +91,13 @@ def parse_number_indonesia(val_str: str) -> float:
     # Check for discount parentheses (negative)
     is_negative = '(' in val_str and ')' in val_str
 
+    # An older till prints the thousands with a hyphen: "1-476.00" is
+    # one thousand four hundred seventy-six.
+    #
+    # The hyphen is kept only when it groups exactly three digits, so
+    # a negative sign is still a negative sign.
+    val_str = re.sub(r'(?<=\d)-(?=\d{3}(?:\D|$))', '', val_str)
+
     # Take out everything that is not part of the number, and keep
     # the separators for a moment.
     clean = re.sub(r'[^\d.,]', '', val_str)
@@ -186,6 +193,48 @@ MERCHANT_PATTERNS = [
     (r'\b(SHOPEE)\b', "Shopee"),
 ]
 
+# The shops that are known by sight. A receipt from one of them is
+# filed under its own name, however the camera read the sign.
+_KNOWN_CHAINS = (
+    "INDOMARET", "ALFAMART", "ALFAMIDI", "TRANSMAXX", "TRANSMART",
+    "CARREFOUR", "GIANT", "HYPERMART", "SUPERINDO",
+    "GROSIR", "TOKO ABANG", "TOKOABANG", "GACOAN",
+    "MIE GACOAN", "MIEGACOAN", "WARUNG", "KEDAI", "BAKSO", "SATE",
+    "PECEL", "MCDONALD", "MCDONALDS", "KFC", "BURGER KING", "HOKBEN",
+    "STARBUCKS", "DUNKIN", "TEH BOTOL", "SOSRO", "AMARIS",
+    "ALFA MART", "INDO MART", "TOKO ABANG",
+)
+
+
+def _chain_within_one_letter(upper_line: str, chain: str) -> bool:
+    """
+    True when the chain is on the line with one letter read wrong.
+
+    The camera turns a capital "I" into a small "n" often enough that
+    "Indomaret" comes back as "Jndomaret". A shop that is nearly
+    written is the shop.
+    """
+    length = len(chain)
+    if length < 8 or length > len(upper_line):
+        return False
+    for start in range(len(upper_line) - length + 1):
+        piece = upper_line[start:start + length]
+        if sum(1 for a, b in zip(piece, chain) if a != b) == 1:
+            return True
+    return False
+
+
+def _known_chain_on_line(line: str) -> Optional[str]:
+    """
+    The chain this line names, if it names one.
+    """
+    upper = line.upper()
+    for chain in _KNOWN_CHAINS:
+        if chain in upper or _chain_within_one_letter(upper, chain):
+            return chain.title()
+    return None
+
+
 def detect_merchant(lines: Any) -> str:
     """
     The shop this receipt is from.
@@ -225,6 +274,18 @@ def detect_merchant(lines: Any) -> str:
     for pattern, name in MERCHANT_PATTERNS:
         if re.search(pattern, upper_text, re.IGNORECASE):
             return name
+
+    # A chain that is known is looked for line by line.
+    #
+    # The camera turns a capital "I" into a small "n" and a capital
+    # "l" into a small "t" often enough that "Alfamart" comes back as
+    # "Attamart". A shop that is nearly written is still the shop, and
+    # it is looked for on the line it is on, because a chain's name is
+    # on a line of its own.
+    for line in receipt_lines[:8]:
+        found = _known_chain_on_line(line)
+        if found:
+            return found
 
     # A name read from the receipt, even if it is not certain. It is
     # better than "Unknown Merchant", and the reader can change it.

@@ -389,3 +389,39 @@ def test_the_end_of_the_receipt_is_not_taken_for_the_shop():
 
     assert "BEEPOS" in names
     assert "Terima kasih atas kunjungan Anda" not in names
+
+
+# ---------------------------------------------------------------------------
+# A scrap of noise is not the shop
+# ---------------------------------------------------------------------------
+
+
+def test_a_scrap_of_noise_is_not_the_shop():
+    """
+    A receipt that opens with "| wy" and "KI (c) 7) ha" - the camera
+    made noise of the top of the sign - and then says "Alfamart".
+
+    The noise was taken for the shop, because it was nearer the top
+    than the name was. The name is what the receipt says it is.
+    """
+    from app.services.parser_engine_v31 import detect_merchant
+
+    lines = [
+        "| wy",
+        "KI (c) 7) ha",
+        "Attamart \u201d,",
+        "Beranya yua harga pas",
+        "Alfanart Jogja",
+        "Jl. Kenangan",
+        "Jogja",
+        "Total Rp38.000",
+    ]
+
+    merchant = detect_merchant(lines)
+
+    assert "wy" != merchant.lower(), (
+        f"a scrap of noise was taken for the shop: {merchant!r}"
+    )
+    assert "alfamart" in merchant.lower(), (
+        f"the shop the receipt names was not found: {merchant!r}"
+    )

@@ -202,13 +202,27 @@ class CurrencyNormalizer:
         # and a decimal comma is part of the number.
         from app.services.parser_engine_v31 import parse_number_indonesia
 
-        for piece in re.findall(r'\d[\d.,]*', line):
+        # A piece may hold a hyphen where the thousands are grouped:
+        # "1-476.00" is one number.
+        for piece in re.findall(r'\d[\d.,-]*', line):
             value = parse_number_indonesia(piece)
             if value and value > 0:
                 amounts.append(float(value))
         
         return amounts
     
+    @staticmethod
+    def carries_a_price(line: str) -> bool:
+        """
+        True when the line holds a sum.
+
+        A long run of digits is a phone number or a tax number, and a
+        shop sign often has one on it. That is not a price.
+        """
+        if re.search(r'\d{9,}', line):
+            return False
+        return bool(CurrencyNormalizer.extract_amounts(line))
+
     @staticmethod
     def extract_largest_amount(line: str) -> Optional[float]:
         """Extract the largest amount from line (likely total/discount)."""
@@ -559,6 +573,9 @@ class ItemParser:
 # ANCHOR ENGINE
 # ============================================================
 
+_SKIP_ONLY_NUMBER_PATTERNS = [r"^[0-9]+$", r"^[\d\s\.\-\:\/]+$", r"^[\d\.\-]+$"]
+
+
 class AnchorEngine:
     """
     Generic anchor detection using fuzzy matching.
@@ -585,13 +602,60 @@ class AnchorEngine:
         
         return False, 0.0, None
     
+    # Lines that say something about the receipt rather than naming a
+    # shop. A restaurant receipt opens with the date, the number and
+    # the word "Cashier", and the shop is not on any of them.
+    _NOT_A_SHOP = (
+        "DATE", "WAKTU", "TANGGAL", "TIME", "CASHIER", "KASIR",
+        "RECEIPT NO", "NO. STRUK", "NO STRUK", "NOTA NO", "STRUK NO",
+        "NO. TRANSAKSI", "NO TRANSAKSI", "CUSTOMER", "PELANGGAN",
+        "MEJA", "TABLE", "NO TELP", "NO. TELP", "TELP", "NPWP", "NO. TKP",
+        "FACTUR", "FAKTUR", "BON", "KONTAN", "ORDER", "PESANAN",
+        "BANK", "CARD", "NO.",
+        # The column headings a receipt prints above its products.
+        "BANYANYA", "NAMABARANG", "HARGA", "JUMLAH", "QTY", "QUANTITY",
+        "NAMA BARANG", "HARGA@", "BANYAKNYA", "ANTAL", "BANYA KYA",
+        # How the receipt was served, and who it was for.
+        "DINE IN", "DINEIN", "TAKE AWAY", "TAKEAWAY", "DELIVERY",
+        "GOJEK", "GRAB", "SHOPEEFOOD", "GOFOOD",
+        # Who the receipt is addressed to.
+        "KEPADA", "PEMESAN", "PEMBELI",
+    )
+
+    # A chain that is known by sight is found wherever it is on the
+    # receipt. The camera often turns the sign into noise around the
+    # name, so the name is looked for inside the line rather than the
+    # line being taken whole.
+    _KNOWN_CHAINS = (
+        "INDOMARET", "ALFAMART", "ALFAMIDI", "TRANSMAXX", "TRANSMART",
+        "CARREFOUR", "GIANT", "HYPERMART", "SUPERINDO",
+        "GROSIR", "GROSIRAN", "TOKO ABANG", "TOKOABANG", "GACOAN",
+        "MIE GACOAN", "MIEGACOAN", "WARUNG", "KEDAI", "BAKSO", "SATE",
+        "PECEL", "MCDONALD", "MCDONALDS", "KFC", "BURGER KING", "HOKBEN",
+        "STARBUCKS", "DUNKIN", "TEH BOTOL", "SOSRO", "AMARIS",
+    )
+
     def find_merchant_top(self, lines: List[str]) -> Optional[str]:
         """
         Scan from TOP-DOWN to find merchant.
         STRICT: Only uses first 5 lines (top-of-receipt boundary).
+
+        A chain that is known by sight is looked for in every line of
+        the receipt, because the sign on the wall is often the only
+        place the name is printed, and the camera makes noise of
+        everything around it.
         """
-        skip_patterns = [r"^[0-9]+$", r"^[\d\s\.\-\:\/]+$", r"^[\d\.\-]+$"]
-        
+        # A known chain is the strongest thing on the receipt.
+        #
+        # Only the head of the receipt is looked at. The name of a
+        # chain can be spelled out in a product further down - "Chicken
+        # Mozarella" is a dish, not a shop - and a chain name found
+        # among the products is a false answer.
+        for line in lines[:5]:
+            found = self._known_chain_in(line)
+            if found:
+                return found
+
         # STRICT: Garbage patterns that indicate OCR noise
         garbage = [
             "DOWNLOAD", "HTTP", "口品", "★", "Q ", "QE", "Q ", 
@@ -606,7 +670,7 @@ class AnchorEngine:
                 continue
             
             # Skip numeric-only patterns
-            if any(re.match(p, line_clean) for p in skip_patterns):
+            if any(re.match(p, line_clean) for p in _SKIP_ONLY_NUMBER_PATTERNS):
                 continue
             
             # Skip garbage OCR
@@ -614,9 +678,21 @@ class AnchorEngine:
             if any(g in line_upper for g in garbage):
                 continue
             
+            # A line that describes the receipt is not the shop.
+            if self._describes_the_receipt(line_clean):
+                continue
+            
+            # A line that carries a price is a product, not a shop.
+            if CurrencyNormalizer.carries_a_price(line_clean):
+                continue
+            
             # Must have at least 2 alphabetic characters
             alpha_count = sum(1 for c in line_clean if c.isalpha())
             if alpha_count < 2:
+                continue
+            
+            # A scrap of a word is not a shop.
+            if alpha_count < 5:
                 continue
             
             # Skip if too long (likely address)
@@ -625,6 +701,88 @@ class AnchorEngine:
             
             return line_clean
         
+        # The head of the receipt had no name on it. The name is looked
+        # for further down, because a receipt that begins with the
+        # date and the till number puts the shop in the middle.
+        for line in lines[5:]:
+            line_clean = line.strip()
+            if not line_clean:
+                continue
+            if any(re.match(p, line_clean) for p in _SKIP_ONLY_NUMBER_PATTERNS):
+                continue
+            line_upper = line_clean.upper()
+            if any(g in line_upper for g in garbage):
+                continue
+            if self._describes_the_receipt(line_clean):
+                continue
+            # A line that carries a price is a product, not a shop.
+            if CurrencyNormalizer.carries_a_price(line_clean):
+                continue
+            alpha_count = sum(1 for c in line_clean if c.isalpha())
+            if alpha_count < 5:
+                continue
+            if len(line_clean) > 30:
+                continue
+            return line_clean
+        
+        return None
+
+    @classmethod
+    def _describes_the_receipt(cls, line_clean: str) -> bool:
+        """
+        True when the line is about the receipt rather than the shop.
+        """
+        upper = line_clean.upper()
+        for marker in cls._NOT_A_SHOP:
+            if marker in upper:
+                return True
+        # "No Te1p" is "No Telp" with the letter read wrong.
+        if re.search(r'\bNO\s*TE.?P\b', upper):
+            return True
+        return False
+
+    @staticmethod
+    def _chain_within_one_letter(upper_line: str, chain: str) -> bool:
+        """
+        True when the chain is on the line with one letter read wrong.
+
+        The camera turns a capital "I" into a small "n" often enough
+        that "Indomaret" comes back as "Jndomaret". A shop that is
+        nearly written is the shop.
+
+        The name has to be long enough for one letter to be a slip
+        rather than a different word, and the slip has to be inside
+        the word. "latte" is not "Lotte" with a letter wrong.
+        """
+        length = len(chain)
+        if length < 8 or length > len(upper_line):
+            return False
+        for start in range(len(upper_line) - length + 1):
+            piece = upper_line[start:start + length]
+            wrong = [i for i, (a, b) in enumerate(zip(piece, chain)) if a != b]
+            if len(wrong) != 1:
+                continue
+            return True
+        return False
+
+    @classmethod
+    def _known_chain_in(cls, line: str) -> Optional[str]:
+        """
+        The known chain printed on this line, if there is one.
+
+        The camera turns the sign into a run of letters around the
+        name, so the name is looked for inside the line and only the
+        name is kept.
+        """
+        upper = line.upper()
+        for chain in cls._KNOWN_CHAINS:
+            if chain not in upper and not cls._chain_within_one_letter(upper, chain):
+                continue
+            
+            # The name is returned in the spelling that is known, so a
+            # sign the camera made into noise still gives the shop its
+            # right name.
+            return chain.title()
         return None
     
     def find_date(self, lines: List[str]) -> Optional[str]:
