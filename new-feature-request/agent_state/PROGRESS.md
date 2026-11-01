@@ -339,3 +339,47 @@ SESSION LOG
   A receipt can now be added from the screen: the reader writes the
   lines, the receipt is read into the dishes on it, and the reading
   is a proposal that the reader checks before it becomes a bill.
+
+## The features that were on the server but not on the screen
+
+The shared bill and the recommendations were both built, both
+deployed, and both invisible to the reader. Three separate things
+were hiding them, and each one had to be found on its own.
+
+**The shared bill needed a reload.** The switch that turns it on is
+kept in the browser's storage. The menus read that storage when they
+draw, but a menu is not drawn again when the switch changes by
+itself. So the reader turned the switch on and nothing happened, and
+the feature only appeared after the page was loaded again. The
+writing side now says that something changed, and the menus listen
+for it. `frontend/src/utils/useReaderFlags.js` holds the listening;
+`frontend/src/utils/featureFlags.js` holds the saying.
+
+**Nobody could reach the switches.** The sidebar's settings entry
+goes to `/settings`. The switches are on `/settings/app`. There was
+no link between them, so the switches were only reachable by typing
+the address. The settings page now has an application tab that points
+at them.
+
+**The polish layer was off in the deployed build.** The panel of
+recommendations, the Indonesian calculators and the privacy page were
+all behind the polish layer, and the build that is deployed did not
+turn that layer on. The pages drew nothing at all. The deployment
+turns it on now, and the build that is checked is the build that is
+deployed: the same switches in the workflow, in the workflow, and in
+the preflight.
+
+The privacy page no longer depends on the layer at all. A page that
+shows nothing is worse than a page that looks plain, so its contents
+are shown whatever the layer is doing.
+
+Also fixed while this was being chased: the mobile menu showed the
+shared bill even when the switch was off. It leaves out the entries
+whose switch is off, the same way the desktop menu does.
+
+Checked in the browser on the deployed build: the shared bill appears
+in the menu the moment the switch is turned on; the settings page
+leads to the switches; the recommendations panel is on the
+dashboard; the Indonesian calculators are on the calculators page;
+the privacy page has its contents. Every page of the application was
+opened and none of them draws nothing.
