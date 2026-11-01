@@ -21,6 +21,7 @@ import SplitMethodSelector from '../../components/split/SplitMethodSelector';
 import SettleUpModal from '../../components/split/SettleUpModal';
 import { inviteLink } from '../../hooks/useLiveReceiptClaim';
 import InviteQr from '../../components/split/InviteQr';
+import AddReceiptPanel from '../../components/split/AddReceiptPanel';
 import useLiveBoard from '../../hooks/useLiveBoard';
 import {
   hasDiscrepancy,
@@ -36,6 +37,7 @@ import {
   publishExpense,
   createSettlement,
 } from '../../services/splitApi';
+import { api } from '../../services/api';
 
 export default function SplitGroupDetailPage() {
   const { groupId } = useParams();
@@ -51,6 +53,8 @@ export default function SplitGroupDetailPage() {
   const [settling, setSettling] = useState(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [accounts, setAccounts] = useState([]);
 
   const load = useCallback(async () => {
     try {
@@ -86,6 +90,18 @@ export default function SplitGroupDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // The accounts the reader can pay from.
+  //
+  // A bill that came out of an account is part of the reader's own
+  // money. A bill that did not is still a bill the group owes each
+  // other, but it is not part of the reader's accounts.
+  useEffect(() => {
+    api.accounts
+      .list()
+      .then((rows) => setAccounts(Array.isArray(rows) ? rows : []))
+      .catch(() => setAccounts([]));
+  }, []);
 
   useEffect(() => {
     if (!simplify) {
@@ -228,6 +244,26 @@ export default function SplitGroupDetailPage() {
 
       <section className="split-group__receipts">
         <h3>{K.receipts}</h3>
+
+        {adding ? (
+          <AddReceiptPanel
+            groupId={groupId}
+            accounts={accounts}
+            members={members}
+            language={language}
+            onCancel={() => setAdding(false)}
+            onCreated={(made) => {
+              setAdding(false);
+              setExpenses((current) => [...current, made]);
+              setActiveId(made.id);
+            }}
+          />
+        ) : (
+          <button type="button" onClick={() => setAdding(true)}>
+            {K.add_receipt}
+          </button>
+        )}
+
         {expenses.length === 0 && <p>{K.no_receipts_hint}</p>}
 
         {expenses.length > 0 && (

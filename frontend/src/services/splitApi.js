@@ -72,6 +72,17 @@ export async function listExpenses(groupId) {
 }
 
 /**
+ * A receipt, read.
+ *
+ * Nothing is written down. The answer is a proposal: the dishes on
+ * the receipt and what they add up to.
+ */
+export async function decomposeReceipt(payload) {
+  const result = await api.post('/split/decompose', payload);
+  return result;
+}
+
+/**
  * A receipt, shared.
  */
 export async function createExpense(groupId, payload) {
@@ -209,6 +220,7 @@ export default {
   getSettlementPlan,
   listExpenses,
   createExpense,
+  decomposeReceipt,
   getExpense,
   claimForMember,
   releaseClaim,
