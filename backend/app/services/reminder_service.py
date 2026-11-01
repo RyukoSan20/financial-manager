@@ -134,7 +134,44 @@ def build_reminder(db: Session, user_id: int, today: Optional[date] = None) -> D
                 "href": "/budgets",
             }
 
-    # 3. A recurring bill that is due today.
+    # 3. A shared bill that has not been paid back.
+    #
+    # The money on loan is not spending, so it is not in the chart,
+    # and it is not a debt the reader set up, so it is not on the
+    # debt page. Without this the only way to find out that somebody
+    # has not paid back is to remember.
+    #
+    # It comes after the bills that are due and the budgets that are
+    # used up, because those are about money that has not left yet,
+    # and this is about money that has already left.
+    try:
+        from app.services.insight_service import find_unsettled_group_lending
+
+        lending = find_unsettled_group_lending(
+            db, user_id, today=today
+        )
+    except Exception:  # noqa: BLE001 - a reminder is never worth a crash
+        lending = []
+
+    if lending:
+        oldest = lending[0]
+        return {
+            "should_remind": True,
+            "code": "group_bill_unpaid",
+            "title": oldest.get("group_name") or "A shared bill",
+            "message": (
+                f"{oldest.get('group_name') or 'A shared bill'} has "
+                f"{oldest.get('amount', 0):,.0f} outstanding for "
+                f"{oldest.get('days_outstanding', 0)} day(s)."
+            ),
+            "amount": float(oldest.get("amount") or 0),
+            "currency": oldest.get("currency") or "IDR",
+            "days_outstanding": oldest.get("days_outstanding", 0),
+            "group_id": oldest.get("group_id"),
+            "href": f"/split/{oldest.get('group_id')}",
+        }
+
+    # 4. A recurring bill that is due today.
     recurring = db.query(RecurringRule).filter(
         RecurringRule.user_id == user_id,
         RecurringRule.is_active == True,
@@ -155,7 +192,7 @@ def build_reminder(db: Session, user_id: int, today: Optional[date] = None) -> D
             "href": "/recurring",
         }
 
-    # 4. The day itself.
+    # 5. The day itself.
     #
     # A reader who has not recorded anything today is nudged to do so,
     # but only when the day is over, so that it is a note about the
