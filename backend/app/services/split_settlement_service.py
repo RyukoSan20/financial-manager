@@ -120,6 +120,11 @@ def settle_payment(
         date=when,
         description=label,
         account_id=to_account_id,
+        # The receipt this money came back for. Without it, the
+        # money that has been paid back cannot be matched against
+        # the money that was laid out, and a bill that has been
+        # settled would still look outstanding.
+        split_expense_id=settlement.expense_id,
         split_tx_type=SPLIT_REIMBURSEMENT,
         status="approved",
         detection_type="MANUAL",
