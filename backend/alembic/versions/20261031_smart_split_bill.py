@@ -381,9 +381,18 @@ def upgrade():
         )
 
 
-def _batch_drop_column(batch, table_name, name):
+def _drop_column(table_name, name):
     """
     Take a column off a table, if it is there.
+
+    PostgreSQL can take a column away by itself. SQLite cannot, and
+    has to have the table rewritten instead, which is what the batch
+    form is for. The batch form on PostgreSQL would make a copy of
+    the table and swap it, and that copy is a table the other tables
+    still point at, so it fails in a way that is hard to read.
+
+    So the plain form is used where the database can do it, and the
+    batch form only where it cannot.
     """
     from sqlalchemy import inspect
 
@@ -391,7 +400,12 @@ def _batch_drop_column(batch, table_name, name):
     existing = {c["name"] for c in inspector.get_columns(table_name)}
     if name not in existing:
         return False
-    batch.drop_column(name)
+
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table(table_name) as batch:
+            batch.drop_column(name)
+    else:
+        op.drop_column(table_name, name)
     return True
 
 
@@ -419,17 +433,24 @@ def downgrade():
         # The indexes go first. An index that points at a column that
         # is not there cannot be made, and the column cannot be taken
         # away while an index is standing on it.
+        #
+        # Which indexes are there is asked first, rather than trying
+        # to drop each one and catching the failure. On PostgreSQL a
+        # statement that fails leaves the transaction unusable, so a
+        # failure that is caught still spoils everything that comes
+        # after it. Asking first means nothing fails at all.
+        from sqlalchemy import inspect
+
+        existing_indexes = {
+            index["name"]
+            for index in inspect(op.get_bind()).get_indexes("transactions")
+        }
         for index_name in (
             "ix_transactions_split_expense_id",
             "ix_transactions_split_tx_type",
             "idx_transactions_split_expense",
         ):
-            try:
+            if index_name in existing_indexes:
                 op.drop_index(index_name, table_name="transactions")
-            except Exception:
-                # The index was never there. That is not a reason to
-                # refuse to finish the downgrade.
-                pass
-        with op.batch_alter_table("transactions") as batch:
-            _batch_drop_column(batch, "transactions", "split_tx_type")
-            _batch_drop_column(batch, "transactions", "split_expense_id")
+        _drop_column("transactions", "split_tx_type")
+        _drop_column("transactions", "split_expense_id")
