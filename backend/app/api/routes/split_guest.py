@@ -287,6 +287,48 @@ def join_group(
     )
 
 
+@router.get("/claim/{code}/expenses")
+def list_group_expenses(
+    code: str,
+    x_split_guest_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    """
+    The receipts the group has shared.
+
+    The guest is shown the first one that has not been published yet,
+    because that is the one people are still claiming. If everything
+    has been published, the newest one is shown instead, so that the
+    guest can still see what they claimed.
+    """
+    group = _group_by_code(db, code)
+    _member_by_token(db, group.id, x_split_guest_token)
+
+    expenses = (
+        db.query(SplitExpense)
+        .filter(SplitExpense.group_id == group.id)
+        .order_by(SplitExpense.id.desc())
+        .all()
+    )
+
+    drafts = [expense for expense in expenses if expense.status != "PUBLISHED"]
+    chosen = drafts[0] if drafts else (expenses[0] if expenses else None)
+
+    return {
+        "expense_id": chosen.id if chosen else None,
+        "count": len(expenses),
+        "expenses": [
+            {
+                "id": expense.id,
+                "name": expense.name,
+                "merchant_name": expense.merchant_name,
+                "status": expense.status,
+            }
+            for expense in expenses
+        ],
+    }
+
+
 @router.get("/expenses/{expense_id}/live")
 def live_receipt(
     expense_id: int,
