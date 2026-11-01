@@ -44,6 +44,7 @@ from app.models.split_bill import (
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.services.account_balance import move_balance
+from app.services.split_bill_service import read_receipt_totals
 
 ZERO = Decimal("0")
 
@@ -99,6 +100,15 @@ def the_fronted_amount(
 ) -> Decimal:
     """
     What the host laid out that the others owe back.
+
+    The amount that was paid is taken from the payer rows when there
+    are any. When there are none, it is the total of the bill: the
+    host is the member of the group, the bill names the account it
+    came out of, and a bill where nobody filled in the payer part is
+    a bill where nobody wrote it down, not a bill where nobody
+    paid. Leaving the amount at zero in that case would say that the
+    host owes the table nothing, and the money that is coming back
+    would never be written down at all.
     """
     host_share = the_host_share(db, expense, host_member_id)
     paid = ZERO
@@ -107,6 +117,11 @@ def the_fronted_amount(
     )
     for payer in payers:
         paid += _dec(payer.amount)
+
+    if paid <= ZERO:
+        totals = read_receipt_totals(expense)
+        paid = _dec(totals.get("grand_total"))
+
     fronted = paid - host_share
     if fronted < ZERO:
         fronted = ZERO
