@@ -590,3 +590,29 @@ def get_debts_summary(
         "upcoming_payments": upcoming[:5],
         "next_payment_date": upcoming[0]["due_date"] if upcoming else None,
     }
+
+
+@router.get("/split-receivables")
+def get_split_receivables(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    The money other people owe the reader because of a shared bill.
+
+    It is a separate endpoint, and not part of the debts summary,
+    because the debts summary answers a different question. A loan is
+    money the reader is paying back. This is money that is coming
+    back to the reader. Adding the two together into one number would
+    say something that is not true.
+
+    Nothing is sent and nothing changes.
+    """
+    from app.services.split_receivable_service import outstanding_receivables
+
+    receivables = outstanding_receivables(db, current_user.id)
+    return {
+        "receivables": receivables,
+        "count": len(receivables),
+        "total_outstanding": sum(r["amount"] for r in receivables),
+    }

@@ -8,13 +8,17 @@ import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
 import { PageHeader } from '../components/ui/PageHeader';
-import { buildFlag } from '../utils/featureFlags';
+import { buildFlag, readerFlag } from '../utils/featureFlags';
+import SplitMoneyMovements from '../components/split/SplitMoneyMovements';
 import { useCurrency, sumInDisplay } from '../utils/currency';
 
 export const Debts = () => {
   const { t } = useTranslation();
   // With the polish switch off, the page keeps the header it has.
   const polished = buildFlag('UI_POLISH');
+  // The money that a shared bill left on loan. Only shown when the
+  // shared bill switch is on, so that the page is unchanged otherwise.
+  const splitBill = readerFlag('SMART_SPLIT_BILL');
   const { currency: displayCurrency } = useCurrency();
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -254,6 +258,10 @@ export const Debts = () => {
           </div>
         </Card>
       </div>
+
+      {/* The money that a shared bill left on loan, and the money
+          that came back. */}
+      {splitBill && <SplitMoneyMovements />}
 
       {/* Status Badges */}
       <div className="flex gap-4">

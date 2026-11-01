@@ -237,6 +237,8 @@ export const api = {
     },
     create: (data) => api.request('/transfers/', { method: 'POST', body: JSON.stringify(data) }),
     delete: (id) => api.request(`/transfers/${id}`, { method: 'DELETE' }),
+    // The money that came back from a shared bill.
+    splitReimbursements: () => api.request('/transfers/split-reimbursements'),
   },
 
   // Budgets
@@ -327,6 +329,8 @@ export const api = {
     payment: (id, data) => api.request(`/debts/${id}/payment`, { method: 'POST', body: JSON.stringify(data) }),
     schedule: (id) => api.request(`/debts/${id}/schedule`),
     summary: () => api.request('/debts/summary/all'),
+    // The money other people owe the reader because of a shared bill.
+    splitReceivables: () => api.request('/debts/split-receivables'),
   },
 
   // Dashboard
