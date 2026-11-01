@@ -311,3 +311,31 @@ SESSION LOG
   without installing anything. The code is written here rather than
   brought in; it was checked by writing a reader that reads the
   matrix back, and by the specification's own example.
+
+  The feature was there in the bundle but not on the screen, and the
+  reason was worth finding rather than guessing at. The api client
+  hands back the body of the answer as it is, not wrapped in an
+  envelope, and the shared bill had been written as if it were
+  axios. Every one of its calls answered undefined, and the page
+  tried to read the length of a group list that was not there, so
+  the screen went white instead of showing the groups. The client
+  also had no post or delete for the bill to call.
+
+  Three routes with names in them were registered after the routes
+  that take any name, so a request for the money a friend owes was
+  read as a number and answered with 422. The reader was told about
+  a problem that was not there.
+
+  A bill where nobody filled in the payer part of the form was
+  treated as a bill where nobody paid, so the money that was coming
+  back to the host was never written down. A bill that names the
+  account it came out of is a bill the host paid.
+
+  The menu had no entry for the shared bill in the menu most readers
+  see, and the total at the top of the page added up the balances of
+  the whole table, which told a reader who was owed nothing that
+  they owed the whole bill.
+
+  A receipt can now be added from the screen: the reader writes the
+  lines, the receipt is read into the dishes on it, and the reading
+  is a proposal that the reader checks before it becomes a bill.
