@@ -352,3 +352,56 @@ class SplitGuestSessionResponse(BaseModel):
     claim_token: str
     group_id: int
     group_name: str
+
+
+class SplitDecomposeRequest(EmptyStringAsNone):
+    """
+    The lines a receipt was read into.
+
+    This is what the scanner produced. The reader of the receipt
+    hands those lines over, and the answer is what each line means
+    and what the receipt adds up to.
+    """
+
+    lines: List[str] = []
+    currency: str = Field(default="IDR", max_length=10)
+    # When the reader asks for the model to be used, it is used if it
+    # is there. When they do not, the plain reading is used.
+    use_model: bool = True
+
+
+class SplitDecomposedItem(BaseModel):
+    """
+    One dish on the receipt, with its quantity kept apart.
+
+    A line of two coffees is two coffees, and either of them may be
+    claimed by a different person at the table.
+    """
+
+    name: str
+    raw_name: str = ""
+    quantity: str = "1"
+    unit_price: str = "0.00"
+    total_price: str = "0.00"
+    kind: str = "item"
+    line_number: Optional[int] = None
+
+
+class SplitDecomposeResponse(BaseModel):
+    """
+    A receipt, read.
+
+    Nothing is written down. This is a proposal, and the reader
+    decides whether to make a bill out of it.
+    """
+
+    items: List[SplitDecomposedItem] = []
+    tax: str = "0.00"
+    service_charge: str = "0.00"
+    discount: str = "0.00"
+    subtotal: str = "0.00"
+    grand_total: str = "0.00"
+    # The gap between the lines and the subtotal, when there is one.
+    discrepancy: Optional[str] = None
+    # Whether the model was asked, and whether it answered.
+    understood_by_model: bool = False

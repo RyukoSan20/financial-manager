@@ -35,6 +35,9 @@ from app.models.split_bill import (
 from app.models.user import User
 from app.schemas.split_bill import (
     SplitBalanceResponse,
+    SplitDecomposeRequest,
+    SplitDecomposeResponse,
+    SplitDecomposedItem,
     SplitClaimInput,
     SplitExpenseCreate,
     SplitExpenseResponse,
@@ -455,6 +458,69 @@ def get_settlement_plan(
         )
         for step in plan
     ]
+
+
+@router.post("/decompose", response_model=SplitDecomposeResponse)
+def decompose_receipt(
+    payload: SplitDecomposeRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Read a receipt into the dishes on it.
+
+    This writes nothing down. It is a reading, and a reading is a
+    proposal: the reader looks at the dishes, checks the total
+    against the paper, and then decides whether to make a bill out
+    of it.
+
+    The gap between the lines and the subtotal is reported, because a
+    receipt that was read wrong is a receipt somebody would otherwise
+    pay for wrongly.
+    """
+    from app.services.split_receipt_decomposition import (
+        read_receipt,
+        read_receipt_with_understanding,
+    )
+
+    lines = [str(line) for line in (payload.lines or []) if str(line).strip()]
+
+    if payload.use_model:
+        receipt = read_receipt_with_understanding(lines)
+    else:
+        receipt = read_receipt(lines)
+
+    understood = False
+    if payload.use_model:
+        # The reading that is used is the one that understands the
+        # lines. It is known by whether the model was asked at all,
+        # and a model that is not there is not an error.
+        import os
+
+        understood = bool(os.getenv("GEMINI_API_KEY"))
+
+    return SplitDecomposeResponse(
+        items=[
+            SplitDecomposedItem(
+                name=item.name,
+                raw_name=item.raw_name,
+                quantity=str(item.quantity),
+                unit_price=str(item.unit_price),
+                total_price=str(item.total_price),
+                kind=item.kind,
+                line_number=item.line_number,
+            )
+            for item in receipt.items
+        ],
+        tax=str(receipt.tax),
+        service_charge=str(receipt.service_charge),
+        discount=str(receipt.discount),
+        subtotal=str(receipt.subtotal),
+        grand_total=str(receipt.grand_total),
+        discrepancy=(
+            str(receipt.discrepancy) if receipt.discrepancy is not None else None
+        ),
+        understood_by_model=understood,
+    )
 
 
 # --- the receipts ----------------------------------------------------------
