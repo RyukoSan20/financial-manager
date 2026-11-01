@@ -201,6 +201,13 @@ class SplitExpense(Base):
         Integer, ForeignKey("receipt_scans.id"), nullable=True, index=True
     )
 
+    # Where the bill was. A dinner at a restaurant and a dinner at
+    # home are different bills in the reader's life, and the map on
+    # the merchant page can show where the group's money went.
+    latitude = Column(Numeric(10, 7), nullable=True)
+    longitude = Column(Numeric(10, 7), nullable=True)
+    place_name = Column(String(255), nullable=True)
+
     # The money, in the currency of the group.
     subtotal = Column(Numeric(20, 2), nullable=True)
     tax = Column(Numeric(20, 2), nullable=True)

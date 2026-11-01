@@ -148,6 +148,12 @@ class SplitExpenseCreate(EmptyStringAsNone):
     created_by_member_id: Optional[int] = None
     record_personal_share: bool = True
 
+    # Where the bill was, when the reader knows. A bill without a
+    # place is still a bill; it just does not go on the map.
+    latitude: Optional[Decimal] = Field(None, ge=-90, le=90)
+    longitude: Optional[Decimal] = Field(None, ge=-180, le=180)
+    place_name: Optional[str] = Field(None, max_length=255)
+
     @field_validator("split_mode")
     @classmethod
     def _known_mode(cls, value: str) -> str:
