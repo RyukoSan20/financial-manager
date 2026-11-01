@@ -13,7 +13,6 @@ import React, { useState } from 'react';
 import { useTranslation } from '../../i18n';
 import { batch7 } from '../../i18n/keys_batch7';
 import { batch8 } from '../../i18n/keys_batch8';
-import { buildFlag } from '../../utils/featureFlags';
 import {
   GOES_OUT,
   NEVER_SENT,
@@ -23,7 +22,6 @@ import { Eye, EyeOff, HardDrive, ShieldCheck, Send } from 'lucide-react';
 
 export default function PrivacyPage() {
   const { language } = useTranslation();
-  const polished = buildFlag('UI_POLISH');
 
   const K = batch7[language] || batch7.id;
 
@@ -35,12 +33,13 @@ export default function PrivacyPage() {
   // Which outgoing entries have their detail open.
   const [open, setOpen] = useState({});
 
-  if (!polished) return null;
-
+  // The page shows its contents whatever the polish layer is doing.
+  // The layer only decides how the page looks, and a page that shows
+  // nothing is worse than a page that looks plain.
   const toggle = (id) => setOpen((current) => ({ ...current, [id]: !current[id] }));
 
   return (
-    <div className="privacy-page" data-ui="polish">
+    <div className="privacy-page">
       <header className="privacy-page__header">
         <h1>{K.privacy_page_title}</h1>
         <p>{K.privacy_page_subtitle}</p>
