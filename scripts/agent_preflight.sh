@@ -114,7 +114,9 @@ echo
 
 echo "--- frontend build ---------------------------------------------"
 cd "$ROOT/frontend"
-if npm run build > /tmp/preflight_build.log 2>&1; then
+# The same build switches the deployment uses, so the build that is
+# checked here is the build that is deployed.
+if VITE_UI_AURORA=1 VITE_UI_MONEY=1 VITE_UI_POLISH=1 npm run build > /tmp/preflight_build.log 2>&1; then
   tail -4 /tmp/preflight_build.log
   echo "  -> build OK"
 else
