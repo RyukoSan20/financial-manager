@@ -425,6 +425,13 @@ class SplitSettlement(Base):
     amount = Column(Numeric(20, 2), nullable=False)
     currency = Column(String(10), default="IDR", nullable=False)
 
+    # The receipt this payment settles. A settlement belongs to a
+    # receipt, so that the money that comes back can be tied to the
+    # bill it came back for.
+    expense_id = Column(
+        Integer, ForeignKey("split_expenses.id"), nullable=True, index=True
+    )
+
     # PENDING, PAID, or CANCELLED.
     status = Column(String(20), default="PENDING", nullable=False, index=True)
 

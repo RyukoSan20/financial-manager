@@ -300,6 +300,13 @@ def upgrade():
             ),
             sa.Column("amount", sa.Numeric(precision=20, scale=2), nullable=False),
             sa.Column("currency", sa.String(length=10), nullable=False, server_default="IDR"),
+            sa.Column(
+                "expense_id",
+                sa.Integer(),
+                sa.ForeignKey("split_expenses.id"),
+                nullable=True,
+                index=True,
+            ),
             sa.Column("status", sa.String(length=20), nullable=False, server_default="PENDING", index=True),
             sa.Column("proof_url", sa.String(length=255), nullable=True),
             sa.Column("proof_amount", sa.Numeric(precision=20, scale=2), nullable=True),
@@ -315,6 +322,15 @@ def upgrade():
             sa.Column("settled_at", sa.DateTime(), nullable=True),
             sa.Column("created_at", sa.DateTime(), nullable=True),
             sa.Column("updated_at", sa.DateTime(), nullable=True),
+        )
+
+    # A database that ran an earlier version of this migration has
+    # the table but not the column that ties a payment to its
+    # receipt. The column is added here, and only if it is missing.
+    if "split_settlements" in tables:
+        _add_column(
+            "split_settlements",
+            sa.Column("expense_id", sa.Integer(), nullable=True),
         )
 
     # --- the two columns on transactions -------------------------------------

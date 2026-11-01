@@ -43,6 +43,7 @@ from app.models.split_bill import (
 )
 from app.models.transaction import Transaction
 from app.models.user import User
+from app.services.account_balance import move_balance
 
 ZERO = Decimal("0")
 
@@ -51,6 +52,10 @@ ZERO = Decimal("0")
 PERSONAL_SHARE = "PERSONAL_SHARE"
 FRONTED_RECEIVABLE = "FRONTED_RECEIVABLE"
 SPLIT_REIMBURSEMENT = "SPLIT_REIMBURSEMENT"
+
+# The status a bill carries once it has been written into the
+# reader's records. Publishing twice must not write it twice.
+PUBLISHED = "PUBLISHED"
 
 
 def _dec(value) -> Decimal:
@@ -144,6 +149,12 @@ def publish_expense_to_ledger(
     if not expense.payer_account_id:
         return []
 
+    # Publishing twice must not write the bill twice. The status is
+    # the record of the fact, and it is set before the rows are
+    # written so that a second call sees it.
+    if expense.status == PUBLISHED:
+        return []
+
     host_member = _host_member(members, user)
     if host_member is None:
         return []
@@ -197,7 +208,15 @@ def publish_expense_to_ledger(
 
     db.flush()
 
+    # The money really did leave the account, so the balance moves.
+    # Both rows move it, because both parts of the bill were paid for
+    # out of the same account. Only one of them is spending, and that
+    # is what the column says.
+    for row in written:
+        move_balance(db, row.account_id, row.type, row.amount)
+
     if written:
         expense.transaction_id = written[0].id
+    expense.status = PUBLISHED
 
     return written

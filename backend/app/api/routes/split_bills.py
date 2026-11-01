@@ -58,6 +58,27 @@ from app.services.split_bill_service import (
 router = APIRouter()
 
 
+def _settlement_account_id(db: Session, settlement: SplitSettlement):
+    """
+    The account a payment back should arrive in.
+
+    It is the account the receipt was paid from, because that is
+    where the money left from and it should come back to the same
+    place. When the receipt does not say, there is no account to
+    put the money into, and the payment is recorded without touching
+    a balance.
+    """
+    if settlement.expense_id:
+        expense = (
+            db.query(SplitExpense)
+            .filter(SplitExpense.id == settlement.expense_id)
+            .first()
+        )
+        if expense is not None and expense.payer_account_id:
+            return expense.payer_account_id
+    return None
+
+
 def _invite_code() -> str:
     """
     A code that can be read out over a noisy restaurant.
@@ -838,6 +859,7 @@ def create_settlement(
         to_member_id=payload.to_member_id,
         amount=payload.amount,
         currency=group.currency or "IDR",
+        expense_id=payload.expense_id,
         status="PENDING",
         proof_url=payload.proof_url,
         proof_amount=payload.proof_amount,
@@ -912,6 +934,19 @@ def confirm_settlement(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This payment is not yours to confirm.",
         )
+
+    # The money goes into the account it came out of. This is not
+    # income: it is the reader's own money coming back, and the
+    # service that writes it knows that.
+    from app.services.split_settlement_service import settle_payment
+
+    settle_payment(
+        db,
+        group=group,
+        settlement=settlement,
+        to_account_id=_settlement_account_id(db, settlement),
+        user=current_user,
+    )
 
     settlement.status = "COMPLETED"
     settlement.settled_at = datetime.utcnow()

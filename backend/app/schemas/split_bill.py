@@ -255,6 +255,9 @@ class SplitSettlementCreate(EmptyStringAsNone):
     from_member_id: int
     to_member_id: int
     amount: Decimal = Field(..., gt=0)
+    # Which receipt this payment settles. It is optional, because a
+    # payment can be for the whole group rather than for one receipt.
+    expense_id: Optional[int] = None
     proof_url: Optional[str] = Field(None, max_length=255)
     proof_amount: Optional[Decimal] = Field(None, ge=0)
     proof_date: Optional[str] = None
