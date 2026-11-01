@@ -409,7 +409,9 @@ def test_the_phone_scan_route_answers():
             "is_merchant BOOLEAN, merchant_id INTEGER,"
             "payment_method VARCHAR(50), reference_number VARCHAR(255),"
             "client_request_id VARCHAR(255), tags VARCHAR(500),"
-            "is_draft BOOLEAN, created_at TIMESTAMP, updated_at TIMESTAMP)"
+            "is_draft BOOLEAN, split_expense_id INTEGER,"
+            "split_tx_type VARCHAR(30),"
+            "created_at TIMESTAMP, updated_at TIMESTAMP)"
         ))
     database = sessionmaker(bind=engine)()
     database.execute(text(

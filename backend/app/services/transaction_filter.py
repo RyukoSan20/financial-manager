@@ -30,6 +30,23 @@ never filled in, so the row was never deleted. Asking
 `is_deleted IS false` skips a row whose flag is empty; asking whether
 it is false *or* empty asks the question that was meant.
 
+**A row that is somebody else's money is not spending.** This one
+came with the shared bill. When a host pays for a table of four, the
+money that the other three owe back has left the account but it is
+not the host's spending - it is the host's money on loan. Counting it
+would make the host's monthly chart show a dinner that cost four
+times what it cost them, and every budget built on that chart would
+be wrong from the first day.
+
+The same is true in the other direction. When the others pay back,
+the money comes into the account, but it is not income: it is the
+host's own money returning. Counting it as income would make the host
+look like they earned a dinner that they paid for themselves.
+
+So the kinds of row that a shared bill leaves behind are kept out of
+the spending and the income totals, while they still move the account
+balance - because the money really did move.
+
 The same rule is written twice below, once for each column, so that
 the two can be read on their own.
 """
@@ -42,6 +59,18 @@ from app.models.transaction import Transaction
 # A transaction counts once it is approved. The empty string is what
 # an older row holds, and it means approved too.
 APPROVED_STATUSES = ("approved", "")
+
+# The kinds of row a shared bill leaves behind. The first is the
+# host's own share of the bill and it is ordinary spending. The
+# second is the money the others owe back, which is on loan rather
+# than spent. The third is the money coming back, which is a return
+# rather than earnings.
+PERSONAL_SHARE = "PERSONAL_SHARE"
+FRONTED_RECEIVABLE = "FRONTED_RECEIVABLE"
+SPLIT_REIMBURSEMENT = "SPLIT_REIMBURSEMENT"
+
+# The kinds that are not the reader's own spending or income.
+NOT_PERSONAL_MONEY = (FRONTED_RECEIVABLE, SPLIT_REIMBURSEMENT)
 
 
 def counted_transactions_filter() -> list:
@@ -65,4 +94,44 @@ def counted_transactions_filter() -> list:
             Transaction.is_deleted.is_(None),
             Transaction.is_deleted.is_(False),
         ),
+    ]
+
+
+def personal_money_filter() -> list:
+    """
+    The filter for the transactions that are the reader's own money.
+
+    The rows that a shared bill left behind are left out, unless the
+    row is the reader's own share of that bill. The money on loan is
+    not spending, and the money coming back is not income.
+    """
+    return [
+        or_(
+            Transaction.split_tx_type.is_(None),
+            Transaction.split_tx_type == PERSONAL_SHARE,
+        )
+    ]
+
+
+def personal_expense_filter() -> list:
+    """
+    The filter for the expenses that are the reader's own spending.
+
+    It is the counted filter and the personal money filter together.
+    """
+    return counted_transactions_filter() + personal_money_filter()
+
+
+def personal_income_filter() -> list:
+    """
+    The filter for the income that is the reader's own earnings.
+
+    The money coming back from a shared bill is left out. It is the
+    reader's own money returning, not something they were paid.
+    """
+    return counted_transactions_filter() + [
+        or_(
+            Transaction.split_tx_type.is_(None),
+            Transaction.split_tx_type != SPLIT_REIMBURSEMENT,
+        )
     ]

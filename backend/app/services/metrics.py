@@ -27,7 +27,11 @@ from app.models.debt import Debt
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.services.currency_totals import total_in_currency
-from app.services.transaction_filter import counted_transactions_filter
+from app.services.transaction_filter import (
+    counted_transactions_filter,
+    personal_expense_filter,
+    personal_income_filter,
+)
 
 # The four parts of the health score, each worth the same.
 HEALTH_PART_MAX = 25
@@ -145,8 +149,18 @@ def period_totals(
 
     Only approved transactions count. A pending one must not move a
     balance, so it must not move a report either.
+
+    The money that a shared bill left behind is left out of both
+    totals. When a host pays for a table of four, the money the
+    others owe back is on loan rather than spent, and when it comes
+    back it is a return rather than earnings. It still moves the
+    account balance, because the money really did move; it just does
+    not belong in a chart of what the reader spent and earned.
     """
     def _sum(kind: str) -> float:
+        conditions = (
+            personal_income_filter() if kind == "income" else personal_expense_filter()
+        )
         total = (
             db.query(func.coalesce(func.sum(Transaction.amount), 0))
             .filter(
@@ -154,7 +168,7 @@ def period_totals(
                 Transaction.user_id == user_id,
                 Transaction.date >= start_date,
                 Transaction.date <= end_date,
-                *counted_transactions_filter(),
+                *conditions,
             )
             .scalar()
         )

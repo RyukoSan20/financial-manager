@@ -24,6 +24,7 @@ from app.api.routes import (
     realtime_market, logs, merchant, webhooks, location,
     unified_market, user_settings, voice, profile, learning, scans,
     breakdown, indonesia_calculators, reminders, insights,
+    split_bills, split_guest,
 )
 
 # Import models to register with SQLAlchemy
@@ -266,6 +267,8 @@ app.include_router(goals.router, prefix="/api/goals", tags=["Goals"])
 app.include_router(breakdown.router, prefix="/api/breakdown", tags=["Breakdown"])
 app.include_router(catalog.router, prefix="/api/catalog", tags=["Catalog"])
 app.include_router(debts.router, prefix="/api/debts", tags=["Debts"])
+app.include_router(split_bills.router, prefix="/api/split", tags=["Split Bill"])
+app.include_router(split_guest.router, prefix="/api/split", tags=["Split Bill Guest"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(calculators.router, prefix="/api/calculators", tags=["Calculators"])
