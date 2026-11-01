@@ -14,11 +14,14 @@ import { batch9 } from '../../i18n/keys_batch9';
 import { PageHeader } from '../../components/ui/PageHeader';
 import HonestEmptyState from '../../components/common/HonestEmptyState';
 import { listGroups, getBalances, createGroup } from '../../services/splitApi';
+import { useAuth } from '../../context/AuthContext';
 
 export default function SplitDashboardPage() {
   const { language } = useI18n();
+  const { user } = useAuth();
   const K = batch9[language]?.split || batch9.id.split;
 
+  const readerId = user?.id ?? null;
   const [groups, setGroups] = useState([]);
   const [balances, setBalances] = useState({});
   const [loading, setLoading] = useState(true);
@@ -67,15 +70,31 @@ export default function SplitDashboardPage() {
   const net = useMemo(() => {
     let owed = 0;
     let owing = 0;
-    for (const rows of Object.values(balances)) {
-      for (const row of rows) {
+
+    // Only the reader's own line counts.
+    //
+    // A group's balances are the balances of everybody at the table.
+    // The number at the top of this page is the reader's: what the
+    // friends owe them, less what they owe their friends. Adding up
+    // the whole table would count the friends' debts as the
+    // reader's, and a reader who is owed nothing would be told they
+    // owe the whole bill.
+    for (const group of groups) {
+      const rows = balances[group.id] || [];
+      const mine = rows.filter((row) => {
+        const member = (group.members || []).find(
+          (one) => one.id === row.member_id
+        );
+        return member && member.user_id === readerId;
+      });
+      for (const row of mine) {
         const value = Number(row.net_position || 0);
         if (value > 0) owed += value;
         else owing += Math.abs(value);
       }
     }
     return { owed, owing, net: owed - owing };
-  }, [balances]);
+  }, [balances, groups, readerId]);
 
   const create = async (event) => {
     event.preventDefault();

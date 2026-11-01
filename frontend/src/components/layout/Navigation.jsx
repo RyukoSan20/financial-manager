@@ -31,6 +31,7 @@ import {
   ShoppingCart,
   Kanban,
   Mail, Package,
+  Users,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -44,12 +45,13 @@ import { CurrencyBadge } from '../common/CurrencyBadge';
 import { auroraNavClass } from '../ui/AuroraCard';
 import { moneyLayerOn } from '../../utils/animation';
 import GroupedNav, { buildNavMap, isGroupedNavOn } from './GroupedNav';
+import { readerFlag } from '../../utils/featureFlags';
 
 // The icons by the name the grouped view uses them under.
 const ICONS = {
   LayoutDashboard, Receipt, Wallet, PiggyBank, Repeat, Target, CreditCard,
   Calculator, BarChart3, Settings, Map, Sparkles, Heart, ShoppingCart,
-  Kanban, Mail, ShoppingBag, PieChart, BellRing,
+  Kanban, Mail, ShoppingBag, PieChart, BellRing, Users,
 };
 
 const navItems = (t) => [
@@ -62,6 +64,11 @@ const navItems = (t) => [
   { name: t('nav.recurring'), href: '/recurring', icon: Repeat },
   { name: t('nav.goals'), href: '/goals', icon: Target },
   { name: t('nav.debts'), href: '/debts', icon: CreditCard },
+  // The shared bill. It is behind a switch, so it is not in the menu
+  // until the reader has asked for it. Without this the flat menu
+  // had no way to reach it at all: the grouped menu is a second
+  // view, and it is not the one most readers see.
+  { name: t('nav.split'), href: '/split', icon: Users, flag: 'SMART_SPLIT_BILL' },
   { name: t('nav.calculators'), href: '/calculators', icon: Calculator },
   { name: t('nav.analytics'), href: '/analytics', icon: BarChart3 },
   { name: t('nav.advisor'), href: '/advisor', icon: Sparkles },
@@ -90,7 +97,12 @@ import { batch3 } from '../../i18n/keys_batch3';
 const Sidebar = () => {
   const location = useLocation();
   const { t , language } = useTranslation();
-  const items = navItems(t);
+  // The items whose switch is off are left out of the menu. The page
+  // is still there - a link somebody sent has to work - but the menu
+  // only shows what the reader has turned on.
+  const items = navItems(t).filter(
+    (item) => !item.flag || readerFlag(item.flag)
+  );
 
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-30 dark:bg-gray-800 dark:border-gray-700">
@@ -451,6 +463,8 @@ const MorePage = () => {
     { icon: PieChart, label: t('nav.categoryExpenses'), href: '/category-expenses', color: 'bg-teal-100 text-teal-600', desc: 'View spending by category' },
     { icon: Target, label: t('nav.goals'), href: '/goals', color: 'bg-purple-100 text-purple-600', desc: 'Track your savings goals' },
     { icon: CreditCard, label: t('nav.debts'), href: '/debts', color: 'bg-orange-100 text-orange-600', desc: 'Manage loans & credits' },
+    // The shared bill, behind its switch, like the other pages here.
+    { icon: Users, label: t('nav.split'), href: '/split', color: 'bg-violet-100 text-violet-600', desc: 'Share a receipt and settle up', flag: 'SMART_SPLIT_BILL' },
     { icon: Repeat, label: t('nav.recurring'), href: '/recurring', color: 'bg-blue-100 text-blue-600', desc: 'Automated transactions' },
     { icon: Calculator, label: t('nav.calculators'), href: '/calculators', color: 'bg-green-100 text-green-600', desc: 'Financial calculators' },
     { icon: BarChart3, label: t('nav.analytics'), href: '/analytics', color: 'bg-pink-100 text-pink-600', desc: 'Insights & trends' },
@@ -468,7 +482,12 @@ const MorePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="p-4 space-y-3">
-        {menuItems.map((item) => (
+        {menuItems
+          // A page whose switch is off is not in the menu. The page
+          // itself is still there, so a link somebody sent still
+          // works.
+          .filter((item) => !item.flag || readerFlag(item.flag))
+          .map((item) => (
           <Link
             key={item.label}
             to={item.href}
@@ -485,7 +504,7 @@ const MorePage = () => {
               <ChevronRight className="w-5 h-5 text-gray-400" />
             </div>
           </Link>
-        ))}
+          ))}
       </div>
     </div>
   );
