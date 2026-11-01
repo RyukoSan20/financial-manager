@@ -46,6 +46,7 @@ import { auroraNavClass } from '../ui/AuroraCard';
 import { moneyLayerOn } from '../../utils/animation';
 import GroupedNav, { buildNavMap, isGroupedNavOn } from './GroupedNav';
 import { readerFlag } from '../../utils/featureFlags';
+import { useReaderFlags } from '../../utils/useReaderFlags';
 
 // The icons by the name the grouped view uses them under.
 const ICONS = {
@@ -100,6 +101,10 @@ const Sidebar = () => {
   // The items whose switch is off are left out of the menu. The page
   // is still there - a link somebody sent has to work - but the menu
   // only shows what the reader has turned on.
+  // The switches are read again when one of them changes, so that
+  // turning the shared bill on makes it appear in the menu at once
+  // rather than after the next reload.
+  useReaderFlags();
   const items = navItems(t).filter(
     (item) => !item.flag || readerFlag(item.flag)
   );
@@ -178,7 +183,12 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const { t , language } = useTranslation();
   const K = batch3[language]?.navigation;
-  const items = navItems(t);
+  // The mobile menu leaves out the entries whose switch is off, the
+  // same way the desktop menu does.
+  useReaderFlags();
+  const items = navItems(t).filter(
+    (item) => !item.flag || readerFlag(item.flag)
+  );
 
   return (
     <>
@@ -456,6 +466,9 @@ const BottomNav = ({ pendingScanResult }) => {
 // More Page
 const MorePage = () => {
   const { t } = useTranslation();
+  // Redrawn when a switch changes, so that turning the shared bill on
+  // puts it in this list at once.
+  useReaderFlags();
 
   const menuItems = [
     { icon: ShoppingBag, label: t('nav.merchant'), href: '/merchant', color: 'bg-indigo-100 text-indigo-600', desc: 'POS & Kasir Cepat' },

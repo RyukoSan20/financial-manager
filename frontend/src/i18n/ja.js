@@ -484,11 +484,17 @@ export default {
       preferences: "環境設定",
       data: "データ",
       privacy: "プライバシー",
+      app: "アプリ",
     },
     appearance: {
       title: "表示",
       description: "アクセントカラー、フォント、文字サイズ、背景。アカウントに保存されるため、他の端末にも引き継がれます。",
       cta: "表示を調整",
+    },
+    appFeatures: {
+      title: "アプリ機能",
+      description: "共有請求、リマインダー、シンプルモードなどの追加機能をオンにします。",
+      cta: "アプリ機能を管理",
     },
     profile: {
       title: "プロフィール情報",

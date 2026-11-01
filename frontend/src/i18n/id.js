@@ -484,11 +484,17 @@ export default {
       preferences: "Preferensi",
       data: "Data",
       privacy: "Privasi",
+      app: "Aplikasi",
     },
     appearance: {
       title: "Tampilan",
       description: "Warna aksen, font, ukuran teks, dan latar belakang. Tersimpan di akun Anda, jadi ikut ke perangkat lain.",
       cta: "Atur tampilan",
+    },
+    appFeatures: {
+      title: "Fitur Aplikasi",
+      description: "Nyalakan fitur tambahan seperti patungan bersama, pengingat, dan mode sederhana.",
+      cta: "Atur fitur aplikasi",
     },
     profile: {
       title: "Informasi Profil",

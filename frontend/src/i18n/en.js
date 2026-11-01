@@ -484,11 +484,17 @@ export default {
       preferences: "Preferences",
       data: "Data",
       privacy: "Privacy",
+      app: "Application",
     },
     appearance: {
       title: "Appearance",
       description: "Accent colour, font, text size, and background. Saved to your account, so they follow you to your other devices.",
       cta: "Adjust appearance",
+    },
+    appFeatures: {
+      title: "Application Features",
+      description: "Turn on the extra features such as shared bills, reminders, and the simple mode.",
+      cta: "Manage application features",
     },
     profile: {
       title: "Profile Information",

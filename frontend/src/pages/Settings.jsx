@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/ui';
-import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut, Palette, Coins, Search, X, ShieldCheck } from 'lucide-react';
+import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut, Palette, Coins, Search, X, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -38,6 +38,7 @@ export const Settings = () => {
     { id: 'preferences', label: t('settings.tabs.preferences'), icon: Globe },
     { id: 'data', label: t('settings.tabs.data'), icon: Download },
     { id: 'privacy', label: t('settings.tabs.privacy'), icon: ShieldCheck },
+    { id: 'app', label: t('settings.tabs.app'), icon: SlidersHorizontal },
   ], [t]);
 
   // The search filters the tabs as well as the rows inside them.
@@ -183,6 +184,7 @@ export const Settings = () => {
           {activeTab === 'preferences' && <PreferencesTab user={user} />}
           {activeTab === 'data' && <DataTab logout={logout} />}
           {activeTab === 'privacy' && <PrivacyPage />}
+          {activeTab === 'app' && <AppFeaturesTab />}
         </div>
       </div>
     </div>
@@ -213,6 +215,37 @@ const AppearanceTab = () => {
       >
         <Palette className="w-4 h-4" />
         {t('settings.appearance.cta')}
+      </Link>
+    </Card>
+  );
+};
+
+/**
+ * The application features tab.
+ *
+ * The switches that turn the newer parts of the app on live on their
+ * own page. Until now there was no way to reach that page from the
+ * settings, which meant the switches were invisible to anyone who did
+ * not already know the address.
+ */
+const AppFeaturesTab = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center gap-3 mb-2">
+        <SlidersHorizontal className="w-5 h-5 text-primary-600" />
+        <h2 className="text-lg font-semibold">{t('settings.appFeatures.title')}</h2>
+      </div>
+      <p className="text-sm text-gray-500 mb-4">
+        {t('settings.appFeatures.description')}
+      </p>
+      <Link
+        to="/settings/app"
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
+      >
+        <SlidersHorizontal className="w-4 h-4" />
+        {t('settings.appFeatures.cta')}
       </Link>
     </Card>
   );
