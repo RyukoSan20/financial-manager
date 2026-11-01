@@ -62,7 +62,7 @@ class SplitGroup(Base):
 
     # The currency the bills are in. The shares are worked out in
     # this currency, so the rounding follows its rules.
-    currency = Column(10) if False else Column(String(10), default="IDR", nullable=False)
+    currency = Column(String(10), default="IDR", nullable=False)
 
     # Whether the group is still being used. A group is never
     # deleted, because a receipt that was shared is a record of
