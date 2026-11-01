@@ -44,21 +44,25 @@ def _is_a_placeholder(url):
     """
     Is this the stand-in in the ini file rather than a database?
 
-    The stand-in is the one written into alembic.ini: a url with the
-    password blanked out. Anything else is a real url, and a real url
-    has to be used even when it looks unusual - a SQLite file has no
-    account in it, and that is still a database somebody chose.
+    A url that is empty is a stand-in: the ini file now says nothing
+    about the database, and the environment is asked instead.
     """
-    if not url:
-        return True
-    return "***" in url
+    return not url
 
 
-if from_config and not _is_a_placeholder(from_config):
+if from_env:
+    # The environment is the one that is right in production. The
+    # server and the container set it, and it points at the database
+    # the application itself is using.
+    #
+    # This comes first because the file is read through a parser that
+    # expands %(...)s, and a stand-in written in the file comes back
+    # changed in a way that cannot be recognised reliably. An empty
+    # value is the only stand-in that survives being read.
+    config.set_main_option("sqlalchemy.url", from_env)
+elif from_config and not _is_a_placeholder(from_config):
     # A caller that knows the database has already said which one.
     pass
-elif from_env:
-    config.set_main_option("sqlalchemy.url", from_env)
 else:
     config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 

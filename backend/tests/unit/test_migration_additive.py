@@ -196,8 +196,20 @@ def test_the_environment_wins_over_the_placeholder_in_the_ini_file():
         "config.get_main_option(\"sqlalchemy.url\""
     ), "the placeholder in the ini file is consulted before the environment"
 
-    # And the placeholder has to be recognised as a placeholder.
-    assert "***" in source, "the placeholder in the ini file is not recognised"
+    # And the file has to have nothing to say about the database, so
+    # that there is no second answer that could win.
+    ini = (BACKEND_DIR / "alembic.ini").read_text(encoding="utf-8")
+    written = [
+        line for line in ini.splitlines()
+        if line.strip().startswith("sqlalchemy.url")
+    ]
+    assert written, "the ini file does not mention the url at all"
+    for line in written:
+        value = line.split("=", 1)[1].strip()
+        assert not value, (
+            f"the ini file still carries a url ({value!r}); "
+            "the environment has to be the only answer"
+        )
 
 
 def test_the_chain_has_no_dangling_parent():
