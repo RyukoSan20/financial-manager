@@ -19,6 +19,11 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { inviteLink } from '../components/split/splitMath';
+
+// The link is re-exported here, because this hook is where a reader
+// looks for it.
+export { inviteLink };
 
 /** How long to wait between two asks, in milliseconds. */
 const DEFAULT_INTERVAL = 2500;
@@ -111,18 +116,12 @@ export function useLiveReceipt(fetcher, options = {}) {
   };
 }
 
-/**
- * The link that lets somebody join without an account.
- *
- * It is the group's invite code turned into a full address, with the
- * code in the path so that the guest's screen can ask the server
- * about it without a key.
+/*
+ * The link that lets somebody join without an account lives in
+ * splitMath.js, next to the arithmetic it belongs with. It is
+ * re-exported above, because this hook is where a reader looks for
+ * it.
  */
-export function inviteLink(origin, code) {
-  if (!origin || !code) return '';
-  const base = String(origin).replace(/\/$/, '');
-  return `${base}/split/claim/${code}`;
-}
 
 /**
  * The claim token, kept where a guest's browser can find it.

@@ -16,6 +16,7 @@
 
 import { useMemo } from 'react';
 import { batch9 } from '../../i18n/keys_batch9';
+import { equalShares } from './splitMath';
 
 /**
  * The bill divided equally.
@@ -24,77 +25,6 @@ import { batch9 } from '../../i18n/keys_batch9';
  * fraction was the largest, and then to the first name, so that the
  * same bill always splits the same way.
  */
-export function equalShares(total, memberCount, exponent = 0) {
-  const count = Number(memberCount) || 0;
-  if (count <= 0) return [];
-
-  // The count is done in the smallest unit that exists, so that the
-  // parts add up to the whole rather than to within a rounding
-  // error.
-  //
-  // The smallest unit is not always a sen. Rupiah has no sen, so a
-  // rupiah is divided into whole rupiahs and the leftover rupiah
-  // goes to one of the people. Yen and dollars have two decimals.
-  const factor = 10 ** Number(exponent || 0);
-  const totalUnits = Math.round(Number(total) * factor);
-  const base = Math.floor(totalUnits / count);
-  let left = totalUnits - base * count;
-
-  const shares = new Array(count).fill(base);
-  // The names are not known here, so the extra units go to the first
-  // people. The server settles the order properly.
-  for (let index = 0; index < count && left > 0; index += 1) {
-    shares[index] += 1;
-    left -= 1;
-  }
-
-  return shares.map((units) => units / factor);
-}
-
-/**
- * The bill divided in proportion to what each person ate.
- *
- * The tax, the service charge and the discount are spread in the
- * same proportion, because they were charged on the food.
- */
-export function proportionalShares(items, claims, totals) {
-  // The people are the ones who claimed something, not the lines.
-  // The claims are keyed by line, and each line names the people who
-  // took part of it.
-  const itemTotals = {};
-
-  for (const item of items || []) {
-    const quantity = Number(item.quantity || 0);
-    const unit =
-      quantity > 0 ? Number(item.total_price || 0) / quantity : Number(item.total_price || 0);
-    // The line is looked up by text as well as by number, because
-    // the claims arrive with the keys the server sent, and the
-    // server sends text.
-    const lineClaims =
-      (claims || {})[item.id] || (claims || {})[String(item.id)] || {};
-    for (const member of Object.keys(lineClaims)) {
-      if (itemTotals[member] === undefined) itemTotals[member] = 0;
-      itemTotals[member] += unit * Number(lineClaims[member] || 0);
-    }
-  }
-
-  const members = Object.keys(itemTotals);
-  if (members.length === 0) return {};
-
-  const subtotal = Object.values(itemTotals).reduce((a, b) => a + b, 0);
-  const tax = Number(totals?.tax ?? 0);
-  const service = Number(totals?.service_charge ?? 0);
-  const discount = Number(totals?.discount ?? 0);
-
-  const result = {};
-  for (const member of members) {
-    const weight = subtotal > 0 ? itemTotals[member] / subtotal : 1 / members.length;
-    result[member] =
-      itemTotals[member] + weight * tax + weight * service - weight * discount;
-  }
-  return result;
-}
-
 export default function SplitMethodSelector({
   mode = 'ITEMIZED',
   onChange = null,
