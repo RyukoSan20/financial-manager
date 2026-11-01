@@ -54,10 +54,22 @@ def init_db():
     # Import User model for auth
     from app.models.user import User
     
-    # Run migrations first
+    # The tables are made first, and the migrations run afterwards.
+    #
+    # The order matters for one of the columns: the column that ties a
+    # transaction to a shared bill points at the table of the shared
+    # bill, and a database that is asked to add a column pointing at a
+    # table that is not there yet refuses to. So the tables have to be
+    # there before that column is asked for.
+    #
+    # The migrations are also run before, because the tables that were
+    # there already need their new columns before anything reads them.
     run_migrations()
-    
+
     Base.metadata.create_all(bind=engine)
+
+    # And once more, now that every table is there.
+    run_migrations()
 
 
 def run_migrations():

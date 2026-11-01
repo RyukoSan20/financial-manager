@@ -22,6 +22,20 @@ def _add_app_to_path():
         sys.path.insert(0, backend)
 
 
+# The tables a shared bill is made of.
+SPLIT_TABLES = (
+    "split_groups",
+    "split_members",
+    "split_expenses",
+    "split_payers",
+    "split_items",
+    "split_item_claims",
+    "split_calculated_shares",
+    "split_settlements",
+    "split_payment_methods",
+)
+
+
 def _columns_for(engine, table):
     """The column names of one table, whichever database this is."""
     from sqlalchemy import inspect
@@ -41,7 +55,7 @@ def main():
         return 1
 
     wanted = {
-        "transactions": {"tags", "is_draft"},
+        "transactions": {"tags", "is_draft", "split_expense_id", "split_tx_type"},
         "categories": {"is_adjustment"},
     }
 
@@ -58,6 +72,21 @@ def main():
             else:
                 print(f"::error::the column {table}.{column} is missing")
                 missing.append(f"{table}.{column}")
+
+    # The tables of a shared bill. They are made by the migration, so
+    # they are the thing that has to be checked: if the migration did
+    # not run, the columns on transactions can be there and the
+    # feature still cannot work.
+    from sqlalchemy import inspect
+
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    for table in SPLIT_TABLES:
+        if table in tables:
+            print(f"the table {table} is there")
+        else:
+            print(f"::error::the table {table} is missing")
+            missing.append(table)
 
     if missing:
         print(f"::error::missing: {', '.join(missing)}")
