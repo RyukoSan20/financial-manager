@@ -273,6 +273,61 @@ def list_transfers(
     return result
 
 
+@router.get("/split-reimbursements")
+def get_split_reimbursements(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    The money that came back from a shared bill.
+
+    It is a separate endpoint, and not part of the transfer list,
+    because a payment back from a friend is not a transfer between
+    the reader's own accounts. It is money that arrived from
+    somewhere else, and the reader may want to see it apart.
+
+    Nothing is sent and nothing changes.
+    """
+    from app.services.split_receivable_service import settled_reimbursements
+
+    reimbursements = settled_reimbursements(db, current_user.id)
+    return {
+        "reimbursements": reimbursements,
+        "count": len(reimbursements),
+        "total": sum(r["amount"] for r in reimbursements),
+    }
+
+
+@router.get("/summary/total")
+def get_transfer_summary(
+    start_date: date = None,
+    end_date: date = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get transfer summary for a period."""
+    query = db.query(Transfer)
+    
+    if current_user:
+        query = query.filter(Transfer.user_id == current_user.id)
+    
+    if start_date:
+        query = query.filter(Transfer.date >= start_date)
+    if end_date:
+        query.filter(Transfer.date <= end_date)
+    
+    transfers = query.all()
+    
+    total_out = sum(t.amount for t in transfers)
+    
+    return {
+        "total_transfers": len(transfers),
+        "total_transferred_out": total_out,
+        "total_transferred_in": total_out,
+        "period": {"start": start_date, "end": end_date}
+    }
+
+
 @router.get("/{transfer_id}", response_model=TransferWithTransactions)
 def get_transfer(
     transfer_id: int,
@@ -363,56 +418,3 @@ def delete_transfer(
     return None
 
 
-@router.get("/summary/total")
-def get_transfer_summary(
-    start_date: date = None,
-    end_date: date = None,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get transfer summary for a period."""
-    query = db.query(Transfer)
-    
-    if current_user:
-        query = query.filter(Transfer.user_id == current_user.id)
-    
-    if start_date:
-        query = query.filter(Transfer.date >= start_date)
-    if end_date:
-        query.filter(Transfer.date <= end_date)
-    
-    transfers = query.all()
-    
-    total_out = sum(t.amount for t in transfers)
-    
-    return {
-        "total_transfers": len(transfers),
-        "total_transferred_out": total_out,
-        "total_transferred_in": total_out,
-        "period": {"start": start_date, "end": end_date}
-    }
-
-
-@router.get("/split-reimbursements")
-def get_split_reimbursements(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    The money that came back from a shared bill.
-
-    It is a separate endpoint, and not part of the transfer list,
-    because a payment back from a friend is not a transfer between
-    the reader's own accounts. It is money that arrived from
-    somewhere else, and the reader may want to see it apart.
-
-    Nothing is sent and nothing changes.
-    """
-    from app.services.split_receivable_service import settled_reimbursements
-
-    reimbursements = settled_reimbursements(db, current_user.id)
-    return {
-        "reimbursements": reimbursements,
-        "count": len(reimbursements),
-        "total": sum(r["amount"] for r in reimbursements),
-    }

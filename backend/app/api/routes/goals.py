@@ -87,6 +87,44 @@ def list_goals(
     return result
 
 
+@router.get("/summary")
+def get_goals_summary(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get overall goals summary."""
+    query = db.query(Goal).filter(Goal.is_active == True)
+    
+    if current_user:
+        query = query.filter(Goal.user_id == current_user.id)
+    
+    goals = query.all()
+    
+    total_target = sum(g.target_amount for g in goals)
+    total_current = sum(g.current_amount for g in goals)
+    completed = len([g for g in goals if g.is_completed])
+    active = len([g for g in goals if not g.is_completed])
+    
+    # Count on-track
+    on_track_count = 0
+    for goal in goals:
+        if not goal.is_completed:
+            on_track = calculate_goal_on_track(goal.current_amount, goal.target_amount, goal.target_date)
+            if on_track["on_track"]:
+                on_track_count += 1
+    
+    return {
+        "total_goals": len(goals),
+        "active_goals": active,
+        "completed_goals": completed,
+        "on_track_goals": on_track_count,
+        "total_target_amount": total_target,
+        "total_current_amount": total_current,
+        "total_remaining": total_target - total_current,
+        "overall_progress": float(total_current / total_target * 100) if total_target > 0 else 0,
+    }
+
+
 @router.get("/{goal_id}", response_model=GoalWithProgress)
 def get_goal(
     goal_id: int,
@@ -363,39 +401,3 @@ def list_contributions(
     return contributions
 
 
-@router.get("/summary")
-def get_goals_summary(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get overall goals summary."""
-    query = db.query(Goal).filter(Goal.is_active == True)
-    
-    if current_user:
-        query = query.filter(Goal.user_id == current_user.id)
-    
-    goals = query.all()
-    
-    total_target = sum(g.target_amount for g in goals)
-    total_current = sum(g.current_amount for g in goals)
-    completed = len([g for g in goals if g.is_completed])
-    active = len([g for g in goals if not g.is_completed])
-    
-    # Count on-track
-    on_track_count = 0
-    for goal in goals:
-        if not goal.is_completed:
-            on_track = calculate_goal_on_track(goal.current_amount, goal.target_amount, goal.target_date)
-            if on_track["on_track"]:
-                on_track_count += 1
-    
-    return {
-        "total_goals": len(goals),
-        "active_goals": active,
-        "completed_goals": completed,
-        "on_track_goals": on_track_count,
-        "total_target_amount": total_target,
-        "total_current_amount": total_current,
-        "total_remaining": total_target - total_current,
-        "overall_progress": float(total_current / total_target * 100) if total_target > 0 else 0,
-    }

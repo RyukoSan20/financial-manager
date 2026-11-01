@@ -111,6 +111,86 @@ def list_debts(
     return result
 
 
+@router.get("/summary/all")
+def get_debts_summary(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get overall debts summary."""
+    query = db.query(Debt).filter(Debt.is_active == True, Debt.is_paid_off == False)
+    
+    if current_user:
+        query = query.filter(Debt.user_id == current_user.id)
+    
+    debts = query.all()
+    
+    if not debts:
+        return {
+            "total_debts": 0,
+            "total_outstanding": Decimal("0"),
+            "total_monthly_payment": Decimal("0"),
+            "total_remaining_months": 0,
+        }
+    
+    debts_list = [
+        {
+            "name": d.name,
+            "balance": d.current_balance,
+            "monthly_payment": d.monthly_payment,
+            "remaining_months": d.remaining_months,
+            "interest_rate": d.interest_rate,
+        }
+        for d in debts
+    ]
+    
+    summary = calculate_total_debt_summary(debts_list)
+    
+    # Get upcoming payments
+    upcoming = []
+    for debt in debts:
+        if debt.next_payment_date:
+            upcoming.append({
+                "debt_id": debt.id,
+                "debt_name": debt.name,
+                "amount": debt.monthly_payment,
+                "due_date": debt.next_payment_date,
+            })
+    
+    upcoming.sort(key=lambda x: x["due_date"])
+    
+    return {
+        **summary,
+        "upcoming_payments": upcoming[:5],
+        "next_payment_date": upcoming[0]["due_date"] if upcoming else None,
+    }
+
+
+@router.get("/split-receivables")
+def get_split_receivables(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    The money other people owe the reader because of a shared bill.
+
+    It is a separate endpoint, and not part of the debts summary,
+    because the debts summary answers a different question. A loan is
+    money the reader is paying back. This is money that is coming
+    back to the reader. Adding the two together into one number would
+    say something that is not true.
+
+    Nothing is sent and nothing changes.
+    """
+    from app.services.split_receivable_service import outstanding_receivables
+
+    receivables = outstanding_receivables(db, current_user.id)
+    return {
+        "receivables": receivables,
+        "count": len(receivables),
+        "total_outstanding": sum(r["amount"] for r in receivables),
+    }
+
+
 @router.get("/{debt_id}", response_model=DebtWithProgress)
 def get_debt(
     debt_id: int,
@@ -538,81 +618,4 @@ def get_amortization_schedule(
 
 # === Summary ===
 
-@router.get("/summary/all")
-def get_debts_summary(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get overall debts summary."""
-    query = db.query(Debt).filter(Debt.is_active == True, Debt.is_paid_off == False)
-    
-    if current_user:
-        query = query.filter(Debt.user_id == current_user.id)
-    
-    debts = query.all()
-    
-    if not debts:
-        return {
-            "total_debts": 0,
-            "total_outstanding": Decimal("0"),
-            "total_monthly_payment": Decimal("0"),
-            "total_remaining_months": 0,
-        }
-    
-    debts_list = [
-        {
-            "name": d.name,
-            "balance": d.current_balance,
-            "monthly_payment": d.monthly_payment,
-            "remaining_months": d.remaining_months,
-            "interest_rate": d.interest_rate,
-        }
-        for d in debts
-    ]
-    
-    summary = calculate_total_debt_summary(debts_list)
-    
-    # Get upcoming payments
-    upcoming = []
-    for debt in debts:
-        if debt.next_payment_date:
-            upcoming.append({
-                "debt_id": debt.id,
-                "debt_name": debt.name,
-                "amount": debt.monthly_payment,
-                "due_date": debt.next_payment_date,
-            })
-    
-    upcoming.sort(key=lambda x: x["due_date"])
-    
-    return {
-        **summary,
-        "upcoming_payments": upcoming[:5],
-        "next_payment_date": upcoming[0]["due_date"] if upcoming else None,
-    }
 
-
-@router.get("/split-receivables")
-def get_split_receivables(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    The money other people owe the reader because of a shared bill.
-
-    It is a separate endpoint, and not part of the debts summary,
-    because the debts summary answers a different question. A loan is
-    money the reader is paying back. This is money that is coming
-    back to the reader. Adding the two together into one number would
-    say something that is not true.
-
-    Nothing is sent and nothing changes.
-    """
-    from app.services.split_receivable_service import outstanding_receivables
-
-    receivables = outstanding_receivables(db, current_user.id)
-    return {
-        "receivables": receivables,
-        "count": len(receivables),
-        "total_outstanding": sum(r["amount"] for r in receivables),
-    }
