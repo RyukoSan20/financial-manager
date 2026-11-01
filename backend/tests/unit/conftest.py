@@ -54,8 +54,14 @@ class TheReader:
 
     id = 1
     email = "host@example.test"
-    name = "The Host"
     is_active = True
+
+    # The real user record has a full name and a username, and either
+    # of them may be empty. This stand-in has the same shape, so a
+    # route that reaches for a field the record does not have fails
+    # here rather than on the server.
+    full_name = "The Host"
+    username = None
 
 
 @pytest.fixture()

@@ -100,6 +100,20 @@ def _settlement_account_id(db: Session, settlement: SplitSettlement):
     return None
 
 
+def _display_name(user) -> str:
+    """
+    What to call the reader in a shared bill.
+
+    The user record has no single "name" column: it has a full name
+    and a username, and either of them may be empty. A guest account
+    has neither, and there the email is all there is.
+    """
+    for part in (getattr(user, "full_name", None), getattr(user, "username", None)):
+        if part and str(part).strip():
+            return str(part).strip()
+    return user.email
+
+
 def _invite_code() -> str:
     """
     A code that can be read out over a noisy restaurant.
@@ -371,7 +385,7 @@ def create_group(
         SplitMember(
             group_id=group.id,
             user_id=current_user.id,
-            display_name=current_user.name or current_user.email,
+            display_name=_display_name(current_user),
             is_host=True,
             is_present=True,
         )
