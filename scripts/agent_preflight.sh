@@ -92,7 +92,8 @@ for test_file in \
   src/components/split/__tests__/qr.test.js \
   src/components/split/__tests__/liveStream.test.js \
   src/services/__tests__/apiContract.test.js \
-  src/components/split/__tests__/addReceipt.test.js
+  src/components/split/__tests__/addReceipt.test.js \
+  src/utils/__tests__/readerFlags.test.js
 do
   if [ ! -f "$test_file" ]; then
     echo "  SKIP $test_file (not present)"

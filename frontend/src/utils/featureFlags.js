@@ -88,6 +88,16 @@ const READER_FLAGS = {
 const STORAGE_KEY = 'featureFlags';
 
 /**
+ * The event that says a switch has changed.
+ *
+ * The browser's own storage event does not fire in the window that
+ * made the change, so a menu that listens only for that would not
+ * redraw in the window where the reader turned the switch on. This
+ * one is fired by the writing side, so both windows hear it.
+ */
+export const READER_FLAG_CHANGED = 'finmanager:reader-flag-changed';
+
+/**
  * Is a build switch on?
  *
  * The environment is read once, at load. Everything in the bundle
@@ -148,9 +158,22 @@ export function setReaderFlag(name, value) {
       delete parsed[key];
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    announceChange();
     return true;
   } catch (err) {
     return false;
+  }
+}
+
+/**
+ * Say that the switches have changed.
+ */
+function announceChange() {
+  if (typeof window === 'undefined' || !window.dispatchEvent) return;
+  try {
+    window.dispatchEvent(new CustomEvent(READER_FLAG_CHANGED));
+  } catch (err) {
+    /* the browser does not have custom events */
   }
 }
 
@@ -166,6 +189,7 @@ export function clearReaderFlags() {
   } catch (err) {
     /* storage unavailable */
   }
+  announceChange();
 }
 
 /**
