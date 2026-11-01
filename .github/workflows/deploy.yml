@@ -242,8 +242,12 @@ jobs:
             docker exec finmanager-backend-1 sh -c "cd /app && python scripts/prepare_migrations.py" || \
               echo "::warning::the stamp failed; the startup migration still adds the columns"
 
-            docker exec finmanager-backend-1 sh -c "cd /app && alembic upgrade head" || \
-              echo "::warning::alembic upgrade failed - the startup migration adds the columns anyway"
+            # This one is fatal. A migration that fails means the
+            # database is not what the code expects, and the check
+            # below would only find part of it. The earlier version of
+            # this step carried on with a warning, so a broken
+            # migration reached production and was only noticed later.
+            docker exec finmanager-backend-1 sh -c "cd /app && alembic upgrade head"
 
             # The startup migration adds the same columns, so they are
             # there even if alembic could not run. This checks that
