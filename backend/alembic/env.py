@@ -42,27 +42,32 @@ from_config = config.get_main_option("sqlalchemy.url", None)
 
 def _is_a_placeholder(url):
     """
-    Is this the stand-in in the ini file rather than a database?
+    Is this the stand-in rather than a database?
 
-    A url that is empty is a stand-in: the ini file now says nothing
-    about the database, and the environment is asked instead.
+    Two things count as a stand-in: an empty value, which is what
+    alembic.ini carries now, and the blanked-out password that was
+    written there before.
+
+    The empty value is the one that matters. The file is read through
+    a parser that expands %(...)s, and a stand-in with asterisks in it
+    comes back changed in a way that cannot be recognised reliably.
+    An empty value is the only stand-in that survives being read.
     """
-    return not url
+    if not url:
+        return True
+    return "***" in url
 
 
-if from_env:
+if from_config and not _is_a_placeholder(from_config):
+    # A caller that knows the database has already said which one, and
+    # they are the only one who knows. A test that builds a throwaway
+    # database and points alembic at it says exactly that.
+    pass
+elif from_env:
     # The environment is the one that is right in production. The
     # server and the container set it, and it points at the database
     # the application itself is using.
-    #
-    # This comes first because the file is read through a parser that
-    # expands %(...)s, and a stand-in written in the file comes back
-    # changed in a way that cannot be recognised reliably. An empty
-    # value is the only stand-in that survives being read.
     config.set_main_option("sqlalchemy.url", from_env)
-elif from_config and not _is_a_placeholder(from_config):
-    # A caller that knows the database has already said which one.
-    pass
 else:
     config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 

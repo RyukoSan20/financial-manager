@@ -108,3 +108,37 @@ def test_the_drop_of_an_index_is_not_wrapped_in_a_catch(source):
                 f"line {number} drops an index inside a try. On PostgreSQL "
                 "a failure that is caught still spoils the transaction."
             )
+
+
+def test_the_environment_is_used_when_the_file_says_nothing(monkeypatch):
+    """
+    The file carries no database any more, so the environment is the
+    only thing left to say which one it is.
+
+    This is the case that reached production: the file had a stand-in
+    in it, the stand-in was not recognised, and the migration went
+    looking for a database on a port nothing was listening on.
+    """
+    import pathlib
+
+    backend_dir = pathlib.Path(__file__).resolve().parents[2]
+    env_path = backend_dir / "alembic" / "env.py"
+    source = env_path.read_text(encoding="utf-8")
+
+    # The environment has to be read, and it has to be able to win.
+    assert "from_env = os.environ.get(\"DATABASE_URL\")" in source
+    assert "elif from_env:" in source
+    assert "config.set_main_option(\"sqlalchemy.url\", from_env)" in source
+
+    # And the branch that reads it has to come after the branch for a
+    # url the caller set for itself, because a caller that knows the
+    # database knows it better than the environment does.
+    assert source.index("if from_config and not _is_a_placeholder(from_config):") \
+        < source.index("elif from_env:")
+
+    # The file itself must not name a database.
+    ini = (backend_dir / "alembic.ini").read_text(encoding="utf-8")
+    for line in ini.splitlines():
+        if line.strip().startswith("sqlalchemy.url"):
+            value = line.split("=", 1)[1].strip()
+            assert not value, f"the ini file still names a database ({value!r})"
