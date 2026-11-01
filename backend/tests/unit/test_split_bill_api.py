@@ -390,3 +390,28 @@ def test_the_money_others_owe_is_not_the_host_spending(client):
         assert kinds.get("FRONTED_RECEIVABLE") == 60000.0
     finally:
         db.close()
+
+
+def test_two_people_cannot_have_the_same_name_at_one_table(client):
+    """
+    The name is how a line of the receipt is claimed, so a second
+    person with the same name would make the claim ambiguous.
+
+    The answer has to say that. A failure that reaches the reader as
+    a 500 says the server is broken, and it is not: the reader asked
+    for something that cannot be done.
+    """
+    group = _group(client)
+
+    first = client.post(
+        f"/api/split/groups/{group['id']}/members",
+        json={"display_name": "Budi", "is_guest": True},
+    )
+    assert first.status_code == 201, first.text
+
+    second = client.post(
+        f"/api/split/groups/{group['id']}/members",
+        json={"display_name": "Budi", "is_guest": True},
+    )
+    assert second.status_code == 409, second.text
+    assert "name" in second.json()["detail"].lower()

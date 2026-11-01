@@ -427,6 +427,29 @@ def add_member(
     """
     group = _group_for(db, group_id, current_user)
 
+    # Two people cannot have the same name at one table: the name is
+    # how a line of the receipt is claimed, so a second person with
+    # the same name would make the claim ambiguous.
+    #
+    # The check is done here rather than left to the database. The
+    # database would refuse it too, but it refuses it by failing, and
+    # a failure that reaches the reader as a 500 says the server is
+    # broken. It is not: the reader asked for something that cannot
+    # be done, and the answer is that it cannot.
+    existing = (
+        db.query(SplitMember)
+        .filter(
+            SplitMember.group_id == group.id,
+            SplitMember.display_name == payload.display_name,
+        )
+        .first()
+    )
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Somebody at this table already has that name.",
+        )
+
     member = SplitMember(
         group_id=group.id,
         user_id=payload.user_id,
