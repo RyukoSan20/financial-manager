@@ -539,8 +539,30 @@ export const api = {
     }),
   },
   
-  // Generic GET for custom endpoints
-  get: (path) => api.request(path),
+  // Generic calls for custom endpoints.
+  //
+  // The body is given as an object and is turned into JSON here, so
+  // that a caller does not have to remember to do it. The server
+  // wants JSON, and a caller that forgot to send it was answered
+  // with a 422 that said nothing useful.
+  get: (path, options = {}) => api.request(path, options),
+
+  post: (path, body = null, options = {}) =>
+    api.request(path, {
+      ...options,
+      method: 'POST',
+      ...(body === null ? {} : { body: JSON.stringify(body) }),
+    }),
+
+  put: (path, body = null, options = {}) =>
+    api.request(path, {
+      ...options,
+      method: 'PUT',
+      ...(body === null ? {} : { body: JSON.stringify(body) }),
+    }),
+
+  delete: (path, options = {}) =>
+    api.request(path, { ...options, method: 'DELETE' }),
   
   // Exchange rates
   exchange: {

@@ -19,122 +19,122 @@ export const GUEST_TOKEN_HEADER = 'X-Split-Guest-Token';
  * The groups the reader is in.
  */
 export async function listGroups() {
-  const response = await api.get('/split/groups');
-  return response.data;
+  const result = await api.get('/split/groups');
+  return result;
 }
 
 /**
  * One group.
  */
 export async function getGroup(groupId) {
-  const response = await api.get(`/split/groups/${groupId}`);
-  return response.data;
+  const result = await api.get(`/split/groups/${groupId}`);
+  return result;
 }
 
 /**
  * A new group.
  */
 export async function createGroup(payload) {
-  const response = await api.post('/split/groups', payload);
-  return response.data;
+  const result = await api.post('/split/groups', payload);
+  return result;
 }
 
 /**
  * Somebody at the table.
  */
 export async function addMember(groupId, payload) {
-  const response = await api.post(`/split/groups/${groupId}/members`, payload);
-  return response.data;
+  const result = await api.post(`/split/groups/${groupId}/members`, payload);
+  return result;
 }
 
 /**
  * What everybody owes the group, or is owed by it.
  */
 export async function getBalances(groupId) {
-  const response = await api.get(`/split/groups/${groupId}/balances`);
-  return response.data;
+  const result = await api.get(`/split/groups/${groupId}/balances`);
+  return result;
 }
 
 /**
  * The fewest payments that clear the group.
  */
 export async function getSettlementPlan(groupId) {
-  const response = await api.get(`/split/groups/${groupId}/settlement-plan`);
-  return response.data;
+  const result = await api.get(`/split/groups/${groupId}/settlement-plan`);
+  return result;
 }
 
 /**
  * The receipts the group has shared.
  */
 export async function listExpenses(groupId) {
-  const response = await api.get(`/split/groups/${groupId}/expenses`);
-  return response.data;
+  const result = await api.get(`/split/groups/${groupId}/expenses`);
+  return result;
 }
 
 /**
  * A receipt, shared.
  */
 export async function createExpense(groupId, payload) {
-  const response = await api.post(`/split/groups/${groupId}/expenses`, payload);
-  return response.data;
+  const result = await api.post(`/split/groups/${groupId}/expenses`, payload);
+  return result;
 }
 
 /**
  * One receipt.
  */
 export async function getExpense(expenseId) {
-  const response = await api.get(`/split/expenses/${expenseId}`);
-  return response.data;
+  const result = await api.get(`/split/expenses/${expenseId}`);
+  return result;
 }
 
 /**
  * The host saying who had what.
  */
 export async function claimForMember(expenseId, payload) {
-  const response = await api.post(`/split/expenses/${expenseId}/claims`, payload);
-  return response.data;
+  const result = await api.post(`/split/expenses/${expenseId}/claims`, payload);
+  return result;
 }
 
 /**
  * A claim taken back.
  */
 export async function releaseClaim(expenseId, claimId) {
-  const response = await api.delete(
+  const result = await api.delete(
     `/split/expenses/${expenseId}/claims/${claimId}`,
   );
-  return response.data;
+  return result;
 }
 
 /**
  * The bill becomes real.
  */
 export async function publishExpense(expenseId) {
-  const response = await api.post(`/split/expenses/${expenseId}/publish`);
-  return response.data;
+  const result = await api.post(`/split/expenses/${expenseId}/publish`);
+  return result;
 }
 
 /**
  * The payments between the people in the group.
  */
 export async function listSettlements(groupId) {
-  const response = await api.get(`/split/groups/${groupId}/settlements`);
-  return response.data;
+  const result = await api.get(`/split/groups/${groupId}/settlements`);
+  return result;
 }
 
 /**
  * Somebody paid somebody back.
  */
 export async function createSettlement(groupId, payload) {
-  const response = await api.post(`/split/groups/${groupId}/settlements`, payload);
-  return response.data;
+  const result = await api.post(`/split/groups/${groupId}/settlements`, payload);
+  return result;
 }
 
 /**
  * The money has arrived.
  */
 export async function confirmSettlement(settlementId) {
-  const response = await api.post(`/split/settlements/${settlementId}/confirm`);
-  return response.data;
+  const result = await api.post(`/split/settlements/${settlementId}/confirm`);
+  return result;
 }
 
 // --- the guest -------------------------------------------------------------
@@ -143,61 +143,61 @@ export async function confirmSettlement(settlementId) {
  * What the link points at.
  */
 export async function peekGroup(code) {
-  const response = await api.get(`/split/claim/${code}`);
-  return response.data;
+  const result = await api.get(`/split/claim/${code}`);
+  return result;
 }
 
 /**
  * Giving a name and getting in.
  */
 export async function joinGroup(code, displayName) {
-  const response = await api.post(`/split/claim/${code}/join`, {
+  const result = await api.post(`/split/claim/${code}/join`, {
     display_name: displayName,
   });
-  return response.data;
+  return result;
 }
 
 /**
  * The receipts the group has shared, and which one is live.
  */
 export async function listGuestExpenses(code, token) {
-  const response = await api.get(`/split/claim/${code}/expenses`, {
+  const result = await api.get(`/split/claim/${code}/expenses`, {
     headers: { [GUEST_TOKEN_HEADER]: token },
   });
-  return response.data;
+  return result;
 }
 
 /**
  * The receipt, as it changes.
  */
 export async function getLiveReceipt(expenseId, token) {
-  const response = await api.get(`/split/expenses/${expenseId}/live`, {
+  const result = await api.get(`/split/expenses/${expenseId}/live`, {
     headers: { [GUEST_TOKEN_HEADER]: token },
   });
-  return response.data;
+  return result;
 }
 
 /**
  * Tapping a plate.
  */
 export async function claimItem(expenseId, token, itemId, quantity = 1) {
-  const response = await api.post(
+  const result = await api.post(
     `/split/expenses/${expenseId}/claim`,
     { item_id: itemId, quantity },
     { headers: { [GUEST_TOKEN_HEADER]: token } },
   );
-  return response.data;
+  return result;
 }
 
 /**
  * Taking a claim back.
  */
 export async function releaseItem(expenseId, token, itemId) {
-  const response = await api.delete(
+  const result = await api.delete(
     `/split/expenses/${expenseId}/claim/${itemId}`,
     { headers: { [GUEST_TOKEN_HEADER]: token } },
   );
-  return response.data;
+  return result;
 }
 
 export default {
