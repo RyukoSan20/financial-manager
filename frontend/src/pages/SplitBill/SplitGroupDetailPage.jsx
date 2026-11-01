@@ -20,6 +20,8 @@ import GroupBalanceCard from '../../components/split/GroupBalanceCard';
 import SplitMethodSelector from '../../components/split/SplitMethodSelector';
 import SettleUpModal from '../../components/split/SettleUpModal';
 import { inviteLink } from '../../hooks/useLiveReceiptClaim';
+import InviteQr from '../../components/split/InviteQr';
+import useLiveBoard from '../../hooks/useLiveBoard';
 import {
   hasDiscrepancy,
   discrepancySize,
@@ -68,6 +70,18 @@ export default function SplitGroupDetailPage() {
       setError(err);
     }
   }, [groupId]);
+
+  // The board, live.
+  //
+  // When somebody at the table taps a plate, the host's screen
+  // changes without the host pressing anything. Underneath the
+  // stream there is the asking again after a while, so the screen is
+  // still right when the connection cannot be kept open.
+  useLiveBoard(load, {
+    kind: 'host',
+    id: groupId,
+    enabled: Boolean(groupId),
+  });
 
   useEffect(() => {
     load();
@@ -190,6 +204,11 @@ export default function SplitGroupDetailPage() {
             {copied ? K.link_copied : K.copy_link}
           </button>
         </div>
+        <InviteQr
+          link={link}
+          title={K.qr_title}
+          message={K.share_link_hint}
+        />
       </section>
 
       <section className="split-group__members">

@@ -24,10 +24,10 @@ import { useI18n } from '../../i18n';
 import { batch9 } from '../../i18n/keys_batch9';
 import LiveClaimBoard from '../../components/split/LiveClaimBoard';
 import {
-  useLiveReceipt,
   readClaimToken,
   writeClaimToken,
 } from '../../hooks/useLiveReceiptClaim';
+import useLiveBoard from '../../hooks/useLiveBoard';
 import {
   peekGroup,
   joinGroup,
@@ -128,7 +128,12 @@ export default function GuestLiveClaimPage() {
     data: receipt,
     isStale,
     error: liveError,
-  } = useLiveReceipt(fetcher, { enabled: Boolean(token && expenseId) });
+  } = useLiveBoard(fetcher, {
+    kind: 'guest',
+    id: code,
+    token,
+    enabled: Boolean(token && expenseId),
+  });
 
   /**
    * The receipt to show.
