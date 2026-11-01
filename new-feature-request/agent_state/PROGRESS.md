@@ -256,3 +256,58 @@ SESSION LOG
 
   STILL NOT DONE, from the master prompt: the nav grouping
   refinement, and the A7 rows that need a mini-spec.
+
+  SPLIT: the shared bill, finished.
+
+  Four things were asked for and all four are now in place.
+
+  The board is live. When somebody at the table taps a plate, the
+  host's screen and everybody else's phone change without anybody
+  pressing anything. The server holds the connection open and writes
+  one line of JSON when something changes. The browser reads it with
+  a plain fetch rather than the EventSource, because the EventSource
+  cannot send an authorization header and a token put into the
+  address of a stream ends up in the access log. Underneath the
+  stream the older way of asking again after a while is still there,
+  because a phone in a restaurant drops connections and a dropped
+  connection looks exactly like a screen that has stopped updating.
+  nginx was buffering the stream, so it was delivering it all at once
+  at the end; the buffer is now off for that one path.
+
+  The receipt is read the way receipts are written. The shorthand a
+  receipt actually uses - "2x", a line with no name at all, a tax
+  line, a service line, a voucher - is understood by rules that
+  always run, and the model is asked only what each line means. The
+  arithmetic is never done by the model. If the model is wrong, or
+  not there, or answers with something that is not JSON, the rules
+  answer instead.
+
+  The bill adds up exactly. One hundred thousand rupiah between
+  three people is thirty-three thousand three hundred and thirty-four,
+  thirty-three thousand three hundred and thirty-three, and the same
+  again, and not a rupiah more or less. A tax and a discount are
+  shared out in proportion to what was eaten. A receipt whose lines
+  do not add up to its subtotal is refused with the difference named
+  in rupiah and the line that is wrong marked on the board, because
+  a receipt that does not add up is the host's problem to fix
+  before the money moves.
+
+  The settling up is one transfer, not three. A who owes B fifty
+  thousand and B who owes C fifty thousand becomes A who owes C
+  fifty thousand.
+
+  The money that has been laid out for other people is not the
+  reader's spending, and the money that came back is not the
+  reader's income. Both are kept apart in the figures, in the
+  accounts, and in the two new insights.
+
+  The payment details of a member are encrypted with the key
+  service, and they are only decrypted for somebody who actually
+  has to pay that member in that group. Everybody else sees that
+  there is a method and nothing more.
+
+  The invitation is a picture as well as a link, so that somebody
+  standing at the table can join without typing an address and
+  without installing anything. The code is written here rather than
+  brought in; it was checked by writing a reader that reads the
+  matrix back, and by the specification's own example.

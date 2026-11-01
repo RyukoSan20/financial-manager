@@ -29,6 +29,8 @@ can be cleared in one go. Off to begin with.
 | `singleAdd` | OFF | A5 | One primary add action in the same place on each page. |
 | `advancedFeatures` | OFF | A5 | The merchant page, and other advanced screens, behind an opt-in. |
 | `reminders` | OFF | A5 | Reminders. They compute what to remind about; they send nothing. |
+| `smartSplitBill` | OFF | Split | The shared bill: the groups, the live board where everybody at the table taps what they ate, the way the bill is divided, and the settling up. It also shows what the reader is owed back on the debts page, the two extra insights, and the reminder for a bill that has not been paid back. Off means the reader sees the application exactly as they saw it before. |
+| `liveClaim` | OFF | Split | The invitation link that lets somebody join the bill without an account, and the live board on their phone. Off means the link does nothing and no guest can join. |
 
 ## Environment values that are not switches
 
