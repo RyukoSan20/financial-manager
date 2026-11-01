@@ -17,7 +17,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import Request, APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -59,6 +60,23 @@ from app.services.split_bill_service import (
 )
 
 router = APIRouter()
+
+
+async def _announce(db: Session, group_id: int, event: dict) -> None:
+    """
+    Tell the people watching a group that something changed.
+
+    The board is kept in memory and belongs to nobody in
+    particular. A failure to announce is not a failure of the
+    request: the change was already saved, and the next poll will
+    show it anyway.
+    """
+    from app.services.split_live_service import get_board
+
+    try:
+        await get_board(str(group_id)).publish(event)
+    except Exception:  # pragma: no cover - the board is a convenience
+        pass
 
 
 def _settlement_account_id(db: Session, settlement: SplitSettlement):
@@ -411,6 +429,48 @@ def add_member(
     return _member_response(member)
 
 
+@router.get("/groups/{group_id}/live")
+async def stream_group(
+    group_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    The live feed for one group.
+
+    The connection is held open. Each time somebody claims or
+    releases a line, one line of JSON is written to it, and the
+    host's screen changes without the host pressing anything.
+    """
+    _group_for(db, group_id, current_user)
+
+    from app.services.split_live_service import drop_board, get_board
+
+    board = get_board(str(group_id))
+
+    async def events():
+        yield b'{"type":"ready","group_id":' + str(group_id).encode("utf-8") + b"}\n"
+
+        try:
+            async for chunk in board.subscribe():
+                if await request.is_disconnected():
+                    break
+                yield chunk
+        finally:
+            if board.reader_count == 0:
+                drop_board(str(group_id))
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
 @router.get("/groups/{group_id}/balances", response_model=List[SplitBalanceResponse])
 def get_balances(
     group_id: int,
@@ -579,6 +639,9 @@ def create_expense(
         split_mode=payload.split_mode,
         payer_account_id=payload.payer_account_id,
         record_personal_share=payload.record_personal_share,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
+        place_name=payload.place_name,
         status="DRAFT",
     )
     db.add(expense)
@@ -657,7 +720,7 @@ def get_expense(
 
 
 @router.post("/expenses/{expense_id}/claims", response_model=SplitExpenseResponse)
-def claim_item(
+async def claim_item(
     expense_id: int,
     payload: SplitClaimInput,
     db: Session = Depends(get_db),
@@ -733,11 +796,20 @@ def claim_item(
     recompute_expense(db, expense, members, currency=group.currency or "IDR")
     db.commit()
     db.refresh(expense)
+
+    # Tell everybody watching the board that something changed.
+    await _announce(db, expense.group_id, {
+        "type": "claim",
+        "expense_id": expense.id,
+        "item_id": payload.item_id,
+        "member_id": payload.member_id,
+    })
+
     return _expense_response(db, expense)
 
 
 @router.delete("/expenses/{expense_id}/claims/{claim_id}", response_model=SplitExpenseResponse)
-def release_claim(
+async def release_claim(
     expense_id: int,
     claim_id: int,
     db: Session = Depends(get_db),
@@ -786,6 +858,15 @@ def release_claim(
     recompute_expense(db, expense, members, currency=group.currency or "IDR")
     db.commit()
     db.refresh(expense)
+
+    # Tell everybody watching the board that something changed.
+    await _announce(db, expense.group_id, {
+        "type": "release",
+        "expense_id": expense.id,
+        "item_id": claim.item_id,
+        "member_id": claim.member_id,
+    })
+
     return _expense_response(db, expense)
 
 
@@ -1064,3 +1145,26 @@ def confirm_settlement(
         settled_at=settlement.settled_at.isoformat() if settlement.settled_at else None,
         created_at=settlement.created_at.isoformat() if settlement.created_at else None,
     )
+
+
+@router.get("/places")
+def list_group_places(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Where the reader's shared bills were.
+
+    These are the same kind of places the merchant map shows, so that
+    the question "where did we eat out" can be asked of the group as
+    well as of the reader.
+
+    Nothing is sent and nothing changes.
+    """
+    from app.services.split_map_service import group_places
+
+    places = group_places(db, current_user.id)
+    return {
+        "places": places,
+        "count": len(places),
+    }

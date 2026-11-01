@@ -23,7 +23,8 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -47,6 +48,21 @@ from app.services.split_bill_service import (
     member_item_totals,
     read_receipt_totals,
 )
+
+async def _announce(db: Session, group_id: int, event: dict) -> None:
+    """
+    Tell the people watching a group that something changed.
+
+    The board lives in memory. A failure to announce does not undo
+    what was saved.
+    """
+    from app.services.split_live_service import get_board
+
+    try:
+        await get_board(str(group_id)).publish(event)
+    except Exception:  # pragma: no cover - the board is a convenience
+        pass
+
 
 router = APIRouter()
 
@@ -329,6 +345,67 @@ def list_group_expenses(
     }
 
 
+@router.get("/claim/{code}/live")
+async def live_claim_stream(
+    code: str,
+    request: Request,
+    x_split_guest_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    """
+    The live feed for a guest.
+
+    The guest's browser holds this open. When somebody else at the
+    table taps a plate, one line of JSON arrives here, and the
+    guest's screen changes without the guest pressing anything.
+
+    No account is needed: the invite code is the key, and the guest
+    token says which member of the group is watching.
+    """
+    group = (
+        db.query(SplitGroup).filter(SplitGroup.invite_code == code).first()
+    )
+    if group is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="That invitation was not found.",
+        )
+
+    # A guest who has not joined yet is still allowed to watch: the
+    # board itself is not private, and the lines on the receipt are
+    # the host's own receipt.
+    member = None
+    if x_split_guest_token:
+        member = _member_by_token(db, group.id, x_split_guest_token)
+
+    from app.services.split_live_service import get_board
+
+    board = get_board(str(group.id))
+
+    async def events():
+        yield b'{"type":"ready","group_id":' + str(group.id).encode("utf-8") + b"}\n"
+
+        try:
+            async for chunk in board.subscribe():
+                if await request.is_disconnected():
+                    break
+                yield chunk
+        finally:
+            from app.services.split_live_service import drop_board
+
+            if board.reader_count == 0:
+                drop_board(str(group.id))
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
 @router.get("/expenses/{expense_id}/live")
 def live_receipt(
     expense_id: int,
@@ -371,7 +448,7 @@ def live_receipt(
 
 
 @router.post("/expenses/{expense_id}/claim", response_model=SplitExpenseResponse)
-def claim(
+async def claim(
     expense_id: int,
     payload: SplitClaimInput,
     x_split_guest_token: Optional[str] = Header(None),
@@ -460,11 +537,20 @@ def claim(
     )
     db.commit()
 
+    # Tell everybody watching, including the host, that the board
+    # has changed.
+    await _announce(db, expense.group_id, {
+        "type": "claim",
+        "expense_id": expense.id,
+        "item_id": item.id,
+        "member_id": member.id,
+    })
+
     return _guest_expense_response(db, expense, member)
 
 
 @router.delete("/expenses/{expense_id}/claim/{item_id}", response_model=SplitExpenseResponse)
-def release(
+async def release(
     expense_id: int,
     item_id: int,
     x_split_guest_token: Optional[str] = Header(None),
@@ -495,5 +581,12 @@ def release(
     ):
         db.delete(claim_row)
     db.commit()
+
+    await _announce(db, expense.group_id, {
+        "type": "release",
+        "expense_id": expense.id,
+        "item_id": item_id,
+        "member_id": member.id,
+    })
 
     return _guest_expense_response(db, expense, member)
