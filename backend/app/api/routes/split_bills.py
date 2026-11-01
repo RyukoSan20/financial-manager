@@ -534,6 +534,14 @@ def create_expense(
                 expense.receipt_date = None
 
     for item in payload.items:
+        # The total of a line is what the line costs in all. When the
+        # reader gave the price of one and how many, the total is
+        # worked out from those two. When they gave the total
+        # itself, that is what is used.
+        total = item.total_price
+        if not total:
+            total = (item.unit_price or 0) * (item.quantity or 0)
+
         db.add(
             SplitItem(
                 expense_id=expense.id,
@@ -541,7 +549,7 @@ def create_expense(
                 raw_name=item.raw_name,
                 quantity=item.quantity,
                 unit_price=item.unit_price,
-                total_price=item.total_price,
+                total_price=total,
                 kind=item.kind,
                 category=item.category,
                 line_number=item.line_number,
@@ -746,6 +754,22 @@ def publish_expense(
 
     members = _members_of(db, group.id)
     recompute_expense(db, expense, members, currency=group.currency or "IDR")
+
+    # A receipt whose lines do not add up to its own subtotal was
+    # read wrong somewhere. Publishing it would mean somebody pays
+    # for a line that was never on the receipt, so the bill is
+    # refused until the reader has dealt with the gap.
+    if expense.discrepancy is not None:
+        from app.services.split_bill_service import describe_discrepancy
+
+        words = describe_discrepancy(
+            expense.discrepancy, group.currency or "IDR"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=words
+            or "The lines of this receipt do not add up to its subtotal.",
+        )
 
     from app.services.split_publish_service import publish_expense_to_ledger
 

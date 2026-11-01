@@ -33,6 +33,7 @@ from app.models.split_bill import (
 )
 from app.services.debt_simplifier_service import simplify_debts
 from app.services.split_engine_service import (
+    exponent_for,
     BillLine,
     allocate_proportionally,
     equal_split,
@@ -117,10 +118,47 @@ def find_discrepancy(
     subtotal = totals["subtotal"]
     if subtotal == ZERO:
         return None
+    # A receipt with no lines on it has nothing to compare against
+    # its subtotal. It has not been read wrongly; it has simply not
+    # been filled in yet.
+    if not any(item.kind == "item" for item in items):
+        return None
     difference = from_lines - subtotal
     if difference == ZERO:
         return None
     return _money(difference)
+
+
+def describe_discrepancy(
+    discrepancy: Optional[Decimal], currency: str = "IDR"
+) -> Optional[str]:
+    """
+    The gap, said in words.
+
+    The reader has to be able to see at once whether this is a tax
+    line they missed or a price they have to correct, so the amount
+    is written the way the currency is written, with the thousands
+    mark and no decimals for a currency that has no small unit.
+    """
+    if discrepancy is None:
+        return None
+    gap = abs(_dec(discrepancy))
+    if gap == ZERO:
+        return None
+
+    exponent = exponent_for(currency)
+    if exponent == 0:
+        shown = f"{gap.quantize(Decimal('1')):,.0f}".replace(",", ".")
+    else:
+        shown = f"{gap.quantize(Decimal('0.01')):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    symbol = {"IDR": "Rp", "JPY": "¥", "USD": "$", "EUR": "€"}.get(
+        (currency or "IDR").upper(), ""
+    )
+    return (
+        f"There is a difference of {symbol}{shown} between the list of items "
+        f"and the subtotal of the receipt."
+    )
 
 
 def build_lines(items: List[SplitItem]) -> List[BillLine]:
@@ -256,9 +294,13 @@ def recompute_expense(
         ).items()
     }
 
-    if discrepancy is None:
-        discrepancy = find_discrepancy(items, totals)
-    expense.discrepancy = discrepancy
+    # The gap the reader has to deal with is the one between the
+    # lines and the subtotal. That is the gap that means a line was
+    # read wrong. The engine's own figure is about the total of the
+    # bill against the lines, and it is a different question, so it
+    # is not the one that is written down here.
+    gap = find_discrepancy(items, totals)
+    expense.discrepancy = gap
 
     rows: List[SplitCalculatedShare] = []
     for member in members:
