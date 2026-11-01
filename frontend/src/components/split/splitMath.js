@@ -209,3 +209,74 @@ export function inviteLink(origin, code) {
   const base = String(origin).replace(/\/$/, '');
   return `${base}/split/claim/${code}`;
 }
+
+/**
+ * Is there a gap between the lines of the receipt and its subtotal?
+ *
+ * The gap is signed: a negative number means the lines are short of
+ * the subtotal, which is what a missed line looks like. A gap of
+ * zero, and no gap at all, both mean the receipt adds up.
+ */
+export function hasDiscrepancy(discrepancy) {
+  if (discrepancy === null || discrepancy === undefined) return false;
+  const value = Number(discrepancy);
+  if (!Number.isFinite(value)) return false;
+  return value !== 0;
+}
+
+/**
+ * How big is the gap?
+ *
+ * The size is what the reader is shown, because a gap of minus ten
+ * thousand and a gap of ten thousand are the same problem.
+ */
+export function discrepancySize(discrepancy) {
+  if (!hasDiscrepancy(discrepancy)) return 0;
+  return Math.abs(Number(discrepancy));
+}
+
+/**
+ * Which lines are the ones that have to be looked at?
+ *
+ * When the lines are short of the subtotal, the line that was read
+ * wrong is usually the one that looks wrong next to the others: the
+ * price that does not fit its neighbours. The reader is shown those
+ * lines rather than being left to find them.
+ *
+ * The test is deliberately simple: a line whose total is more than
+ * the subtotal is definitely one of them, and a receipt where the
+ * lines do not reach the subtotal is missing one somewhere, so the
+ * last line is the one to check.
+ */
+export function linesToCheck(items, subtotal) {
+  const lines = (items || []).filter((item) => (item.kind || 'item') === 'item');
+  if (lines.length === 0) return [];
+
+  const target = Number(subtotal || 0);
+  if (target <= 0) return [];
+
+  const total = lines.reduce(
+    (sum, item) => sum + Number(item.total_price || 0),
+    0,
+  );
+  const difference = total - target;
+
+  // The gap is worked out in the smallest unit, so that a receipt
+  // that adds up is not reported as one that is a fraction short.
+  const gap = Math.round(difference * 100) / 100;
+
+  if (gap === 0) return [];
+
+  if (gap > 0) {
+    // A line is worth more than the whole subtotal. It cannot be
+    // right.
+    return lines
+      .filter((item) => Number(item.total_price || 0) > target)
+      .map((item) => item.id);
+  }
+
+  // The lines are short. The last line is the one most often read
+  // wrong, because it is the one nearest the total on the paper.
+  const last = lines[lines.length - 1];
+  return last ? [last.id] : [];
+}

@@ -21,6 +21,11 @@ import SplitMethodSelector from '../../components/split/SplitMethodSelector';
 import SettleUpModal from '../../components/split/SettleUpModal';
 import { inviteLink } from '../../hooks/useLiveReceiptClaim';
 import {
+  hasDiscrepancy,
+  discrepancySize,
+  linesToCheck,
+} from '../../components/split/splitMath';
+import {
   getGroup,
   listExpenses,
   getBalances,
@@ -85,6 +90,19 @@ export default function SplitGroupDetailPage() {
 
   const members = group ? group.members || [] : [];
 
+  // The gap between the lines of the receipt and its own subtotal.
+  //
+  // When there is one, the bill cannot be published: somebody would
+  // end up paying for a line that was read wrong. The lines that
+  // have to be looked at are worked out, so that the reader is shown
+  // where to look rather than being left to find it.
+  const gap = hasDiscrepancy(active ? active.discrepancy : null);
+  const gapSize = discrepancySize(active ? active.discrepancy : null);
+  const linesToFix = useMemo(
+    () => (active ? linesToCheck(active.items || [], active.subtotal) : []),
+    [active],
+  );
+
   const link = useMemo(() => {
     if (!group) return '';
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -122,6 +140,12 @@ export default function SplitGroupDetailPage() {
 
   const publish = async () => {
     if (!active) return;
+    // The bill is not published while the lines do not add up. The
+    // button is not even there, so there is nothing to press.
+    if (hasDiscrepancy(active.discrepancy)) {
+      setError(new Error(K.discrepancy_warning));
+      return;
+    }
     try {
       const updated = await publishExpense(active.id);
       setExpenses((current) =>
@@ -234,16 +258,22 @@ export default function SplitGroupDetailPage() {
               </div>
             </div>
 
-            {active.discrepancy && active.discrepancy !== '0.00' && (
-              <p className="split-group__warning">
-                {K.discrepancy_value.replace('%s', active.discrepancy)}
-              </p>
+            {gap && (
+              <div className="split-group__warning" role="alert">
+                <p className="split-group__warning-text">
+                  {K.discrepancy_value.replace('%s', gapSize)}
+                </p>
+                <p className="split-group__warning-hint">
+                  {K.discrepancy_warning}
+                </p>
+              </div>
             )}
 
             <LiveClaimBoard
               items={active.items || []}
               members={members}
               currentMemberId={null}
+              flaggedItemIds={linesToFix}
               onClaim={(item) => {
                 // The host taps a plate and then says who had it.
                 const next = members.find((member) => !member.is_host);
@@ -261,10 +291,18 @@ export default function SplitGroupDetailPage() {
 
             {active.status !== 'PUBLISHED' && (
               <div className="split-group__publish">
-                <button type="button" onClick={publish}>
-                  {K.publish}
-                </button>
-                <p>{K.publish_hint}</p>
+                {gap ? (
+                  <p className="split-group__publish-blocked">
+                    {K.discrepancy_blocked}
+                  </p>
+                ) : (
+                  <>
+                    <button type="button" onClick={publish}>
+                      {K.publish}
+                    </button>
+                    <p>{K.publish_hint}</p>
+                  </>
+                )}
               </div>
             )}
           </div>

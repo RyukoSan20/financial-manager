@@ -51,6 +51,7 @@ export default function LiveClaimBoard({
   language = 'id',
   money = (value) => String(value),
   disabled = false,
+  flaggedItemIds = [],
 }) {
   const K = batch9[language]?.split || batch9.id.split;
 
@@ -59,6 +60,11 @@ export default function LiveClaimBoard({
     for (const member of members) map[member.id] = member;
     return map;
   }, [members]);
+
+  // The lines that have to be looked at, because the receipt does not
+  // add up to itself. They are marked, so that the reader is shown
+  // where the problem is rather than having to find it.
+  const flagged = useMemo(() => new Set(flaggedItemIds || []), [flaggedItemIds]);
 
   /**
    * How much of each line is claimed, and by whom.
@@ -102,6 +108,7 @@ export default function LiveClaimBoard({
                 'split-claim-item',
                 isMine ? 'split-claim-item--mine' : '',
                 isGone ? 'split-claim-item--taken' : '',
+                flagged.has(item.id) ? 'split-claim-item--flagged' : '',
               ].join(' ').trim()}
             >
               <button
@@ -118,6 +125,9 @@ export default function LiveClaimBoard({
                 aria-pressed={isMine}
               >
                 <span className="split-claim-item__name">{item.name}</span>
+                {flagged.has(item.id) && (
+                  <span className="split-claim-item__flag">{K.check_this_line}</span>
+                )}
                 <span className="split-claim-item__price">
                   {money(item.total_price)}
                 </span>

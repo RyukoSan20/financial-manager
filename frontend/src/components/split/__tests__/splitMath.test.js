@@ -15,6 +15,9 @@ import {
   equalShares,
   proportionalShares,
   inviteLink,
+  hasDiscrepancy,
+  discrepancySize,
+  linesToCheck,
 } from '../splitMath.js';
 
 let passed = 0;
@@ -30,6 +33,21 @@ function check(name, actual, expected) {
       `${name}\n    expected: ${JSON.stringify(expected)}\n    actual:   ${JSON.stringify(actual)}`,
     );
   }
+}
+
+/**
+ * A check for two lists of things.
+ *
+ * Two lists that hold the same things in the same order are the same
+ * list, even though they are two different objects.
+ */
+function checkList(name, actual, expected) {
+  const same =
+    Array.isArray(actual) &&
+    Array.isArray(expected) &&
+    actual.length === expected.length &&
+    actual.every((value, index) => value === expected[index]);
+  check(name, same, true);
 }
 
 function checkClose(name, actual, expected) {
@@ -116,6 +134,78 @@ const proportional = proportionalShares(
 );
 checkClose('the one who ate the small dish', proportional.a, 45000);
 checkClose('the one who ate the big one', proportional.b, 135000);
+
+// ---------------------------------------------------------------------------
+// A receipt that does not add up to itself
+// ---------------------------------------------------------------------------
+
+check('a gap of nothing is not a gap', hasDiscrepancy('0.00'), false);
+check('no gap at all is not a gap', hasDiscrepancy(null), false);
+check('a gap of ten thousand is a gap', hasDiscrepancy('-10000.00'), true);
+check('the size of a gap', discrepancySize('-10000.00'), 10000);
+check('the size of no gap', discrepancySize('0.00'), 0);
+
+const shortLines = [
+  { id: 1, kind: 'item', total_price: '60000' },
+  { id: 2, kind: 'item', total_price: '80000' },
+];
+checkList(
+  'the lines are short of the subtotal, so the last one is the one to check',
+  linesToCheck(shortLines, '150000'),
+  [2],
+);
+
+const overLines = [
+  { id: 1, kind: 'item', total_price: '60000' },
+  { id: 2, kind: 'item', total_price: '200000' },
+];
+checkList(
+  'a line worth more than the whole subtotal is the one to check',
+  linesToCheck(overLines, '150000'),
+  [2],
+);
+
+checkList(
+  'a receipt that adds up has no line to check',
+  linesToCheck(
+    [
+      { id: 1, kind: 'item', total_price: '60000' },
+      { id: 2, kind: 'item', total_price: '90000' },
+    ],
+    '150000',
+  ),
+  [],
+);
+
+checkList(
+  'a receipt with no subtotal has no line to check',
+  linesToCheck(shortLines, '0'),
+  [],
+);
+
+checkList(
+  'a tax line is not one of the lines that are checked',
+  linesToCheck(
+    [
+      { id: 1, kind: 'item', total_price: '140000' },
+      { id: 2, kind: 'tax', total_price: '10000' },
+    ],
+    '140000',
+  ),
+  [],
+);
+
+checkList(
+  'a receipt that is short by the tax has a line to look at',
+  linesToCheck(
+    [
+      { id: 1, kind: 'item', total_price: '140000' },
+      { id: 2, kind: 'tax', total_price: '10000' },
+    ],
+    '150000',
+  ),
+  [1],
+);
 
 // ---------------------------------------------------------------------------
 // The link a friend opens
