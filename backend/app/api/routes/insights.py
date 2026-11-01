@@ -32,6 +32,8 @@ from app.models.user import User
 from app.services.insight_service import (
     find_duplicate_charges,
     find_forgotten_subscriptions,
+    find_group_spending_outlier,
+    find_unsettled_group_lending,
     project_balance_calendar,
     suggest_monthly_shopping,
 )
@@ -117,4 +119,47 @@ def get_shopping_suggestion(
     return {
         "suggestions": suggestions,
         "count": len(suggestions),
+    }
+
+
+@router.get("/group-lending")
+def get_unsettled_group_lending(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    days_outstanding: int = Query(14, ge=1, le=180),
+) -> Dict[str, Any]:
+    """
+    The money the reader has laid out for other people and not got back.
+
+    The money on loan is not the reader's spending, so it does not
+    appear in the spending chart at all. This is where it appears.
+
+    Nothing is sent and nothing changes. The reader is told, and what
+    they do about it is their call.
+    """
+    lending = find_unsettled_group_lending(
+        db, current_user.id, days_outstanding=days_outstanding
+    )
+    return {
+        "lending": lending,
+        "count": len(lending),
+        "days_outstanding": days_outstanding,
+    }
+
+
+@router.get("/group-spending")
+def get_group_spending_outlier(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    The groups where the reader has eaten out more than they usually do.
+
+    The average is over the months before this one, so a group that has
+    always eaten out a lot is not told it has changed.
+    """
+    outliers = find_group_spending_outlier(db, current_user.id)
+    return {
+        "outliers": outliers,
+        "count": len(outliers),
     }

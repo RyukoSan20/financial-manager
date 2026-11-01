@@ -583,3 +583,227 @@ def suggest_monthly_shopping(
     # The ones that cost the most first.
     suggestions.sort(key=lambda s: -s["estimated_amount"])
     return suggestions
+
+
+# ---------------------------------------------------------------------------
+# The shared bill
+# ---------------------------------------------------------------------------
+#
+# Two things the shared bill makes visible that the reader's own
+# transactions cannot show.
+#
+# The money that is on loan is not the reader's spending, so it does
+# not appear in the spending chart at all. A bill shared three weeks
+# ago that has not been settled is a hundred thousand rupiah the
+# reader cannot see they are owed, and it is exactly the kind of
+# thing that gets forgotten until somebody asks for it.
+#
+# And a group that eats out more than the reader usually does is a
+# pattern, not a single bill. The average is worked out over the
+# months before this one, so that a group which has always eaten out
+# a lot is not told it has changed.
+
+# How long a bill may be unsettled before it is worth mentioning.
+#
+# A week is too soon: the people are still at the table, or they are
+# finding the money. A fortnight is long enough for somebody to have
+# forgotten.
+DAYS_OUTSTANDING_BEFORE_IT_IS_WORTH_MENTIONING = 14
+
+
+def find_unsettled_group_lending(
+    db: Session,
+    user_id: int,
+    days_outstanding: int = DAYS_OUTSTANDING_BEFORE_IT_IS_WORTH_MENTIONING,
+    today: Optional[date] = None,
+) -> List[Dict[str, Any]]:
+    """
+    The money the reader has laid out for other people and not got back.
+
+    A bill that was shared more than a fortnight ago, and that has
+    not been paid back, is worth mentioning. The reader cannot see it
+    in their own records, because money on loan is not spending.
+
+    The money that has come back is subtracted, so that a bill which
+    was partly paid back is reported for what is still outstanding.
+    """
+    from app.models.split_bill import SplitExpense, SplitGroup
+    from app.models.transaction import Transaction
+
+    today = today or date.today()
+    cutoff = today - timedelta(days=days_outstanding)
+
+    lent = (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.split_tx_type == "FRONTED_RECEIVABLE",
+        )
+        .all()
+    )
+    if not lent:
+        return []
+
+    returned = {}
+    for row in (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.split_tx_type == "SPLIT_REIMBURSEMENT",
+        )
+        .all()
+    ):
+        key = row.split_expense_id
+        returned[key] = returned.get(key, 0.0) + float(row.amount or 0)
+
+    groups = {
+        group.id: group
+        for group in db.query(SplitGroup)
+        .filter(SplitGroup.owner_id == user_id)
+        .all()
+    }
+    expenses = {
+        expense.id: expense
+        for expense in db.query(SplitExpense)
+        .filter(SplitExpense.user_id == user_id)
+        .all()
+    }
+
+    findings: List[Dict[str, Any]] = []
+    for row in lent:
+        expense = expenses.get(row.split_expense_id)
+        if expense is None:
+            continue
+
+        when = row.date
+        if when is None:
+            continue
+        if when > cutoff:
+            # It has not been outstanding long enough to matter.
+            continue
+
+        outstanding = float(row.amount or 0) - returned.get(row.split_expense_id, 0.0)
+        if outstanding <= 0:
+            continue
+
+        group = groups.get(expense.group_id)
+        findings.append(
+            {
+                "group_id": expense.group_id,
+                "group_name": (group.name if group else "") or "",
+                "expense_id": expense.id,
+                "merchant": expense.merchant_name or expense.name or "",
+                "amount": round(outstanding, 2),
+                "currency": row.currency or "IDR",
+                "days_outstanding": (today - when).days,
+                "since": when.isoformat(),
+            }
+        )
+
+    # The longest outstanding first: that is the one most likely to
+    # have been forgotten.
+    findings.sort(key=lambda f: -f["days_outstanding"])
+    return findings
+
+
+def find_group_spending_outlier(
+    db: Session,
+    user_id: int,
+    today: Optional[date] = None,
+    months_looked_back: int = 3,
+) -> List[Dict[str, Any]]:
+    """
+    Groups where the reader has eaten out more than they usually do.
+
+    The average is worked out over the months before this one, so a
+    group that has always eaten out a lot is not told it has changed.
+    Only the months before this one are counted: this month is still
+    going on, and a month that is not finished cannot be compared
+    with one that is.
+    """
+    from app.models.split_bill import SplitGroup
+    from app.models.transaction import Transaction
+
+    today = today or date.today()
+    this_month = today.replace(day=1)
+
+    rows = (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.split_tx_type == "PERSONAL_SHARE",
+        )
+        .all()
+    )
+    if not rows:
+        return []
+
+    groups = {
+        group.id: group
+        for group in db.query(SplitGroup)
+        .filter(SplitGroup.owner_id == user_id)
+        .all()
+    }
+
+    # This month, and the months before it, per group.
+    by_group_month: Dict[int, Dict[str, float]] = defaultdict(
+        lambda: defaultdict(float)
+    )
+    for row in rows:
+        if row.date is None or row.split_expense_id is None:
+            continue
+        expense = _expense_of(db, row.split_expense_id)
+        if expense is None:
+            continue
+        month = _month_key(row.date)
+        by_group_month[expense.group_id][month] += float(row.amount or 0)
+
+    findings: List[Dict[str, Any]] = []
+    for group_id, months in by_group_month.items():
+        this_month_total = months.get(_month_key(this_month), 0.0)
+        if this_month_total <= 0:
+            continue
+
+        previous = [
+            total
+            for key, total in months.items()
+            if key != _month_key(this_month)
+        ][:months_looked_back]
+        if not previous:
+            # There is nothing to compare it with.
+            continue
+
+        average = sum(previous) / len(previous)
+        if average <= 0:
+            continue
+        if this_month_total <= average:
+            continue
+
+        group = groups.get(group_id)
+        findings.append(
+            {
+                "group_id": group_id,
+                "group_name": (group.name if group else "") or "",
+                "amount": round(this_month_total, 2),
+                "average": round(average, 2),
+                "times": len(previous),
+            }
+        )
+
+    findings.sort(key=lambda f: -(f["amount"] - f["average"]))
+    return findings
+
+
+def _expense_of(db: Session, expense_id: int):
+    """
+    The receipt a row came from, when it is there.
+    """
+    from app.models.split_bill import SplitExpense
+
+    if not expense_id:
+        return None
+    return (
+        db.query(SplitExpense)
+        .filter(SplitExpense.id == expense_id)
+        .first()
+    )

@@ -20,13 +20,23 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from '../../i18n';
 import { api } from '../../services/api';
 import { batch7, fill } from '../../i18n/keys_batch7';
-import { buildFlag } from '../../utils/featureFlags';
+import { buildFlag, readerFlag } from '../../utils/featureFlags';
 import { formatCurrency } from '../../utils/currency';
-import { AlertTriangle, CalendarDays, Repeat, ShoppingCart } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarDays,
+  HandCoins,
+  Repeat,
+  ShoppingCart,
+  Users,
+} from 'lucide-react';
 
 export default function InsightsPanel() {
   const { language } = useTranslation();
   const polished = buildFlag('UI_POLISH');
+  // The shared bill is a switch of its own. When it is off, the
+  // reader sees exactly what they saw before.
+  const splitBill = readerFlag('SMART_SPLIT_BILL');
 
   const K = batch7[language] || batch7.id;
 
@@ -46,12 +56,23 @@ export default function InsightsPanel() {
         // The four answers are asked for together. The server works
         // them out from the same records, so asking together costs
         // the same as asking one at a time.
-        const [duplicates, subscriptions, calendar, shopping] = await Promise.all([
-          api.get('/insights/duplicates').catch(() => ({ duplicates: [] })),
-          api.get('/insights/subscriptions').catch(() => ({ subscriptions: [] })),
-          api.get('/insights/balance-calendar?days=30').catch(() => ({ calendar: [] })),
-          api.get('/insights/shopping-suggestion').catch(() => ({ suggestions: [] })),
-        ]);
+        const [duplicates, subscriptions, calendar, shopping, lending, groupSpending] =
+          await Promise.all([
+            api.get('/insights/duplicates').catch(() => ({ duplicates: [] })),
+            api.get('/insights/subscriptions').catch(() => ({ subscriptions: [] })),
+            api.get('/insights/balance-calendar?days=30').catch(() => ({ calendar: [] })),
+            api.get('/insights/shopping-suggestion').catch(() => ({ suggestions: [] })),
+            // The two answers about shared bills are only asked for
+            // when the shared bill is switched on. Asking for them
+            // when it is off would be asking about something the
+            // reader does not have.
+            splitBill
+              ? api.get('/insights/group-lending').catch(() => ({ lending: [] }))
+              : Promise.resolve({ lending: [] }),
+            splitBill
+              ? api.get('/insights/group-spending').catch(() => ({ outliers: [] }))
+              : Promise.resolve({ outliers: [] }),
+          ]);
 
         if (cancelled) return;
         setData({
@@ -59,6 +80,8 @@ export default function InsightsPanel() {
           subscriptions: subscriptions.subscriptions || [],
           calendar: calendar.calendar || [],
           shopping: shopping.suggestions || [],
+          lending: lending.lending || [],
+          groupSpending: groupSpending.outliers || [],
         });
       } catch (err) {
         if (!cancelled) setFailed(true);
@@ -69,7 +92,7 @@ export default function InsightsPanel() {
 
     load();
     return () => { cancelled = true; };
-  }, [polished]);
+  }, [polished, splitBill]);
 
   // The switch is off: the page is exactly as it was.
   if (!polished) return null;
@@ -87,6 +110,8 @@ export default function InsightsPanel() {
     ...(data?.duplicates || []),
     ...(data?.subscriptions || []),
     ...(data?.shopping || []),
+    ...(data?.lending || []),
+    ...(data?.groupSpending || []),
   ];
 
   return (
@@ -193,6 +218,61 @@ export default function InsightsPanel() {
                     </div>
                     <span className="insight-item__aside">
                       {fill(K.shopping_last_bought, item.last_bought)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* The money that is still on loan.
+              This is the one the shared bill makes visible: the money
+              that was laid out for other people is not spending, so it
+              never appears in the spending chart. */}
+          {data.lending.length > 0 && (
+            <div className="insight-card">
+              <h3>
+                <HandCoins size={18} aria-hidden="true" />
+                {K.lending_title}
+              </h3>
+              <p className="insight-card__desc">{K.lending_desc}</p>
+              <ul className="insight-list">
+                {data.lending.map((item, index) => (
+                  <li key={`lend-${index}`} className="insight-item">
+                    <div className="insight-item__main">
+                      <strong>{money(item.amount, item.currency)}</strong>
+                      <span>
+                        {item.group_name || item.merchant}
+                        {' · '}
+                        {fill(K.lending_days, item.days_outstanding)}
+                      </span>
+                    </div>
+                    <span className="insight-item__aside">
+                      {fill(K.lending_since, item.since)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* The groups the reader has eaten out more with than usual. */}
+          {data.groupSpending.length > 0 && (
+            <div className="insight-card">
+              <h3>
+                <Users size={18} aria-hidden="true" />
+                {K.group_spending_title}
+              </h3>
+              <p className="insight-card__desc">{K.group_spending_desc}</p>
+              <ul className="insight-list">
+                {data.groupSpending.map((item, index) => (
+                  <li key={`grp-${index}`} className="insight-item">
+                    <div className="insight-item__main">
+                      <strong>{item.group_name}</strong>
+                      <span>{money(item.amount)}</span>
+                    </div>
+                    <span className="insight-item__aside">
+                      {fill(K.group_spending_average, money(item.average))}
                     </span>
                   </li>
                 ))}
