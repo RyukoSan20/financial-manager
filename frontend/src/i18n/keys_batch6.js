@@ -21,6 +21,7 @@ export const batch6 = {
       sidebar_group_insight: "Wawasan",
       sidebar_group_tools: "Alat",
       sidebar_group_other: "Lainnya",
+      sidebar_group_split: "Patungan",
 
       // The switch panel.
       switches_title: "Pilihan tampilan",
@@ -38,6 +39,8 @@ export const batch6 = {
       switches_reminders: "Pengingat",
       switches_reminders_desc:
         "Pengingat dikirim ke peramban. Tidak ada yang dikirim sampai dinyalakan.",
+      switches_split_bill: "Patungan bersama",
+      switches_split_bill_desc: "Bagikan struk ke teman. Mereka bisa memilih pesanannya tanpa memasang aplikasi, dan tagihan bisa dilunasi di dalam aplikasi.",
       switches_reset: "Kembalikan semua ke semula",
       switches_reset_done: "Semua pilihan sudah dikembalikan ke semula.",
       switches_on: "Nyala",
@@ -127,6 +130,7 @@ export const batch6 = {
       sidebar_group_insight: "Insight",
       sidebar_group_tools: "Tools",
       sidebar_group_other: "Other",
+      sidebar_group_split: "Split Bill",
 
       // The switch panel.
       switches_title: "Display options",
@@ -144,6 +148,8 @@ export const batch6 = {
       switches_reminders: "Reminders",
       switches_reminders_desc:
         "Reminders are shown in the browser, on this device only. Nothing is sent until they are turned on.",
+      switches_split_bill: "Shared bills",
+      switches_split_bill_desc: "Share a receipt with friends. They can pick what they ordered without installing anything, and the bill can be settled inside the app.",
       switches_reset: "Put everything back",
       switches_reset_done: "Everything has been put back.",
       switches_on: "On",
@@ -233,6 +239,7 @@ export const batch6 = {
       sidebar_group_insight: "インサイト",
       sidebar_group_tools: "ツール",
       sidebar_group_other: "その他",
+      sidebar_group_split: "割り勘",
 
       // The switch panel.
       switches_title: "表示オプション",
@@ -250,6 +257,8 @@ export const batch6 = {
       switches_reminders: "リマインダー",
       switches_reminders_desc:
         "リマインダーはこの端末のブラウザにだけ表示されます。オンのままでは何も送られません。",
+      switches_split_bill: "割り勘",
+      switches_split_bill_desc: "領収書を友人と共有できます。アプリをインストールせずに注文を選び、アプリ内で清算できます。",
       switches_reset: "すべて元に戻す",
       switches_reset_done: "すべて元に戻しました。",
       switches_on: "オン",

@@ -98,6 +98,7 @@ export default {
     recurring: "Berulang",
     goals: "Target",
     debts: "Hutang",
+    split: "Patungan",
     calculators: "Kalkulator",
     analytics: "Analisis",
     advisor: "AI Advisor",

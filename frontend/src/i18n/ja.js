@@ -98,6 +98,7 @@ export default {
     recurring: "繰り返し",
     goals: "目標",
     debts: "借金",
+    split: "割り勘",
     calculators: "計算機",
     analytics: "分析",
     advisor: "AIアドバイザー",

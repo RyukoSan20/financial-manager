@@ -47,6 +47,16 @@ export const NAV_GROUPS = [
     items: ['map', 'categoryExpenses', 'merchant'],
     advanced: true,
   },
+  {
+    // The shared bill. It is in a group of its own because it is
+    // out of the way until it is wanted, and it is behind a switch:
+    // a reader who has never shared a bill should not see a page
+    // about it in the menu.
+    key: 'split',
+    label: 'sidebar_group_split',
+    items: ['split'],
+    flag: 'SMART_SPLIT_BILL',
+  },
 ];
 
 /**
@@ -66,6 +76,7 @@ export function buildNavMap(t) {
     recurring: { name: t('nav.recurring'), href: '/recurring', icon: 'Repeat' },
     goals: { name: t('nav.goals'), href: '/goals', icon: 'Target' },
     debts: { name: t('nav.debts'), href: '/debts', icon: 'CreditCard' },
+    split: { name: t('nav.split'), href: '/split', icon: 'Users' },
     calculators: { name: t('nav.calculators'), href: '/calculators', icon: 'Calculator' },
     analytics: { name: t('nav.analytics'), href: '/analytics', icon: 'BarChart3' },
     advisor: { name: t('nav.advisor'), href: '/advisor', icon: 'Sparkles' },
@@ -107,6 +118,8 @@ export function visibleGroups(navMap) {
   const advanced = isAdvancedOn();
   const groups = [];
   for (const group of NAV_GROUPS) {
+    // A group behind a switch is left out when that switch is off.
+    if (group.flag && !readerFlag(group.flag)) continue;
     const items = group.items
       .filter((key) => !(group.advanced && !advanced))
       .map((key) => navMap[key])
@@ -127,6 +140,18 @@ export function visibleGroups(navMap) {
 export const ADVANCED_PAGES = ['/merchant', '/map'];
 
 /**
+ * The pages that are behind a switch of their own.
+ *
+ * The shared bill is one of them. The page is still there when the
+ * switch is off - a link that somebody sent to a friend has to
+ * work - but the menu does not show it until the reader has asked
+ * for it.
+ */
+export const FLAGGED_PAGES = {
+  '/split': 'SMART_SPLIT_BILL',
+};
+
+/**
  * Is this page one that needs the advanced features?
  */
 export function isAdvancedPage(pathname) {
@@ -142,4 +167,20 @@ export function isAdvancedPage(pathname) {
 export function canSeePage(pathname) {
   if (!isAdvancedPage(pathname)) return true;
   return isAdvancedOn();
+}
+
+/**
+ * Is this page one that is behind a switch of its own?
+ *
+ * The answer is used by the settings page to show what is on and
+ * what is off, and by the tests that check that turning a switch
+ * off really does hide the thing.
+ */
+export function flagForPage(pathname) {
+  for (const path of Object.keys(FLAGGED_PAGES)) {
+    if (pathname === path || pathname.startsWith(`${path}/`)) {
+      return FLAGGED_PAGES[path];
+    }
+  }
+  return null;
 }

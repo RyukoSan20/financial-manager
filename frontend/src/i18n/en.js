@@ -98,6 +98,7 @@ export default {
     recurring: "Recurring",
     goals: "Goals",
     debts: "Debts",
+    split: "Split Bill",
     calculators: "Calculators",
     analytics: "Analytics",
     advisor: "AI Advisor",

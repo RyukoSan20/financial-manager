@@ -66,6 +66,22 @@ const READER_FLAGS = {
    * whether it is worth shipping.
    */
   MASCOT_ART: 'mascotArt',
+  /**
+   * The shared bill.
+   *
+   * Off by default. When it is off, the sidebar shows nothing new,
+   * the routes are not there, and nothing about the reader's records
+   * changes.
+   */
+  SMART_SPLIT_BILL: 'smartSplitBill',
+  /**
+   * The guest claim page.
+   *
+   * Off by default, and it only means anything when the shared bill
+   * itself is on. A guest opens a link and taps what they ordered;
+   * nothing is installed and no account is made.
+   */
+  LIVE_CLAIM: 'liveClaim',
 };
 
 /** Where the reader switches are kept. */

@@ -21,6 +21,7 @@ const SWITCHES = [
   { flag: 'SINGLE_ADD', label: 'switches_single_add', desc: 'switches_single_add_desc' },
   { flag: 'ADVANCED_FEATURES', label: 'switches_advanced', desc: 'switches_advanced_desc' },
   { flag: 'REMINDERS', label: 'switches_reminders', desc: 'switches_reminders_desc' },
+  { flag: 'SMART_SPLIT_BILL', label: 'switches_split_bill', desc: 'switches_split_bill_desc' },
 ];
 
 /**
@@ -38,6 +39,7 @@ export default function SwitchPanel() {
     SINGLE_ADD: readerFlag('SINGLE_ADD'),
     ADVANCED_FEATURES: readerFlag('ADVANCED_FEATURES'),
     REMINDERS: readerFlag('REMINDERS'),
+    SMART_SPLIT_BILL: readerFlag('SMART_SPLIT_BILL'),
   }));
   const [message, setMessage] = useState('');
 
@@ -59,6 +61,7 @@ export default function SwitchPanel() {
       SINGLE_ADD: false,
       ADVANCED_FEATURES: false,
       REMINDERS: false,
+      SMART_SPLIT_BILL: false,
     });
     setMessage(K.switches_reset_done);
   }, [K]);
