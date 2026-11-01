@@ -45,6 +45,10 @@ import { CatalogPage } from './pages/CatalogPage';
 import HelpSupport from './pages/Settings/HelpSupport';
 import ProfileSummary from './pages/ProfileSummary';
 import { AuthCallback } from './pages/AuthCallback';
+import SplitDashboardPage from './pages/SplitBill/SplitDashboardPage';
+import SplitGroupDetailPage from './pages/SplitBill/SplitGroupDetailPage';
+import GuestLiveClaimPage from './pages/SplitBill/GuestLiveClaimPage';
+import { FlaggedRoute } from './components/split/FlaggedRoute';
 import { useTranslation } from './i18n';
 import { batch3 } from './i18n/keys_batch3';
 
@@ -177,6 +181,22 @@ function App() {
               <Route path="catalog" element={<CatalogPage />} />
               <Route path="help" element={<HelpSupport />} />
               <Route path="more" element={<MorePage />} />
+              <Route
+                path="split"
+                element={
+                  <FlaggedRoute flag="SMART_SPLIT_BILL" fallback="/transactions">
+                    <SplitDashboardPage />
+                  </FlaggedRoute>
+                }
+              />
+              <Route
+                path="split/:groupId"
+                element={
+                  <FlaggedRoute flag="SMART_SPLIT_BILL" fallback="/transactions">
+                    <SplitGroupDetailPage />
+                  </FlaggedRoute>
+                }
+              />
             </Route>
             
             {/* Full screen pages - also protected */}
@@ -189,6 +209,11 @@ function App() {
               } 
             />
             
+            {/* The guest claim page. It is outside the auth on
+                purpose: the friend at the table has no account, and
+                the whole point is that they do not need one. */}
+            <Route path="/split/claim/:code" element={<GuestLiveClaimPage />} />
+
             {/* Catch all - redirect to login */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
