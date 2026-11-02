@@ -99,7 +99,7 @@ const BasketLine = ({ line, onChange, onRemove }) => {
   );
 };
 
-const MerchantTill = ({ merchant, onSold }) => {
+const MerchantTill = ({ merchant, onSold, profile }) => {
   const { language } = useTranslation();
   const K = batch11[language]?.till || batch11.id.till;
 
@@ -112,6 +112,14 @@ const MerchantTill = ({ merchant, onSold }) => {
   const [estimateError, setEstimateError] = useState('');
   const [workingOut, setWorkingOut] = useState(false);
   const [taxRule, setTaxRule] = useState('PPN');
+
+  // What kind of shop this is decides which kind of invoice is
+  // written and whose rule of tax applies. The server says, so the
+  // browser does not have to know.
+  const profileSettings = profile?.settings || {};
+  const invoiceType =
+    profileSettings.default_invoice_type || 'POS_RECEIPT';
+  const sellerCountry = profileSettings.seller_country || 'ID';
 
   const [draft, setDraft] = useState({
     name: '',
@@ -256,8 +264,8 @@ const MerchantTill = ({ merchant, onSold }) => {
         method: 'POST',
         body: JSON.stringify({
           merchant_id: merchant.id,
-          invoice_type: 'POS_RECEIPT',
-          seller_country: 'ID',
+          invoice_type: invoiceType,
+          seller_country: sellerCountry,
           items: lines,
           taxes: [
             {

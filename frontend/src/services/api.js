@@ -187,6 +187,32 @@ export const api = {
     }
   },
 
+  // A file that is sent as itself.
+  //
+  // The photograph of a thing for sale is a file, not a piece of
+  // text, so it cannot be turned into JSON. The browser has to be
+  // left to put the boundaries of the file in the request itself,
+  // which means the type of the content has to be left off too.
+  upload: async (endpoint, formData) => {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const token = getToken();
+    const headers = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(url, { method: 'POST', body: formData, headers });
+    if (!response.ok) {
+      let detail = `The file could not be sent (${response.status}).`;
+      try {
+        const body = await response.json();
+        if (body?.detail) detail = body.detail;
+      } catch {
+        // The answer was not JSON. The status is the whole of it.
+      }
+      throw new Error(detail);
+    }
+    return response.json();
+  },
+
   // Auth
   auth: {
     login: (email, password) => api.request('/login', {

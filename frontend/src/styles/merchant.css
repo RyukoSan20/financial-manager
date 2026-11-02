@@ -1,0 +1,562 @@
+/*
+ * The shop.
+ *
+ * The shelf, the invoice and the book are drawn in the same voice as
+ * the rest of the application: warm, layered, and readable in both
+ * light and dark. Nothing here is a flat slab of colour.
+ */
+
+.merchant-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.merchant-catalog__bar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.merchant-catalog__search {
+  flex: 1 1 14rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--surface-raised, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  color: var(--text-muted, #64748b);
+}
+
+.merchant-catalog__search input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary, #0f172a);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.merchant-catalog__add,
+.merchant-catalog__upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.75rem;
+  background: var(--accent-primary, #0f766e);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.merchant-catalog__add:hover:not(:disabled),
+.merchant-catalog__upload:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.merchant-catalog__add:disabled,
+.merchant-catalog__upload:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* The form for a thing on the shelf. */
+
+.merchant-catalog__form {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: var(--surface-raised, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+}
+
+.merchant-catalog__picture {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 8rem;
+}
+
+.merchant-catalog__picture img {
+  width: 8rem;
+  height: 8rem;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  background: var(--surface-sunken, #f1f5f9);
+}
+
+.merchant-catalog__picture-empty {
+  width: 8rem;
+  height: 8rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.75rem;
+  background: var(--surface-sunken, #f1f5f9);
+  color: var(--text-muted, #94a3b8);
+}
+
+.merchant-catalog__upload {
+  background: var(--surface-sunken, #f1f5f9);
+  color: var(--text-secondary, #334155);
+  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+}
+
+.merchant-catalog__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+.merchant-catalog__fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+}
+
+.merchant-catalog__fields input,
+.merchant-catalog__fields select {
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  background: var(--surface-primary, #fff);
+  color: var(--text-primary, #0f172a);
+  font-size: 0.875rem;
+}
+
+.merchant-catalog__fields input:focus,
+.merchant-catalog__fields select:focus {
+  outline: 2px solid var(--accent-primary, #0f766e);
+  outline-offset: 1px;
+}
+
+.merchant-catalog__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.merchant-catalog__actions button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.7rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: var(--surface-sunken, #f1f5f9);
+  color: var(--text-secondary, #334155);
+}
+
+.merchant-catalog__actions button.is-primary {
+  background: var(--accent-primary, #0f766e);
+  color: #fff;
+}
+
+/* The shelf itself. */
+
+.merchant-catalog__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.85rem;
+}
+
+.merchant-catalog__item {
+  position: relative;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.9rem;
+  background: var(--surface-raised, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.merchant-catalog__item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -12px rgb(15 23 42 / 0.35);
+}
+
+.merchant-catalog__thumb {
+  flex: 0 0 3.5rem;
+  height: 3.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.65rem;
+  overflow: hidden;
+  background: var(--surface-sunken, #f1f5f9);
+  color: var(--text-muted, #94a3b8);
+}
+
+.merchant-catalog__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.merchant-catalog__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.merchant-catalog__body h4 {
+  margin: 0 0 0.15rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.merchant-catalog__price {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-primary, #0f766e);
+}
+
+.merchant-catalog__unit {
+  font-size: 0.72rem;
+  font-weight: 500;
+  opacity: 0.75;
+  margin-left: 0.15rem;
+}
+
+.merchant-catalog__stock {
+  margin: 0.15rem 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--text-muted, #64748b);
+}
+
+.merchant-catalog__stock.is-out {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.merchant-catalog__row-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.merchant-catalog__row-actions button {
+  padding: 0.25rem 0.45rem;
+  border-radius: 0.45rem;
+  font-size: 0.7rem;
+  background: var(--surface-sunken, #f1f5f9);
+  color: var(--text-secondary, #334155);
+}
+
+.merchant-catalog__row-actions button:last-child {
+  color: #b91c1c;
+}
+
+.merchant-catalog__empty,
+.merchant-invoicing__empty {
+  display: grid;
+  place-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text-muted, #64748b);
+  border: 1px dashed var(--border-subtle, #e2e8f0);
+  border-radius: 0.9rem;
+}
+
+.merchant-catalog__empty button {
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.7rem;
+  background: var(--accent-primary, #0f766e);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.merchant-catalog__note,
+.merchant-invoicing__note,
+.merchant-report__note {
+  color: var(--text-muted, #64748b);
+  font-size: 0.875rem;
+}
+
+/* The invoice and the book. */
+
+.merchant-invoicing,
+.merchant-report {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.merchant-invoicing__head,
+.merchant-report__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.merchant-invoicing__head h3,
+.merchant-report__head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.merchant-invoicing__head p,
+.merchant-report__head p {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted, #64748b);
+}
+
+.merchant-invoicing__mode {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: color-mix(in srgb, var(--accent-primary, #0f766e) 14%, transparent);
+  color: var(--accent-primary, #0f766e);
+}
+
+.merchant-invoicing__currencies,
+.merchant-invoicing__terms,
+.merchant-invoicing__withholding {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.8rem;
+  font-size: 0.8rem;
+  background: var(--surface-sunken, #f1f5f9);
+  color: var(--text-secondary, #334155);
+}
+
+.merchant-invoicing__currencies p {
+  margin: 0 0 0.15rem;
+}
+
+.merchant-invoicing__rate {
+  opacity: 0.8;
+  font-size: 0.75rem;
+}
+
+.merchant-invoicing__withholding {
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  color: #92400e;
+}
+
+.merchant-invoicing__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.merchant-invoicing__invoice {
+  padding: 0.85rem;
+  border-radius: 0.9rem;
+  background: var(--surface-raised, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+}
+
+.merchant-invoicing__invoice-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+}
+
+.merchant-invoicing__invoice-head strong {
+  font-size: 0.875rem;
+  color: var(--text-primary, #0f172a);
+}
+
+.merchant-invoicing__invoice-head span:last-child {
+  margin-left: auto;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-sunken, #f1f5f9);
+  font-weight: 600;
+}
+
+.merchant-invoicing__lines {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  font-size: 0.78rem;
+}
+
+.merchant-invoicing__lines li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  padding: 0.2rem 0;
+  color: var(--text-secondary, #334155);
+}
+
+.merchant-invoicing__totals {
+  margin: 0.6rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border-subtle, #e2e8f0);
+  font-size: 0.78rem;
+}
+
+.merchant-invoicing__totals > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.12rem 0;
+}
+
+.merchant-invoicing__totals dt {
+  color: var(--text-muted, #64748b);
+}
+
+.merchant-invoicing__totals dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+}
+
+.merchant-invoicing__totals .is-withheld dd {
+  color: #b45309;
+}
+
+.merchant-invoicing__totals .is-grand {
+  margin-top: 0.25rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border-subtle, #e2e8f0);
+  font-size: 0.875rem;
+}
+
+.merchant-invoicing__rules summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary, #334155);
+}
+
+.merchant-invoicing__rules ul {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+}
+
+.merchant-invoicing__rules li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.15rem 0;
+}
+
+/* The book of the shop. */
+
+.merchant-report__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.65rem;
+}
+
+.merchant-report__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.85rem;
+  background: var(--surface-raised, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  color: var(--text-muted, #64748b);
+}
+
+.merchant-report__card span {
+  font-size: 0.72rem;
+}
+
+.merchant-report__card strong {
+  font-size: 1.05rem;
+  color: var(--text-primary, #0f172a);
+}
+
+.merchant-report__totals {
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.85rem;
+  background: var(--surface-sunken, #f1f5f9);
+}
+
+.merchant-report__totals p {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0.18rem 0;
+  font-size: 0.82rem;
+}
+
+.merchant-report__totals span {
+  color: var(--text-muted, #64748b);
+}
+
+.merchant-report__totals strong {
+  color: var(--text-primary, #0f172a);
+}
+
+.merchant-report__totals .is-withheld strong {
+  color: #b45309;
+}
+
+.merchant-report__totals .is-outstanding strong {
+  color: #b91c1c;
+}
+
+.merchant-report__tax h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.merchant-report__tax ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.78rem;
+}
+
+.merchant-report__tax li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.15rem 0;
+  color: var(--text-secondary, #334155);
+}
+
+.merchant-report__best,
+.merchant-report__currency {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+}

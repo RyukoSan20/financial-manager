@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, ShoppingBag, Smartphone, Banknote, TrendingUp, Calendar } from 'lucide-react';
 import merchantApi from '../services/merchantApi';
 import { QuickPOSModal, MerchantDashboardWidget, DailySettlementModal } from '../components/merchant';
-import MerchantTill from '../components/merchant/MerchantTill';
+import MerchantTabs from '../components/merchant/MerchantTabs';
 import { formatCurrency } from '../utils/format';
 import { useTranslation } from '../i18n';
 import { toast } from '../contexts/ToastContext';
@@ -228,13 +228,15 @@ const MerchantManager = () => {
             </div>
           )}
 
-          {/* The till of this shop: the shelf of things, and the money.
-              The number that is shown is worked out by the server, so
-              the client never decides what a sale comes to. */}
+          {/* The shop itself, in the four parts it needs: the shelf,
+              the till, the invoice and the book. Which of those parts
+              are shown is decided by the kind of shop it is, and the
+              server says what kind it is. */}
           {selectedMerchant && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
-              <MerchantTill merchant={selectedMerchant} onSold={refreshTheDay} />
-            </div>
+            <MerchantTabs
+              merchant={selectedMerchant}
+              onSold={refreshTheDay}
+            />
           )}
         </div>
       )}

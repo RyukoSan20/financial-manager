@@ -1,0 +1,374 @@
+/**
+ * The words for the tabs of the shop, and for the three kinds of shop.
+ *
+ * A warung, a freelance studio, and a company that sells across
+ * borders are three different jobs. The tabs are drawn differently for
+ * each, because a person who only sells over the counter should not
+ * be shown a tab about customs value.
+ *
+ * Every string is in all three languages, so the checks in `scripts/`
+ * can hold it to that.
+ */
+
+/**
+ * A %s in a word is a hole. Use fill() to put a value in it.
+ *
+ * The same helper the other batches use, so that a sentence with a
+ * number in it is written the same way everywhere in this
+ * application.
+ */
+export const fill = (template, ...values) => {
+  let cursor = 0;
+  return String(template ?? '').replace(/%s/g, () => {
+    const value = values[cursor];
+    cursor += 1;
+    return value === undefined || value === null ? '' : String(value);
+  });
+};
+
+const batch12 = {
+  id: {
+    merchant: {
+      // --- the tabs ---
+      tab: {
+        catalog: 'Katalog Produk',
+        pos: 'Kasir',
+        invoicing: 'Invoicing & Pajak',
+        report: 'Laporan & Jurnal',
+      },
+      // --- the three kinds of shop ---
+      profile: {
+        title: 'Jenis Usaha',
+        hint: 'Bentuk layar dan pajak menyesuaikan jenis usaha Anda.',
+        label: 'Mode Usaha',
+        changing: 'Mode usaha diubah. Layar dan pajak ikut menyesuaikan.',
+        change_failed: 'Gagal mengubah mode usaha.',
+        // Warung
+        umkm: 'Warung / UMKM',
+        umkm_desc: 'Kasir cepat. Tap barang, pilih satuan, terima QRIS atau tunai.',
+        // B2B
+        b2b: 'Bisnis / Freelancer (B2B)',
+        b2b_desc: 'Faktur, termin pembayaran, dan potong pungut PPh.',
+        // Cross-border
+        cross_border: 'Cross-Border / Enterprise',
+        cross_border_desc: 'Multi-mata uang dan pajak lintas negara (EU, US, SG, UAE).',
+      },
+      // --- the settings of the mode ---
+      settings: {
+        invoice_prefix: 'Awalan Faktur',
+        payment_terms_days: 'Termin Pembayaran (hari)',
+        default_invoice_type: 'Jenis Faktur Default',
+        transaction_currency: 'Mata Uang Struk',
+        functional_currency: 'Mata Uang Pembukuan',
+        settlement_currency: 'Mata Uang Penyelesaian',
+        default_exchange_rate: 'Kurs Default',
+        exchange_rate_source: 'Sumber Kurs',
+        seller_country: 'Negara Penjual',
+        default_tax_region: 'Wilayah Pajak Default',
+        auto_post_journal: 'Otomatis buat jurnal',
+        saved: 'Pengaturan disimpan.',
+        save_failed: 'Gagal menyimpan pengaturan.',
+        // the journal
+        revenue_account_code: 'Kode Akun Pendapatan',
+        cogs_account_code: 'Kode Akun HPP',
+        tax_payable_account_code: 'Kode Akun Utang Pajak',
+        withholding_account_code: 'Kode Akun Potong Pajak',
+        receivable_account_code: 'Kode Akun Piutang',
+      },
+      // --- the invoice types ---
+      invoice_type: {
+        POS_RECEIPT: 'Struk Kasir',
+        TAX_INVOICE: 'Faktur Pajak',
+        PROFORMA: 'Proforma',
+        CREDIT_NOTE: 'Nota Kredit',
+      },
+      // --- the journal tab ---
+      // --- the shelf ---
+      catalog: {
+        title: 'Katalog Produk',
+        searchPlaceholder: 'Cari produk...',
+        addProduct: 'Tambah Produk',
+        edit: 'Ubah',
+        remove: 'Hapus',
+        name: 'Nama Barang',
+        sku: 'Kode / SKU',
+        category: 'Kategori',
+        unit: 'Satuan',
+        price: 'Harga per Satuan',
+        stock: 'Stok',
+        stockLeft: 'Sisa',
+        outOfStock: 'Habis',
+        nameRequired: 'Nama barang harus diisi.',
+        choosePicture: 'Pilih Foto',
+        uploading: 'Mengunggah...',
+        pictureOf: 'Foto barang',
+        pictureSaved: 'Foto tersimpan.',
+        pictureFailed: 'Gagal mengunggah foto.',
+        saved: 'Produk disimpan.',
+        saveFailed: 'Gagal menyimpan produk.',
+        removed: 'Produk diambil dari rak.',
+        removeFailed: 'Gagal menghapus produk.',
+        loading: 'Memuat katalog...',
+        emptyShelf: 'Rak masih kosong. Tambahkan barang pertama Anda.',
+        noMatch: 'Tidak ada barang yang cocok.',
+      },
+      // --- the invoice and the tax ---
+      invoicing: {
+        title: 'Faktur & Pajak',
+        subtitle: 'Nomor faktur, termin pembayaran, dan pajak yang dipotong.',
+        loading: 'Memuat faktur...',
+        noInvoices: 'Belum ada faktur untuk toko ini.',
+        loadFailed: 'Gagal memuat faktur.',
+        subtotal: 'Subtotal',
+        total: 'Total',
+        receivable: 'Yang harus diterima',
+        withheld: 'Dipotong pajak',
+        paymentTerms: 'Termin Pembayaran',
+        days: 'hari',
+        withholdingNote: 'Pajak yang dipotong mengurangi jumlah yang masuk ke rekening, bukan yang ditagihkan ke pelanggan.',
+        transactionCurrency: 'Mata Uang Struk',
+        functionalCurrency: 'Mata Uang Pembukuan',
+        settlementCurrency: 'Mata Uang Penyelesaian',
+        rate: 'Kurs',
+        rulesTitle: 'Aturan pajak yang berlaku',
+      },
+      report: {
+        empty: 'Belum ada jurnal untuk toko ini.',
+        no_sales: 'Belum ada penjualan yang tercatat.',
+        account_code: 'Kode Akun',
+        debit: 'Debit',
+        credit: 'Kredit',
+        sale: 'Penjualan',
+        tax: 'Pajak',
+        withholding: 'Potong Pajak',
+        receivable: 'Piutang',
+        cash: 'Kas & Bank',
+      },
+    },
+  },
+
+  en: {
+    merchant: {
+      tab: {
+        catalog: 'Product Catalogue',
+        pos: 'Till',
+        invoicing: 'Invoicing & Tax',
+        report: 'Report & Journal',
+      },
+      profile: {
+        title: 'Kind of Business',
+        hint: 'The screens and the taxes follow the kind of business you run.',
+        label: 'Business Mode',
+        changing: 'The mode was changed. The screens and the taxes follow it.',
+        change_failed: 'The mode could not be changed.',
+        umkm: 'Shop / Small Business',
+        umkm_desc: 'A quick till. Tap the goods, pick the unit, take QRIS or cash.',
+        b2b: 'Business / Freelancer (B2B)',
+        b2b_desc: 'Invoices, payment terms, and tax withheld at source.',
+        cross_border: 'Cross-Border / Enterprise',
+        cross_border_desc: 'More than one currency, and the tax of another country (EU, US, SG, UAE).',
+      },
+      settings: {
+        invoice_prefix: 'Invoice Prefix',
+        payment_terms_days: 'Payment Terms (days)',
+        default_invoice_type: 'Default Invoice Type',
+        transaction_currency: 'Invoice Currency',
+        functional_currency: 'Book Currency',
+        settlement_currency: 'Settlement Currency',
+        default_exchange_rate: 'Default Rate',
+        exchange_rate_source: 'Rate Source',
+        seller_country: 'Seller Country',
+        default_tax_region: 'Default Tax Region',
+        auto_post_journal: 'Write the journal automatically',
+        saved: 'The settings were saved.',
+        save_failed: 'The settings could not be saved.',
+        revenue_account_code: 'Revenue Account Code',
+        cogs_account_code: 'Cost Account Code',
+        tax_payable_account_code: 'Tax Payable Account Code',
+        withholding_account_code: 'Withholding Account Code',
+        receivable_account_code: 'Receivable Account Code',
+      },
+      invoice_type: {
+        POS_RECEIPT: 'Till Receipt',
+        TAX_INVOICE: 'Tax Invoice',
+        PROFORMA: 'Proforma',
+        CREDIT_NOTE: 'Credit Note',
+      },
+      // --- the shelf ---
+      catalog: {
+        title: 'Product Catalogue',
+        searchPlaceholder: 'Search products...',
+        addProduct: 'Add Product',
+        edit: 'Edit',
+        remove: 'Remove',
+        name: 'Name',
+        sku: 'Code / SKU',
+        category: 'Category',
+        unit: 'Unit',
+        price: 'Price per Unit',
+        stock: 'Stock',
+        stockLeft: 'Left',
+        outOfStock: 'Out of stock',
+        nameRequired: 'The product needs a name.',
+        choosePicture: 'Choose Picture',
+        uploading: 'Uploading...',
+        pictureOf: 'Picture of the product',
+        pictureSaved: 'Picture saved.',
+        pictureFailed: 'The picture could not be uploaded.',
+        saved: 'Product saved.',
+        saveFailed: 'The product could not be saved.',
+        removed: 'Product taken off the shelf.',
+        removeFailed: 'The product could not be removed.',
+        loading: 'Loading the catalogue...',
+        emptyShelf: 'The shelf is still empty. Add your first product.',
+        noMatch: 'Nothing on the shelf matches that.',
+      },
+      // --- the invoice and the tax ---
+      invoicing: {
+        title: 'Invoices & Tax',
+        subtitle: 'Invoice numbers, payment terms, and the tax that was withheld.',
+        loading: 'Loading invoices...',
+        noInvoices: 'No invoices for this shop yet.',
+        loadFailed: 'The invoices could not be loaded.',
+        subtotal: 'Subtotal',
+        total: 'Total',
+        receivable: 'To be received',
+        withheld: 'Withheld',
+        paymentTerms: 'Payment terms',
+        days: 'days',
+        withholdingNote: 'A tax that is withheld comes out of the money the seller banks. It is not charged to the customer.',
+        transactionCurrency: 'Transaction Currency',
+        functionalCurrency: 'Functional Currency',
+        settlementCurrency: 'Settlement Currency',
+        rate: 'Rate',
+        rulesTitle: 'The tax rules that apply',
+      },
+      report: {
+        empty: 'There is no journal for this shop yet.',
+        no_sales: 'No sales have been recorded yet.',
+        account_code: 'Account Code',
+        debit: 'Debit',
+        credit: 'Credit',
+        sale: 'Sale',
+        tax: 'Tax',
+        withholding: 'Tax Withheld',
+        receivable: 'Receivable',
+        cash: 'Cash & Bank',
+      },
+    },
+  },
+
+  ja: {
+    merchant: {
+      tab: {
+        catalog: '商品カタログ',
+        pos: 'レジ',
+        invoicing: '請求と税務',
+        report: 'レポートと仕訳',
+      },
+      profile: {
+        title: '事業の種類',
+        hint: '画面と税は、事業の種類に合わせて変わります。',
+        label: '事業モード',
+        changing: '事業モードを変更しました。画面と税もそれに従います。',
+        change_failed: '事業モードを変更できませんでした。',
+        umkm: '商店・中小事業者',
+        umkm_desc: '速いレジ。商品をタップし、単位を選び、QRISか現金で支払います。',
+        b2b: 'ビジネス・フリーランス (B2B)',
+        b2b_desc: '請求書、支払条件、そして源泉徴収税。',
+        cross_border: '越境・エンタープライズ',
+        cross_border_desc: '複数の通貨と、他国の税（EU・US・SG・UAE）。',
+      },
+      settings: {
+        invoice_prefix: '請求書の接頭辞',
+        payment_terms_days: '支払条件（日）',
+        default_invoice_type: '既定の請求書種別',
+        transaction_currency: '請求通貨',
+        functional_currency: '記帳通貨',
+        settlement_currency: '決済通貨',
+        default_exchange_rate: '既定の為替レート',
+        exchange_rate_source: '為替レートの出典',
+        seller_country: '販売国',
+        default_tax_region: '既定の税務地域',
+        auto_post_journal: '仕訳を自動作成する',
+        saved: '設定を保存しました。',
+        save_failed: '設定を保存できませんでした。',
+        revenue_account_code: '売上勘定コード',
+        cogs_account_code: '原価勘定コード',
+        tax_payable_account_code: '未払税金勘定コード',
+        withholding_account_code: '源泉徴収勘定コード',
+        receivable_account_code: '未収金勘定コード',
+      },
+      invoice_type: {
+        POS_RECEIPT: 'レジ領収書',
+        TAX_INVOICE: '請求書',
+        PROFORMA: '見積書',
+        CREDIT_NOTE: '貸方伝票',
+      },
+      // --- the shelf ---
+      catalog: {
+        title: '商品カタログ',
+        searchPlaceholder: '商品を検索...',
+        addProduct: '商品を追加',
+        edit: '編集',
+        remove: '取り除く',
+        name: '商品名',
+        sku: 'コード / SKU',
+        category: 'カテゴリ',
+        unit: '単位',
+        price: '単位あたりの価格',
+        stock: '在庫',
+        stockLeft: '残り',
+        outOfStock: '在庫切れ',
+        nameRequired: '商品名を入力してください。',
+        choosePicture: '写真を選ぶ',
+        uploading: 'アップロード中...',
+        pictureOf: '商品の写真',
+        pictureSaved: '写真を保存しました。',
+        pictureFailed: '写真をアップロードできませんでした。',
+        saved: '商品を保存しました。',
+        saveFailed: '商品を保存できませんでした。',
+        removed: '商品を棚から外しました。',
+        removeFailed: '商品を取り除けませんでした。',
+        loading: 'カタログを読み込んでいます...',
+        emptyShelf: '棚はまだ空です。最初の商品を追加してください。',
+        noMatch: '一致する商品がありません。',
+      },
+      // --- the invoice and the tax ---
+      invoicing: {
+        title: '請求と税務',
+        subtitle: '請求書番号、支払条件、そして源泉徴収された税金。',
+        loading: '請求書を読み込んでいます...',
+        noInvoices: 'この店の請求書はまだありません。',
+        loadFailed: '請求書を読み込めませんでした。',
+        subtotal: '小計',
+        total: '合計',
+        receivable: '受取金額',
+        withheld: '源泉徴収',
+        paymentTerms: '支払条件',
+        days: '日',
+        withholdingNote: '源泉徴収される税金は売上が受け取るお金から差し引かれます。顧客の請求額には含まれません。',
+        transactionCurrency: '取引通貨',
+        functionalCurrency: '記帳通貨',
+        settlementCurrency: '決済通貨',
+        rate: 'レート',
+        rulesTitle: '適用される税務ルール',
+      },
+      report: {
+        empty: 'この店の仕訳はまだありません。',
+        no_sales: 'まだ販売が記録されていません。',
+        account_code: '勘定コード',
+        debit: '借方',
+        credit: '貸方',
+        sale: '売上',
+        tax: '税',
+        withholding: '源泉徴収税',
+        receivable: '未収金',
+        cash: '現金・預金',
+      },
+    },
+  },
+};
+
+export { batch12 };
+export default batch12;

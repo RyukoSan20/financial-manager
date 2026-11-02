@@ -10,6 +10,7 @@ import './styles/aurora.css'
 import './styles/money.css'
 import './styles/split.css'
 import './styles/moe.css'
+import './styles/merchant.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
