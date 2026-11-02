@@ -45,6 +45,18 @@ class Merchant(Base):
     default_cash_account_id = Column(Integer, ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
     default_qris_account_id = Column(Integer, ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
     
+    # Which kind of shop this is.
+    #
+    # A warung, a freelance studio, and a company that sells across
+    # borders are three different jobs that share the same tables. The
+    # difference is in which questions the person at the counter has to
+    # answer, so the shop keeps the name of its mode.
+    #
+    # The default is the warung, because that is the mode which asks
+    # for the least. A shop that has not said what it is has not been
+    # asked for too much.
+    business_profile = Column(String(30), default="UMKM", nullable=False)
+
     # Settings
     is_active = Column(Boolean, default=True)
     auto_settlement = Column(Boolean, default=True)  # Auto daily settlement

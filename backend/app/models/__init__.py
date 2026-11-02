@@ -32,6 +32,7 @@ from app.models.business_transaction import BusinessTransaction
 from app.models.business_transaction_item import BusinessTransactionItem
 from app.models.business_transaction_tax import BusinessTransactionTax
 from app.models.business_transaction_payment import BusinessTransactionPayment
+from app.models.merchant_business_profile import MerchantBusinessProfile
 from app.models.accounting_entry import AccountingEntry
 
 __all__ = [
@@ -82,5 +83,6 @@ __all__ = [
     "BusinessTransactionItem",
     "BusinessTransactionTax",
     "BusinessTransactionPayment",
+    "MerchantBusinessProfile",
     "AccountingEntry",
 ]

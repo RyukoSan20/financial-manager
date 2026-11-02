@@ -46,6 +46,11 @@ from app.models.business_transaction_tax import BusinessTransactionTax
 from app.models.business_transaction_payment import BusinessTransactionPayment
 from app.models.accounting_entry import AccountingEntry
 from app.services.calculation.tax_engine import TaxEngineError, compute_transaction
+from app.services.business_profile_service import (
+    apply_profile_to_transaction_payload,
+    get_profile,
+    is_withholding,
+)
 
 # The router carries no prefix of its own. It is mounted at
 # "/api/business", and the paths below are written as they are seen
@@ -589,35 +594,58 @@ def create_transaction(
     The totals in the answer are the only totals there are. A client
     that sends a total has it ignored.
     """
-    _merchant_of(db, data.merchant_id, current_user.id)
+    merchant = _merchant_of(db, data.merchant_id, current_user.id)
+
+    # Which kind of shop this is decides which fields exist at all.
+    # A warung is never asked about customs value or incoterms, and
+    # what it is never asked about is not stored as though it were a
+    # fact about the sale.
+    profile = get_profile(merchant.business_profile)
+    payload = apply_profile_to_transaction_payload(
+        data.model_dump(exclude={"items", "taxes"}), merchant.business_profile
+    )
 
     when = data.transaction_date or datetime.utcnow()
-    currency = data.transaction_currency
+    currency = payload.get("transaction_currency") or profile.default_currency
 
     # The engine works with plain dictionaries, so the request is
     # turned into them.
     lines = [item.model_dump() for item in data.items]
     tax_requests = [tax.model_dump() for tax in data.taxes]
 
+    # A mode that does not do withholding is not offered a tax to
+    # withhold, and a mode that does not do cross-border is not
+    # offered a foreign currency.
+    if not profile.show_withholding_tax:
+        tax_requests = [
+            tax for tax in tax_requests if not is_withholding(tax.get("tax_code"))
+        ]
+    if not profile.show_multi_currency:
+        tax_requests = [
+            tax for tax in tax_requests
+            if str(tax.get("tax_code") or "").upper()
+            not in ("EU_VAT", "US_SALES_TAX", "SG_GST", "AE_VAT")
+        ]
+
     try:
         worked_out = compute_transaction(
             lines,
             taxes=tax_requests,
-            transaction_discount_amount=data.transaction_discount_amount,
-            transaction_discount_type=data.transaction_discount_type,
-            transaction_discount_rate=data.transaction_discount_rate,
-            discount_allocation_method=data.discount_allocation_method,
-            shipping_fee=data.shipping_fee,
-            transaction_fee=data.transaction_fee,
-            processing_fee=data.processing_fee,
-            import_duty_fee=data.import_duty_fee,
-            rounding_amount=data.rounding_amount,
+            transaction_discount_amount=payload.get("transaction_discount_amount"),
+            transaction_discount_type=payload.get("transaction_discount_type"),
+            transaction_discount_rate=payload.get("transaction_discount_rate"),
+            discount_allocation_method=payload.get("discount_allocation_method"),
+            shipping_fee=payload.get("shipping_fee"),
+            transaction_fee=payload.get("transaction_fee"),
+            processing_fee=payload.get("processing_fee"),
+            import_duty_fee=payload.get("import_duty_fee"),
+            rounding_amount=payload.get("rounding_amount"),
             currency=currency,
             rules=_rules_of(db),
             on_date=when.date(),
-            seller_country=data.seller_country,
-            customer_country=data.customer_country,
-            customs_value=data.customs_value,
+            seller_country=payload.get("seller_country") or profile.default_country,
+            customer_country=payload.get("customer_country"),
+            customs_value=payload.get("customs_value"),
         )
     except TaxEngineError as error:
         raise HTTPException(status_code=400, detail=error.detail)
@@ -626,26 +654,31 @@ def create_transaction(
 
     transaction = BusinessTransaction(
         merchant_id=data.merchant_id,
-        invoice_number=data.invoice_number or _invoice_number(db, data.merchant_id),
-        invoice_type=data.invoice_type,
-        customer_id=data.customer_id,
+        invoice_number=payload.get("invoice_number") or _invoice_number(db, data.merchant_id),
+        invoice_type=payload.get("invoice_type") or profile.default_invoice_type,
+        customer_id=payload.get("customer_id"),
         transaction_date=when,
         timezone=data.timezone,
         locale=data.locale,
         transaction_currency=currency,
-        functional_currency=data.functional_currency,
-        settlement_currency=data.settlement_currency,
-        exchange_rate=data.exchange_rate,
-        exchange_rate_date=data.exchange_rate_date,
-        exchange_rate_source=data.exchange_rate_source,
-        seller_country=data.seller_country,
-        customer_country=data.customer_country,
+        functional_currency=payload.get("functional_currency") or profile.functional_currency,
+        settlement_currency=payload.get("settlement_currency") or profile.default_currency,
+        # Where the shop does not sell in more than one currency there
+        # is no conversion, so the rate is one and the source says so.
+        # A rate of one with no source would be ambiguous: it would
+        # read as a rate that happened to be one on the day, rather
+        # than as a sale in a single currency.
+        exchange_rate=payload.get("exchange_rate") or Decimal("1"),
+        exchange_rate_date=payload.get("exchange_rate_date"),
+        exchange_rate_source=payload.get("exchange_rate_source") or "identity",
+        seller_country=payload.get("seller_country") or profile.default_country,
+        customer_country=payload.get("customer_country"),
         tax_region_code=data.tax_region_code,
         cross_border_flag=bool(
             data.customer_country and data.customer_country != data.seller_country
         ),
-        incoterms=data.incoterms,
-        customs_value=data.customs_value,
+        incoterms=payload.get("incoterms"),
+        customs_value=payload.get("customs_value"),
         e_invoice_format=data.e_invoice_format,
         fiscal_period=data.fiscal_period or _fiscal_period(when),
         subtotal_gross=totals["subtotal_gross"],
