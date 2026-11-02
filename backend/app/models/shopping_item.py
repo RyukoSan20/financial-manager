@@ -45,7 +45,23 @@ class ShoppingItem(Base):
     # Source
     marketplace = Column(String(50), nullable=True)  # shopee, tokopedia, dll
     product_url = Column(String(500), nullable=True)  # https only
-    
+
+    # The picture of the thing.
+    #
+    # A shopping list is a list of things the reader is thinking about
+    # buying, and a list of names is much harder to recognise than a
+    # list of pictures. This holds the address of the picture, and it
+    # is an address and not a file: the picture lives wherever the
+    # merchant's or the marketplace's pictures live.
+    #
+    # The item can have a picture and no source, and a source and no
+    # picture. The picture is what the reader recognises; the source
+    # is where the price came from, and the two are kept apart so that
+    # a price from the reader's own catalogue is never shown as a
+    # price in a shop.
+    image_url = Column(String(500), nullable=True)
+    price_source = Column(String(30), nullable=True)  # provider | local_catalog | manual
+
     # Category (FK to categories.id, validated in API)
     category_id = Column(Integer, nullable=True)
     

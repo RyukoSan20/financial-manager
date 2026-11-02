@@ -11,6 +11,8 @@ class ShoppingItemBase(BaseModel):
     stage: str = Field(default='wishlist', pattern="^(wishlist|to_buy|ordered|shipped|received|cancelled)$")
     marketplace: Optional[str] = Field(default=None, max_length=50, description="shopee, tokopedia, dll")
     product_url: Optional[str] = Field(default=None, max_length=500)
+    image_url: Optional[str] = Field(default=None, max_length=500)
+    price_source: Optional[str] = Field(default=None, max_length=30)
     category_id: Optional[int] = None
     notes: Optional[str] = Field(default=None, max_length=500)
     rating: Optional[int] = Field(default=None, ge=1, le=5, description="1-5 stars")
@@ -29,6 +31,8 @@ class ShoppingItemUpdate(BaseModel):
     stage: Optional[str] = Field(default=None, pattern="^(wishlist|to_buy|ordered|shipped|received|cancelled)$")
     marketplace: Optional[str] = Field(default=None, max_length=50)
     product_url: Optional[str] = Field(default=None, max_length=500)
+    image_url: Optional[str] = Field(default=None, max_length=500)
+    price_source: Optional[str] = Field(default=None, max_length=30)
     category_id: Optional[int] = None
     notes: Optional[str] = Field(default=None, max_length=500)
     rating: Optional[int] = Field(default=None, ge=1, le=5)
@@ -51,6 +55,8 @@ class ShoppingItemResponse(BaseModel):
     position: int
     marketplace: Optional[str]
     product_url: Optional[str]
+    image_url: Optional[str]
+    price_source: Optional[str]
     category_id: Optional[int]
     tracking_number: Optional[str]
     courier: Optional[str]

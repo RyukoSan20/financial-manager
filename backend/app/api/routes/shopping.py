@@ -142,6 +142,8 @@ def create_shopping_item(
         position=max_pos,
         marketplace=item.marketplace,
         product_url=item.product_url,
+        image_url=item.image_url,
+        price_source=item.price_source,
         category_id=item.category_id,
         notes=item.notes,
     )
