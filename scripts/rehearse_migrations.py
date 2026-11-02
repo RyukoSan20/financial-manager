@@ -50,7 +50,7 @@ STAMP_REVISION = "20261031_smart_split_bill"
 # has to walk back over all of them, and the upgrade has to walk
 # forward over all of them again, or a migration that only works on
 # its own is rehearsed and not the real thing.
-NEW_MIGRATIONS = 4
+NEW_MIGRATIONS = 5
 
 
 def _build_schema(url):

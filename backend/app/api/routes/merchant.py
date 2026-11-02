@@ -67,6 +67,9 @@ class BusinessProfileResponse(BaseModel):
 class MerchantUpdate(BaseModel):
     store_name: Optional[str] = None
     business_type: Optional[str] = None
+    # Which kind of shop this is. A shop may change its mode, and the
+    # name is read the way a person would write it.
+    business_profile: Optional[str] = None
     store_phone: Optional[str] = None
     store_address: Optional[str] = None
     qris_merchant_id: Optional[str] = None

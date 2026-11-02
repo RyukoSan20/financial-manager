@@ -144,6 +144,76 @@ class TestTheShopItself:
         )
         assert merchant.business_profile == "CROSS_BORDER"
 
+    def test_a_shop_may_change_its_kind(self, db):
+        """
+        A warung that grows into a studio changes its kind, and says
+        so.
+        """
+        from app.api.routes.merchant import update_merchant
+        from app.api.routes.merchant import MerchantUpdate
+
+        user = _user(db)
+        merchant = _merchant(db, user, profile="UMKM")
+
+        class _Current:
+            id = user.id
+
+        updated = update_merchant(
+            merchant.id,
+            MerchantUpdate(business_profile="B2B"),
+            _Current(),
+            db,
+        )
+        assert updated.business_profile == "B2B"
+
+    def test_a_shop_that_changes_its_kind_is_told_what_it_is_now(self, db):
+        """
+        The rules follow the shop, so the browser is told the new
+        rules and not the old ones.
+        """
+        from app.api.routes.merchant import get_business_profile
+        from app.api.routes.merchant import update_merchant
+        from app.api.routes.merchant import MerchantUpdate
+
+        user = _user(db)
+        merchant = _merchant(db, user, profile="UMKM")
+
+        class _Current:
+            id = user.id
+
+        update_merchant(
+            merchant.id,
+            MerchantUpdate(business_profile="B2B"),
+            _Current(),
+            db,
+        )
+
+        profile = get_business_profile(merchant.id, _Current(), db)
+        assert profile.profile == "B2B"
+        assert profile.capabilities["fields"]["payment_terms"]["shown"] is True
+
+    def test_a_kind_written_the_way_a_person_would_write_it_is_understood(self, db):
+        """
+        "freelancer" is what a freelance studio calls itself, so it is
+        understood as the studio kind.
+        """
+        from app.api.routes.merchant import update_merchant
+        from app.api.routes.merchant import MerchantUpdate
+
+        user = _user(db)
+        merchant = _merchant(db, user, profile="UMKM")
+
+        class _Current:
+            id = user.id
+
+        updated = update_merchant(
+            merchant.id,
+            MerchantUpdate(business_profile="freelancer"),
+            _Current(),
+            db,
+        )
+        assert updated.business_profile == "B2B"
+
     def test_the_profile_of_a_shop_is_read_back(self, db):
         from app.api.routes.merchant import get_business_profile
 
