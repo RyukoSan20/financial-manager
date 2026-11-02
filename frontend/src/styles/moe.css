@@ -1,0 +1,215 @@
+/*
+ * The companion and the toast.
+ *
+ * The toast is drawn by the application, not by the browser, so it
+ * belongs to the same design language as everything else: the same
+ * surfaces, the same radii, the same quiet borders.
+ *
+ * It sits in the corner of the window, above the page, and it never
+ * takes the focus. A reader who is in the middle of typing is not
+ * interrupted by a message that arrives.
+ *
+ * The colours come from the same tokens the rest of the interface
+ * uses, so the toast follows the theme and the accent the reader
+ * chose without a rule of its own.
+ */
+
+.moe-toast-stack {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  width: min(24rem, calc(100vw - 2.5rem));
+  pointer-events: none;
+}
+
+.moe-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.22));
+  background: var(--surface-raised, #ffffff);
+  color: var(--text-primary, #111827);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 16px 40px -18px rgba(15, 23, 42, 0.28);
+  /* The toast arrives rather than appearing. */
+  animation: moe-toast-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes moe-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moe-toast {
+    animation: none;
+  }
+}
+
+.moe-toast__mascot {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.moe-toast__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.moe-toast__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.moe-toast__message {
+  margin: 0.125rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-secondary, #475569);
+  /* A long message must not push the toast off the edge. */
+  overflow-wrap: anywhere;
+}
+
+.moe-toast__action {
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.28));
+  background: transparent;
+  color: var(--text-primary, #111827);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.moe-toast__action:hover {
+  background: var(--surface-hover, rgba(148, 163, 184, 0.12));
+}
+
+.moe-toast__icon {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.moe-toast__close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+}
+
+.moe-toast__close:hover {
+  background: var(--surface-hover, rgba(148, 163, 184, 0.12));
+  color: var(--text-primary, #111827);
+}
+
+/* The tone of the news. Only the accent of the toast changes, so the
+   words inside it keep their contrast. */
+.moe-toast--success {
+  border-left: 3px solid #22c55e;
+}
+
+.moe-toast--success .moe-toast__icon {
+  color: #16a34a;
+}
+
+.moe-toast--error {
+  border-left: 3px solid #ef4444;
+}
+
+.moe-toast--error .moe-toast__icon {
+  color: #dc2626;
+}
+
+.moe-toast--warning {
+  border-left: 3px solid #f59e0b;
+}
+
+.moe-toast--warning .moe-toast__icon {
+  color: #d97706;
+}
+
+.moe-toast--info {
+  border-left: 3px solid #3b82f6;
+}
+
+.moe-toast--info .moe-toast__icon {
+  color: #2563eb;
+}
+
+/* --- the companion ------------------------------------------------------- */
+
+.moe-companion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.moe-companion__figure {
+  color: var(--scheme-500, #3b82f6);
+}
+
+.moe-companion__words {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-secondary, #475569);
+}
+
+/* The companion in the corner of the page. */
+.moe-corner {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.375rem 0.375rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.2));
+  background: var(--surface-raised, #ffffff);
+  box-shadow: 0 12px 32px -18px rgba(15, 23, 42, 0.3);
+}
+
+.moe-corner__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.moe-corner__dismiss:hover {
+  background: var(--surface-hover, rgba(148, 163, 184, 0.12));
+}

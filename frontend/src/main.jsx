@@ -9,6 +9,7 @@ import './styles/privacy.css'
 import './styles/aurora.css'
 import './styles/money.css'
 import './styles/split.css'
+import './styles/moe.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

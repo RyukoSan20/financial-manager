@@ -18,6 +18,7 @@ import { formatCurrency } from '../../utils/format';
 import { useTranslation } from '../../i18n';
 import { batch3 } from '../../i18n/keys_batch3';
 import FinBuddyMascot from './FinBuddyMascot';
+import { toast } from '../../contexts/ToastContext';
 
 // Language configurations
 const LANGUAGES = {
@@ -214,7 +215,7 @@ const AIAssistant = ({ userData = {} }) => {
 
   const toggleListening = () => {
     if (!voiceSupported) {
-      alert(t[language].voiceError);
+      toast.error(t[language].voiceError);
       return;
     }
 

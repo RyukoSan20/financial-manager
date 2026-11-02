@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { ToastProvider } from './contexts/ToastContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationToast } from './components/notifications/NotificationBell';
 import { ScanNotification } from './components/parser/ScanNotification';
@@ -120,6 +122,8 @@ function App() {
       <AuthProvider>
         <ThemeProvider>
           <NotificationProvider>
+          <ToastProvider>
+          <ConfirmProvider>
             <NotificationToast />
             <BrowserRouter>
           {/* The financial background, behind everything. */}
@@ -227,6 +231,8 @@ function App() {
               the reader has turned them on. */}
           <ReminderScheduler />
         </BrowserRouter>
+        </ConfirmProvider>
+        </ToastProvider>
         </NotificationProvider>
         </ThemeProvider>
       </AuthProvider>

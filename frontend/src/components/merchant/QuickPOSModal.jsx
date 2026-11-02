@@ -4,6 +4,7 @@ import merchantApi from '../../services/merchantApi';
 import { formatCurrency } from '../../utils/format';
 import { useTranslation } from '../../i18n';
 import { batch2, fill } from '../../i18n/keys_batch2';
+import { toast } from '../../contexts/ToastContext';
 
 const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
   const { language } = useTranslation();
@@ -50,7 +51,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
 
   const handleSubmit = async () => {
     if (!selectedMerchant || !amount || parseInt(amount) <= 0) {
-      alert(K.error_select);
+      toast.warning(K.error_select);
       return;
     }
 
@@ -74,7 +75,7 @@ const QuickPOSModal = ({ isOpen, onClose, merchant, onSaleComplete }) => {
       }
     } catch (err) {
       console.error('Sale failed:', err);
-      alert(K.error_sale);
+      toast.error(K.error_sale);
     } finally {
       setIsSubmitting(false);
     }

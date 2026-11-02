@@ -75,6 +75,14 @@ const READER_FLAGS = {
    */
   SMART_SPLIT_BILL: 'smartSplitBill',
   /**
+   * The companion.
+   *
+   * The character that sits in the corner of the page and carries the
+   * toast. Off by default. A character that is always there is a
+   * character that stops being noticed, so the reader decides.
+   */
+  MASCOT_COMPANION: 'mascotCompanion',
+  /**
    * The guest claim page.
    *
    * Off by default, and it only means anything when the shared bill

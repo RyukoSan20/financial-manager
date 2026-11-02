@@ -754,6 +754,10 @@
   justify-content: center;
 }
 
+/* The button names its own colours rather than taking them from
+   wherever it happens to sit. A button that inherits its text colour
+   puts white words on a white button in one of the themes, and that
+   is a button with no words on it at all. */
 .split-invite-qr__button {
   display: inline-flex;
   align-items: center;
@@ -761,9 +765,10 @@
   padding: 0.5rem 0.875rem;
   border-radius: 8px;
   border: 1px solid var(--border, #e5e7eb);
-  background: transparent;
-  color: inherit;
+  background: var(--surface-raised, #f9fafb);
+  color: var(--text-primary, #111827);
   font-size: 0.8125rem;
+  font-weight: 500;
   cursor: pointer;
 }
 

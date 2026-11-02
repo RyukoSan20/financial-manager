@@ -4,6 +4,7 @@ import merchantApi from '../../services/merchantApi';
 import { formatCurrency } from '../../utils/format';
 import { useTranslation } from '../../i18n';
 import { batch2 } from '../../i18n/keys_batch2';
+import { toast } from '../../contexts/ToastContext';
 
 const DailySettlementModal = ({ isOpen, onClose, merchant, onComplete }) => {
   const { language } = useTranslation();
@@ -33,7 +34,7 @@ const DailySettlementModal = ({ isOpen, onClose, merchant, onComplete }) => {
       }, 2000);
     } catch (err) {
       console.error('Settlement failed:', err);
-      alert(K.error);
+      toast.error(K.error);
     } finally {
       setIsSubmitting(false);
     }

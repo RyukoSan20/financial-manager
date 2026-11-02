@@ -25,6 +25,7 @@ import {
 } from '../../utils/amountExpression';
 import { readAmountField, isBrokenExpression } from '../../utils/amountField';
 import { formatNative, currencyConfig } from '../../utils/currency';
+import { toast } from '../../contexts/ToastContext';
 
 // Category keyword mapping with word boundaries.
 //
@@ -425,15 +426,15 @@ const AddTransactionPage = () => {
   const handleSave = async (addAnother = false) => {
     const finalAmount = parseNumber(amount);
     if (!finalAmount || finalAmount <= 0) {
-      alert(K.invalidAmount);
+      toast.warning(K.invalidAmount);
       return;
     }
     if (!accountId) {
-      alert(K.pickAccountAlert);
+      toast.warning(K.pickAccountAlert);
       return;
     }
     if (type !== "transfer" && !categoryId) {
-      alert(K.pickCategoryAlert);
+      toast.warning(K.pickCategoryAlert);
       return;
     }
     // A transfer needs both ends. Without the destination, the money
@@ -441,11 +442,11 @@ const AddTransactionPage = () => {
     // the source would be debited for good. The whole transfer has to
     // be checked before any of it is sent.
     if (type === "transfer" && !toAccountId) {
-      alert(K.pickTargetAccountAlert);
+      toast.warning(K.pickTargetAccountAlert);
       return;
     }
     if (type === "transfer" && toAccountId === accountId) {
-      alert(K.sameAccountAlert);
+      toast.warning(K.sameAccountAlert);
       return;
     }
 
@@ -534,7 +535,7 @@ const AddTransactionPage = () => {
       }
     } catch (err) {
       console.error("Save error:", err);
-      alert(K.saveFailed);
+      toast.error(K.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -1054,10 +1055,10 @@ const AddTransactionPage = () => {
                         }
                         setShowLocationSheet(false);
                       },
-                      (err) => alert(fill(K.geolocationFailed, { message: err.message }))
+                      (err) => toast.error(fill(K.geolocationFailed, { message: err.message }))
                     );
                   } else {
-                    alert(K.geolocationUnsupported);
+                    toast.warning(K.geolocationUnsupported);
                   }
                 }}
                 className="w-full py-4 bg-primary-600 text-white rounded-xl font-medium flex items-center justify-center gap-2"
