@@ -14,6 +14,8 @@ import { categoryName } from '../utils/categoryName';
 import HonestEmptyState from '../components/common/HonestEmptyState';
 import BudgetRecipeSelector from '../components/budget/BudgetRecipeSelector';
 import { getVariant, readerKey, trackEvent } from '../utils/abTesting';
+import { toast } from '../contexts/ToastContext';
+import { ask } from '../contexts/ConfirmContext';
 
 export const Budgets = () => {
   const { t, language } = useTranslation();
@@ -71,18 +73,18 @@ export const Budgets = () => {
       fetchData();
     } catch (err) {
       console.error('Failed to save budget:', err);
-      alert(t('budgets.save_error').replace('%s', err.message || JSON.stringify(err) || 'Unknown error'));
+      toast.error(t('budgets.save_error').replace('%s', err.message || JSON.stringify(err) || 'Unknown error'));
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm(t('budgets.delete_confirm'))) return;
+    if (!(await ask({ message: t('budgets.delete_confirm'), tone: 'danger' }))) return;
     try {
       await api.budgets.delete(id);
       fetchData();
     } catch (err) {
       console.error('Failed to delete budget:', err);
-      alert(t('budgets.delete_error').replace('%s', err.message || 'Unknown error'));
+      toast.error(t('budgets.delete_error').replace('%s', err.message || 'Unknown error'));
     }
   };
 

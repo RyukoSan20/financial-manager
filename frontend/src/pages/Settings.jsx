@@ -9,6 +9,7 @@ import api from '../services/api';
 import { useCurrency, CURRENCIES, CURRENCY_CODES } from '../utils/currency';
 import ReadinessChecklist from '../components/ReadinessChecklist';
 import PrivacyPage from './Settings/PrivacyPage';
+import { toast } from '../contexts/ToastContext';
 
 export const Settings = () => {
   const { user, logout } = useAuth();
@@ -600,7 +601,7 @@ const DataTab = ({ logout }) => {
     const confirmationText = window.prompt(t('settings.data.confirm_prompt') + ' ("' + word + '")');
     if ((confirmationText || '').trim().toUpperCase() !== word.toUpperCase()) {
       if (confirmationText !== null) {
-        alert(t('settings.data.confirm_invalid'));
+        toast.warning(t('settings.data.confirm_invalid'));
       }
       return;
     }

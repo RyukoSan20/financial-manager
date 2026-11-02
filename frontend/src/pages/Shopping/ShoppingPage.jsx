@@ -11,6 +11,8 @@ import { useTranslation } from '../../i18n';
 import { buildFlag } from '../../utils/featureFlags';
 import { SHOPPING_STAGE_ICONS } from '../../utils/icons';
 import { IconText } from '../../components/ui/IconText';
+import { toast } from '../../contexts/ToastContext';
+import { ask } from '../../contexts/ConfirmContext';
 
 // Pipeline stages configuration
 const STAGES = [
@@ -118,7 +120,7 @@ const ShoppingPage = () => {
       fetchBoard();
     } catch (err) {
       console.error('Failed to move item:', err);
-      alert(t('shopping.move_error'));
+      toast.error(t('shopping.move_error'));
     }
     
     setDraggedItem(null);
@@ -147,7 +149,7 @@ const ShoppingPage = () => {
       fetchBoard();
     } catch (err) {
       console.error('Failed to add item:', err);
-      alert(t('shopping.add_error'));
+      toast.error(t('shopping.add_error'));
     } finally {
       setSaving(false);
     }
@@ -176,21 +178,21 @@ const ShoppingPage = () => {
       fetchBoard();
     } catch (err) {
       console.error('Failed to update item:', err);
-      alert(t('shopping.update_error'));
+      toast.error(t('shopping.update_error'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteItem = async (itemId) => {
-    if (!confirm(t('shopping.delete_confirm'))) return;
+    if (!(await ask({ message: t('shopping.delete_confirm'), tone: 'danger' }))) return;
     
     try {
       await api.request(`/shopping/items/${itemId}`, { method: 'DELETE' });
       fetchBoard();
     } catch (err) {
       console.error('Failed to delete item:', err);
-      alert(t('shopping.delete_error'));
+      toast.error(t('shopping.delete_error'));
     }
   };
 
@@ -203,7 +205,7 @@ const ShoppingPage = () => {
       fetchBoard();
     } catch (err) {
       console.error('Failed to move item:', err);
-      alert(t('shopping.move_error'));
+      toast.error(t('shopping.move_error'));
     }
   };
 

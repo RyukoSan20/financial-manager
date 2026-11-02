@@ -12,6 +12,8 @@ import { batch3 } from '../i18n/keys_batch3';
 import { batch4 } from '../i18n/keys_batch4';
 import { CURRENCIES, CURRENCY_CODES, formatNative, useCurrency } from '../utils/currency';
 import { formatCurrency } from '../utils/format';
+import { toast } from '../contexts/ToastContext';
+import { ask } from '../contexts/ConfirmContext';
 
 // The kinds of holding there are. The name of each one follows the
 // currency it is in, because a rupiah savings account and a yen
@@ -75,7 +77,7 @@ export const Accounts = () => {
       fetchData();
     } catch (err) {
       console.error('Failed to save account:', err);
-      alert(A.save_failed + (err.message || A.unknown_error));
+      toast.error(A.save_failed + (err.message || A.unknown_error));
     }
   };
 
@@ -85,7 +87,8 @@ export const Accounts = () => {
       ? `Archiving "${account.name}"? Transactions will remain. The account will be marked as inactive.`
       : 'Archive this account? All transactions will remain.';
     
-    if (!confirm(message)) return;
+    const confirmed = await ask({ message, tone: 'danger' });
+    if (!confirmed) return;
     
     try {
       const result = await api.accounts.delete(id);

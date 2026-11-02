@@ -12,6 +12,8 @@ import { showNotification } from '../components/notifications/NotificationHelper
 import { useTranslation } from '../i18n';
 import { categoryName } from '../utils/categoryName';
 import { batch3 } from '../i18n/keys_batch3';
+import { toast } from '../contexts/ToastContext';
+import { ask } from '../contexts/ConfirmContext';
 
 // The categories come from the server. A hardcoded list here would
 // fight the server over the same ids and show the wrong category for a
@@ -153,7 +155,7 @@ export const CategoryExpenses = () => {
 
   // Delete transaction
   const handleDelete = async (id) => {
-    if (!confirm('Delete this transaction?')) return;
+    if (!(await ask({ message: t('common.delete_confirm', 'Delete this transaction?'), tone: 'danger' }))) return;
     try {
       await api.transactions.delete(id);
       showNotification({

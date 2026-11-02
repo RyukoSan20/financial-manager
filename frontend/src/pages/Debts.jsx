@@ -11,6 +11,8 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { buildFlag, readerFlag } from '../utils/featureFlags';
 import SplitMoneyMovements from '../components/split/SplitMoneyMovements';
 import { useCurrency, sumInDisplay } from '../utils/currency';
+import { toast } from '../contexts/ToastContext';
+import { ask } from '../contexts/ConfirmContext';
 
 export const Debts = () => {
   const { t } = useTranslation();
@@ -87,7 +89,7 @@ export const Debts = () => {
       setRefreshKey(k => k + 1); // Force re-render
     } catch (err) {
       console.error('Failed to save debt:', err);
-      alert(t('debts.save_error').replace('%s', err.message || 'Unknown error'));
+      toast.error(t('debts.save_error').replace('%s', err.message || 'Unknown error'));
     }
   };
 
@@ -106,21 +108,21 @@ export const Debts = () => {
       // Also trigger global refresh
       window.dispatchEvent(new Event('transactionUpdated'));
       
-      alert(t('debts.payment_success'));
+      toast.success(t('debts.payment_success'));
     } catch (err) {
       console.error('Payment failed:', err);
-      alert(t('debts.payment_error').replace('%s', err.message || 'Unknown error'));
+      toast.error(t('debts.payment_error').replace('%s', err.message || 'Unknown error'));
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm(t('debts.delete_confirm'))) return;
+    if (!(await ask({ message: t('debts.delete_confirm'), tone: 'danger' }))) return;
     try {
       await api.debts.delete(id);
       setRefreshKey(k => k + 1); // Force re-render
     } catch (err) {
       console.error(err);
-      alert(t('debts.delete_error').replace('%s', err.message || 'Unknown error'));
+      toast.error(t('debts.delete_error').replace('%s', err.message || 'Unknown error'));
     }
   };
 

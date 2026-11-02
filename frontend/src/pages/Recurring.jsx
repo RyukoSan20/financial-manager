@@ -13,6 +13,8 @@ import { showNotification } from '../components/notifications/NotificationHelper
 import { categoryName } from '../utils/categoryName';
 import { useTranslation } from '../i18n';
 import { batch1, fill } from '../i18n/keys_batch1';
+import { toast } from '../contexts/ToastContext';
+import { ask } from '../contexts/ConfirmContext';
 
 // The frequency list is built per language, because the words are read
 // when the screen is drawn and not when the module is loaded.
@@ -106,7 +108,7 @@ export const Recurring = () => {
 
   // Manual trigger for processing due recurring rules
   const triggerProcess = async () => {
-    if (!confirm(K.processConfirm)) return;
+    if (!(await ask({ message: K.processConfirm }))) return;
     try {
       setLoading(true);
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
@@ -197,7 +199,7 @@ export const Recurring = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm(K.deleteConfirm)) return;
+    if (!(await ask({ message: K.deleteConfirm, tone: 'danger' }))) return;
     try {
       await api.recurring.delete(id);
       fetchData();
@@ -489,11 +491,11 @@ const RecurringModal = ({ isOpen, onClose, onSubmit, rule, categories, accounts 
     e.preventDefault();
     // Validate required fields
     if (!form.account_id) {
-      alert(K.selectAccountAlert);
+      toast.warning(K.selectAccountAlert);
       return;
     }
     if (!form.amount || parseFloat(form.amount) <= 0) {
-      alert(K.validAmountAlert);
+      toast.warning(K.validAmountAlert);
       return;
     }
     // The backend model takes 'type', 'description' and 'start_date'.

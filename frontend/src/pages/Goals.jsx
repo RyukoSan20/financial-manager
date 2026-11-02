@@ -12,6 +12,8 @@ import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
 import { PageHeader } from '../components/ui/PageHeader';
 import { buildFlag } from '../utils/featureFlags';
+import { toast } from '../contexts/ToastContext';
+import { ask } from '../contexts/ConfirmContext';
 
 // The accent the user picked is the first colour of the palette.
 //
@@ -61,7 +63,7 @@ export const Goals = () => {
       fetchData();
     } catch (err) {
       console.error('Failed to save goal:', err);
-      alert(t('goals.save_error').replace('%s', err.message || 'Unknown error'));
+      toast.error(t('goals.save_error').replace('%s', err.message || 'Unknown error'));
     }
   };
 
@@ -78,7 +80,7 @@ export const Goals = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm(t('goals.delete_confirm'))) return;
+    if (!(await ask({ message: t('goals.delete_confirm'), tone: 'danger' }))) return;
     try {
       await api.goals.delete(id);
       fetchData();

@@ -14,6 +14,8 @@ import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { categoryName } from '../utils/categoryName';
 import { useTranslation } from '../i18n';
 import { batch1, fill } from '../i18n/keys_batch1';
+import { toast } from '../contexts/ToastContext';
+import { ask } from '../contexts/ConfirmContext';
 
 // Source badge component
 const SourceBadge = ({ type, K }) => {
@@ -141,14 +143,14 @@ export const Transactions = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm(K.deleteConfirm)) return;
+    if (!(await ask({ message: K.deleteConfirm, tone: 'danger' }))) return;
     try {
       await api.transactions.delete(id);
       fetchData();
       window.dispatchEvent(new Event('transactionUpdated'));
     } catch (err) {
       console.error('Failed to delete transaction:', err);
-      alert(fill(K.deleteFailed, { message: err.message || K.unknown }));
+      toast.error(fill(K.deleteFailed, { message: err.message || K.unknown }));
     }
   };
 
@@ -227,7 +229,7 @@ export const Transactions = () => {
       window.dispatchEvent(new Event('transactionUpdated'));
     } catch (err) {
       console.error('Failed to update transaction:', err);
-      alert(fill(K.updateFailed, { message: err.message || K.unknown }));
+      toast.error(fill(K.updateFailed, { message: err.message || K.unknown }));
     }
   };
 

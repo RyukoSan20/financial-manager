@@ -5,6 +5,8 @@ import { buildFlag } from '../utils/featureFlags';
 import { gmailView } from '../utils/gmailState';
 import { Banknote, Wallet } from 'lucide-react';
 import { api } from '../services/api';
+import { toast } from '../contexts/ToastContext';
+import { ask } from '../contexts/ConfirmContext';
 
 const GmailIntegration = () => {
   // With the polish switch off, the emoji stay as they are.
@@ -85,7 +87,7 @@ const GmailIntegration = () => {
   };
 
   const disconnectGmail = async () => {
-    if (!confirm(t('gmail_integration.disconnect_confirm'))) return;
+    if (!(await ask({ message: t('gmail_integration.disconnect_confirm'), tone: 'danger' }))) return;
 
     setError(null);
     try {

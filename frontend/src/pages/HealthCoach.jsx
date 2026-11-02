@@ -42,14 +42,20 @@ const HealthCoach = () => {
         api.healthCoach.audit(displayCurrency).catch(() => null)
       ]);
       
-      if (scoreRes?.ok) {
-        const scoreData = await scoreRes.json();
-        setHealthData(scoreData);
+      // The client hands back the body of the answer, not a wrapper
+      // around it. Asking it for `.ok` and then `.json()` asks for a
+      // wrapper that is not there, and the page ends up showing
+      // nothing: a balance of five million rupiah on the dashboard
+      // and zero here.
+      //
+      // A failed request gives nothing at all, and nothing must not
+      // be read as a score.
+      if (scoreRes) {
+        setHealthData(scoreRes);
       }
-      
-      if (auditRes?.ok) {
-        const auditResult = await auditRes.json();
-        setAuditData(auditResult);
+
+      if (auditRes) {
+        setAuditData(auditRes);
       }
     } catch (err) {
       setError(err.message);

@@ -10,6 +10,7 @@ import api from '../../services/api';
 import { useTranslation } from '../../i18n';
 import { transactionCategoryName } from '../../utils/categoryName';
 import { amountSign, isIncoming, isOutgoing } from '../../utils/transactionSign';
+import { toast } from '../../contexts/ToastContext';
 
 const FeedPage = () => {
   const { t, language } = useTranslation();
@@ -102,7 +103,7 @@ const FeedPage = () => {
       fetchStats();
     } catch (err) {
       console.error("Failed to approve:", err);
-      alert(t('feed.errorApprove') + ': ' + (err.message || t('common.error')));
+      toast.error(t('feed.errorApprove') + ': ' + (err.message || t('common.error')));
     } finally {
       setProcessingIds(prev => {
         const next = new Set(prev);
@@ -124,7 +125,7 @@ const FeedPage = () => {
       fetchStats();
     } catch (err) {
       console.error("Failed to reject:", err);
-      alert(t('feed.errorReject') + ': ' + (err.message || t('common.error')));
+      toast.error(t('feed.errorReject') + ': ' + (err.message || t('common.error')));
     } finally {
       setProcessingIds(prev => {
         const next = new Set(prev);
@@ -542,7 +543,7 @@ const FeedPage = () => {
             <div className="text-center py-4">
               <Button variant="outline" onClick={() => {
                 // Could implement pagination here
-                alert(t('feed.pagination_soon'))
+                toast.info(t('feed.pagination_soon'))
               }}>
                 {t('feed.load_more')}
               </Button>
