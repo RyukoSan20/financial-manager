@@ -287,7 +287,15 @@ def test_the_migration_can_be_undone(engine):
             )
         )
 
-    command.downgrade(_config(url), "-1")
+    # The revision the split tables came in at, and not "-1".
+    #
+    # "-1" meant "one step back from the head", and when this
+    # migration was the head that was this migration. It is not the
+    # head any more: other work has been built on top of it, and
+    # "-1" would now undo that other work instead. The revision this
+    # migration came in at is written down, and the downgrade goes
+    # there.
+    command.downgrade(_config(url), PREVIOUS_REVISION)
 
     tables = _tables(engine)
     for name in SPLIT_TABLES:

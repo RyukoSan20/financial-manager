@@ -25,6 +25,8 @@ from app.api.routes import (
     unified_market, user_settings, voice, profile, learning, scans,
     breakdown, indonesia_calculators, reminders, insights,
     split_bills, split_guest, split_gmail, split_payments,
+    split_invitation, shopping_search,
+    business,
 )
 
 # Import models to register with SQLAlchemy
@@ -271,6 +273,11 @@ app.include_router(split_bills.router, prefix="/api/split", tags=["Split Bill"])
 app.include_router(split_guest.router, prefix="/api/split", tags=["Split Bill Guest"])
 app.include_router(split_gmail.router, prefix="/api/split", tags=["Split Gmail"])
 app.include_router(split_payments.router, prefix="/api/split", tags=["Split Payments"])
+# The invitations have their own prefix. They are their own thing: a
+# host writes down an address, and somebody who may not have an account
+# opens a link. Putting them under /api/split would mount them a second
+# time, and only the first registration would ever be reached.
+app.include_router(split_invitation.router, prefix="/api/split-invitations", tags=["Split Invitations"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(calculators.router, prefix="/api/calculators", tags=["Calculators"])
@@ -285,6 +292,9 @@ app.include_router(scans.router, prefix="/api/scans", tags=["Scans"])
 app.include_router(ai_advisor.router, prefix="/api/ai", tags=["AI Advisor"])
 app.include_router(feed.router, prefix="/api/feed", tags=["Feed & Review"])
 app.include_router(shopping.router, prefix="/api/shopping", tags=["Shopping Board"])
+# The product search is a separate thing from the shopping board, and it
+# has its own prefix so that neither of them is mounted twice.
+app.include_router(shopping_search.router, prefix="/api/shopping-search", tags=["Shopping Search"])
 app.include_router(kanban_board.router, prefix="/api/kanban", tags=["Kanban Board"])
 app.include_router(exchange.router, prefix="/api/exchange")
 app.include_router(currency.router, prefix="/api/currency", tags=["Currency"])
@@ -307,6 +317,7 @@ app.include_router(zap_ink.router, prefix="")
 app.include_router(realtime_market.router, prefix="", tags=["realtime-market"])
 app.include_router(logs.router, prefix="/api", tags=["Logs"])
 app.include_router(merchant.router, prefix="/api", tags=["Merchant"])
+include_router_once(app, business.router, prefix="/api/business", tags=["Business"])
 app.include_router(location.router, prefix="/api/location", tags=["Location"])
 app.include_router(webhooks.router, prefix="/api", tags=["Webhooks"])
 

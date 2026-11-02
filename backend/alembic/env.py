@@ -95,6 +95,24 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
+    # A caller that has already opened a connection knows which
+    # database it meant, and it is the only one that can say. The
+    # connection is used as it is, so the migrations run against the
+    # very database the caller built and stamped.
+    #
+    # This matters for the in-memory database of a test: every
+    # connection to "sqlite://" is a different database, so opening
+    # one here would leave the caller looking at an empty one.
+    connection = config.attributes.get("connection")
+    if connection is not None:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+        )
+        with context.begin_transaction():
+            context.run_migrations()
+        return
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

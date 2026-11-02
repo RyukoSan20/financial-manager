@@ -20,11 +20,19 @@ from app.models.learning_note import LearningNote
 from app.models.breakdown_item import BreakdownItem
 from app.models.catalog_icon import CatalogIcon
 from app.models.gmail_credentials import GmailCredentials
+from app.models.split_invitation import SplitInvitation
 from app.models.split_bill import (
     SplitGroup, SplitMember, SplitExpense, SplitPayer,
     SplitItem, SplitItemClaim, SplitCalculatedShare,
     SplitSettlement, SplitPaymentMethod,
 )
+from app.models.merchant_product import MerchantPosProduct
+from app.models.tax_rule import TaxRule
+from app.models.business_transaction import BusinessTransaction
+from app.models.business_transaction_item import BusinessTransactionItem
+from app.models.business_transaction_tax import BusinessTransactionTax
+from app.models.business_transaction_payment import BusinessTransactionPayment
+from app.models.accounting_entry import AccountingEntry
 
 __all__ = [
     "Account",
@@ -67,4 +75,12 @@ __all__ = [
     "SplitCalculatedShare",
     "SplitSettlement",
     "SplitPaymentMethod",
+    "SplitInvitation",
+    "MerchantPosProduct",
+    "TaxRule",
+    "BusinessTransaction",
+    "BusinessTransactionItem",
+    "BusinessTransactionTax",
+    "BusinessTransactionPayment",
+    "AccountingEntry",
 ]
