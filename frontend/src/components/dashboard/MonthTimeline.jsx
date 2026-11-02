@@ -14,6 +14,7 @@ import { batch6 } from '../../i18n/keys_batch6';
 import { api } from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 import { amountSign, isIncoming } from '../../utils/transactionSign';
+import { textOf } from '../../utils/textValue';
 import { ChevronDown, ChevronRight, CalendarDays } from 'lucide-react';
 
 export default function MonthTimeline() {
@@ -121,7 +122,7 @@ export default function MonthTimeline() {
                           className="flex items-center justify-between text-xs py-0.5"
                         >
                           <span className="text-gray-600 dark:text-gray-400 truncate">
-                            {tx.description || tx.category || '—'}
+                            {textOf(tx.description) || textOf(tx.category) || '—'}
                           </span>
                           <span
                             className={

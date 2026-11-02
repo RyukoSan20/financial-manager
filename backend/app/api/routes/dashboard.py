@@ -121,7 +121,12 @@ def get_month_timeline(
                 "description": row.description,
                 "amount": round(amount, 2),
                 "type": row.type,
-                "category": row.category,
+                # The name of the category, and not the row of the
+                # category. A row is a whole thing with fourteen
+                # fields in it, and the browser was asked to show it as
+                # a piece of text, which it cannot do: the page goes
+                # blank with "Objects are not valid as a React child".
+                "category": row.category.name if row.category else None,
                 "date": row.date.isoformat() if row.date else None,
             }
         )

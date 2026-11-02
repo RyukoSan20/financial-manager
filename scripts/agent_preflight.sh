@@ -97,6 +97,7 @@ for test_file in \
   src/pages/__tests__/healthCoachContract.test.js \
   src/styles/__tests__/contrast.test.js \
   src/components/common/__tests__/companionAndToast.test.js
+  src/utils/__tests__/textValue.test.js
 do
   if [ ! -f "$test_file" ]; then
     echo "  SKIP $test_file (not present)"
