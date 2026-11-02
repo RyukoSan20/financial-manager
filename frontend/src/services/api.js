@@ -131,6 +131,12 @@ const fetchWithInterceptor = async (url, options = {}, retryCount = 0) => {
     }
     const error = new Error(errorMsg);
     if (errorCode) error.code = errorCode;
+    // The status is kept on the error so that a screen can tell one
+    // kind of failure from another. "This invitation has run out" and
+    // "this invitation has already been used" are both failures, and
+    // a reader who is told the wrong one will try the wrong thing
+    // next.
+    error.status = response.status;
     throw error;
   }
   

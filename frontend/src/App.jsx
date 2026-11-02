@@ -50,6 +50,7 @@ import { AuthCallback } from './pages/AuthCallback';
 import SplitDashboardPage from './pages/SplitBill/SplitDashboardPage';
 import SplitGroupDetailPage from './pages/SplitBill/SplitGroupDetailPage';
 import GuestLiveClaimPage from './pages/SplitBill/GuestLiveClaimPage';
+import SplitInvitePage from './pages/SplitBill/SplitInvitePage';
 import { FlaggedRoute } from './components/split/FlaggedRoute';
 import { useTranslation } from './i18n';
 import { batch3 } from './i18n/keys_batch3';
@@ -217,6 +218,13 @@ function App() {
                 purpose: the friend at the table has no account, and
                 the whole point is that they do not need one. */}
             <Route path="/split/claim/:code" element={<GuestLiveClaimPage />} />
+
+            {/* The invitation page. It is outside the auth on the same
+                reason: the person who was invited may never have used
+                this application, and making an account out of an
+                address nobody has proved is not something this
+                application does. */}
+            <Route path="/split/invite/:token" element={<SplitInvitePage />} />
 
             {/* Catch all - redirect to login */}
             <Route path="*" element={<Navigate to="/login" replace />} />

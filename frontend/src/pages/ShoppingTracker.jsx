@@ -5,6 +5,8 @@ import { useTranslation } from "../i18n";
 import { IconText } from "../components/ui/IconText";
 import { ShoppingCart } from "lucide-react";
 import { buildFlag } from "../utils/featureFlags";
+import { toast } from '../contexts/ToastContext';
+import ProductSearch from '../components/shopping/ProductSearch';
 
 const ShoppingTracker = () => {
   const { t } = useTranslation();
@@ -129,11 +131,11 @@ const ShoppingTracker = () => {
         if (Array.isArray(newWishlist)) setWishlist(newWishlist);
         
         // Show success
-        alert(t("shopping_tracker.added_to_wishlist").replace("%s", marketplace.name));
+        toast.success(t("shopping_tracker.added_to_wishlist").replace("%s", marketplace.name));
       }
     } catch (e) {
       console.error("Add to wishlist error:", e);
-      alert(t("shopping_tracker.add_failed"));
+      toast.error(t("shopping_tracker.add_failed"));
     }
   };
   
@@ -230,6 +232,7 @@ const ShoppingTracker = () => {
         {[
           { id: "tracked", label: t('shopping_tracker.tab_tracked'), count: items.length },
           { id: "wishlist", label: t('shopping_tracker.tab_wishlist'), count: wishlist.length },
+          { id: "find", label: t('shopping_tracker.tab_find'), count: null },
           { id: "ai", label: t('shopping_tracker.tab_ai'), count: null }
         ].map(tab => (
           <button
@@ -351,6 +354,13 @@ const ShoppingTracker = () => {
         </div>
       )}
       
+      {/* Tab: Find a thing */}
+      {activeTab === "find" && (
+        <div className="px-4">
+          <ProductSearch onAddToBoard={loadData} />
+        </div>
+      )}
+
       {/* Tab: AI Search */}
       {activeTab === "ai" && (
         <div className="px-4">

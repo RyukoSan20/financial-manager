@@ -37,7 +37,20 @@ from alembic import command  # noqa: E402
 # The revision the server's database is at before the newest
 # migration. The newest one is the one that is applied by the
 # upgrade rather than assumed to be there.
-STAMP_REVISION = "20261029_transaction_tags"
+# The revision the server's database is at before the newest
+# migration. The newest one is the one that is applied by the
+# upgrade rather than assumed to be there.
+#
+# The server is at the shared bill. Everything after that has never
+# been on the server, so everything after that is what has to be
+# rehearsed.
+STAMP_REVISION = "20261031_smart_split_bill"
+
+# How many migrations have never been on the server. The downgrade
+# has to walk back over all of them, and the upgrade has to walk
+# forward over all of them again, or a migration that only works on
+# its own is rehearsed and not the real thing.
+NEW_MIGRATIONS = 3
 
 
 def _build_schema(url):
@@ -91,9 +104,9 @@ def main():
     command.upgrade(config, "head")
     print("--- upgrade head: OK ---")
 
-    print("--- downgrade one step ---")
-    command.downgrade(config, "-1")
-    print("--- downgrade one step: OK ---")
+    print(f"--- downgrade {NEW_MIGRATIONS} step(s) ---")
+    command.downgrade(config, f"-{NEW_MIGRATIONS}")
+    print(f"--- downgrade {NEW_MIGRATIONS} step(s): OK ---")
 
     print("--- upgrade head again ---")
     command.upgrade(config, "head")

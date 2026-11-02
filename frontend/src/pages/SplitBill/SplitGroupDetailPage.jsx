@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useI18n } from '../../i18n';
 import { batch9 } from '../../i18n/keys_batch9';
+import { batch11 } from '../../i18n/keys_batch11';
 import { PageHeader } from '../../components/ui/PageHeader';
 import LiveClaimBoard from '../../components/split/LiveClaimBoard';
 import GroupBalanceCard from '../../components/split/GroupBalanceCard';
@@ -22,6 +23,7 @@ import SettleUpModal from '../../components/split/SettleUpModal';
 import { inviteLink } from '../../hooks/useLiveReceiptClaim';
 import InviteQr from '../../components/split/InviteQr';
 import AddReceiptPanel from '../../components/split/AddReceiptPanel';
+import SplitInvitations from '../../components/split/SplitInvitations';
 import useLiveBoard from '../../hooks/useLiveBoard';
 import {
   hasDiscrepancy,
@@ -43,6 +45,9 @@ export default function SplitGroupDetailPage() {
   const { groupId } = useParams();
   const { language } = useI18n();
   const K = batch9[language]?.split || batch9.id.split;
+  // The words of the invitation by email live in their own batch,
+  // because they are a different feature from the bill itself.
+  const InviteK = batch11[language]?.invite || batch11.id.invite;
 
   const [group, setGroup] = useState(null);
   const [expenses, setExpenses] = useState([]);
@@ -240,6 +245,15 @@ export default function SplitGroupDetailPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* The invitations by email. The host writes an address down
+          and sends the link themselves; the server never sends mail
+          on its own. */}
+      <section className="split-group__invitations">
+        <h3>{InviteK.title}</h3>
+        <p>{InviteK.subtitle}</p>
+        <SplitInvitations groupId={groupId} />
       </section>
 
       <section className="split-group__receipts">

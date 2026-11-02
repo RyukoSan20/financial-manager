@@ -535,7 +535,7 @@ def check_batch_values_exist(root):
         r"const (K\w*) = (\w+)\[language\](\??\.((?:[A-Za-z0-9_]+\??\.?)*))?"
     )
     import_pattern = re.compile(
-        r"import \{ (\w+)(?:, fill)? \} from ['\"][^'\"]*keys_(batch\d)['\"]"
+        r"import \{ (\w+)(?:, fill)? \} from ['\"][^'\"]*keys_(batch\d+)['\"]"
     )
 
     for path in sorted(root.glob("**/*.jsx")) + sorted(root.glob("**/*.js")):

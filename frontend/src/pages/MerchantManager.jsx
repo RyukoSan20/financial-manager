@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, ShoppingBag, Smartphone, Banknote, TrendingUp, Calendar } from 'lucide-react';
 import merchantApi from '../services/merchantApi';
 import { QuickPOSModal, MerchantDashboardWidget, DailySettlementModal } from '../components/merchant';
+import MerchantTill from '../components/merchant/MerchantTill';
 import { formatCurrency } from '../utils/format';
 import { useTranslation } from '../i18n';
+import { toast } from '../contexts/ToastContext';
+import { ask } from '../contexts/ConfirmContext';
 
 const MerchantManager = () => {
   const { t } = useTranslation();
@@ -42,7 +45,7 @@ const MerchantManager = () => {
 
   const handleCreateMerchant = async () => {
     if (!newMerchant.store_name) {
-      alert(t('merchant_manager.name_required'));
+      toast.warning(t('merchant_manager.name_required'));
       return;
     }
 
@@ -54,12 +57,12 @@ const MerchantManager = () => {
       setNewMerchant({ store_name: '', business_type: 'grocery', store_phone: '', store_address: '', qris_enabled: false });
     } catch (err) {
       console.error('Failed to create merchant:', err);
-      alert(t('merchant_manager.create_failed'));
+      toast.error(t('merchant_manager.create_failed'));
     }
   };
 
   const handleDeleteMerchant = async (id) => {
-    if (!confirm(t('merchant_manager.delete_confirm'))) return;
+    if (!(await ask({ message: t('merchant_manager.delete_confirm'), tone: 'danger' }))) return;
 
     try {
       await merchantApi.deleteMerchant(id);
@@ -69,7 +72,7 @@ const MerchantManager = () => {
       }
     } catch (err) {
       console.error('Failed to delete merchant:', err);
-      alert(t('merchant_manager.delete_failed'));
+      toast.error(t('merchant_manager.delete_failed'));
     }
   };
 
@@ -215,6 +218,15 @@ const MerchantManager = () => {
                   <Trash2 size={16} />
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* The till of this shop: the shelf of things, and the money.
+              The number that is shown is worked out by the server, so
+              the client never decides what a sale comes to. */}
+          {selectedMerchant && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
+              <MerchantTill merchant={selectedMerchant} />
             </div>
           )}
         </div>
