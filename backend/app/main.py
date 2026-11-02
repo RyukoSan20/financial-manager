@@ -67,10 +67,40 @@ app.add_middleware(
 async def startup():
     init_db()
     seed_categories()
+    _seed_tax_rules()
     # Run schema migrations in background thread
     import threading
     t = threading.Thread(target=_run_schema_migrations, daemon=True)
     t.start()
+
+
+def _seed_tax_rules():
+    """
+    Put the tax rules of the world into the table.
+
+    The rules are the law of the places, and they are needed before a
+    single sale is taxed: a tax that is not in the table is a tax the
+    engine cannot work out, and the screen would show a sale with no
+    tax on it and no word about why.
+
+    Seeding is safe to repeat. A rule that is already there is left
+    alone, so the second start of the application does not duplicate
+    anything and does not change the history of a sale that has
+    already been taxed.
+    """
+    try:
+        from app.core.database import SessionLocal
+        from app.services.tax_rule_seed import seed_tax_rules
+
+        db = SessionLocal()
+        try:
+            written = seed_tax_rules(db)
+            if written:
+                print(f"[SEED] wrote {written} tax rules")
+        finally:
+            db.close()
+    except Exception as error:  # pragma: no cover - the app must still start
+        print(f"[SEED] the tax rules were not written: {error}")
 
 def _run_schema_migrations():
     """Run database schema migrations for new columns (called from background)."""

@@ -25,11 +25,12 @@ sale; a sale that names nothing is taxed under the rules written
 into the engine.
 """
 
+import json
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -476,18 +477,95 @@ def create_product(
 @router.get("/merchants/{merchant_id}/products", response_model=List[ProductResponse])
 def list_products(
     merchant_id: int,
+    include_inactive: bool = Query(
+        default=False,
+        description="Also give the things that are no longer sold",
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List the products of the till of a merchant."""
+    """
+    List the products of the till of a merchant.
+
+    A thing that was taken off the shelf is left out unless it is
+    asked for by name. It is still in the books, because a receipt
+    that names it is a record of what happened, but the shelf only
+    holds what is still being sold.
+    """
     _merchant_of(db, merchant_id, current_user.id)
 
-    return (
-        db.query(MerchantPosProduct)
-        .filter(MerchantPosProduct.merchant_id == merchant_id)
-        .order_by(MerchantPosProduct.id)
-        .all()
+    query = db.query(MerchantPosProduct).filter(
+        MerchantPosProduct.merchant_id == merchant_id
     )
+    if not include_inactive:
+        query = query.filter(MerchantPosProduct.is_active.is_(True))
+
+    return query.order_by(MerchantPosProduct.id).all()
+
+
+class ProductUpdate(BaseModel):
+    """
+    The changes to a thing on the shelf.
+
+    Every field is optional, and only the ones that are given are
+    changed. A thing that is taken off the shelf is not deleted: a
+    receipt that names it is a record of what happened, so the row
+    stays and it is marked as no longer sold.
+    """
+
+    name: Optional[str] = None
+    sku: Optional[str] = None
+    barcode: Optional[str] = None
+    image_url: Optional[str] = None
+    category: Optional[str] = None
+    stock_quantity: Optional[Decimal] = None
+    unit_of_measure: Optional[str] = None
+    conversion_factor: Optional[Decimal] = None
+    unit_price: Optional[Decimal] = None
+    min_qty: Optional[Decimal] = None
+    max_qty: Optional[Decimal] = None
+    free_quantity: Optional[Decimal] = None
+    is_active: Optional[bool] = None
+
+
+@router.put("/merchants/{merchant_id}/products/{product_id}", response_model=ProductResponse)
+def update_product(
+    merchant_id: int,
+    product_id: int,
+    data: ProductUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Change a thing on the shelf.
+
+    The change is written to the thing itself, and not to a copy of
+    it. A till that showed yesterday's price for a thing that was
+    repriced this morning is a till that cannot be reconciled.
+    """
+    _merchant_of(db, merchant_id, current_user.id)
+
+    product = (
+        db.query(MerchantPosProduct)
+        .filter(
+            MerchantPosProduct.id == product_id,
+            MerchantPosProduct.merchant_id == merchant_id,
+        )
+        .first()
+    )
+    if product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="That thing is not on this shelf.",
+        )
+
+    changes = data.model_dump(exclude_unset=True)
+    for field, value in changes.items():
+        setattr(product, field, value)
+
+    db.commit()
+    db.refresh(product)
+    return product
 
 
 # === The sales ============================================================
@@ -814,6 +892,178 @@ def list_payments(
         .order_by(BusinessTransactionPayment.id)
         .all()
     )
+
+
+# === Working it out before it is written down ============================
+
+
+@router.post("/simulate")
+def simulate_transaction(
+    data: TransactionCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Work out what a sale would come to, and write nothing down.
+
+    This is the calculator of the tax, and it is the one screen a
+    merchant opens before they have decided anything. The same engine
+    that decides the total of a real sale decides this one, so the
+    number on the screen is the number that would be written down.
+
+    The difference is that nothing is saved. No invoice number is
+    taken, no entry is made in the books, and no stock is touched. The
+    merchant can try a price, a discount and a tax a hundred times and
+    the shop will still have sold nothing on the hundredth try.
+
+    The merchant is still checked. A reader who does not own the shop
+    cannot use the shop's rules, and a rule is not a secret but the
+    owner's name on it is.
+    """
+    _merchant_of(db, data.merchant_id, current_user.id)
+
+    when = data.transaction_date or datetime.utcnow()
+    currency = data.transaction_currency
+
+    lines = [item.model_dump() for item in data.items]
+    tax_requests = [tax.model_dump() for tax in data.taxes]
+
+    try:
+        worked_out = compute_transaction(
+            lines,
+            taxes=tax_requests,
+            transaction_discount_amount=data.transaction_discount_amount,
+            transaction_discount_type=data.transaction_discount_type,
+            transaction_discount_rate=data.transaction_discount_rate,
+            discount_allocation_method=data.discount_allocation_method,
+            shipping_fee=data.shipping_fee,
+            transaction_fee=data.transaction_fee,
+            processing_fee=data.processing_fee,
+            import_duty_fee=data.import_duty_fee,
+            rounding_amount=data.rounding_amount,
+            currency=currency,
+            rules=_rules_of(db),
+            on_date=when.date(),
+            seller_country=data.seller_country,
+            customer_country=data.customer_country,
+            customs_value=data.customs_value,
+        )
+    except TaxEngineError as error:
+        raise HTTPException(status_code=400, detail=error.detail)
+
+    # The answer is a set of decimals, and a decimal is not something
+    # the browser can read. They are turned into strings here, so that
+    # the money that is shown is the money that was worked out and not
+    # a float that has drifted on the way there.
+    totals = {
+        key: str(value) for key, value in worked_out["totals"].items()
+    }
+    return {
+        "items": [
+            {key: str(value) if isinstance(value, Decimal) else value
+             for key, value in line.items()}
+            for line in worked_out["items"]
+        ],
+        "taxes": [
+            {key: str(value) if isinstance(value, Decimal) else value
+             for key, value in tax.items()}
+            for tax in worked_out["taxes"]
+        ],
+        "totals": totals,
+        "currency": worked_out["currency"],
+    }
+
+
+class TaxRuleResponse(BaseModel):
+    """
+    One tax rule, as the screen that offers the choices sees it.
+
+    The flags are the ones the engine reads, and they are shown as a
+    map so that a screen can say why a rule behaves the way it does.
+    """
+
+    id: int
+    country_code: str
+    state_code: Optional[str]
+    county_code: Optional[str]
+    city_code: Optional[str]
+    tax_code: str
+    tax_type: str
+    nominal_rate: Decimal
+    tax_behavior: str
+    dpp_multiplier_numerator: Decimal
+    dpp_multiplier_denominator: Decimal
+    effective_from: Optional[str]
+    effective_to: Optional[str]
+    rule_version: Optional[str]
+    rounding_method: Optional[str]
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/tax-rules", response_model=List[TaxRuleResponse])
+def list_tax_rules(
+    country_code: Optional[str] = Query(None, max_length=2),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    The tax rules that are in force, so that a screen can offer them.
+
+    The rules are not secret. They are the law of the place, and the
+    reader needs to know which ones are loaded before they charge a
+    tax, because a tax that is not in the table is a tax the engine
+    cannot work out.
+
+    The country is asked for because the list of every rule in the
+    world is long, and a merchant in Jakarta wants the ones of
+    Indonesia.
+    """
+    query = db.query(TaxRule)
+    if country_code:
+        query = query.filter(TaxRule.country_code == country_code.upper())
+    rules = query.order_by(TaxRule.country_code, TaxRule.tax_code).all()
+
+    answers = []
+    for rule in rules:
+        metadata = {}
+        if rule.metadata_json:
+            try:
+                loaded = json.loads(str(rule.metadata_json))
+                if isinstance(loaded, dict):
+                    metadata = loaded
+            except (TypeError, ValueError):
+                # A rule whose flags cannot be read is still a rule
+                # with a rate, and hiding it would be worse than
+                # showing it without its flags.
+                metadata = {}
+        answers.append(
+            TaxRuleResponse(
+                id=rule.id,
+                country_code=rule.country_code,
+                state_code=rule.state_code,
+                county_code=rule.county_code,
+                city_code=rule.city_code,
+                tax_code=rule.tax_code,
+                tax_type=rule.tax_type,
+                nominal_rate=rule.nominal_rate,
+                tax_behavior=rule.tax_behavior,
+                dpp_multiplier_numerator=rule.dpp_multiplier_numerator,
+                dpp_multiplier_denominator=rule.dpp_multiplier_denominator,
+                effective_from=rule.effective_from.isoformat()
+                if rule.effective_from
+                else None,
+                effective_to=rule.effective_to.isoformat()
+                if rule.effective_to
+                else None,
+                rule_version=rule.rule_version,
+                rounding_method=rule.rounding_method,
+                metadata=metadata,
+            )
+        )
+    return answers
 
 
 # === The books =============================================================
