@@ -21,7 +21,7 @@ from app.api.routes import (
     # scan_jobs disabled (OCR)
     exchange, market, finnhub, ninjas, market_intel, zap_ink,
     currency,
-    realtime_market, logs, merchant, webhooks, location,
+    realtime_market, logs, merchant, merchant_images, webhooks, location,
     unified_market, user_settings, voice, profile, learning, scans,
     breakdown, indonesia_calculators, reminders, insights,
     split_bills, split_guest, split_gmail, split_payments,
@@ -347,6 +347,9 @@ app.include_router(zap_ink.router, prefix="")
 app.include_router(realtime_market.router, prefix="", tags=["realtime-market"])
 app.include_router(logs.router, prefix="/api", tags=["Logs"])
 app.include_router(merchant.router, prefix="/api", tags=["Merchant"])
+# The pictures of things for sale. Their own router, so that the
+# photograph of a product is not mixed in with the shop itself.
+app.include_router(merchant_images.router, prefix="/api", tags=["Merchant"])
 include_router_once(app, business.router, prefix="/api/business", tags=["Business"])
 app.include_router(location.router, prefix="/api/location", tags=["Location"])
 app.include_router(webhooks.router, prefix="/api", tags=["Webhooks"])
