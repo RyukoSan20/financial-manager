@@ -5,7 +5,7 @@ import { formatCurrency } from '../../utils/format';
 import { useTranslation } from '../../i18n';
 import { batch2, fill } from '../../i18n/keys_batch2';
 
-const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
+const MerchantDashboardWidget = ({ merchant, onViewAll, refreshKey }) => {
   const { language } = useTranslation();
   const K = batch2[language]?.merchant?.dashboard || batch2.id.merchant.dashboard;
 
@@ -16,7 +16,7 @@ const MerchantDashboardWidget = ({ merchant, onViewAll }) => {
     if (merchant?.id) {
       loadSummary();
     }
-  }, [merchant]);
+  }, [merchant, refreshKey]);
 
   const loadSummary = async () => {
     if (!merchant?.id) return;

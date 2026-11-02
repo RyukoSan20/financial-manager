@@ -201,7 +201,48 @@ def get_merchant_summary(
         raise HTTPException(status_code=404, detail="Merchant not found")
     
     today = date.today().isoformat()
-    
+
+    # --- the sales made through the till ---------------------------------
+    #
+    # The till writes its sales into `business_transactions`, which is
+    # where the lines of a sale and the tax on them live. The older
+    # table of the reader's own money is read as well, because a
+    # reader who wrote a sale down by hand has still made a sale.
+    #
+    # Before this, only the older table was read, so a shop could sell
+    # all morning and the dashboard would say it had made nothing.
+    from app.models.business_transaction import BusinessTransaction
+    from app.models.business_transaction_payment import BusinessTransactionPayment
+
+    till_sales = (
+        db.query(BusinessTransaction)
+        .filter(BusinessTransaction.merchant_id == merchant_id)
+        .all()
+    )
+    today_till_sales = [
+        sale
+        for sale in till_sales
+        if (sale.transaction_date.date().isoformat() if sale.transaction_date else "") == today
+    ]
+
+    # The money that was actually handed over, and how it was handed
+    # over. A sale with no payment against it has been made but not
+    # yet paid, so its total counts towards the sales and not towards
+    # the cash or the QRIS.
+    payments = (
+        db.query(BusinessTransactionPayment)
+        .join(
+            BusinessTransaction,
+            BusinessTransactionPayment.transaction_id == BusinessTransaction.id,
+        )
+        .filter(BusinessTransaction.merchant_id == merchant_id)
+        .all()
+    )
+    today_sale_ids = {sale.id for sale in today_till_sales}
+    today_payments = [
+        payment for payment in payments if payment.transaction_id in today_sale_ids
+    ]
+
     # Get today's transactions
     transactions = db.query(Transaction).filter(
         Transaction.user_id == current_user.id,
@@ -214,10 +255,22 @@ def get_merchant_summary(
     # Filter today's
     today_txns = [t for t in transactions if str(t.date) == today]
     
-    today_sales = sum(t.amount for t in today_txns)
-    today_transactions = len(today_txns)
-    total_qris = sum(t.amount for t in today_txns if t.payment_method == "QRIS")
-    total_cash = sum(t.amount for t in today_txns if t.payment_method == "CASH")
+    till_total = sum((sale.net_receivable_amount or sale.grand_total or 0) for sale in today_till_sales)
+    hand_total = sum(t.amount for t in today_txns)
+
+    today_sales = till_total + hand_total
+    today_transactions = len(today_till_sales) + len(today_txns)
+
+    total_qris = sum(
+        (payment.amount_paid or 0)
+        for payment in today_payments
+        if payment.payment_method == "QRIS"
+    ) + sum(t.amount for t in today_txns if t.payment_method == "QRIS")
+    total_cash = sum(
+        (payment.amount_paid or 0)
+        for payment in today_payments
+        if payment.payment_method == "CASH"
+    ) + sum(t.amount for t in today_txns if t.payment_method == "CASH")
     
     # Calculate gross profit (need cost data)
     gross_profit = today_sales  # Simplified

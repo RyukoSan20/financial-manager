@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, ShoppingBag, Smartphone, Banknote, TrendingUp, Calendar } from 'lucide-react';
 import merchantApi from '../services/merchantApi';
 import { QuickPOSModal, MerchantDashboardWidget, DailySettlementModal } from '../components/merchant';
@@ -9,6 +9,12 @@ import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
 
 const MerchantManager = () => {
+  // The number at the top of the page is the day's takings. It has to
+  // be told when a sale is made, or it stays at yesterday's number
+  // until the reader reloads the page.
+  const [tillRefreshKey, setTillRefreshKey] = useState(0);
+  const refreshTheDay = useCallback(() => setTillRefreshKey((n) => n + 1), []);
+
   const { t } = useTranslation();
   const [merchants, setMerchants] = useState([]);
   const [selectedMerchant, setSelectedMerchant] = useState(null);
@@ -175,6 +181,7 @@ const MerchantManager = () => {
             <MerchantDashboardWidget
               merchant={selectedMerchant}
               onViewAll={() => setShowSettlement(true)}
+              refreshKey={tillRefreshKey}
             />
           )}
 
@@ -226,7 +233,7 @@ const MerchantManager = () => {
               the client never decides what a sale comes to. */}
           {selectedMerchant && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
-              <MerchantTill merchant={selectedMerchant} />
+              <MerchantTill merchant={selectedMerchant} onSold={refreshTheDay} />
             </div>
           )}
         </div>

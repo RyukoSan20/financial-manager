@@ -99,7 +99,7 @@ const BasketLine = ({ line, onChange, onRemove }) => {
   );
 };
 
-const MerchantTill = ({ merchant }) => {
+const MerchantTill = ({ merchant, onSold }) => {
   const { language } = useTranslation();
   const K = batch11[language]?.till || batch11.id.till;
 
@@ -275,6 +275,10 @@ const MerchantTill = ({ merchant }) => {
       setBasket([]);
       setEstimate(null);
       loadProducts();
+      // The day at the top of the page is a different number now. It
+      // is told, rather than waiting for the reader to reload the
+      // page to find out.
+      onSold?.(sold);
     } catch (err) {
       console.error('The sale could not be saved:', err);
       toast.error(K.sell_failed);
