@@ -80,6 +80,40 @@ if (hasCompanion) {
   });
 }
 
+// --- the companion waits to be asked for ------------------------------------
+
+const cornerPath = 'src/components/common/CompanionCorner.jsx';
+const hasCorner = fs.existsSync(path.join(ROOT, cornerPath));
+
+check('the companion has a corner to sit in', () => {
+  assert.ok(hasCorner, `${cornerPath} is missing`);
+});
+
+if (hasCorner) {
+  const corner = read(cornerPath);
+
+  check('the companion waits for the reader to ask for it', () => {
+    assert.ok(
+      corner.includes("readerFlag('MASCOT_COMPANION')"),
+      'the companion must be behind a switch of its own'
+    );
+  });
+
+  check('the companion appears the moment the switch is turned on', () => {
+    assert.ok(
+      corner.includes('useReaderFlags'),
+      'a switch that only takes effect at the next load is a switch that looks broken'
+    );
+  });
+
+  check('the companion changes its face to suit the page', () => {
+    assert.ok(corner.includes('mood'), 'the companion must wear a face');
+    ['shopkeeper', 'detective', 'worried', 'happy'].forEach((mood) => {
+      assert.ok(corner.includes(mood), `the companion cannot be ${mood}`);
+    });
+  });
+}
+
 // --- the toast -------------------------------------------------------------
 
 const toastPath = 'src/components/common/MoeToast.jsx';

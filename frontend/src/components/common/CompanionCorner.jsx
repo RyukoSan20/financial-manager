@@ -2,6 +2,8 @@ import { useLocation } from 'react-router-dom';
 import { useTranslation } from '../../i18n';
 import { batch10 } from '../../i18n/keys_batch10';
 import MascotCompanion from './MascotCompanion';
+import { readerFlag } from '../../utils/featureFlags';
+import { useReaderFlags } from '../../utils/useReaderFlags';
 
 /**
  * The companion, in the corner of the page.
@@ -60,6 +62,12 @@ export default function CompanionCorner() {
   const location = useLocation();
   const { language } = useTranslation();
   const K = batch10[language]?.moe || batch10.id.moe;
+
+  // The companion is a new thing on an old screen, so it waits for
+  // the reader to ask for it. The hook is what makes it appear the
+  // moment the switch is turned on, rather than at the next load.
+  useReaderFlags();
+  if (!readerFlag('MASCOT_COMPANION')) return null;
 
   const face = FACES.find((entry) => entry.match(location.pathname)) || DEFAULT_FACE;
 
