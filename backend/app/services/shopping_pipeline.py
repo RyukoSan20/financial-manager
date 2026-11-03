@@ -67,6 +67,7 @@ def _to_view(item: ShoppingItem, tx_amount, category_name) -> BoardItem:
         id=item.id, name=item.name, quantity=item.quantity, price=item.price, amount=amount,
         stage=item.stage, position=item.position, marketplace=item.marketplace,
         category_id=item.category_id, category_name=category_name, product_url=item.product_url,
+        image_url=item.image_url,
         tracking_number=item.tracking_number, courier=item.courier, rating=item.rating,
         notes=item.notes, purchased_at=item.purchased_at, received_at=item.received_at,
         transaction_id=item.transaction_id, allowed_next=rules.allowed_next(item.stage),

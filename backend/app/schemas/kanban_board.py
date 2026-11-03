@@ -22,6 +22,9 @@ class BoardItem(BaseModel):
     category_id: Optional[int] = None
     category_name: Optional[str] = None
     product_url: Optional[str] = None
+    # The picture of the thing, when there is one. A card with a
+    # picture in it is easier to recognise than a line of text.
+    image_url: Optional[str] = None
     tracking_number: Optional[str] = None
     courier: Optional[str] = None
     rating: Optional[int] = None

@@ -39,6 +39,11 @@ function Card({ item, onDragStart, onDragEnd, onPick }) {
   const link = safeUrl(item.product_url);
   return (
     <article className="sb-card" draggable onDragStart={(e) => onDragStart(e, item)} onDragEnd={onDragEnd}>
+      {item.image_url ? (
+        <div className="sb-card-picture">
+          <img src={item.image_url} alt={item.name} loading="lazy" />
+        </div>
+      ) : null}
       <div className="sb-card-top">
         <h4 className="sb-card-name">{item.name}</h4>
         <strong className="sb-card-amount">{idr(item.amount)}</strong>
