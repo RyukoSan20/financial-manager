@@ -86,6 +86,11 @@ jobs:
           # liquid. Off in the repository by default, on in the build
           # that is deployed.
           VITE_UI_MONEY: '1'
+          # The shopping board in the four columns the reader thinks
+          # in: wanted, being saved for, ready to buy, and bought.
+          # Off in the repository by default, on in the build that is
+          # deployed.
+          VITE_UI_SHOPPING_FOUR_COLUMNS: '1'
         run: |
           npm ci
           npm run build
