@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar, MobileHeader, BottomNav } from './Navigation';
 import { AuroraCanvas } from '../ui/AuroraCard';
+import CompanionCorner from '../common/CompanionCorner';
 
 // Get page title from route
 const getPageTitle = (pathname) => {
@@ -48,6 +49,11 @@ export const Layout = () => {
         </AuroraCanvas>
       </main>
       
+      {/* The companion, in the corner of the page. It is behind a
+          switch of its own, so it appears only when the reader asks
+          for it. */}
+      <CompanionCorner />
+
       {/* Mobile Bottom Nav */}
       <BottomNav />
     </div>

@@ -213,3 +213,60 @@
 .moe-corner__dismiss:hover {
   background: var(--surface-hover, rgba(148, 163, 184, 0.12));
 }
+
+
+/* The companion, in the corner of the page. */
+
+.moe-corner {
+  position: fixed;
+  right: 1rem;
+  bottom: 5.5rem;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 16rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--surface-raised, #ffffff) 88%, transparent);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  box-shadow: 0 10px 30px -18px rgb(15 23 42 / 0.5);
+  backdrop-filter: blur(10px);
+  animation: moe-corner-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (min-width: 1024px) {
+  .moe-corner {
+    bottom: 1.5rem;
+  }
+}
+
+.moe-corner .moe-companion {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.moe-corner .moe-companion__words {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--text-secondary, #334155);
+}
+
+@keyframes moe-corner-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moe-corner {
+    animation: none;
+  }
+}

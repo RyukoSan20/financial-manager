@@ -5,6 +5,7 @@ import { batch12 } from '../../i18n/keys_batch12';
 import { toast } from '../../contexts/ToastContext';
 import merchantApi from '../../services/merchantApi';
 import { formatCurrency } from '../../utils/format';
+import MascotCompanion from '../common/MascotCompanion';
 
 /**
  * The shelf.
@@ -289,7 +290,7 @@ export default function MerchantProductCatalog({ merchant }) {
         <p className="merchant-catalog__note">{K.catalog.loading}</p>
       ) : shown.length === 0 ? (
         <div className="merchant-catalog__empty">
-          <Package size={30} aria-hidden="true" />
+          <MascotCompanion mood="shopkeeper" size={56} message={K.catalog.emptyShelf} />
           <p>{query.trim() ? K.catalog.noMatch : K.catalog.emptyShelf}</p>
           {!query.trim() && (
             <button type="button" onClick={startNew}>
