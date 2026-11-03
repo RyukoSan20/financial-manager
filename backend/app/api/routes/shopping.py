@@ -17,11 +17,12 @@ from app.schemas.shopping import (
 router = APIRouter()
 
 # Pipeline stages
-PIPELINE_STAGES = ['wishlist', 'to_buy', 'ordered', 'shipped', 'received', 'cancelled']
+PIPELINE_STAGES = ['wishlist', 'to_buy', 'ready', 'ordered', 'shipped', 'received', 'cancelled']
 
 STAGE_LABELS = {
     'wishlist': 'Wishlist',
     'to_buy': 'Mau Beli',
+    'ready': 'Siap Checkout',
     'ordered': 'Dipesan',
     'shipped': 'Dikirim',
     'received': 'Diterima',
@@ -31,6 +32,7 @@ STAGE_LABELS = {
 STAGE_ICONS = {
     'wishlist': '💭',
     'to_buy': '🛒',
+    'ready': '✅',
     'ordered': '📦',
     'shipped': '🚚',
     'received': '✅',

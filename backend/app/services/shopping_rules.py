@@ -12,15 +12,21 @@ from typing import Iterable
 
 WIB = timezone(timedelta(hours=7))  # WIB tidak mengenal DST, jadi offset tetap aman
 
-STAGE_ORDER = ("wishlist", "to_buy", "ordered", "shipped", "received", "cancelled")
+STAGE_ORDER = ("wishlist", "to_buy", "ready", "ordered", "shipped", "received", "cancelled")
 PAID_STAGES = ("ordered", "shipped", "received")
 
 # Peta perpindahan yang diizinkan. Ini satu-satunya sumber kebenaran:
 # frontend membaca hasilnya lewat field `allowed_next` pada tiap item.
 # Catatan: "ordered" hanya bisa dicapai lewat purchase (ada uang yang keluar).
+#
+# "ready" adalah tahap "siap checkout": sudah diputuskan akan dibeli,
+# tetapi uang belum keluar. Ia ada di antara "to_buy" dan "ordered"
+# supaya kartu bisa menunggu di kolom ketiga papan tanpa uang yang
+# keluar. Pindah ke "ordered" tetap harus lewat purchase.
 TRANSITIONS: dict[str, frozenset[str]] = {
-    "wishlist": frozenset({"to_buy", "ordered", "cancelled"}),
-    "to_buy": frozenset({"wishlist", "ordered", "cancelled"}),
+    "wishlist": frozenset({"to_buy", "ready", "ordered", "cancelled"}),
+    "to_buy": frozenset({"wishlist", "ready", "ordered", "cancelled"}),
+    "ready": frozenset({"to_buy", "ordered", "cancelled"}),
     "ordered": frozenset({"shipped", "received", "cancelled"}),
     "shipped": frozenset({"received", "cancelled"}),
     "received": frozenset(),  # final; retur dicatat manual sebagai transaksi

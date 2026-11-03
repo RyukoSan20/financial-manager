@@ -8,7 +8,7 @@ class ShoppingItemBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     quantity: int = Field(default=1, ge=1)
     price: Optional[int] = Field(default=None, description="Harga satuan (Rupiah)")
-    stage: str = Field(default='wishlist', pattern="^(wishlist|to_buy|ordered|shipped|received|cancelled)$")
+    stage: str = Field(default='wishlist', pattern="^(wishlist|to_buy|ready|ordered|shipped|received|cancelled)$")
     marketplace: Optional[str] = Field(default=None, max_length=50, description="shopee, tokopedia, dll")
     product_url: Optional[str] = Field(default=None, max_length=500)
     image_url: Optional[str] = Field(default=None, max_length=500)
@@ -28,7 +28,7 @@ class ShoppingItemUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     quantity: Optional[int] = Field(default=None, ge=1)
     price: Optional[int] = None
-    stage: Optional[str] = Field(default=None, pattern="^(wishlist|to_buy|ordered|shipped|received|cancelled)$")
+    stage: Optional[str] = Field(default=None, pattern="^(wishlist|to_buy|ready|ordered|shipped|received|cancelled)$")
     marketplace: Optional[str] = Field(default=None, max_length=50)
     product_url: Optional[str] = Field(default=None, max_length=500)
     image_url: Optional[str] = Field(default=None, max_length=500)
@@ -41,7 +41,7 @@ class ShoppingItemUpdate(BaseModel):
 
 
 class ShoppingItemMove(BaseModel):
-    stage: str = Field(..., pattern="^(wishlist|to_buy|ordered|shipped|received|cancelled)$")
+    stage: str = Field(..., pattern="^(wishlist|to_buy|ready|ordered|shipped|received|cancelled)$")
     position: Optional[int] = Field(default=None, ge=0, description="New position in stage")
 
 

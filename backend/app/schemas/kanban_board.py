@@ -7,7 +7,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-Stage = Literal["wishlist", "to_buy", "ordered", "shipped", "received", "cancelled"]
+Stage = Literal["wishlist", "to_buy", "ready", "ordered", "shipped", "received", "cancelled"]
 
 
 class BoardItem(BaseModel):
