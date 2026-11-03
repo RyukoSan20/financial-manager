@@ -88,7 +88,12 @@ class MerchantProduct(Base):
     cost_price = Column(Float, nullable=True)  # HPP
     stock = Column(Integer, default=0)
     unit = Column(String(20), default="pcs")  # pcs, kg, liter, etc
-    
+
+    # The photograph of the thing. It is kept as the address of the
+    # picture, not as the picture itself, so the file lives in one
+    # place and the record stays small.
+    image_url = Column(String(500), nullable=True)
+
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -100,6 +100,8 @@ class ProductCreate(BaseModel):
     cost_price: Optional[float] = None
     stock: int = 0
     unit: str = "pcs"
+    # The photograph of the thing. It is never asked for.
+    image_url: Optional[str] = None
 
 class ProductResponse(BaseModel):
     id: int
@@ -109,6 +111,7 @@ class ProductResponse(BaseModel):
     cost_price: Optional[float]
     stock: int
     unit: str
+    image_url: Optional[str] = None
     is_active: bool
 
     class Config:
@@ -606,7 +609,8 @@ def add_product(
         price=data.price,
         cost_price=data.cost_price,
         stock=data.stock,
-        unit=data.unit
+        unit=data.unit,
+        image_url=data.image_url
     )
     db.add(product)
     db.commit()

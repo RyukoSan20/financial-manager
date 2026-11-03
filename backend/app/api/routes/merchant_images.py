@@ -225,19 +225,22 @@ def delete_product_image(
 def get_product_image(
     merchant_id: int,
     name: str,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     The picture of a thing for sale, handed back.
+
+    A browser asks for a picture with a plain address, and it sends
+    no proof of who it is. A picture that demanded proof was a
+    picture that never appeared, so this one asks for no proof.
+
+    It is still not a way in. The shop has to exist, and the name of
+    the file is used only as a name, never as a path, so that a name
+    with a path in it cannot reach another shop's pictures.
     """
     from app.models.merchant import Merchant
 
-    merchant = (
-        db.query(Merchant)
-        .filter(Merchant.id == merchant_id, Merchant.user_id == current_user.id)
-        .first()
-    )
+    merchant = db.query(Merchant).filter(Merchant.id == merchant_id).first()
     if not merchant:
         raise HTTPException(status_code=404, detail="Merchant not found")
 

@@ -121,3 +121,37 @@ class TestThePicture:
         assert "image/webp" in ALLOWED_TYPES
         assert "application/pdf" not in ALLOWED_TYPES
         assert "text/html" not in ALLOWED_TYPES
+
+
+class TestThePictureIsReachable:
+    """
+    A browser asks for a picture with a plain address, and it sends no
+    proof of who it is. A picture that demanded proof was a picture
+    that never appeared.
+    """
+
+    def test_the_picture_does_not_demand_proof_of_identity(self):
+        """
+        The route must not require a signed-in reader. The browser
+        cannot send one.
+        """
+        import inspect
+
+        from app.api.routes.merchant_images import get_product_image
+
+        parameters = inspect.signature(get_product_image).parameters
+        assert "current_user" not in parameters, (
+            "the picture must be fetchable by a plain <img> tag"
+        )
+
+    def test_the_picture_of_a_shop_that_does_not_exist_is_refused(self):
+        """
+        Being open to everyone does not mean being open to nothing.
+        """
+        import inspect
+
+        from app.api.routes.merchant_images import get_product_image
+
+        source = inspect.getsource(get_product_image)
+        assert "Merchant" in source, "the shop must be looked for"
+        assert "404" in source, "a shop that does not exist must be refused"
