@@ -4,8 +4,24 @@ import { categoryName } from '../../../utils/categoryName';
 import { useTranslation } from '../../../i18n';
 import { batch3 } from '../../../i18n/keys_batch3';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
+import { buildFlag } from '../../../utils/featureFlags';
+import { BOARD_COLUMNS, gatherColumns, stageFor, dropAction } from '../boardColumns';
 
 const META = Object.fromEntries(STAGES.map((s) => [s.key, s]));
+
+// The four columns are a new shape for the board, so they are behind
+// a switch of their own. When the switch is off, the board is the
+// seven stages it always was.
+const FOUR_COLUMNS = buildFlag('SHOPPING_FOUR_COLUMNS');
+
+// The labels of the four columns, read from the words of the
+// application rather than written again here.
+const COLUMN_WORDS = {
+  wishlist: ['Incaran', 'Baru ditambahkan, belum direncanakan'],
+  saving: ['Ditabung', 'Sedang ditabung, menunggu diskon'],
+  ready: ['Siap Checkout', 'Sudah diputuskan, tinggal dibeli'],
+  bought: ['Sudah Dibeli', 'Sudah dibayar dan dicatat sebagai pengeluaran'],
+};
 
 function Stars({ value }) {
   if (!value) return null;
@@ -113,10 +129,26 @@ export default function KanbanBoard({ columns, onMove, onPurchase, onDetails }) 
     setPendingCancel(null);
   };
 
+  // The board that is drawn: the four columns, or the seven stages.
+  const drawn = FOUR_COLUMNS
+    ? gatherColumns(columns).map((col) => ({
+        ...col,
+        label: COLUMN_WORDS[col.key]?.[0] || col.key,
+        hint: COLUMN_WORDS[col.key]?.[1] || '',
+      }))
+    : columns;
+
   return (
     <div className="sb-board">
-      {columns.map((col) => {
-        const accepts = dragging && dragging.allowed_next.includes(col.key);
+      {drawn.map((col) => {
+        // In the four-column board a card is offered the columns it
+        // may go to. In the seven-stage board it is offered the
+        // stages the server says it may go to.
+        const accepts = dragging
+          ? FOUR_COLUMNS
+            ? dropAction(dragging, col.key) !== null
+            : dragging.allowed_next.includes(col.key)
+          : false;
         const blocked = dragging && !accepts && dragging.stage !== col.key;
         const cls = ['sb-col', overKey === col.key && 'is-over', blocked && 'is-blocked'].filter(Boolean).join(' ');
 
@@ -124,7 +156,7 @@ export default function KanbanBoard({ columns, onMove, onPurchase, onDetails }) 
           <section
             key={col.key}
             className={cls}
-            aria-label={META[col.key].label}
+            aria-label={col.label || META[col.key]?.label || col.key}
             onDragOver={(e) => {
               if (accepts) {
                 e.preventDefault();
@@ -137,12 +169,17 @@ export default function KanbanBoard({ columns, onMove, onPurchase, onDetails }) 
             onDrop={(e) => {
               e.preventDefault();
               setOverKey(null);
-              if (dragging) request(dragging, col.key);
+              if (dragging) {
+                // In the four-column board the card is put in the
+                // first stage of the column it was dropped into.
+                const target = FOUR_COLUMNS ? stageFor(col.key) : col.key;
+                if (target) request(dragging, target);
+              }
               setDragId(null);
             }}
           >
-            <header className="sb-col-head" title={META[col.key].hint}>
-              <h3>{META[col.key].label}</h3>
+            <header className="sb-col-head" title={col.hint || META[col.key]?.hint || ''}>
+              <h3>{col.label || META[col.key]?.label || col.key}</h3>
               <span className="sb-count">{col.count}</span>
             </header>
             {col.total > 0 && <p className="sb-col-total">{idr(col.total)}</p>}

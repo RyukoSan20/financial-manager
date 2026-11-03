@@ -1494,6 +1494,15 @@ export default {
     refs_error: "Daftar akun dan kategori gagal dimuat. Muat ulang halaman.",
     already_purchased: "Item ini sudah dicatat sebelumnya.",
     purchase_recorded: "Pembelian dicatat sebagai pengeluaran.",
+    // The four columns of the board.
+    column_wishlist: "Incaran",
+    column_wishlist_hint: "Baru ditambahkan, belum direncanakan",
+    column_saving: "Ditabung",
+    column_saving_hint: "Sedang ditabung, menunggu diskon",
+    column_ready: "Siap Checkout",
+    column_ready_hint: "Sudah diputuskan, tinggal dibeli",
+    column_bought: "Sudah Dibeli",
+    column_bought_hint: "Sudah dibayar dan dicatat sebagai pengeluaran",
     purchase_failed: "Pembelian gagal dicatat. Periksa koneksi lalu coba lagi.",
   },
   passport: {

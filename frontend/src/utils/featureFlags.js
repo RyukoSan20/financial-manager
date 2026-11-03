@@ -35,6 +35,18 @@ const BUILD_FLAGS = {
    */
   UI_AURORA: 'VITE_UI_AURORA',
   /**
+   * The shopping board in four columns.
+   *
+   * The board in the books has seven stages. The reader thinks in
+   * four: wanted, being saved for, ready to buy, and bought. This
+   * gathers the seven into the four, and adds a stage of its own for
+   * the things that are decided on but not yet paid for.
+   *
+   * Off by default. When it is off, the board is the seven stages it
+   * always was, and nothing about the reader's records changes.
+   */
+  SHOPPING_FOUR_COLUMNS: 'VITE_UI_SHOPPING_FOUR_COLUMNS',
+  /**
    * The money layer: the feel. Glass surfaces, a balance that
    * counts, a card that leans towards the pointer, a liquid fill, a
    * floating button that breathes. Off by default.

@@ -1494,6 +1494,15 @@ export default {
     refs_error: "The list of accounts and categories could not be loaded. Reload the page.",
     already_purchased: "This item was already recorded.",
     purchase_recorded: "The purchase was recorded as an expense.",
+    // The four columns of the board.
+    column_wishlist: "Wishlist",
+    column_wishlist_hint: "Newly added, not planned yet",
+    column_saving: "Saving",
+    column_saving_hint: "Being saved for, waiting for a discount",
+    column_ready: "Ready to Buy",
+    column_ready_hint: "Decided on, only waiting to be bought",
+    column_bought: "Bought",
+    column_bought_hint: "Paid for, and written down as an expense",
     purchase_failed: "The purchase could not be recorded. Check the connection and try again.",
   },
   passport: {

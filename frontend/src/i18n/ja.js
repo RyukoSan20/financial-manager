@@ -1494,6 +1494,15 @@ export default {
     refs_error: "口座とカテゴリのリストを読み込めませんでした。ページを再読み込みしてください。",
     already_purchased: "この商品はすでに記録されています。",
     purchase_recorded: "購入を支出として記録しました。",
+    // The four columns of the board.
+    column_wishlist: "インカラン",
+    column_wishlist_hint: "新しく追加、まだ計画していない",
+    column_saving: " Ditabung",
+    column_saving_hint: "貯めていて、割引を待っている",
+    column_ready: "購入準備OK",
+    column_ready_hint: "決めていて、買うだけ",
+    column_bought: "購入済み",
+    column_bought_hint: "支払い済み、支出として記録済み",
     purchase_failed: "購入を記録できませんでした。接続を確認して再試行してください。",
   },
   passport: {
