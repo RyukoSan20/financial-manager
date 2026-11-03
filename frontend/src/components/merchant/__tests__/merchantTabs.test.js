@@ -41,7 +41,7 @@ const UMKM = {
       customs_fields: { shown: false, required: false },
       incoterms: { shown: false, required: false },
       multi_currency: { shown: false, required: false },
-      tax_settings: { shown: false, required: false },
+      tax_settings: { shown: true, required: false },
       journal: { shown: false, required: false },
       withholding_tax: { shown: false, required: false },
       reverse_charge: { shown: false, required: false },
@@ -126,10 +126,13 @@ function tabsFor(profile) {
 
 check('a warung has the shelf and the till', tabsFor(UMKM).includes('catalog'), true);
 check('a warung has the shelf and the till', tabsFor(UMKM).includes('pos'), true);
+// A warung does see its receipts, because a warung owner does want
+// to look at what they sold. What a warung is not shown is the
+// journal: it is an accounting book, and a warung has no accountant.
 check(
-  'a warung is not asked about invoices',
+  'a warung sees its receipts',
   tabsFor(UMKM).includes('invoicing'),
-  false
+  true
 );
 check('a warung is not asked about the journal', tabsFor(UMKM).includes('report'), false);
 
