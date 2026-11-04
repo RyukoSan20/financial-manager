@@ -128,6 +128,52 @@ jobs:
           timeout: 30s
           script: echo "connected to ${{ secrets.VPS_HOST }}"
 
+      # The server keeps a checkout of the repository, and it was
+      # hundreds of commits behind, because the deploy sends the code
+      # as a tarball and never moves the checkout.
+      #
+      # That is a trap: the checkout is what a person on the server
+      # reads to find out what is running, and it is also what a
+      # `git pull` there would restore. So the next thing that ran a
+      # pull on the server would have put the old code back over the
+      # new one.
+      #
+      # The checkout is moved to the commit being deployed, so the two
+      # agree. The code is not taken from the checkout - it comes from
+      # the tarball, as before - so this changes nothing about what is
+      # deployed, only about what the server's own copy says.
+      - name: Sync the server's checkout to what is deployed
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_HOST_FINGERPRINT }}
+          port: 22
+          script_stop: true
+          script: |
+            set -e
+            cd /home/ubuntu/finmanager
+
+            # The checkout may have local edits, from a person fixing
+            # something on the server. They are kept, not thrown away:
+            # the changes are stashed and the list is printed, so
+            # nobody finds out months later that their edit was
+            # dropped.
+            if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+              echo "::notice::the server's checkout has local changes; they are kept"
+              git stash push -u -m "before deploy $GITHUB_SHA" || true
+              git status --short || true
+            fi
+
+            # The repository on the server may not know about this
+            # commit yet, so it is fetched first. A shallow fetch of
+            # one commit is enough.
+            git fetch --depth=1 origin "$GITHUB_SHA" || git fetch origin main || true
+            git checkout -B deploy "$GITHUB_SHA" 2>/dev/null || git checkout -B deploy FETCH_HEAD
+            git reset --hard "$GITHUB_SHA" 2>/dev/null || true
+            echo "the server's checkout is now $(git rev-parse --short HEAD)"
+
       - name: Backup current deployment
         uses: appleboy/ssh-action@v1.2.5
         with:
