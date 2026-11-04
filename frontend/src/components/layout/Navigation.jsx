@@ -110,7 +110,7 @@ const Sidebar = () => {
   );
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-30 dark:bg-gray-800 dark:border-gray-700">
+    <aside className="nav-glass hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-30 dark:bg-gray-800 dark:border-gray-700">
       {/* Logo. The mark is drawn rather than a plain square of colour,
           because a square of colour is the thing every application
           has and this one should not look like every application. */}

@@ -837,3 +837,58 @@
     0 1px 0 0 var(--money-sheen) inset,
     0 10px 30px -16px rgba(0, 0, 0, 0.6);
 }
+
+/* -------------------------------------------------------------------------
+   The column down the left.
+
+   The settings panels were given the glass, and the column that holds
+   the logo and the menu was left as a flat sheet of white. That is what
+   made the left side of the settings look stiff: one glass panel
+   sitting on a white wall, rather than a window onto the same room.
+
+   So the column takes the glass as well, and the items in it light up
+   under the pointer instead of changing colour like a link.
+
+   The column is fixed to the side of the page, so the aurora behind
+   it barely moves under it. The blur still matters: the layer that
+   does move is the one behind the header and the bottom bar, and the
+   column has to belong to the same room as they do.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .nav-glass {
+  background-color: var(--money-glass-tint);
+  -webkit-backdrop-filter: blur(var(--money-blur)) saturate(150%);
+  backdrop-filter: blur(var(--money-blur)) saturate(150%);
+  border-right: 1px solid var(--money-glass-edge);
+  box-shadow:
+    0 1px 0 0 var(--money-sheen) inset,
+    10px 0 34px -22px rgba(15, 23, 42, 0.3);
+  transition:
+    background-color 260ms ease,
+    box-shadow 260ms ease;
+}
+
+/* The items in the column. The hover gives the row its own surface
+   and a glow along the edge that faces the page, so the pointer is
+   answered by the thing it is over rather than by the whole column. */
+[data-ui-money="on"] .aurora-nav-item {
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+[data-ui-money="on"] .aurora-nav-item:hover {
+  transform: translateX(2px);
+  background-color: rgba(148, 163, 184, 0.14);
+  box-shadow:
+    -1px 0 0 0 var(--money-sheen) inset,
+    0 6px 18px -12px rgba(15, 23, 42, 0.35);
+}
+
+.dark[data-ui-money="on"] .nav-glass {
+  box-shadow:
+    0 1px 0 0 var(--money-sheen) inset,
+    10px 0 40px -20px rgba(0, 0, 0, 0.7);
+}
