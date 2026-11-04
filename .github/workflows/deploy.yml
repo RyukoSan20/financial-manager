@@ -132,11 +132,11 @@ jobs:
       # hundreds of commits behind, because the deploy sends the code
       # as a tarball and never moves the checkout.
       #
-      # That is a trap: the checkout is what a person on the server
-      # reads to find out what is running, and it is also what a
-      # `git pull` there would restore. So the next thing that ran a
-      # pull on the server would have put the old code back over the
-      # new one.
+      # That is a trap in two ways. The checkout is what a person on
+      # the server reads to find out what is running, and it is also
+      # what a `git pull` there would restore. So the next thing that
+      # ran a pull on the server would have put the old code back over
+      # the new one.
       #
       # The checkout is moved to the commit being deployed, so the two
       # agree. The code is not taken from the checkout - it comes from
@@ -155,23 +155,31 @@ jobs:
             set -e
             cd /home/ubuntu/finmanager
 
-            # The checkout may have local edits, from a person fixing
-            # something on the server. They are kept, not thrown away:
-            # the changes are stashed and the list is printed, so
-            # nobody finds out months later that their edit was
-            # dropped.
-            if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-              echo "::notice::the server's checkout has local changes; they are kept"
-              git stash push -u -m "before deploy $GITHUB_SHA" || true
-              git status --short || true
-            fi
+            # The commit is fetched by the branch, not by its own
+            # name: GitHub will not serve a fetch of an arbitrary
+            # commit, so asking for the SHA fails with "couldn't find
+            # remote ref" and the whole deploy goes down with it.
+            git fetch origin main || true
 
-            # The repository on the server may not know about this
-            # commit yet, so it is fetched first. A shallow fetch of
-            # one commit is enough.
-            git fetch --depth=1 origin "$GITHUB_SHA" || git fetch origin main || true
-            git checkout -B deploy "$GITHUB_SHA" 2>/dev/null || git checkout -B deploy FETCH_HEAD
-            git reset --hard "$GITHUB_SHA" 2>/dev/null || true
+            # The files the deploy copies in belong to root, so the
+            # user running the deploy cannot write them. The
+            # ownership is put back FIRST, so that the checkout can
+            # be written at all.
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/finmanager/backend /home/ubuntu/finmanager/frontend 2>/dev/null || true
+
+            # The tree on the server carries the deployed code, and
+            # the deployed code is what this checkout should show, so
+            # the tracked files are restored to what the commit says.
+            # The files that are not tracked - the keys, the database
+            # volume, the uploads - are left alone, because they
+            # belong to the server and not to the repository.
+            git checkout -f -B deploy "$GITHUB_SHA"
+            git reset --hard "$GITHUB_SHA"
+
+            # And the ownership is put back to what the deploy leaves,
+            # so the files stay as the deploy expects to find them.
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/finmanager/backend /home/ubuntu/finmanager/frontend 2>/dev/null || true
+
             echo "the server's checkout is now $(git rev-parse --short HEAD)"
 
       - name: Backup current deployment
