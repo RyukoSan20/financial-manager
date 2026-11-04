@@ -17,7 +17,7 @@
  * Run with: node src/components/shopping/__tests__/productSearch.test.js
  */
 
-import { formatRupiah } from '../ProductSearch';
+import { formatRupiah } from '../../../utils/money.js';
 
 /**
  * A flat list of every check.

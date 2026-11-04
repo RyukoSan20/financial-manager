@@ -92,6 +92,8 @@ for test_file in \
   src/components/map/__tests__/mapPins.test.js \
   src/services/__tests__/receiptItemsApi.test.js \
   src/components/market/__tests__/portfolioProjection.test.js \
+  src/components/shopping/__tests__/productSearch.test.js \
+  src/utils/__tests__/shoppingCatalog.test.js \
   src/components/split/__tests__/smartSplit.test.js \
   src/components/split/__tests__/splitFlags.test.js \
   src/components/split/__tests__/qr.test.js \

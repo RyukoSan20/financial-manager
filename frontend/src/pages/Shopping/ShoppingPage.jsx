@@ -5,7 +5,7 @@ import api from '../../services/api';
 import {
   ShoppingCart, Heart, Package, Truck, CheckCircle, XCircle,
   Plus, MoreVertical, Edit2, Trash2, ExternalLink, Star,
-  X, GripVertical, RefreshCw, DollarSign, TrendingUp, Filter
+  X, GripVertical, RefreshCw, DollarSign, TrendingUp, Filter, Search
 } from 'lucide-react';
 import { useTranslation } from '../../i18n';
 import { buildFlag } from '../../utils/featureFlags';
@@ -13,6 +13,8 @@ import { SHOPPING_STAGE_ICONS } from '../../utils/icons';
 import { IconText } from '../../components/ui/IconText';
 import { toast } from '../../contexts/ToastContext';
 import { ask } from '../../contexts/ConfirmContext';
+import VisualProductCatalogGrid, { saveProductToWishlist } from '../../components/shopping/VisualProductCatalogGrid';
+import PartnerMerchantFeedSection from '../../components/shopping/PartnerMerchantFeedSection';
 
 // Pipeline stages configuration
 const STAGES = [
@@ -51,6 +53,18 @@ const ShoppingPage = () => {
     notes: '',
   });
   const [saving, setSaving] = useState(false);
+
+  /* The catalogue.
+
+     The board is a board of decisions. It is not a way to look at
+     things, so a reader cannot see what a thing looks like before they
+     decide about it. This is the looking: the same search the tracker
+     uses, the same answer, and the same honesty about where the price
+     came from. */
+  const [catalogQuery, setCatalogQuery] = useState('');
+  const [catalogAnswer, setCatalogAnswer] = useState(null);
+  const [catalogSearching, setCatalogSearching] = useState(false);
+  const [catalogSaving, setCatalogSaving] = useState(false);
 
   const fetchBoard = useCallback(async () => {
     setLoading(true);
@@ -235,6 +249,63 @@ const ShoppingPage = () => {
     });
   };
 
+  /* The search behind the catalogue.
+
+     It is the endpoint the tracker already uses, and the answer is
+     taken as it comes back: the body of the answer, not a wrapper
+     around it. The answer says where it came from, and that is what
+     the grid uses to be honest about the price. */
+  const searchCatalog = useCallback(async (text) => {
+    const needle = (text ?? '').trim();
+    if (!needle) {
+      setCatalogAnswer(null);
+      return;
+    }
+
+    setCatalogSearching(true);
+    try {
+      const found = await api.request(
+        `/shopping-search/search?q=${encodeURIComponent(needle)}&limit=24`
+      );
+      setCatalogAnswer(found);
+    } catch (err) {
+      console.error('The catalogue search failed:', err);
+      setCatalogAnswer(null);
+      toast.error(t('shopping_catalog.search_failed'));
+    } finally {
+      setCatalogSearching(false);
+    }
+  }, [t]);
+
+  /* The search happens once the reader has stopped typing, so that
+     every keystroke does not ask the server the same question. */
+  useEffect(() => {
+    const needle = catalogQuery.trim();
+    if (!needle) {
+      setCatalogAnswer(null);
+      return undefined;
+    }
+    const timer = setTimeout(() => searchCatalog(needle), 350);
+    return () => clearTimeout(timer);
+  }, [catalogQuery, searchCatalog]);
+
+  /* A thing from the catalogue goes on the board as a thing on the
+     wishlist stage, with the picture and the link and the note of
+     where the price came from. */
+  const saveCatalogProduct = async (product) => {
+    setCatalogSaving(true);
+    try {
+      await saveProductToWishlist(product);
+      toast.success(t('shopping_catalog.saved_to_wishlist'));
+      fetchBoard();
+    } catch (err) {
+      console.error('Saving to the board failed:', err);
+      toast.error(t('shopping_catalog.save_failed'));
+    } finally {
+      setCatalogSaving(false);
+    }
+  };
+
   const getItemActions = (item) => {
     const currentIndex = STAGES.findIndex(s => s.id === item.stage);
     const actions = [];
@@ -329,6 +400,58 @@ const ShoppingPage = () => {
             {board?.stages?.reduce((sum, s) => sum + s.count, 0) || 0}
           </div>
         </Card>
+      </div>
+
+      {/* The catalogue.
+
+          A board of decisions is not a way to look at things. This is
+          the looking: a search, a grid of pictures, and a card that
+          says plainly whether the price is a price in a shop or a
+          reference price of the reader's own. */}
+      <div className="mb-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <IconText name="cart" emoji="🛍️" on={polished}>
+              {t('shopping_catalog.title')}
+            </IconText>
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {t('shopping_catalog.subtitle')}
+          </p>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={catalogQuery}
+            onChange={(e) => setCatalogQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') searchCatalog(catalogQuery);
+            }}
+            placeholder={t('shopping_catalog.placeholder')}
+            aria-label={t('shopping_catalog.title')}
+            className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+          />
+        </div>
+
+        {catalogSearching && (
+          <div className="flex items-center justify-center gap-2 py-4 text-sm text-gray-500 dark:text-gray-400">
+            <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" />
+            {t('shopping_catalog.searching')}
+          </div>
+        )}
+
+        {catalogAnswer && !catalogSearching && (
+          <VisualProductCatalogGrid
+            products={catalogAnswer.results || []}
+            source={catalogAnswer.source || 'provider'}
+            onSave={saveCatalogProduct}
+            saving={catalogSaving}
+          />
+        )}
+
+        <PartnerMerchantFeedSection onSaved={() => fetchBoard()} />
       </div>
 
       {/* Kanban Board */}
