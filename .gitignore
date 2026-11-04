@@ -66,3 +66,6 @@ new-feature-request/files.zip
 # two lines are here to stop that.
 backend/venv
 frontend/node_modules
+
+# The design guardrail skill, installed locally by hand.
+.claude/
