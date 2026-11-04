@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { chartPalette } from '../utils/appearance';
 import { Card, Button, Input, Select, Modal, Badge, Spinner, StatCard } from '../components/ui';
+import TiltCard from '../components/ui/TiltCard';
+import GoalPriorityKanban from '../components/goals/GoalPriorityKanban';
+import EditableAiCostBreakdown from '../components/goals/EditableAiCostBreakdown';
 import HonestEmptyState from '../components/common/HonestEmptyState';
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp, TrendingDown, Clock, CheckCircle } from 'lucide-react';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
@@ -33,6 +36,21 @@ export const Goals = () => {
   const [editingGoal, setEditingGoal] = useState(null);
   const [selectedGoal, setSelectedGoal] = useState(null);
 
+  // Which box of the priority board each goal sits in.
+  //
+  // The server keeps the goal; the board keeps the order of it. So
+  // the answer is read from this browser, and the board is drawn from
+  // it. A goal the reader has not touched falls into its box by
+  // itself.
+  const [quadrants, setQuadrants] = useState(() => {
+    try {
+      const stored = localStorage.getItem('goal_quadrants');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -49,6 +67,30 @@ export const Goals = () => {
       setLoading(false);
     }
   };
+
+  // The goals as the board sees them: the ones the reader has placed
+  // carry the box they were put in.
+  const boardGoals = useMemo(
+    () =>
+      goals.map((goal) => {
+        const placed = quadrants[goal.id];
+        return placed ? { ...goal, quadrant: placed } : goal;
+      }),
+    [goals, quadrants]
+  );
+
+  const handleMove = useCallback((goalId, quadrantKey) => {
+    setQuadrants((previous) => {
+      const next = { ...previous, [goalId]: quadrantKey };
+      try {
+        localStorage.setItem('goal_quadrants', JSON.stringify(next));
+      } catch {
+        // A browser that will not keep the answer is not a reason to
+        // break the board.
+      }
+      return next;
+    });
+  }, []);
 
   const handleSubmit = async (formData) => {
     try {
@@ -178,7 +220,8 @@ export const Goals = () => {
             const isOnTrack = goal.on_track ?? true;
             
             return (
-              <Card key={goal.id} className="!p-5 hover:shadow-md transition-shadow">
+              <TiltCard key={goal.id} className="rounded-2xl">
+              <Card className="!p-5 hover:shadow-md transition-shadow h-full">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div 
@@ -293,11 +336,24 @@ export const Goals = () => {
                     title={t('goals.breakdown_title')}
                     compact
                   />
+
+                  {/* The breakdown the model worked out, which the
+                      reader can correct line by line. */}
+                  <EditableAiCostBreakdown
+                    goalId={goal.id}
+                    currency={goal.currency}
+                  />
                 </div>
               </Card>
+              </TiltCard>
             );
           })}
         </div>
+      )}
+
+      {/* The priority board: four boxes, and the goals in each. */}
+      {goals.length > 0 && (
+        <GoalPriorityKanban goals={boardGoals} onMove={handleMove} />
       )}
 
       {/* Add/Edit Modal */}
