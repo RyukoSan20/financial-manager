@@ -86,6 +86,10 @@ for test_file in \
   src/utils/__tests__/marketFormat.test.js \
   src/pages/__tests__/marketPage.test.js \
   src/components/common/__tests__/honestEmptyState.test.js \
+  src/components/common/__tests__/emptyStateKeys.test.js \
+  src/components/goals/__tests__/goalPriorityKanban.test.js \
+  src/components/health/__tests__/wellnessBento.test.js \
+  src/utils/__tests__/eisenhowerPriority.test.js \
   src/components/ui/__tests__/confirmDialog.test.js \
   src/components/split/__tests__/splitMath.test.js \
   src/components/split/__tests__/splitAssignmentMath.test.js \

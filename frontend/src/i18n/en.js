@@ -62,6 +62,11 @@ export default {
   
   // Common
   common: {
+    empty_title: "There is nothing here yet",
+    empty_description: "This page fills itself once there is something to show.",
+    empty_hint: "Start with one small step.",
+    empty_primary: "Start",
+    empty_secondary: "Cancel",
     unknown_error: "Unknown error",
     loading: "Loading...",
     other: "Other",

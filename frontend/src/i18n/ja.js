@@ -62,6 +62,11 @@ export default {
   
   // Common
   common: {
+    empty_title: "ここにはまだ何もありません",
+    empty_description: "表示するものが入ると、このページは自動的に埋まります。",
+    empty_hint: "小さな一歩から始めましょう。",
+    empty_primary: "始める",
+    empty_secondary: "キャンセル",
     unknown_error: "不明なエラー",
     loading: "読み込み中...",
     other: "その他",

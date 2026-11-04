@@ -62,6 +62,11 @@ export default {
   
   // Common
   common: {
+    empty_title: "Belum ada apa-apa di sini",
+    empty_description: "Halaman ini akan terisi sendiri setelah ada yang masuk.",
+    empty_hint: "Mulai dari satu langkah kecil.",
+    empty_primary: "Mulai",
+    empty_secondary: "Batal",
     unknown_error: "Kesalahan tidak diketahui",
     loading: "Memuat...",
     other: "Lainnya",
