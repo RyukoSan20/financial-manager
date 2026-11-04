@@ -161,6 +161,12 @@ jobs:
             # remote ref" and the whole deploy goes down with it.
             git fetch origin main || true
 
+            # The commit is written as the expression rather than as
+            # the variable. The variable belongs to the runner, and
+            # this script runs on the server, where it is empty - so
+            # the checkout was given an empty name and refused it.
+
+
             # The files the deploy copies in belong to root, so the
             # user running the deploy cannot write them. The
             # ownership is put back FIRST, so that the checkout can
@@ -173,8 +179,8 @@ jobs:
             # The files that are not tracked - the keys, the database
             # volume, the uploads - are left alone, because they
             # belong to the server and not to the repository.
-            git checkout -f -B deploy "$GITHUB_SHA"
-            git reset --hard "$GITHUB_SHA"
+            git checkout -f -B deploy "${{ github.sha }}"
+            git reset --hard "${{ github.sha }}"
 
             # And the ownership is put back to what the deploy leaves,
             # so the files stay as the deploy expects to find them.
