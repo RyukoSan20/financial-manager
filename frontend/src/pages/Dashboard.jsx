@@ -14,7 +14,6 @@ import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { cleanNumber } from '../utils/idFormat';
 import AnimatedNumber from '../components/common/AnimatedNumber';
 import { AuroraCard, auroraIsOn } from '../components/ui/AuroraCard';
-import { AuroraBackground } from '../components/ui/AuroraBackground';
 import BentoGrid, { BentoItem } from '../components/dashboard/BentoGrid';
 import BalanceHero from '../components/dashboard/BalanceHero';
 import { moneyLayerOn } from '../utils/animation';
@@ -860,11 +859,14 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // ==========================================================================
   
   return (
-    <div className={`space-y-6 animate-fadeIn p-4 min-h-screen ${bgPrimary} relative`}>
-      {/* The light behind the page. Without it the numbers sit on a
-          flat colour and the page reads as a sheet of paper. */}
-      <AuroraBackground />
-
+    <div
+      className={`space-y-6 animate-fadeIn p-4 min-h-screen relative ${
+        // The light behind the page only shows if the page does not
+        // paint over it. With the aurora layer on, the page is
+        // transparent and the wash is what is behind it.
+        auroraIsOn() ? 'bg-transparent' : bgPrimary
+      }`}
+    >
       
       {/* ================================================================ */}
       {/* HEADER */}

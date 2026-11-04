@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar, MobileHeader, BottomNav } from './Navigation';
 import { AuroraCanvas } from '../ui/AuroraCard';
+import { AuroraBackground } from '../ui/AuroraBackground';
 import CompanionCorner from '../common/CompanionCorner';
 
 // Get page title from route
@@ -35,7 +36,11 @@ export const Layout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 relative">
+      {/* The light behind the page. It is here, at the root, so that
+          every page sits on it rather than each page painting over
+          it. */}
+      <AuroraBackground />
       {/* Desktop Sidebar */}
       <Sidebar />
       

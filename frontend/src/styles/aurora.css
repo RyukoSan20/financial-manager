@@ -481,14 +481,28 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  /* The wash is painted on the page itself, so that the colour of the
+     page and the colour of the light are one thing rather than one
+     lying on top of the other. The page background has to be able to
+     show it. */
+  isolation: isolate;
+}
+
+/* The page, over the wash.
+
+   The dashboard painted itself with an opaque colour, so the light
+   behind it never showed. The page is given the colour of the wash
+   mixed into the background instead, so the light reads through. */
+[data-ui-aurora="on"] .aurora-canvas {
+  background: transparent;
 }
 
 [data-ui-aurora="on"] .aurora-blob {
   position: absolute;
   display: block;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.5;
+  filter: blur(70px);
+  opacity: 0.85;
   will-change: transform;
 }
 
@@ -553,7 +567,7 @@
 }
 
 .dark[data-ui-aurora="on"] .aurora-blob {
-  opacity: 0.34;
+  opacity: 0.55;
 }
 
 @keyframes aurora-drift-one {
