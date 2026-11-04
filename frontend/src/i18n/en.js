@@ -1318,7 +1318,7 @@ export default {
 
   // market_page
   market_page: {
-    title: "Market Intelligence",
+    title: "Market & Investment Co-Pilot (AI)",
     loading: "Loading market data...",
     error_banner: "Failed to load market data: %error%. Showing the last available data.",
     retry: "Try again",

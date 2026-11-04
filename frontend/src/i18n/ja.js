@@ -1318,7 +1318,7 @@ export default {
 
   // market_page
   market_page: {
-    title: "市場インテリジェンス",
+    title: "市場＆投資アシスタント（AI Co-Pilot）",
     loading: "市場データを読み込み中...",
     error_banner: "市場データを読み込めませんでした: %error%。最後に取得したデータを表示しています。",
     retry: "再試行",

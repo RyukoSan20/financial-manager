@@ -1318,7 +1318,7 @@ export default {
 
   // market_page
   market_page: {
-    title: "Intelijensi Pasar",
+    title: "Asisten Pasar & Investasi (AI Market Co-Pilot)",
     loading: "Memuat data pasar...",
     error_banner: "Gagal memuat data pasar: %error%. Menampilkan data terakhir yang tersedia.",
     retry: "Coba lagi",

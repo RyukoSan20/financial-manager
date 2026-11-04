@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, Button, Badge, Spinner } from '../components/ui';
 import { 
   TrendingUp, TrendingDown, RefreshCw, BarChart3,
@@ -8,11 +8,14 @@ import {
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
 import { apiUrl } from '../config/url';
+import api from '../services/api';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from '../i18n';
 import { IconText } from '../components/ui/IconText';
 import { buildFlag } from '../utils/featureFlags';
 import { formatChangePercent, filterQuotes, DEFAULT_TABLE_TAB } from '../utils/marketFormat';
+import AiMarketAdvisorChat from '../components/market/AiMarketAdvisorChat';
+import PortfolioProjectionChart from '../components/market/PortfolioProjectionChart';
 
 // Dark Mode Toggle Component
 const ThemeToggle = ({ isDark, onToggle, label }) => (
@@ -74,6 +77,14 @@ export const MarketPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('realtime'); // realtime, table, learn
   const [activeTab, setActiveTab] = useState(DEFAULT_TABLE_TAB); // forex, idx, us, crypto, commodities
+  // The numbers the answer was built on, so that the projection and
+  // the words are about the same thing.
+  const [projectionPoints, setProjectionPoints] = useState([]);
+  // The reader's own investment accounts, and what has gone into
+  // them. The projection is worked out from these rather than from
+  // numbers typed into a box.
+  const [investmentAccounts, setInvestmentAccounts] = useState([]);
+  const [investmentFlow, setInvestmentFlow] = useState([]);
   const tvContainerRef = useRef(null);
 
   // Toggle dark mode - delegates to the global theme controller.
@@ -177,6 +188,44 @@ export const MarketPage = () => {
     tvContainerRef.current.appendChild(script);
   }, [viewMode, selectedSymbol, isDarkMode]);
 
+  // The reader's own money: the investment accounts, and what has
+  // gone into them over the last three months.
+  //
+  // The projection is worked out from these rather than from numbers
+  // typed into a box. A projection of money that is not the reader's
+  // own is a picture of nothing.
+  const fetchInvestments = useCallback(async () => {
+    try {
+      const accounts = await api.accounts.list();
+      const investment = (Array.isArray(accounts) ? accounts : [])
+        .filter((account) => account.account_type === 'investment');
+
+      const now = new Date();
+      const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+      const start = threeMonthsAgo.toISOString().slice(0, 10);
+      const end = now.toISOString().slice(0, 10);
+
+      const rows = await api.transactions.list({ start_date: start, end_date: end });
+      const flow = (Array.isArray(rows) ? rows : []).filter((row) => {
+        if (!row.account_id) return false;
+        return investment.some((account) => account.id === row.account_id);
+      });
+
+      setInvestmentAccounts(investment);
+      setInvestmentFlow(flow);
+    } catch {
+      // The projection is a help. If the accounts cannot be read,
+      // the chart shows a projection of nothing rather than the page
+      // breaking.
+      setInvestmentAccounts([]);
+      setInvestmentFlow([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchInvestments();
+  }, [fetchInvestments]);
+
   // Symbol options for TradingView
   const symbolOptions = [
     { group: t('market_page.group_forex'), symbols: [
@@ -204,6 +253,33 @@ export const MarketPage = () => {
       { symbol: 'BINANCE:ETHUSDT', name: 'ETH' },
     ]},
   ];
+
+  // The symbols the Co-Pilot is asked about: the ones the reader
+  // is looking at on the page. The advice is more useful when it is
+  // about what is on the screen than when it is about everything.
+  const activeSymbols = useMemo(() => {
+    const flat = symbolOptions.flatMap((group) => group.symbols.map((entry) => entry.symbol));
+    if (selectedSymbol) flat.unshift(selectedSymbol);
+    return [...new Set(flat)];
+  }, [selectedSymbol, marketData]);
+
+  // What the portfolio is worth, and what goes into it each month.
+  //
+  // Both come from the reader's own records rather than being typed
+  // in, because a projection of somebody else's money is a picture
+  // of nothing. The starting amount is what is in the investment
+  // accounts now, and the monthly amount is what was put into them
+  // over the last three months.
+  const { projectionStarting, projectionMonthly } = useMemo(() => {
+    const accounts = investmentAccounts || [];
+    const starting = accounts.reduce((sum, account) => sum + (Number(account.balance) || 0), 0);
+
+    const invested = (investmentFlow || []).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+    const months = Math.max(1, (investmentFlow || []).length ? 3 : 1);
+    const monthly = Math.round((invested / months) * 100) / 100;
+
+    return { projectionStarting: starting, projectionMonthly: monthly };
+  }, [investmentAccounts, investmentFlow]);
 
   // Format price
   const formatPrice = (price, currency = 'IDR') => {
@@ -292,6 +368,22 @@ export const MarketPage = () => {
           </button>
         </div>
       )}
+      {/* The Co-Pilot and the projection of a portfolio.
+          They go at the top, because a reader who opens this page
+          is asking a question, and the tables below are the answer's
+          evidence rather than the point of the page. */}
+      <div className="grid gap-4 lg:grid-cols-2 mb-6">
+        <AiMarketAdvisorChat
+          symbols={activeSymbols}
+          onChartPoints={setProjectionPoints}
+        />
+        <PortfolioProjectionChart
+          starting={projectionStarting}
+          monthly={projectionMonthly}
+          chartPoints={projectionPoints}
+        />
+      </div>
+
       {/* Header */}
       <div className={`flex flex-wrap justify-between items-center gap-4 mb-6`}>
         <div>
