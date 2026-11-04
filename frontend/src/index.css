@@ -131,11 +131,18 @@ html {
   transform: scale(0.98);
 }
 
-/* Button press effect */
-button:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
+/*
+ * The button press.
+ *
+ * This was a global rule, so it scaled every button on the page -
+ * including the small ones in a table row, where a scale moves the
+ * whole row sideways and makes the numbers harder to line up.
+ *
+ * The press now belongs to the motion layer, which answers it with a
+ * small scale and only on the button that was pressed. The rule that
+ * is left here is the one that says a disabled button does not move,
+ * because a button that cannot be pressed has nothing to answer.
+ */
 button:disabled {
   transform: none;
 }
@@ -203,11 +210,30 @@ input:focus, select:focus, textarea:focus {
   backdrop-filter: blur(4px);
 }
 
-/* Mobile-first responsive typography */
-@media (max-width: 640px) {
-  html {
-    font-size: 14px;
-  }
+/*
+ * The text size the reader chose.
+ *
+ * `rem` is measured against this, so the scale moves every size that
+ * is written in `rem` - the headings, the body, the labels - while
+ * the pixel sizes that name a fixed control stay fixed.
+ *
+ * There was a rule here that set the root to 14px on a small screen,
+ * and it never ran: the appearance script set the size of the root
+ * element directly, and an inline size beats a stylesheet. So the
+ * rule was dead and the mobile base was never actually smaller.
+ *
+ * The rule is gone rather than restored. Turning it back on would
+ * shrink the text of every reader on a phone who never asked for it,
+ * which is not a fix but a change to somebody else's reading.
+ *
+ * The scale is a multiplier on the reader's own base, and the base is
+ * a percentage, so a reader who has asked the system for larger text
+ * gets their larger text and the setting here makes it larger still.
+ * Writing a size in pixels here would have overridden the browser's
+ * own setting, which is the one thing that must not be overridden.
+ */
+html {
+  font-size: calc(100% * var(--font-scale));
 }
 
 /* Glass morphism effect */
@@ -304,7 +330,10 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s,
+    transform 0.2s;
 }
 
 .topic-card:hover {
@@ -520,7 +549,9 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
   font-weight: 500;
   color: var(--text-muted, #666);
-  transition: all 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 }
 
 .tab-btn:hover {
@@ -1023,6 +1054,21 @@ html[data-theme='dark'] body {
 :root {
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /*
+   * The size of the text, as the reader set it in the settings.
+   *
+   * The setting wrote this number onto the root element for a long
+   * time and nothing read it, so the four choices in the settings
+   * changed nothing at all. The root element now carries it, and the
+   * whole page is measured in `rem`, so one number moves everything
+   * that is measured in `rem` - which is most of it.
+   *
+   * It is a scale, not a size: the reader's own browser setting still
+   * decides the base, and this multiplies it. A reader who has asked
+   * for larger text on the system gets their larger text, and the
+   * setting here makes it larger still.
+   */
   --font-scale: 1;
 
   /* Filled in by applyAppearance(). The defaults keep the app looking

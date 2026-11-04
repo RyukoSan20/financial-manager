@@ -87,6 +87,7 @@ for test_file in \
   src/pages/__tests__/marketPage.test.js \
   src/components/common/__tests__/honestEmptyState.test.js \
   src/components/common/__tests__/emptyStateKeys.test.js \
+  src/styles/__tests__/interfaceFeel.test.js \
   src/components/goals/__tests__/goalPriorityKanban.test.js \
   src/components/health/__tests__/wellnessBento.test.js \
   src/utils/__tests__/eisenhowerPriority.test.js \

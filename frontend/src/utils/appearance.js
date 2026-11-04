@@ -463,8 +463,13 @@ export function applyAppearance(appearance = {}) {
 
   // The scale is a multiplier on the root size, so everything grows
   // together.
+  //
+  // The number is written as a variable and the stylesheet reads it.
+  // It used to be written onto the root element as a size, which beat
+  // the stylesheet - so the stylesheet could not give a phone a
+  // smaller base, and the rule that tried was dead. One place decides
+  // now, and it is the stylesheet.
   root.style.setProperty('--font-scale', String(scale.percent / 100));
-  root.style.fontSize = `${scale.percent}%`;
 
   // The background is drawn by a layer behind the content. It uses the
   // light steps of the scheme, which are already set above.
