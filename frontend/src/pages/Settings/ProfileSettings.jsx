@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { useTranslation } from '../../i18n';
 import { batch2 } from '../../i18n/keys_batch2';
+import { AvatarPicker } from '../../components/settings/AvatarPicker';
 
 const ProfileSettings = () => {
   const { t, language } = useTranslation();
@@ -152,16 +153,17 @@ const ProfileSettings = () => {
                 />
               </div>
 
+              {/* The face, and the typed URL for somebody who wants
+                  their own picture. */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {K.label_avatar}
                 </label>
-                <input
-                  type="url"
+                <AvatarPicker
                   value={profile.avatar_url}
-                  onChange={(e) => setProfile({ ...profile, avatar_url: e.target.value })}
-                  className="w-full p-3 border rounded-lg"
-                  placeholder={t('profile_settings.website')}
+                  onChange={(avatar_url) =>
+                    setProfile({ ...profile, avatar_url })
+                  }
                 />
               </div>
             </div>

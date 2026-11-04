@@ -99,7 +99,7 @@ export const Settings = () => {
           {/* Passport card: who the reader is and how far along they
               are, in one glance. */}
           {passport && (
-            <Card className="p-4">
+            <Card className="p-4 settings-glass">
               <div className="flex items-center gap-3">
                 {passport.avatar_url ? (
                   <img
@@ -159,12 +159,12 @@ export const Settings = () => {
 
           <ReadinessChecklist />
 
-          <Card className="p-2">
+          <Card className="p-2 settings-glass">
             {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors settings-tab ${
                   activeTab === tab.id
                     ? 'bg-primary-50 text-primary-600'
                     : 'text-gray-600 hover:bg-gray-50'

@@ -765,3 +765,75 @@
   gap: 8px;
   font-size: 14px;
 }
+
+
+/* ---------------------------------------------------------------------------
+   The settings surfaces
+
+   The settings page is the one page where the reader is looking at
+   furniture rather than at numbers, so the furniture is allowed to
+   look like furniture: glass, a soft edge, and a hover that shows
+   the surface is there.
+
+   The glass is the same glass as everywhere else, so the settings do
+   not look like they came from a different application.
+   ------------------------------------------------------------------------- */
+
+[data-ui-money="on"] .settings-glass {
+  background-color: var(--money-glass-tint);
+  -webkit-backdrop-filter: blur(var(--money-blur)) saturate(150%);
+  backdrop-filter: blur(var(--money-blur)) saturate(150%);
+  border: 1px solid var(--money-glass-edge);
+  box-shadow:
+    0 1px 0 0 var(--money-sheen) inset,
+    0 8px 24px -14px rgba(15, 23, 42, 0.26);
+  transition:
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+[data-ui-money="on"] .settings-glass:hover {
+  box-shadow:
+    0 1px 0 0 var(--money-sheen) inset,
+    0 14px 34px -16px rgba(15, 23, 42, 0.34);
+}
+
+/* The edge that catches the light, drawn as a hairline along the top
+   of the surface rather than as a shadow on all four sides. */
+[data-ui-money="on"] .settings-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--money-sheen) 35%,
+    var(--money-sheen) 65%,
+    transparent 100%
+  );
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+[data-ui-money="on"] .settings-glass {
+  position: relative;
+  isolation: isolate;
+}
+
+[data-ui-money="on"] .settings-tab {
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+[data-ui-money="on"] .settings-tab:hover {
+  transform: translateX(2px);
+}
+
+.dark[data-ui-money="on"] .settings-glass {
+  box-shadow:
+    0 1px 0 0 var(--money-sheen) inset,
+    0 10px 30px -16px rgba(0, 0, 0, 0.6);
+}
