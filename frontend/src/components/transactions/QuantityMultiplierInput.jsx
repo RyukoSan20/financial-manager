@@ -14,38 +14,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from '../../i18n';
 
-/**
- * The words for this row, in the reader's own language.
- */
-const WORDS = {
-  id: {
-    quantity: 'Jumlah',
-    unitPrice: 'Harga satuan',
-    total: 'Total',
-    remove: 'Hapus rincian',
-    add: 'Tambah rincian',
-    unit: 'buah',
-    rows: 'Rincian',
-  },
-  en: {
-    quantity: 'Quantity',
-    unitPrice: 'Price each',
-    total: 'Total',
-    remove: 'Remove the breakdown',
-    add: 'Add a breakdown',
-    unit: 'pcs',
-    rows: 'Breakdown',
-  },
-  ja: {
-    quantity: '数量',
-    unitPrice: '単価',
-    total: '合計',
-    remove: '内訳を削除',
-    add: '内訳を追加',
-    unit: '個',
-    rows: '内訳',
-  },
-};
 
 /**
  * A row of the breakdown.
@@ -58,8 +26,7 @@ const WORDS = {
  * @param {Function} props.onRemove  Called when the row is taken away
  */
 function BreakdownRow({ name, quantity, unitPrice, onChange, onRemove }) {
-  const { language } = useTranslation();
-  const K = WORDS[language] || WORDS.id;
+  const { t } = useTranslation();
 
   const total = useMemo(() => {
     const count = Number(quantity);
@@ -78,7 +45,7 @@ function BreakdownRow({ name, quantity, unitPrice, onChange, onRemove }) {
     <div className="qm-row" data-testid="qm-row">
       <div className="qm-row-fields">
         <label className="qm-field">
-          <span className="qm-label">{K.quantity}</span>
+          <span className="qm-label">{t('qty.quantity')}</span>
           <input
             type="number"
             min="0"
@@ -86,14 +53,14 @@ function BreakdownRow({ name, quantity, unitPrice, onChange, onRemove }) {
             inputMode="numeric"
             value={quantity ?? ''}
             onChange={(e) => onChange({ quantity: e.target.value })}
-            aria-label={K.quantity}
+            aria-label={t('qty.quantity')}
           />
         </label>
 
         <span className="qm-times" aria-hidden="true">×</span>
 
         <label className="qm-field">
-          <span className="qm-label">{K.unitPrice}</span>
+          <span className="qm-label">{t('qty.unitPrice')}</span>
           <input
             type="number"
             min="0"
@@ -101,7 +68,7 @@ function BreakdownRow({ name, quantity, unitPrice, onChange, onRemove }) {
             inputMode="numeric"
             value={unitPrice ?? ''}
             onChange={(e) => onChange({ unitPrice: e.target.value })}
-            aria-label={K.unitPrice}
+            aria-label={t('qty.unitPrice')}
           />
         </label>
 
@@ -109,15 +76,15 @@ function BreakdownRow({ name, quantity, unitPrice, onChange, onRemove }) {
           type="button"
           className="qm-remove"
           onClick={onRemove}
-          aria-label={K.remove}
-          title={K.remove}
+          aria-label={t('qty.remove')}
+          title={t('qty.remove')}
         >
           ×
         </button>
       </div>
 
       <p className="qm-total">
-        <span className="qm-total-label">{K.total}</span>
+        <span className="qm-total-label">{t('qty.total')}</span>
         <strong>{rupiah.format(total)}</strong>
       </p>
     </div>
@@ -133,8 +100,7 @@ function BreakdownRow({ name, quantity, unitPrice, onChange, onRemove }) {
  * @param {string} props.currency   The currency the total is shown in
  */
 export default function QuantityMultiplierInput({ rows = [], onChange, currency = 'IDR' }) {
-  const { language } = useTranslation();
-  const K = WORDS[language] || WORDS.id;
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(rows);
 
   // The rows the reader typed are the rows that are shown. When the
@@ -183,7 +149,7 @@ export default function QuantityMultiplierInput({ rows = [], onChange, currency 
   return (
     <div className="qm" data-testid="quantity-multiplier">
       {draft.length > 0 && (
-        <p className="qm-heading">{K.rows}</p>
+        <p className="qm-heading">{t('qty.rows')}</p>
       )}
 
       {draft.map((row, index) => (
@@ -199,11 +165,11 @@ export default function QuantityMultiplierInput({ rows = [], onChange, currency 
 
       <div className="qm-actions">
         <button type="button" className="qm-add" onClick={add}>
-          {K.add}
+          {t('qty.add')}
         </button>
         {draft.length > 0 && (
           <p className="qm-grand">
-            <span className="qm-total-label">{K.total}</span>
+            <span className="qm-total-label">{t('qty.total')}</span>
             <strong>{formatter.format(total)}</strong>
           </p>
         )}
