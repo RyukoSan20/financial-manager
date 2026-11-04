@@ -54,10 +54,16 @@ def test_the_generator_exists():
 
 
 def test_every_drawing_is_in_the_manifest(generator):
-    """There is at least one drawing, and each one has a kind."""
+    """
+    There is at least one drawing, and each one has a kind.
+
+    The kinds are what the generator writes them for: a mascot, an
+    empty state, a brand drawing (the logo and the avatars), and a
+    pin (the shapes that stand for a place on the map).
+    """
     assert generator.ASSETS, "the manifest is empty"
     for name, (kind, maker) in generator.ASSETS.items():
-        assert kind in {"mascot", "empty"}, f"{name} has an unknown kind: {kind}"
+        assert kind in {"mascot", "empty", "brand", "pin"}, f"{name} has an unknown kind: {kind}"
         assert callable(maker), f"{name} has no maker"
 
 

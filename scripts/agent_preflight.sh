@@ -89,6 +89,7 @@ for test_file in \
   src/components/ui/__tests__/confirmDialog.test.js \
   src/components/split/__tests__/splitMath.test.js \
   src/components/split/__tests__/splitAssignmentMath.test.js \
+  src/components/map/__tests__/mapPins.test.js \
   src/components/split/__tests__/smartSplit.test.js \
   src/components/split/__tests__/splitFlags.test.js \
   src/components/split/__tests__/qr.test.js \

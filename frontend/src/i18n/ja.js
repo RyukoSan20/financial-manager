@@ -1,5 +1,15 @@
 // Japanese translations
 export default {
+  qty: {
+    quantity: "数量",
+    unitPrice: "単価",
+    total: "合計",
+    remove: "内訳を削除",
+    add: "内訳を追加",
+    unit: "個",
+    rows: "内訳",
+  },
+
   // App
   app_name: "ファイナンスマネージャー",
   
@@ -624,6 +634,13 @@ export default {
     loading: "読み込み中...",
     username: "ユーザー名",
     website: "https://...",
+    choose_avatar: "顔を選ぶ",
+    upload_avatar: "写真をアップロード",
+    avatar_green: "緑の顔",
+    avatar_warm: "暖かい顔",
+    avatar_cool: "冷たい顔",
+    avatar_bright: "明るい顔",
+    label_avatar: "プロフィール写真URL",
     email_locked: "メールアドレスは変更できません。必要な場合はサポートにお問い合わせください。",
   },
 
@@ -748,6 +765,18 @@ export default {
     address: "住所",
     data_source: "データソース",
     source_category_jakarta: "📊 カテゴリ（ジャカルタ地域）",
+    source_merchant: "店舗",
+    pin_legend: "ピンの形 = 店の種類",
+    pin_minimarket: "ミニマーケット",
+    pin_supermarket: "スーパーマーケット",
+    pin_restaurant: "レストラン",
+    pin_fresh_produce: "青果",
+    precision_label: "場所の精度",
+    precision_street: "住所まで特定",
+    precision_brand: "ブランド推定（住所なし）",
+    precision_hint: "推定ピンは市區を示し、店そのものは示しません。",
+    exact_count: "正確に特定した場所 %s 件",
+    map_place_unresolved: "場所が見つかりません",
     all_locations: "📋 すべての場所 (%s)",
     no_match: "フィルターに一致する場所がありません",
     showing_50: "50 / %s 件を表示",
@@ -892,6 +921,25 @@ export default {
     target_amount: "目標金額",
     current_amount: "現在の金額",
     default_name: "目標",
+    priority_board_title: "優先度ボード",
+    priority_board_hint: "目標を正しいボックスにドラッグすると優先度が変わります。",
+    priority_board_empty: "このボックスにはまだ目標がありません。",
+    quadrant_important_urgent: "重要 & 緊急",
+    quadrant_not_important_urgent: "重要でない & 緊急",
+    quadrant_important_not_urgent: "重要 & 緊急でない",
+    quadrant_not_important_not_urgent: "重要でない & 緊急でない",
+    quadrant_count: "%s 件の目標",
+    ai_cost_title: "AI 費用の内訳",
+    ai_cost_hint: "AI が作成した内訳は編集できます。編集すると合計が更新されます。",
+    ai_cost_empty: "まだ費用の内訳はありません。",
+    ai_cost_estimate_note: "この内訳は AI の推測です。金額は変更できます。",
+    ai_cost_add_row: "行を追加",
+    ai_cost_remove_row: "行を削除",
+    ai_cost_description: "説明",
+    ai_cost_price: "価格",
+    ai_cost_total: "合計",
+    ai_cost_description_placeholder: "例：送料",
+    ai_cost_price_placeholder: "0",
   },
   budgets: {
     delete_error: "予算の削除に失敗しました: %s",
@@ -1441,6 +1489,14 @@ export default {
     ratio_emergency_fund_desc: "{months}か月の生活費",
     ratio_debt_to_asset: "負債純資産比率",
     ratio_debt_to_asset_desc: "負債は総資産の{percentage}%です",
+    // The mark on a pill of a ratio.
+    status_excellent: "とても良い",
+    status_good: "良い",
+    status_warning: "要確認",
+    status_danger: "要改善",
+    // What the companion says about the score.
+    mascot_good: "スコアは良好です。この調子で維持しましょう。",
+    mascot_worried: "スコアはまず改善が必要です。一緒に直しましょう。",
   },
 
   // catalog_page
@@ -1504,6 +1560,32 @@ export default {
     column_bought: "購入済み",
     column_bought_hint: "支払い済み、支出として記録済み",
     purchase_failed: "購入を記録できませんでした。接続を確認して再試行してください。",
+  },
+
+  // The catalogue of things to look at.
+  shopping_catalog: {
+    title: "商品カタログ",
+    subtitle: "商品を見て、気に入ったものをインカランに保存します。",
+    placeholder: "例：Asus ROG Pro",
+    searching: "商品を検索中...",
+    search_failed: "商品を検索できませんでした。",
+    shop: "店舗",
+    open: "開く",
+    save_to_wishlist: "インカランに保存",
+    saved_to_wishlist: "商品をインカランに保存しました。",
+    save_failed: "インカランに保存できませんでした。",
+    // Where the price came from. A price from the reader's own
+    // catalogue is not a price in a shop, and the card says so.
+    live_source: "この価格は店舗からの価格です。",
+    local_source: "この価格は自分のカタログからのもので、店舗の価格ではありません。",
+    own_shop_source: "この価格は自分の店舗の価格です。",
+    price_reference: "あなたの参考価格",
+    price_own_shop: "自分の店舗価格",
+    unit: "{unit}単位",
+    // The shops of the reader.
+    partner_title: "自分の店の商品",
+    partner_loading: "店舗を読み込み中...",
+    partner_error: "店舗を読み込めませんでした。",
   },
   passport: {
     count: {

@@ -17,5 +17,4 @@
         fill="none" stroke-linecap="round" stroke-linejoin="round"/>
   <circle cx="92" cy="42" r="7" fill="#ffffff"/>
   <path d="M92 35 C88 26 92 22 96 22 C98 30 96 34 92 35 Z" fill="#f59e0b"/>
-  <path d="M20 108 H108" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.18"/>
-</g></svg>
+  <path d="M20 108 H108" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.18"/></svg>

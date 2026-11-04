@@ -303,8 +303,7 @@ def brand_logo():
         fill="none" stroke-linecap="round" stroke-linejoin="round"/>
   <circle cx="92" cy="42" r="7" fill="{c['paper']}"/>
   <path d="M92 35 C88 26 92 22 96 22 C98 30 96 34 92 35 Z" fill="{c['sun']}"/>
-  <path d="M20 108 H108" stroke="{c['paper']}" stroke-width="2" stroke-linecap="round" opacity="0.18"/>
-</g>"""
+  <path d="M20 108 H108" stroke="{c['paper']}" stroke-width="2" stroke-linecap="round" opacity="0.18"/>"""
     return svg(128, 128, body, "Financial Manager")
 
 
@@ -329,8 +328,7 @@ def _avatar(fill_top, fill_bottom, figure):
   <circle cx="58" cy="49" r="2.6" fill="{c['paper']}"/>
   <circle cx="70" cy="49" r="2.6" fill="{c['paper']}"/>
   <path d="M58 58 Q64 63 70 58" stroke="{c['paper']}" stroke-width="2.4"
-        fill="none" stroke-linecap="round"/>
-</g>"""
+        fill="none" stroke-linecap="round"/>"""
     return svg(128, 128, body, "Your profile")
 
 

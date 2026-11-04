@@ -13,5 +13,4 @@
   <circle cx="58" cy="49" r="2.6" fill="#ffffff"/>
   <circle cx="70" cy="49" r="2.6" fill="#ffffff"/>
   <path d="M58 58 Q64 63 70 58" stroke="#ffffff" stroke-width="2.4"
-        fill="none" stroke-linecap="round"/>
-</g></svg>
+        fill="none" stroke-linecap="round"/></svg>

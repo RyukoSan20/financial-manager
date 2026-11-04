@@ -1,5 +1,15 @@
 // Indonesian translations
 export default {
+  qty: {
+    quantity: "Jumlah",
+    unitPrice: "Harga satuan",
+    total: "Total",
+    remove: "Hapus rincian",
+    add: "Tambah rincian",
+    unit: "buah",
+    rows: "Rincian",
+  },
+
   // App
   app_name: "Financial Manager",
   
@@ -624,6 +634,13 @@ export default {
     loading: "Memuat...",
     username: "username",
     website: "https://...",
+    choose_avatar: "Pilih wajah",
+    upload_avatar: "Unggah foto",
+    avatar_green: "Wajah hijau",
+    avatar_warm: "Wajah hangat",
+    avatar_cool: "Wajah dingin",
+    avatar_bright: "Wajah cerah",
+    label_avatar: "URL Foto Profil",
     email_locked: "Email tidak dapat diubah. Hubungi support jika perlu.",
   },
 
@@ -748,6 +765,18 @@ export default {
     address: "Address",
     data_source: "Data Source",
     source_category_jakarta: "📊 Category (Jakarta Area)",
+    source_merchant: "Toko",
+    pin_legend: "Bentuk pin = jenis tempat",
+    pin_minimarket: "Minimarket",
+    pin_supermarket: "Supermarket",
+    pin_restaurant: "Restoran",
+    pin_fresh_produce: "Buah & Sayur",
+    precision_label: "Ketepatan lokasi",
+    precision_street: "Alamat lengkap",
+    precision_brand: "Perkiraan brand (tanpa alamat)",
+    precision_hint: "Pin perkiraan hanya menunjukkan kota, bukan titik toko.",
+    exact_count: "%s lokasi persis",
+    map_place_unresolved: "Lokasi tidak ditemukan",
     all_locations: "📋 Semua Lokasi (%s)",
     no_match: "Tidak ada lokasi yang cocok dengan filter",
     showing_50: "Menampilkan 50 dari %s lokasi",
@@ -892,6 +921,25 @@ export default {
     target_amount: "Jumlah Target",
     current_amount: "Jumlah Saat Ini",
     default_name: "Target",
+    priority_board_title: "Papan Prioritas",
+    priority_board_hint: "Seret target ke kotak yang tepat untuk mengubah prioritasnya.",
+    priority_board_empty: "Belum ada target di kotak ini.",
+    quadrant_important_urgent: "Penting & Mendesak",
+    quadrant_not_important_urgent: "Tidak Penting & Mendesak",
+    quadrant_important_not_urgent: "Penting & Tidak Mendesak",
+    quadrant_not_important_not_urgent: "Tidak Penting & Tidak Mendesak",
+    quadrant_count: "%s target",
+    ai_cost_title: "Rincian Biaya AI",
+    ai_cost_hint: "Rincian yang dibuat AI bisa diubah. Jumlahkan ulang berjalan saat Anda mengedit.",
+    ai_cost_empty: "Belum ada rincian biaya.",
+    ai_cost_estimate_note: "Rincian ini adalah perkiraan AI. Nominalnya bisa Anda ubah.",
+    ai_cost_add_row: "Tambah Baris",
+    ai_cost_remove_row: "Hapus Baris",
+    ai_cost_description: "Keterangan",
+    ai_cost_price: "Harga",
+    ai_cost_total: "Total",
+    ai_cost_description_placeholder: "mis., Ongkir",
+    ai_cost_price_placeholder: "0",
   },
   budgets: {
     delete_error: "Gagal menghapus budget: %s",
@@ -1441,6 +1489,14 @@ export default {
     ratio_emergency_fund_desc: "{months} bulan cadangan hidup",
     ratio_debt_to_asset: "Rasio Utang terhadap Aset",
     ratio_debt_to_asset_desc: "Utang {percentage}% dari total aset",
+    // The mark on a pill of a ratio.
+    status_excellent: "Sangat baik",
+    status_good: "Baik",
+    status_warning: "Perlu perhatian",
+    status_danger: "Perlu diperbaiki",
+    // What the companion says about the score.
+    mascot_good: "Skor Anda bagus. Terus dijaga ya!",
+    mascot_worried: "Skor Anda perlu dibenahi. Mari kita perbaiki.",
   },
 
   // catalog_page
@@ -1504,6 +1560,32 @@ export default {
     column_bought: "Sudah Dibeli",
     column_bought_hint: "Sudah dibayar dan dicatat sebagai pengeluaran",
     purchase_failed: "Pembelian gagal dicatat. Periksa koneksi lalu coba lagi.",
+  },
+
+  // The catalogue of things to look at.
+  shopping_catalog: {
+    title: "Katalog Produk",
+    subtitle: "Lihat barangnya dulu, lalu simpan yang Anda suka ke Incaran.",
+    placeholder: "Contoh: Asus ROG Pro",
+    searching: "Mencari barang...",
+    search_failed: "Gagal mencari barang.",
+    shop: "Toko",
+    open: "Buka",
+    save_to_wishlist: "Simpan ke Incaran",
+    saved_to_wishlist: "Barang disimpan ke Incaran.",
+    save_failed: "Gagal menyimpan ke Incaran.",
+    // Where the price came from. A price from the reader's own
+    // catalogue is not a price in a shop, and the card says so.
+    live_source: "Harga ini dari toko, jadi harganya harga di toko.",
+    local_source: "Harga ini dari katalog Anda sendiri, bukan harga di toko.",
+    own_shop_source: "Harga ini dari toko Anda sendiri.",
+    price_reference: "Harga acuan Anda",
+    price_own_shop: "Harga toko Anda",
+    unit: "per {unit}",
+    // The shops of the reader.
+    partner_title: "Barang dari toko Anda",
+    partner_loading: "Memuat toko Anda...",
+    partner_error: "Gagal memuat toko Anda.",
   },
   passport: {
     count: {

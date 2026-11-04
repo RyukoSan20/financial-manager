@@ -8,6 +8,8 @@ import { formatCurrency } from "../utils/format";
 import { useTranslation } from "../i18n";
 import { IconText } from "../components/ui/IconText";
 import { buildFlag } from "../utils/featureFlags";
+import { placeIcon, PinSwatch, useMaxSpent } from "../components/map/MapPlacePin";
+import { PIN_KINDS } from "../utils/mapPins";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -293,35 +295,12 @@ const MerchantMap = () => {
                   eventHandlers={{
                     click: () => handleMarkerClick(marker),
                   }}
-                  icon={L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `
-                      <div style="
-                        width: ${size}px;
-                        height: ${size}px;
-                        background: ${color};
-                        border: ${isSelected ? '3px solid #1e40af' : '2px solid white'};
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        box-shadow: 0 2px 8px rgba(0,0,0,${isSelected ? '0.5' : '0.3'});
-                        cursor: pointer;
-                        transition: all 0.2s;
-                        transform: ${isSelected ? 'scale(1.2)' : 'scale(1)'};
-                      ">
-                        <span style="
-                          color: white;
-                          font-size: ${Math.max(10, size / 3)}px;
-                          font-weight: bold;
-                          text-shadow: 0 0 2px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.9);
-                        ">" 
-                          ${marker.source === 'category' ? '📍' : '💰'}
-                        </span>
-                      </div>
-                    `,
-                    iconSize: [size, size],
-                    iconAnchor: [size / 2, size / 2],
+                  icon={placeIcon({
+                    kind: marker.kind,
+                    pin: marker.pin,
+                    totalSpent: marker.total_spent,
+                    maxSpent,
+                    selected: isSelected,
                   })}
                 >
                   <Popup>
@@ -351,12 +330,20 @@ const MerchantMap = () => {
                               ? 'bg-green-100 text-green-700'
                               : 'bg-blue-100 text-blue-700'
                           }`}>
-                            {marker.source === 'gps' ? t("merchant_map.source_gps") : marker.source === 'gps_tx' ? t("merchant_map.source_gps_tx") : t("merchant_map.source_category")}
+                            {marker.source === 'gps' ? t("merchant_map.source_gps") : marker.source === 'gps_tx' ? t("merchant_map.source_gps_tx") : t("merchant_map.source_merchant")}
                           </span>
                         </div>
                         {marker.address && (
                           <p className="text-xs text-gray-400 mt-2 border-t pt-2">
                             📍 {marker.address}
+                          </p>
+                        )}
+                        {/* A pin that stands for a whole brand says so.
+                            The reader is not left thinking the shop
+                            itself is where the dot is. */}
+                        {marker.precision && !marker.is_exact && (
+                          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                            ⚠️ {t("merchant_map.precision_brand")}
                           </p>
                         )}
                       </div>
@@ -423,6 +410,20 @@ const MerchantMap = () => {
                 <span>{t("merchant_map.gps_transaction")}</span>
               </div>
             </div>
+            {/* The shape of the pin says what kind of place it is.
+                The colour of the ground under it says what the money
+                was spent on. Two layers, two different facts. */}
+            <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <p className="font-semibold mb-1.5">{t("merchant_map.pin_legend")}</p>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                {PIN_KINDS.map((kind) => (
+                  <div key={kind} className="flex items-center gap-1.5">
+                    <PinSwatch kind={kind} size={18} />
+                    <span className="text-[10px]">{t(`merchant_map.pin_${kind}`)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
             <p className="text-[10px] text-gray-400 mt-2">{t("merchant_map.size_legend")}</p>
           </div>
 
@@ -476,7 +477,7 @@ const MerchantMap = () => {
               <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                 selectedLocation.source === 'category' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
               }`}>
-                {selectedLocation.source === 'category' ? t("merchant_map.source_category_jakarta") : t("merchant_map.gps_real_location")}
+                {selectedLocation.source === 'merchant' ? t("merchant_map.source_merchant") : t("merchant_map.gps_real_location")}
               </span>
             </div>
           </div>

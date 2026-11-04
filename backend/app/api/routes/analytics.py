@@ -11,6 +11,7 @@ from collections import defaultdict
 from app.services.currency_totals import total_in_currency
 from app.services.metrics import transaction_count as metrics_transaction_count
 from app.services.transaction_filter import counted_transactions_filter
+from app.services.place_resolution_service import kind_for, kind_of, pin_for, resolve_place
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.transaction import Transaction
@@ -1216,9 +1217,11 @@ def get_merchant_map_data(
             tx_sp = db.query(func.sum(Transaction.amount)).filter(
                 Transaction.id == row.transaction_id
             ).scalar() or 0
+            place_name = row.nearest_store_name or row.captured_address or "Lokasi GPS"
+            kind = kind_of(place_name, row.captured_address or "")
             all_locations.append({
                 "id": f"gps_{row.id}",
-                "name": row.nearest_store_name or row.captured_address or "Lokasi GPS",
+                "name": place_name,
                 "latitude": float(row.captured_latitude),
                 "longitude": float(row.captured_longitude),
                 "address": row.captured_address or "",
@@ -1227,6 +1230,13 @@ def get_merchant_map_data(
                 "avg_transaction": float(tx_sp),
                 "source": "gps",
                 "category": "GPS",
+                # The kind of place it is, which decides the shape of
+                # the pin. A place found by GPS is a place, so the
+                # address is exact.
+                "kind": kind,
+                "pin": pin_for(kind),
+                "precision": "street",
+                "is_exact": True,
             })
 
     # Strategy 2: Transactions with stored lat/lng
@@ -1253,6 +1263,7 @@ def get_merchant_map_data(
         lat_f = float(row.latitude)
         lng_f = float(row.longitude)
         name = row.merchant_address or row.description or f"Lokasi ({lat_f:.4f}, {lng_f:.4f})"
+        kind = kind_of(name, row.merchant_address or "")
         all_locations.append({
             "id": f"gps_tx_{lat_f}_{lng_f}",
             "name": name,
@@ -1264,53 +1275,92 @@ def get_merchant_map_data(
             "avg_transaction": float(row.avg_spent or 0),
             "source": "gps_tx",
             "category": "GPS Transaction",
+            "kind": kind,
+            "pin": pin_for(kind),
+            "precision": "street",
+            "is_exact": True,
         })
 
-    # Strategy 3: Category-based (Jakarta area clusters)
-    cat_q = db.query(
+    # Strategy 3: The merchants that have a name but no coordinates.
+    #
+    # This used to be a cluster of the spending categories, and every
+    # one of them was put in the middle of Jakarta and given the
+    # address "Area Jakarta". That told the reader nothing they did
+    # not already know, and it put every shop in the city in the same
+    # place.
+    #
+    # Now the merchant is looked up properly: the name of the shop
+    # and the street it is on, together. The pin that is drawn is
+    # the one for the kind of place it is - a minimarket is not a
+    # supermarket - and the answer says how exact it is, so that a
+    # pin standing for a whole brand is not passed off as a shop.
+    merchant_q = db.query(
+        Transaction.merchant_name.label("merchant_name"),
+        Transaction.merchant_address.label("merchant_address"),
         Category.name.label("cat_name"),
-        Category.icon.label("cat_icon"),
         func.count(Transaction.id).label("visit_count"),
         func.sum(Transaction.amount).label("total_spent"),
         func.avg(Transaction.amount).label("avg_spent"),
-    ).join(
+    ).outerjoin(
         Category, Category.id == Transaction.category_id
-    ).filter(Transaction.type == "expense")
+    ).filter(
+        Transaction.type == "expense",
+        Transaction.merchant_name.isnot(None),
+        Transaction.merchant_name != "",
+    )
     if user_id:
-        cat_q = cat_q.filter(Transaction.user_id == user_id)
-    cat_q = cat_q.group_by(Category.name, Category.icon)
+        merchant_q = merchant_q.filter(Transaction.user_id == user_id)
+    merchant_q = merchant_q.group_by(
+        Transaction.merchant_name, Transaction.merchant_address, Category.name
+    )
 
-    CATEGORY_CLUSTERS = {
-        "Makanan & Minuman": (-6.1751, 106.8650, "🍔"),
-        "Transportasi": (-6.1580, 106.8450, "🚗"),
-        "Belanja": (-6.1951, 106.8450, "🛒"),
-        "Hiburan": (-6.1700, 106.8200, "🎬"),
-        "Kesehatan": (-6.2000, 106.8800, "💊"),
-        "Fashion": (-6.1850, 106.8350, "👕"),
-        "Tagihan & Utilitas": (-6.1650, 106.8900, "💡"),
-        "Pendidikan": (-6.1880, 106.8550, "📚"),
-        "Investasi & Tabungan": (-6.1751, 106.8750, "💰"),
-        "Investasi": (-6.1751, 106.8750, "💰"),
-        "Lainnya (Expense)": (-6.2000, 106.8000, "📍"),
-        "Lainnya (Income)": (-6.2000, 106.8000, "📍"),
-    }
+    # A shop is usually visited for one thing. The category the money
+    # mostly went on is the one that colours the ground under the
+    # pin, so that the reader can tell a supermarket they shopped at
+    # for food from one they shopped at for household things.
+    # Merchants are grouped by the shop, and the biggest row wins.
+    merchant_rows = {}
+    for row in merchant_q.all():
+        key = (str(row.merchant_name or "").strip(), str(row.merchant_address or "").strip())
+        existing = merchant_rows.get(key)
+        if existing is None or float(row.total_spent or 0) > float(existing.total_spent or 0):
+            merchant_rows[key] = row
 
-    for row in cat_q.all():
-        name_key = str(row.cat_name)
-        default_lat = -6.2 + (hash(name_key) % 100) / 500
-        default_lng = 106.8 + (hash(name_key) % 100) / 500
-        lat, lng, icon = CATEGORY_CLUSTERS.get(name_key, (default_lat, default_lng, "📍"))
+    for (merchant_name, merchant_address), row in merchant_rows.items():
+        spending_category = row.cat_name or "Lainnya"
+
+        place = None
+        try:
+            place = resolve_place(merchant_name, merchant_address or None)
+        except Exception:  # noqa: BLE001 - the map must not break
+            place = None
+
+        if place is None:
+            # The shop could not be found. It is left off the map
+            # rather than put in the middle of the city, because a
+            # pin in the wrong place is worse than no pin.
+            continue
+
         all_locations.append({
-            "id": f"cat_{name_key}",
-            "name": f"{icon} {name_key}",
-            "latitude": lat,
-            "longitude": lng,
-            "address": f"Area Jakarta — {name_key}",
+            "id": f"merchant_{merchant_name}_{merchant_address}".replace(" ", "_"),
+            "name": place.name or merchant_name,
+            "latitude": place.latitude,
+            "longitude": place.longitude,
+            "address": place.address or merchant_address,
             "visit_count": row.visit_count,
             "total_spent": float(row.total_spent or 0),
             "avg_transaction": float(row.avg_spent or 0),
-            "source": "category",
-            "category": name_key,
+            "source": "merchant",
+            # The category the money mostly went on, which colours the
+            # ground under the pin.
+            "category": spending_category,
+            # The kind of place it is, which decides the shape of the
+            # pin, and how exact the place is, which decides what the
+            # popup is allowed to say about the address.
+            "kind": kind_for(merchant_name, merchant_address, spending_category),
+            "pin": pin_for(kind_for(merchant_name, merchant_address, spending_category)),
+            "precision": place.precision,
+            "is_exact": place.is_exact,
         })
 
     # Deduplicate by id
@@ -1329,8 +1379,12 @@ def get_merchant_map_data(
         "sources": {
             "gps": sum(1 for m in unique if m["source"] == "gps"),
             "gps_tx": sum(1 for m in unique if m["source"] == "gps_tx"),
-            "category": sum(1 for m in unique if m["source"] == "category"),
+            "merchant": sum(1 for m in unique if m["source"] == "merchant"),
         },
+        # How many of the pins stand for a whole brand rather than a
+        # single shop. The reader is told, because a pin in the
+        # middle of the city has to be understood as what it is.
+        "exact_locations": sum(1 for m in unique if m.get("is_exact")),
     }
 
 

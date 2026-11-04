@@ -1,5 +1,15 @@
 // English translations
 export default {
+  qty: {
+    quantity: "Quantity",
+    unitPrice: "Price each",
+    total: "Total",
+    remove: "Remove the breakdown",
+    add: "Add a breakdown",
+    unit: "pcs",
+    rows: "Breakdown",
+  },
+
   // App
   app_name: "Financial Manager",
   
@@ -624,6 +634,13 @@ export default {
     loading: "Loading...",
     username: "username",
     website: "https://...",
+    choose_avatar: "Choose a face",
+    upload_avatar: "Upload a photo",
+    avatar_green: "Green face",
+    avatar_warm: "Warm face",
+    avatar_cool: "Cool face",
+    avatar_bright: "Bright face",
+    label_avatar: "Profile Photo URL",
     email_locked: "The email cannot be changed. Contact support if you need it.",
   },
 
@@ -748,6 +765,18 @@ export default {
     address: "Address",
     data_source: "Data Source",
     source_category_jakarta: "📊 Category (Jakarta Area)",
+    source_merchant: "Store",
+    pin_legend: "Pin shape = kind of place",
+    pin_minimarket: "Minimarket",
+    pin_supermarket: "Supermarket",
+    pin_restaurant: "Restaurant",
+    pin_fresh_produce: "Produce",
+    precision_label: "Location precision",
+    precision_street: "Exact street address",
+    precision_brand: "Brand estimate (no street found)",
+    precision_hint: "An estimated pin shows the city, not the shop door.",
+    exact_count: "%s exact locations",
+    map_place_unresolved: "Location not found",
     all_locations: "📋 All Locations (%s)",
     no_match: "No locations match the filter",
     showing_50: "Showing 50 of %s locations",
@@ -892,6 +921,25 @@ export default {
     target_amount: "Target Amount",
     current_amount: "Current Amount",
     default_name: "Goal",
+    priority_board_title: "Priority Board",
+    priority_board_hint: "Drag a goal into the right box to change its priority.",
+    priority_board_empty: "No goals in this box yet.",
+    quadrant_important_urgent: "Important & Urgent",
+    quadrant_not_important_urgent: "Not Important & Urgent",
+    quadrant_important_not_urgent: "Important & Not Urgent",
+    quadrant_not_important_not_urgent: "Not Important & Not Urgent",
+    quadrant_count: "%s goals",
+    ai_cost_title: "AI Cost Breakdown",
+    ai_cost_hint: "The breakdown made by the AI can be edited. The running total updates as you edit.",
+    ai_cost_empty: "No cost breakdown yet.",
+    ai_cost_estimate_note: "This breakdown is an AI estimate. You can change the amounts.",
+    ai_cost_add_row: "Add Row",
+    ai_cost_remove_row: "Remove Row",
+    ai_cost_description: "Description",
+    ai_cost_price: "Price",
+    ai_cost_total: "Total",
+    ai_cost_description_placeholder: "e.g., Shipping",
+    ai_cost_price_placeholder: "0",
   },
   budgets: {
     delete_error: "Failed to delete budget: %s",
@@ -1441,6 +1489,14 @@ export default {
     ratio_emergency_fund_desc: "{months} months of living expenses",
     ratio_debt_to_asset: "Debt to Asset Ratio",
     ratio_debt_to_asset_desc: "Debt is {percentage}% of your total assets",
+    // The mark on a pill of a ratio.
+    status_excellent: "Excellent",
+    status_good: "Good",
+    status_warning: "Needs attention",
+    status_danger: "Needs work",
+    // What the companion says about the score.
+    mascot_good: "Your score is good. Keep it up!",
+    mascot_worried: "Your score needs work first. Let us fix it.",
   },
 
   // catalog_page
@@ -1504,6 +1560,32 @@ export default {
     column_bought: "Bought",
     column_bought_hint: "Paid for, and written down as an expense",
     purchase_failed: "The purchase could not be recorded. Check the connection and try again.",
+  },
+
+  // The catalogue of things to look at.
+  shopping_catalog: {
+    title: "Product Catalogue",
+    subtitle: "Look at the things first, then save the ones you like to the Wishlist.",
+    placeholder: "For example: Asus ROG Pro",
+    searching: "Looking for things...",
+    search_failed: "Could not look for things.",
+    shop: "Shop",
+    open: "Open",
+    save_to_wishlist: "Save to Wishlist",
+    saved_to_wishlist: "The thing was saved to the Wishlist.",
+    save_failed: "Could not save to the Wishlist.",
+    // Where the price came from. A price from the reader's own
+    // catalogue is not a price in a shop, and the card says so.
+    live_source: "This price is from a shop, so it is a price in that shop.",
+    local_source: "This price is from your own catalogue, not a price in a shop.",
+    own_shop_source: "This price is from your own shop.",
+    price_reference: "Your reference price",
+    price_own_shop: "Your own shop price",
+    unit: "per {unit}",
+    // The shops of the reader.
+    partner_title: "Things from your own shops",
+    partner_loading: "Loading your shops...",
+    partner_error: "Your shops could not be loaded.",
   },
   passport: {
     count: {

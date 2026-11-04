@@ -560,3 +560,53 @@
   font-size: 0.75rem;
   color: var(--text-muted, #64748b);
 }
+
+/* --- the pins on the map ------------------------------------------------ */
+
+/* A marker is two layers: the spending under it, and the shape of
+   the place on top of it. Leaflet gives one element to a marker, so
+   the two are drawn as children of it. */
+.map-pin {
+  background: none;
+  border: none;
+}
+
+.map-pin__ground {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  display: block;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.map-pin__shape {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  display: block;
+  transition: transform 0.2s ease;
+  pointer-events: none;
+}
+
+/* The pin grows a little when it is picked, so that the reader can
+   see which one they are looking at. */
+.leaflet-marker-icon:has(.map-pin__shape) {
+  transition: transform 0.2s ease;
+}
+
+.leaflet-marker-icon:hover .map-pin__shape {
+  transform: translate(-50%, -100%) scale(1.08);
+}
+
+.leaflet-marker-icon:hover .map-pin__ground {
+  opacity: 0.4;
+}
+
+/* The shape of a pin is drawn at 34px wide; the legend draws it
+   smaller, and it must not be squashed by the row it sits in. */
+.map-pin__swatch {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
