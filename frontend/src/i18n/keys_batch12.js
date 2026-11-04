@@ -172,7 +172,7 @@ const batch12 = {
       title: "Asisten Pasar & Investasi",
       subtitle: "Tanyakan apa saja tentang saham, kripto, dan cara ikut menabung",
       empty: "Tanya sesuatu tentang pasar, dan jawabannya akan muncul di sini.",
-      placeholder: "Contoh:zviling bitcoin untuk jangka menengah?",
+      placeholder: "Contoh: apakah bitcoin layak untuk jangka menengah?",
       send: "Kirim",
       thinking: "Sedang berpikir...",
       askFailed: "Pertanyaanmu belum bisa dijawab. Coba lagi.",
