@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, Spinner, Badge } from '../components/ui';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing, Mic } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing, Mic, ReceiptText } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { TextParserModal } from '../components/parser/TextParserModal';
@@ -11,6 +11,7 @@ import { notifyTransactionAdded, notifyTransactionDeleted, notifyTransactionUpda
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
+import ItemizedReceiptEditorModal from '../components/transactions/ItemizedReceiptEditorModal';
 import { categoryName } from '../utils/categoryName';
 import { useTranslation } from '../i18n';
 import { batch1, fill } from '../i18n/keys_batch1';
@@ -55,6 +56,9 @@ export const Transactions = () => {
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [prefillQRText, setPreFillQRText] = useState('');
   const [expandedTxId, setExpandedTxId] = useState(null);
+  // The receipt being edited, if any. The editor is a window over the
+  // page, so only one is ever open.
+  const [editingReceipt, setEditingReceipt] = useState(null);
   // The card of the transaction that was just scanned. It is scrolled
   // into view, so the reader lands on the transaction rather than
   // having to look for it.
@@ -545,6 +549,14 @@ export const Transactions = () => {
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
+                            {/* Editing the lines of the receipt itself. */}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setEditingReceipt(tx); }}
+                              className="p-2 text-gray-400 hover:text-purple-500 hover:bg-purple-50 rounded-lg"
+                              title={K.editReceipt}
+                            >
+                              <ReceiptText className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDelete(tx.id); }}
                               className="p-2 text-gray-400 hover:text-danger-500 hover:bg-red-50 rounded-lg"
@@ -673,6 +685,18 @@ export const Transactions = () => {
         isOpen={showVoiceModal}
         onClose={() => setShowVoiceModal(false)}
         onSave={handleVoiceSave}
+      />
+      {/* The itemised receipt of one transaction, edited line by line. */}
+      <ItemizedReceiptEditorModal
+        isOpen={!!editingReceipt}
+        transactionId={editingReceipt?.id}
+        transactionAmount={editingReceipt?.amount}
+        categories={categories}
+        onClose={() => setEditingReceipt(null)}
+        onSaved={() => {
+          setEditingReceipt(null);
+          fetchData();
+        }}
       />
     </div>
   );

@@ -23,7 +23,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
 from app.core.security import get_current_user
-from app.api.routes import split_bills, split_guest
+from app.api.routes import receipt_items, split_bills, split_guest
 
 # The tables the shared bill needs, and the ones they point at.
 SPLIT_TABLES = (
@@ -41,6 +41,21 @@ SPLIT_TABLES = (
     "split_calculated_shares",
     "split_settlements",
     "split_payment_methods",
+)
+
+
+# The tables the itemised receipt needs.
+#
+# A receipt is a list of lines that belong to a scan, and a scan
+# belongs to a transaction, so the receipt needs the transactions and
+# the scans as well as its own two tables.
+RECEIPT_TABLES = (
+    "users",
+    "accounts",
+    "categories",
+    "transactions",
+    "receipt_scans",
+    "receipt_items",
 )
 
 
@@ -106,6 +121,65 @@ def split_client():
     app = FastAPI()
     app.include_router(split_bills.router, prefix="/api/split")
     app.include_router(split_guest.router, prefix="/api/split")
+
+    def _db():
+        db = Session()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_current_user] = lambda: TheReader()
+
+    with TestClient(app) as test_client:
+        test_client.db = Session
+        yield test_client
+
+
+@pytest.fixture()
+def receipt_client():
+    """
+    The application, with a small database behind it, and the receipt
+    routes on it.
+
+    The receipt is a thing of its own: it is read through its own
+    routes rather than through the transaction routes, so it gets its
+    own application here.
+    """
+    import app.models.user  # noqa: F401
+    import app.models.account  # noqa: F401
+    import app.models.category  # noqa: F401
+    import app.models.transaction  # noqa: F401
+    import app.models.receipt  # noqa: F401
+
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    private = MetaData()
+
+    copied = set()
+
+    def copy_table(name):
+        if name in copied or name not in Base.metadata.tables:
+            return
+        copied.add(name)
+        source = Base.metadata.tables[name]
+        for column in source.columns:
+            for foreign_key in column.foreign_keys:
+                copy_table(foreign_key.target_fullname.split(".")[0])
+        source.to_metadata(private)
+
+    for name in RECEIPT_TABLES:
+        copy_table(name)
+
+    private.create_all(engine)
+    Session = sessionmaker(bind=engine)
+
+    app = FastAPI()
+    app.include_router(receipt_items.router, prefix="/api/receipt-items")
 
     def _db():
         db = Session()

@@ -25,6 +25,7 @@ from . import (
     finnhub,
     ninjas,
     market_intel,
+    market_advisor,
     zap_ink,
     realtime_market,
     logs,

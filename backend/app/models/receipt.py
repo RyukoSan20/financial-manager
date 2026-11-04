@@ -24,6 +24,11 @@ class ReceiptScan(Base):
     total_amount = Column(Numeric(20, 2), nullable=True)
     subtotal = Column(Numeric(20, 2), nullable=True)
     discount_total = Column(Numeric(20, 2), nullable=True)
+    # The tax that was charged on top of the subtotal. It is a column of
+    # its own rather than being folded into the total, because the
+    # reader needs to see what the tax was: subtotal - discount + tax
+    # is the amount that was paid.
+    tax_total = Column(Numeric(20, 2), nullable=True)
     payment_method = Column(String(50), nullable=True)
     receipt_date = Column(DateTime, nullable=True)
     

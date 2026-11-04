@@ -19,14 +19,14 @@ from app.api.routes import (
     shopping,
     kanban_board,
     # scan_jobs disabled (OCR)
-    exchange, market, finnhub, ninjas, market_intel, zap_ink,
+    exchange, market, finnhub, ninjas, market_intel, market_advisor, zap_ink,
     currency,
     realtime_market, logs, merchant, merchant_images, webhooks, location,
     unified_market, user_settings, voice, profile, learning, scans,
     breakdown, indonesia_calculators, reminders, insights,
     split_bills, split_guest, split_gmail, split_payments,
     split_invitation, shopping_search,
-    business,
+    business, receipt_items,
 )
 
 # Import models to register with SQLAlchemy
@@ -292,6 +292,7 @@ app.include_router(auth.router, prefix="/api", tags=["Authentication"])
 app.include_router(accounts.router, prefix="/api/accounts", tags=["Accounts"])
 app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
 app.include_router(transactions.router, prefix="/api/transactions", tags=["Transactions"])
+app.include_router(receipt_items.router, prefix="/api/receipt-items", tags=["Receipt Items"])
 app.include_router(transfers.router, prefix="/api/transfers", tags=["Transfers"])
 app.include_router(budgets.router, prefix="/api/budgets", tags=["Budgets"])
 app.include_router(recurring.router, prefix="/api/recurring", tags=["Recurring"])
@@ -341,6 +342,10 @@ app.include_router(insights.router, prefix="/api/insights", tags=["Insights"])
 app.include_router(unified_market.router, prefix="/api/market")
 include_router_once(app, market.router, prefix="/api/market")
 app.include_router(finnhub.router, prefix="/api/finnhub")
+# The Market Co-Pilot. It answers questions about the market from the
+# quotes the server already has, so it is mounted next to the market
+# routes it reads from.
+app.include_router(market_advisor.router, prefix="/api/market-advisor", tags=["Market Advisor"])
 app.include_router(ninjas.router, prefix="")
 app.include_router(market_intel.router, prefix="")
 app.include_router(zap_ink.router, prefix="")
