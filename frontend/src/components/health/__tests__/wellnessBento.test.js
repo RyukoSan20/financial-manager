@@ -121,6 +121,7 @@ check(
 // ---------------------------------------------------------------------
 
 const grid = read('src/components/shopping/VisualProductCatalogGrid.jsx');
+const catalog = read('src/utils/shoppingCatalog.js');
 const partners = read('src/components/shopping/PartnerMerchantFeedSection.jsx');
 const shoppingPage = read('src/pages/Shopping/ShoppingPage.jsx');
 
@@ -143,7 +144,13 @@ check(
 
 check(
   'the grid saves to the wishlist stage and carries the picture',
-  /stage:\s*'wishlist'/.test(grid) && /image_url/.test(grid) && /price_source/.test(grid)
+  // The body of the request is built in one place, so that the card
+  // and the thing that is saved cannot drift apart. The stage, the
+  // picture and where the price came from are all in that body.
+  /stage:\s*'wishlist'/.test(catalog) &&
+    /image_url/.test(catalog) &&
+    /price_source/.test(catalog) &&
+    /buildWishlistPayload/.test(grid)
 );
 
 check(
