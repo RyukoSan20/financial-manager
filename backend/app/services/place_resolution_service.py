@@ -148,6 +148,15 @@ class ResolvedPlace:
     # name that was asked about. A map of "Indomaret" should say
     # "Indomaret Kemang" when that is the shop it found.
     store_name: Optional[str] = None
+    # The street the place is on, and the place nearest to it.
+    #
+    # The address is a single line, and a line that has to hold a
+    # street, a district, a city and a country stops being readable
+    # part way through. These two are the parts a reader can act on:
+    # the street to look for, and the name of the shop next door that
+    # tells them they have arrived.
+    street: Optional[str] = None
+    nearest_place: Optional[str] = None
 
     @property
     def is_exact(self) -> bool:
@@ -268,6 +277,8 @@ def resolve_place(
                 precision="street",
                 confidence=location.confidence,
                 store_name=the_name or None,
+                street=getattr(location, "street", None) or street,
+                nearest_place=getattr(location, "nearest_place", None),
             )
 
         # A brand that is known, but with no street behind it. The
@@ -283,6 +294,8 @@ def resolve_place(
                 precision="brand",
                 confidence=location.confidence,
                 store_name=None,
+                street=getattr(location, "street", None),
+                nearest_place=getattr(location, "nearest_place", None),
             )
 
     return None

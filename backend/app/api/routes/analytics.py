@@ -1361,6 +1361,12 @@ def get_merchant_map_data(
             "pin": pin_for(kind_for(merchant_name, merchant_address, spending_category)),
             "precision": place.precision,
             "is_exact": place.is_exact,
+            # The street the place is on, and the place nearest to it.
+            # These are what turn a pin in a district into a pin a
+            # reader can find: the street to look for, and the name of
+            # the shop next door that tells them they have arrived.
+            "street": place.street,
+            "nearest_place": place.nearest_place,
         })
 
     # Deduplicate by id

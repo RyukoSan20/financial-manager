@@ -50,6 +50,17 @@ class GeoLocation:
     # which of the two it is holding.
     precision: str = "street"
 
+    # The street the place is on, and the place nearest to it.
+    #
+    # A reader who looks at the map wants to know which shop it is and
+    # where it is, not which district it is in. The geocoder was
+    # already answering both of these and the service was dropping
+    # them on the floor, so the address on the map said "Kemang" when
+    # the answer had said "Jalan Kemang Raya No. 12" and named the
+    # place next door.
+    street: Optional[str] = None
+    nearest_place: Optional[str] = None
+
 
 class GeocodingService:
     """Service for geocoding merchant names/addresses to coordinates."""
@@ -318,14 +329,58 @@ class GeocodingService:
                         addr.get("town") or 
                         addr.get("municipality")
                     )
-                    
+
+                    # The street. The house number is kept with it
+                    # when the geocoder gives one, because "Jalan
+                    # Kemang Raya" without the number is half an
+                    # address and the reader is looking for a door.
+                    street = None
+                    road = (
+                        addr.get("road") or
+                        addr.get("pedestrian") or
+                        addr.get("footway") or
+                        addr.get("path")
+                    )
+                    if road:
+                        house = addr.get("house_number")
+                        street = f"{road} No. {house}" if house else road
+
+                    # The place nearest to the point. This is what
+                    # turns "somewhere on Jalan Kemang Raya" into
+                    # "the shop is the one next to the bakery", and
+                    # it is the difference between an address and a
+                    # place somebody could find.
+                    nearest_place = None
+                    for key in (
+                        "building",
+                        "amenity",
+                        "shop",
+                        "tourism",
+                        "office",
+                        "public_transport",
+                    ):
+                        value = addr.get(key)
+                        if isinstance(value, str) and value.strip():
+                            nearest_place = value.strip()
+                            break
+                    if not nearest_place:
+                        # The named places in the answer are the next
+                        # best thing when the address parts are bare.
+                        for entry in data.get("namedetails", []) or []:
+                            name = entry.get("name")
+                            if isinstance(name, str) and name.strip():
+                                nearest_place = name.strip()
+                                break
+
                     return GeoLocation(
                         latitude=lat,
                         longitude=lon,
                         formatted_address=display_name,
                         city=city,
                         country=addr.get("country"),
-                        confidence=0.8
+                        confidence=0.8,
+                        street=street,
+                        nearest_place=nearest_place,
                     )
         
         except Exception as e:
