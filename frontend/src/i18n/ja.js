@@ -1585,6 +1585,7 @@ export default {
     // The shops of the reader.
     basis_reference: "自分のカタログの参考価格です。店先の価格ではありません。",
     basis_provider: "店で实时に検索した価格です。",
+    shop_links: "または直接在店で開く:",
     partner_title: "自分の店の商品",
     partner_loading: "店舗を読み込み中...",
     partner_error: "店舗を読み込めませんでした。",

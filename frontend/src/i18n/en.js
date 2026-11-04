@@ -1585,6 +1585,7 @@ export default {
     // The shops of the reader.
     basis_reference: "A reference price from your own catalogue, not a price in a shop.",
     basis_provider: "A price from a live search of the shop.",
+    shop_links: "Or open the shop directly:",
     partner_title: "Things from your own shops",
     partner_loading: "Loading your shops...",
     partner_error: "Your shops could not be loaded.",

@@ -106,4 +106,35 @@ assert.strictEqual(long.product_url.length, 500);
 assert.strictEqual(long.image_url.length, 500);
 assert.strictEqual(long.notes.length, 500);
 
+/* --- the shopping page shows the things, not the shops ------------- */
+
+// The page used to show three rows of marketplace links. A reader who
+// wanted to buy a kettle was told where a kettle might be found, and
+// had to go and look. The catalogue grid answers with the things
+// themselves.
+const tracker = fs.readFileSync(
+  path.join(ROOT, 'src/pages/ShoppingTracker.jsx'),
+  'utf8'
+);
+
+assert.ok(
+  /VisualProductCatalogGrid/.test(tracker),
+  'the shopping page shows the grid of things'
+);
+assert.ok(
+  /shopping-search\/search/.test(tracker),
+  'the shopping page asks the endpoint that already exists'
+);
+assert.ok(
+  /PartnerMerchantFeedSection/.test(tracker),
+  'the goods of the reader own shop are in the same grid'
+);
+
+// The grid, and not the links, is the answer. The links are still
+// there, for a reader who wants to go and look at the shop.
+assert.ok(
+  /shopping_catalog\.shop_links/.test(tracker),
+  'the shops are the way out to the shop, and they say so'
+);
+
 console.log('shopping catalog: all checks passed');

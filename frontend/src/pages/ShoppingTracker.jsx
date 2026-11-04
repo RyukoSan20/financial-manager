@@ -7,6 +7,10 @@ import { ShoppingCart } from "lucide-react";
 import { buildFlag } from "../utils/featureFlags";
 import { toast } from '../contexts/ToastContext';
 import ProductSearch from '../components/shopping/ProductSearch';
+import VisualProductCatalogGrid, {
+  saveProductToWishlist,
+} from '../components/shopping/VisualProductCatalogGrid';
+import PartnerMerchantFeedSection from '../components/shopping/PartnerMerchantFeedSection';
 
 const ShoppingTracker = () => {
   const { t } = useTranslation();
@@ -29,6 +33,20 @@ const ShoppingTracker = () => {
   const [aiQuery, setAiQuery] = useState("");
   const [aiResults, setAiResults] = useState(null);
   const [aiSearching, setAiSearching] = useState(false);
+
+  // The catalogue.
+  //
+  // The three rows of marketplace links this page used to show were
+  // three websites and no products. A reader who wanted to buy a
+  // kettle was told where a kettle might be found and had to go and
+  // look.
+  //
+  // Now the tab shows the things themselves: a picture of each, what
+  // it is, the price, and the shop the price came from. The search
+  // the server already runs answers it.
+  const [catalogAnswer, setCatalogAnswer] = useState(null);
+  const [catalogSearching, setCatalogSearching] = useState(false);
+  const [catalogSaving, setCatalogSaving] = useState(false);
   
   // Load data
   const loadData = useCallback(async () => {
@@ -88,9 +106,21 @@ const ShoppingTracker = () => {
   const searchWithAI = async () => {
     if (!aiQuery.trim()) return;
     setAiSearching(true);
+    setCatalogSearching(true);
     setAiResults(null);
-    
+    setCatalogAnswer(null);
+
     try {
+      // The catalogue the server already keeps. This is the search
+      // that answers with the things themselves rather than with the
+      // names of shops.
+      const found = await api.request(
+        `/shopping-search/search?q=${encodeURIComponent(aiQuery.trim())}&limit=24`
+      );
+      setCatalogAnswer(found);
+
+      // The marketplace links are still asked for, so that a reader
+      // who wants to go and look at a shop can still go and look.
       const results = await api.request(`/search/price?q=${encodeURIComponent(aiQuery)}&country=ID`);
       if (results && results.searches) {
         setAiResults({
@@ -106,6 +136,29 @@ const ShoppingTracker = () => {
       setAiResults({ error: t("shopping_tracker.search_error") });
     } finally {
       setAiSearching(false);
+      setCatalogSearching(false);
+    }
+  };
+
+  /**
+   * Keep a thing for later.
+   *
+   * The board already knows how to take an item, so the thing is
+   * handed to the same call the catalogue grid uses. Where the price
+   * came from travels with it, so a reference price is never later
+   * shown as a price in a shop.
+   */
+  const saveCatalogProduct = async (product) => {
+    setCatalogSaving(true);
+    try {
+      await saveProductToWishlist(product);
+      toast.success(t('shopping_catalog.saved_to_wishlist'));
+      loadData();
+    } catch (e) {
+      console.error('Saving to the board failed:', e);
+      toast.error(t('shopping_catalog.save_failed'));
+    } finally {
+      setCatalogSaving(false);
     }
   };
   
@@ -389,6 +442,38 @@ const ShoppingTracker = () => {
             </div>
           </div>
           
+          {/* The catalogue.
+
+              The three rows of marketplace links this page used to
+              show were three websites and no products. A reader who
+              wanted to buy a kettle was told where a kettle might be
+              found, and had to go and look.
+
+              Now it is the things themselves: a picture of each, what
+              it is, the price, and the shop the price came from. */}
+          {catalogSearching && (
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-500 dark:text-gray-400">
+              <ShoppingCart className="w-4 h-4 animate-pulse" aria-hidden="true" />
+              {t('shopping_catalog.searching')}
+            </div>
+          )}
+
+          {catalogAnswer && !catalogSearching && (
+            <div className="mt-4 space-y-4">
+              <VisualProductCatalogGrid
+                products={catalogAnswer.results || []}
+                source={catalogAnswer.source || 'provider'}
+                onSave={saveCatalogProduct}
+                saving={catalogSaving}
+              />
+
+              {/* The reader's own shops, in the same grid, so a reader
+                  who runs a shop sees their own goods among the
+                  things they are thinking of buying. */}
+              <PartnerMerchantFeedSection onSaved={() => loadData()} />
+            </div>
+          )}
+
           {/* AI Results */}
           {aiResults && (
             <div className="mt-4">
@@ -404,6 +489,14 @@ const ShoppingTracker = () => {
                       {aiResults.cached && <span className="ml-2 text-xs bg-yellow-100 px-2 py-0.5 rounded">{t('shopping_tracker.cache')}</span>}
                     </p>
                   </div>
+
+                  {/* The shops themselves. This is the way out to the
+                      shop, for a reader who wants to see the thing
+                      for themselves before they buy it. The prices are
+                      above. */}
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    {t('shopping_catalog.shop_links')}
+                  </p>
                   
                   <div className="grid grid-cols-1 gap-3">
                     {aiResults.marketplaces?.map((mp, idx) => {
