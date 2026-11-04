@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api, API_BASE_URL as API_URL, getToken } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { parseQuickEntry, fetchDirection } from "../../features/transactions/nlp/parseQuickEntry.js";
+import QuantityMultiplierInput from "../transactions/QuantityMultiplierInput.jsx";
 import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
 import { useTranslation } from "../../i18n";
 import { IconText } from "../ui/IconText";
@@ -135,6 +136,11 @@ const AddTransactionPage = () => {
   
   // NLP State
   const [quickEntry, setQuickEntry] = useState("");
+  // The count of things and the price of one, when the reader wrote a
+  // breakdown rather than a total. The total is worked out from these
+  // two, so the reader sees the multiplication rather than being asked
+  // to trust it.
+  const [breakdown, setBreakdown] = useState([]);
   const [nlpPreview, setNlpPreview] = useState(null);
   
   // Idempotency key - prevents duplicate transactions from double-tap
@@ -249,6 +255,16 @@ const AddTransactionPage = () => {
     }
     if (parsed.amount && !amount) {
       setAmount(String(parsed.amount));
+    }
+    // A breakdown written in words becomes a row the reader can change.
+    if (parsed.quantity && parsed.unitPrice) {
+      setBreakdown([
+        {
+          name: parsed.description || '',
+          quantity: parsed.quantity,
+          unitPrice: parsed.unitPrice,
+        },
+      ]);
     }
     if (parsed.type && parsed.type !== type) {
       setType(parsed.type);
@@ -725,6 +741,31 @@ const AddTransactionPage = () => {
             <p className="text-xs text-primary-600 dark:text-primary-400 mb-3 amount-preview">
               {amountPreview.text} = {formatNative(amountPreview.value, accountCurrency)}
             </p>
+          )}
+
+          {/* The breakdown. When the reader wrote "2 indomie 3500",
+              the count and the price of one are shown here and the
+              total is worked out in front of them. */}
+          {breakdown.length > 0 && (
+            <div className="mb-3">
+              <QuantityMultiplierInput
+                rows={breakdown}
+                onChange={(rows) => {
+                  setBreakdown(rows);
+                  // The total follows the rows, so the reader never
+                  // types a total that disagrees with what they see.
+                  const sum = rows.reduce((acc, row) => {
+                    const count = Number(row.quantity);
+                    const price = Number(row.unitPrice);
+                    if (!Number.isFinite(count) || !Number.isFinite(price)) return acc;
+                    if (count <= 0 || price <= 0) return acc;
+                    return acc + Math.round(count * price);
+                  }, 0);
+                  if (sum > 0) setAmount(String(sum));
+                }}
+                currency={accountCurrency}
+              />
+            </div>
           )}
 
           {/* An expression that cannot be worked out says so, because

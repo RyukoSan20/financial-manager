@@ -640,3 +640,128 @@
     transform: none !important;
   }
 }
+
+
+/* The breakdown: how many, and at what price each.
+   The count on the left, the price of one on the right, and the
+   total underneath, so the multiplication is seen rather than
+   trusted. */
+
+.qm {
+  border: 1px solid var(--money-hairline, rgba(17, 24, 39, 0.08));
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--money-surface-raised, rgba(255, 255, 255, 0.55));
+}
+
+.qm-heading {
+  font-size: 12px;
+  color: var(--money-text-muted, #737373);
+  margin: 0 0 12px;
+}
+
+.qm-row + .qm-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--money-hairline, rgba(17, 24, 39, 0.06));
+}
+
+.qm-row-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.qm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.qm-label {
+  font-size: 11px;
+  color: var(--money-text-muted, #737373);
+}
+
+.qm-field input {
+  width: 100%;
+  border: 1px solid var(--money-hairline, rgba(17, 24, 39, 0.1));
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 15px;
+  background: var(--money-surface, #fff);
+  color: var(--money-text-primary, #171717);
+}
+
+.qm-field input:focus {
+  outline: 2px solid var(--money-accent, #16a34a);
+  outline-offset: 1px;
+}
+
+.qm-times {
+  color: var(--money-text-muted, #737373);
+  padding-bottom: 10px;
+  font-size: 14px;
+}
+
+.qm-remove {
+  border: 1px solid var(--money-hairline, rgba(17, 24, 39, 0.1));
+  background: transparent;
+  color: var(--money-text-muted, #737373);
+  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.qm-remove:hover {
+  color: var(--money-danger, #dc2626);
+  border-color: var(--money-danger, #dc2626);
+}
+
+.qm-total {
+  margin: 8px 0 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.qm-total-label {
+  color: var(--money-text-muted, #737373);
+}
+
+.qm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.qm-add {
+  border: 1px dashed var(--money-hairline, rgba(17, 24, 39, 0.18));
+  background: transparent;
+  color: var(--money-text-secondary, #525252);
+  border-radius: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.qm-add:hover {
+  border-color: var(--money-accent, #16a34a);
+  color: var(--money-accent, #16a34a);
+}
+
+.qm-grand {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+}

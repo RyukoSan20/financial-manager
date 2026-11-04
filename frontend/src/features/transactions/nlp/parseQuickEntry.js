@@ -8,6 +8,7 @@ import { normalize, tokenize } from './normalize.js';
 import { parseAmount, evalMath } from './parseAmount.js';
 import { findMath } from './amountScan.js';
 import { suggestCategory } from './suggestCategory.js';
+import { parseQuantity } from './parseQuantity.js';
 
 
 /**
@@ -78,6 +79,23 @@ export function parseQuickEntry(text, options = {}) {
       amountResult = { value: Math.round(found.value), raw: 'math expression', span: found.span };
     }
   }
+
+  // A count of things at a price of each.
+  //
+  // "2 indomie 3500" is two at three thousand five hundred, which is
+  // seven thousand. The reader wrote what they bought, not the total,
+  // so the multiplication is done here rather than in their head.
+  //
+  // This is only used when the sentence plainly says the price is the
+  // price of one. Otherwise the sentence is left as it was.
+  const quantity = parseQuantity(normalized);
+  if (quantity && (!amountResult || quantity.total > amountResult.value)) {
+    amountResult = {
+      value: quantity.total,
+      raw: `${quantity.quantity} x ${quantity.unitPrice}`,
+      span: [0, normalized.length],
+    };
+  }
   
   // Tokenize remaining text
   let textForTokens = normalized;
@@ -111,6 +129,10 @@ export function parseQuickEntry(text, options = {}) {
     type,
     amount: amountResult?.value || null,
     amountRaw: amountResult?.raw || null,
+    // The count and the price of one, when the sentence had them.
+    // The form uses these to show the reader the multiplication.
+    quantity: quantity ? quantity.quantity : null,
+    unitPrice: quantity ? quantity.unitPrice : null,
     description: text, // Original text as description
     categoryId: null,
     categorySuggestion: null,
@@ -190,6 +212,10 @@ export function applyToForm(parsed, formData = {}) {
     ...formData,
     type: parsed.type || formData.type,
     amount: parsed.amount !== null ? String(parsed.amount) : formData.amount,
+    // The count and the price of one are carried across, so the form
+    // can show what was multiplied and let the reader change it.
+    quantity: parsed.quantity !== null ? parsed.quantity : formData.quantity,
+    unitPrice: parsed.unitPrice !== null ? parsed.unitPrice : formData.unitPrice,
     description: parsed.description || formData.description,
     categoryId: parsed.categoryId || formData.categoryId,
     date: parsed.date || formData.date
