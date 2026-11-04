@@ -1,8 +1,21 @@
 // Konstanta dan helper kecil untuk fitur papan belanja.
 
+/**
+ * The stages of the board.
+ *
+ * The seven stages, with the place of the ready one: a thing that has
+ * been decided on but not yet bought. Without it the reader cannot
+ * put a card in the third column, which is the column that says the
+ * decision has been made.
+ *
+ * The words are here as a fallback only. The labels the reader sees
+ * come from the words of the application, so that the three languages
+ * stay in step.
+ */
 export const STAGES = [
   { key: 'wishlist', label: 'Wishlist', hint: 'Ingin, belum direncanakan' },
   { key: 'to_buy', label: 'Mau dibeli', hint: 'Sudah direncanakan' },
+  { key: 'ready', label: 'Siap Checkout', hint: 'Sudah diputuskan, belum dibayar' },
   { key: 'ordered', label: 'Dipesan', hint: 'Sudah dibayar' },
   { key: 'shipped', label: 'Dikirim', hint: 'Dalam perjalanan' },
   { key: 'received', label: 'Diterima', hint: 'Selesai' },
