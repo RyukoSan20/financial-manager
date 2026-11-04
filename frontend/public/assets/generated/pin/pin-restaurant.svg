@@ -1,0 +1,13 @@
+<!-- Place -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 108" width="120" height="108" role="img" aria-label="Place">
+  <title>Place</title>
+  <g>
+    <path d="M32 60 C32 44 44 32 60 32 C76 32 88 44 88 60 C88 80 60 100 60 100 C60 100 32 80 32 60 Z"
+          fill="#e11d48" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="60" cy="58" r="17" fill="#ffffff"/>
+        <path d="M53 43 V65" stroke="#e11d48" stroke-width="3" stroke-linecap="round"/>
+    <path d="M49 43 V49 M53 43 V49 M57 43 V49" stroke="#e11d48" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M49 49 H57" stroke="#e11d48" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M67 43 C72 45 72 51 67 53 V65" stroke="#e11d48" stroke-width="3"
+          fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g></svg>

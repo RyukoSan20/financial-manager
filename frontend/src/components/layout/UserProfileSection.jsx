@@ -75,7 +75,15 @@ export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
             }}
           />
         ) : (
-          initials
+          // The reader who has not chosen a picture gets the drawn
+          // one, not the initials in a circle of colour. It is the
+          // same mark as the logo, so the corner of the application
+          // looks like one thing.
+          <img
+            src={`${import.meta.env.BASE_URL}assets/generated/brand/avatar-default.svg`}
+            alt=""
+            className="w-full h-full object-cover"
+          />
         )}
       </div>
 

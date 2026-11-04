@@ -111,12 +111,17 @@ const Sidebar = () => {
 
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-30 dark:bg-gray-800 dark:border-gray-700">
-      {/* Logo */}
+      {/* Logo. The mark is drawn rather than a plain square of colour,
+          because a square of colour is the thing every application
+          has and this one should not look like every application. */}
       <div className="h-16 flex items-center px-5 border-b border-gray-100 dark:border-gray-700">
         <Link to="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-md">
-            <TrendingUp className="w-5 h-5 text-white" />
-          </div>
+          <img
+            src={`${import.meta.env.BASE_URL}assets/generated/brand/logo-dynamic-glow.svg`}
+            alt=""
+            aria-hidden="true"
+            className="w-10 h-10"
+          />
           <span className="font-bold text-xl text-gray-900 dark:text-white">{t.app_name}</span>
         </Link>
       </div>
@@ -207,9 +212,12 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
               </button>
             ) : (
               <Link to="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-white" />
-                </div>
+                <img
+                  src={`${import.meta.env.BASE_URL}assets/generated/brand/logo-dynamic-glow.svg`}
+                  alt=""
+                  aria-hidden="true"
+                  className="w-8 h-8"
+                />
               </Link>
             )}
             <h1 className="font-semibold text-lg text-gray-900 dark:text-white">{title}</h1>

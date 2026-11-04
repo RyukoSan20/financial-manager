@@ -265,6 +265,165 @@ def empty_debts():
     return svg(160, 140, body, "No debts yet")
 
 
+
+
+# ---------------------------------------------------------------------------
+# The brand
+#
+# The logo and the avatar are drawn here from the same numbers as the
+# rest of the artwork, so they carry no licence question and can be
+# reviewed in a diff. The logo is the one bright thing in the corner of
+# the application: a green field with a line that goes up, and the light
+# of it catching the edge.
+# ---------------------------------------------------------------------------
+
+
+def brand_logo():
+    """
+    The logo: a rounded green tile with a line that goes up and to the
+    right, and a small leaf at the end of it.
+
+    The glow is drawn as a soft radial behind the tile rather than as a
+    coloured shadow, so it stays a light rather than a blur.
+    """
+    c = PALETTE
+    body = f"""  <defs>
+    <radialGradient id="logoGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="{c['accent']}" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="{c['accent']}" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="logoTile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="{c['accent']}"/>
+      <stop offset="100%" stop-color="{c['accent_deep']}"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="url(#logoGlow)"/>
+  <rect x="14" y="14" width="100" height="100" rx="26" fill="url(#logoTile)"/>
+  <path d="M36 82 L56 60 L70 72 L92 42" stroke="{c['paper']}" stroke-width="7"
+        fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="92" cy="42" r="7" fill="{c['paper']}"/>
+  <path d="M92 35 C88 26 92 22 96 22 C98 30 96 34 92 35 Z" fill="{c['sun']}"/>
+  <path d="M20 108 H108" stroke="{c['paper']}" stroke-width="2" stroke-linecap="round" opacity="0.18"/>
+</g>"""
+    return svg(128, 128, body, "Financial Manager")
+
+
+def _avatar(fill_top, fill_bottom, figure):
+    """
+    An avatar: a round face over a round body, in two colours.
+
+    It is a placeholder, and it looks like a placeholder. It is not a
+    photograph of a stranger, and it is drawn here so it can be seen
+    in a diff.
+    """
+    c = PALETTE
+    body = f"""  <defs>
+    <linearGradient id="avatarFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="{fill_top}"/>
+      <stop offset="100%" stop-color="{fill_bottom}"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="url(#avatarFill)"/>
+  <circle cx="64" cy="52" r="19" fill="{figure}" opacity="0.9"/>
+  <path d="M28 108 C28 86 44 74 64 74 C84 74 100 86 100 108 Z" fill="{figure}" opacity="0.9"/>
+  <circle cx="58" cy="49" r="2.6" fill="{c['paper']}"/>
+  <circle cx="70" cy="49" r="2.6" fill="{c['paper']}"/>
+  <path d="M58 58 Q64 63 70 58" stroke="{c['paper']}" stroke-width="2.4"
+        fill="none" stroke-linecap="round"/>
+</g>"""
+    return svg(128, 128, body, "Your profile")
+
+
+def brand_avatar():
+    """The default avatar: green, the same colour as the logo."""
+    c = PALETTE
+    return _avatar(c["accent_soft"], c["sky_soft"], c["accent"])
+
+
+def avatar_sun():
+    """A warm one: for the reader who wants something brighter."""
+    c = PALETTE
+    return _avatar(c["sun_soft"], c["rose_soft"], c["sun"])
+
+
+def avatar_sky():
+    """A cool one: for the reader who wants something calmer."""
+    c = PALETTE
+    return _avatar(c["sky_soft"], c["accent_soft"], c["sky"])
+
+
+def avatar_rose():
+    """A bright one."""
+    c = PALETTE
+    return _avatar(c["rose_soft"], c["sun_soft"], c["rose"])
+
+
+# ---------------------------------------------------------------------------
+# The map pins
+#
+# A pin says two things at once: what kind of place this is, and what
+# kind of thing was bought there. The shape carries the place, the
+# mark inside carries the thing, so two pins that differ in only one of
+# the two can still be told apart.
+# ---------------------------------------------------------------------------
+
+
+def _pin(inner, tint):
+    """
+    A pin: a teardrop on a circle, with a mark inside it.
+    """
+    c = PALETTE
+    body = f"""  <g>
+    <path d="M32 60 C32 44 44 32 60 32 C76 32 88 44 88 60 C88 80 60 100 60 100 C60 100 32 80 32 60 Z"
+          fill="{tint}" stroke="{c['paper']}" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="60" cy="58" r="17" fill="{c['paper']}"/>
+    {inner}
+  </g>"""
+    return svg(120, 108, body, "Place")
+
+
+def pin_minimarket():
+    """A small shop: a shopfront with an awning."""
+    c = PALETTE
+    inner = f"""    <path d="M48 52 H72 V64 H48 Z" fill="{c['accent']}"/>
+    <path d="M46 52 L50 44 H70 L74 52 Z" fill="{c['accent_deep']}"/>"""
+    return _pin(inner, c["accent"])
+
+
+def pin_supermarket():
+    """A big store: a shopping basket."""
+    c = PALETTE
+    inner = f"""    <path d="M48 48 H72 L69 64 H51 Z" fill="{c['sky']}"/>
+    <path d="M54 48 C54 41 66 41 66 48" stroke="{c['sky']}" stroke-width="2.6"
+          fill="none" stroke-linecap="round"/>"""
+    return _pin(inner, c["sky"])
+
+
+def pin_restaurant():
+    """
+    A place to eat: a plate with a fork beside it.
+
+    The earlier version drew a fork and a spoon, and side by side at
+    that size they read as the number ten. A plate and a fork are
+    unmistakable at a glance.
+    """
+    c = PALETTE
+    inner = f"""    <path d="M53 43 V65" stroke="{c['rose']}" stroke-width="3" stroke-linecap="round"/>
+    <path d="M49 43 V49 M53 43 V49 M57 43 V49" stroke="{c['rose']}" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M49 49 H57" stroke="{c['rose']}" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M67 43 C72 45 72 51 67 53 V65" stroke="{c['rose']}" stroke-width="3"
+          fill="none" stroke-linecap="round" stroke-linejoin="round"/>"""
+    return _pin(inner, c["rose"])
+
+
+def pin_fresh_produce():
+    """Vegetables and fruit: a leaf and a round thing."""
+    c = PALETTE
+    inner = f"""    <circle cx="55" cy="56" r="8" fill="{c['sun']}"/>
+    <path d="M62 54 C68 44 74 46 74 46 C74 56 68 58 62 54 Z" fill="{c['accent']}"/>"""
+    return _pin(inner, c["sun"])
+
+
 # ---------------------------------------------------------------------------
 # The manifest
 # ---------------------------------------------------------------------------
@@ -282,6 +441,15 @@ ASSETS = {
     "empty-goals": ("empty", empty_goals),
     "empty-transactions": ("empty", empty_transactions),
     "empty-debts": ("empty", empty_debts),
+    "logo-dynamic-glow": ("brand", brand_logo),
+    "avatar-default": ("brand", brand_avatar),
+    "avatar-sun": ("brand", avatar_sun),
+    "avatar-sky": ("brand", avatar_sky),
+    "avatar-rose": ("brand", avatar_rose),
+    "pin-minimarket": ("pin", pin_minimarket),
+    "pin-supermarket": ("pin", pin_supermarket),
+    "pin-restaurant": ("pin", pin_restaurant),
+    "pin-fresh-produce": ("pin", pin_fresh_produce),
 }
 
 

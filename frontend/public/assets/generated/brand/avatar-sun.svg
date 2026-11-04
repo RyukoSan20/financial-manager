@@ -1,0 +1,17 @@
+<!-- Your profile -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Your profile">
+  <title>Your profile</title>
+  <defs>
+    <linearGradient id="avatarFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fef3c7"/>
+      <stop offset="100%" stop-color="#ffe4e6"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="url(#avatarFill)"/>
+  <circle cx="64" cy="52" r="19" fill="#f59e0b" opacity="0.9"/>
+  <path d="M28 108 C28 86 44 74 64 74 C84 74 100 86 100 108 Z" fill="#f59e0b" opacity="0.9"/>
+  <circle cx="58" cy="49" r="2.6" fill="#ffffff"/>
+  <circle cx="70" cy="49" r="2.6" fill="#ffffff"/>
+  <path d="M58 58 Q64 63 70 58" stroke="#ffffff" stroke-width="2.4"
+        fill="none" stroke-linecap="round"/>
+</g></svg>
