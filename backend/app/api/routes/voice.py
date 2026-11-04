@@ -437,6 +437,14 @@ class VoiceParseResponse(BaseModel):
     category: Optional[str] = None
     confidence_score: float = 0.0
     raw_text: str
+    # The count and the price of one, when the phrase had them.
+    # "Beli Indomie 2 bungkus harga satuan 3500" is two at three
+    # thousand five hundred, which is seven thousand. The count and the
+    # price of one are handed over so the reader can see the
+    # multiplication rather than being asked to trust it.
+    quantity: Optional[int] = None
+    unit_price: Optional[float] = None
+    items: List[dict] = []
     # The cleaned text. This is what the parser actually read, so the UI
     # can show the user exactly what was understood.
     cleaned_text: Optional[str] = None
@@ -474,7 +482,24 @@ def parse_voice_text(
     if not raw:
         raise HTTPException(status_code=400, detail="Teks kosong")
 
-    amount, span = find_amount(raw)
+    # How many, and at what price each.
+    #
+    # This is read first, because when the phrase has a count and a
+    # price of one, the amount of the whole thing is the multiplication
+    # and not the first number that was found.
+    reading = None
+    try:
+        from app.services.quantity_parser import parse_quantity
+
+        reading = parse_quantity(raw)
+    except Exception:  # pragma: no cover - a parser must never break a voice note
+        reading = None
+
+    if reading is not None:
+        amount = Decimal(reading.total)
+        span = None
+    else:
+        amount, span = find_amount(raw)
     merchant = extract_merchant(raw, span)
     tx_type = detect_transaction_type(
         raw, db=db, user_id=current_user.id if current_user else None
@@ -502,6 +527,17 @@ def parse_voice_text(
         f"raw={request.text!r} cleaned={raw!r}"
     )
 
+    items = []
+    if reading is not None:
+        items = [
+            {
+                "name": reading.description or merchant or "",
+                "quantity": reading.quantity,
+                "unit_price": float(reading.unit_price),
+                "total": float(reading.total),
+            }
+        ]
+
     return VoiceParseResponse(
         amount=float(amount) if amount is not None else None,
         transaction_type=tx_type,
@@ -512,6 +548,9 @@ def parse_voice_text(
         raw_text=request.text,
         cleaned_text=cleaned,
         missing_fields=missing,
+        quantity=reading.quantity if reading is not None else None,
+        unit_price=float(reading.unit_price) if reading is not None else None,
+        items=items,
     )
 
 
