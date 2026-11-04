@@ -6,6 +6,7 @@ import { toast } from '../../contexts/ToastContext';
 import merchantApi from '../../services/merchantApi';
 import { formatCurrency } from '../../utils/format';
 import MascotCompanion from '../common/MascotCompanion';
+import MerchantCapturePanel from './MerchantCapturePanel';
 
 /**
  * The shelf.
@@ -186,6 +187,11 @@ export default function MerchantProductCatalog({ merchant }) {
           <span>{K.catalog.addProduct}</span>
         </button>
       </header>
+
+      {/* Taking a product off a photograph. It sits above the form
+          because it is the quicker way to get a product in, and the
+          form is the slower one that is always there. */}
+      <MerchantCapturePanel merchant={merchant} onSaved={load} />
 
       {editing !== null && (
         <div className="merchant-catalog__form">
