@@ -90,6 +90,7 @@ for test_file in \
   src/styles/__tests__/interfaceFeel.test.js \
   src/styles/__tests__/openPoints.test.js \
   src/components/merchant/__tests__/merchantCapture.test.js \
+  src/components/market/__tests__/advisorKeyPoints.test.js \
   src/components/goals/__tests__/goalPriorityKanban.test.js \
   src/components/health/__tests__/wellnessBento.test.js \
   src/utils/__tests__/eisenhowerPriority.test.js \

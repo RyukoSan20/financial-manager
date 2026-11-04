@@ -1674,4 +1674,27 @@ export default {
     voice_failed: "申し訳ありません、声を聞き取れませんでした。",
     copy_failed: "コピーできませんでした。手動でコピーしてください。",
   },
+
+  // The labels the market co-pilot draws its numbers under.
+  // The server sends the key, the browser draws the word.
+    "market_advisor.point.top_loser": "最大下落",
+
+  // The labels the market co-pilot draws its numbers under. The
+  // server sends the key, the browser draws the word.
+  market_advisor: {
+    example: {
+      movers: "例：最も値動きが大きい銘柄は？",
+      overview: "例：今日の市場はどのくらいですか？",
+      price: "例：BBCA はいくらですか？",
+    },
+    point: {
+      change: "変化",
+      count: "銘柄数",
+      no_data: "この市場データはまだありません。",
+      no_data_symbol: "{symbol} のデータはまだありません。",
+      price: "価格",
+      top_gainer: "最大上昇",
+      top_loser: "最大下落",
+    },
+  },
 }

@@ -27,8 +27,27 @@ import { batch12 } from '../../i18n/keys_batch12';
 const SOURCE_MARKET = 'market_data';
 const SOURCE_MODEL = 'model';
 
+/**
+ * The values of a key point that the label does not already carry.
+ *
+ * A point whose label is "There is no data for {symbol} yet" has one
+ * value, the symbol, and the label says it. Showing it again on the
+ * line below would say it twice.
+ */
+function remainingValues(point) {
+  const values = point?.values || {};
+  const names = Object.keys(values);
+  if (names.length === 0) return [];
+  // The label that was written decides which values it used. The
+  // point does not carry the label, so the check is for the shape of
+  // the values: a point with a single value is a point whose label
+  // carries that value.
+  if (names.length === 1) return [];
+  return names.map((name) => values[name]).filter((value) => value !== undefined && value !== null);
+}
+
 export default function AiMarketAdvisorChat({ symbols = [], onChartPoints }) {
-  const { language } = useTranslation();
+  const { language, t } = useTranslation();
   const K = batch12[language]?.advisor || batch12.id.advisor;
 
   const [question, setQuestion] = useState('');
@@ -153,12 +172,23 @@ export default function AiMarketAdvisorChat({ symbols = [], onChartPoints }) {
                     key={pointIndex}
                     className="rounded-xl border border-gray-100 dark:border-gray-700 bg-white/60 dark:bg-gray-800/50 px-3 py-2"
                   >
+                    {/* The label is translated. The server sends the
+                        key, and drawing it raw put
+                        "MARKET_ADVISOR.POINT.PRICE" on the screen
+                        where a reader should have seen what the
+                        number is.
+
+                        The values that the label itself uses are
+                        filled into it, and are not repeated on the
+                        line below. */}
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                      {point.key}
+                      {t(point.key, '', point.values)}
                     </p>
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mt-0.5">
-                      {Object.values(point.values || {}).join(' · ')}
-                    </p>
+                    {remainingValues(point).length > 0 && (
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mt-0.5">
+                        {remainingValues(point).join(' · ')}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

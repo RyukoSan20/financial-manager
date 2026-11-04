@@ -1674,4 +1674,27 @@ export default {
     voice_failed: "Sorry, the voice was not understood.",
     copy_failed: "Could not copy. Please copy it by hand.",
   },
+
+  // The labels the market co-pilot draws its numbers under.
+  // The server sends the key, the browser draws the word.
+    "market_advisor.point.top_loser": "Biggest loser",
+
+  // The labels the market co-pilot draws its numbers under. The
+  // server sends the key, the browser draws the word.
+  market_advisor: {
+    example: {
+      movers: "For example: which stocks are moving the most?",
+      overview: "For example: how is the market today?",
+      price: "For example: what is BBCA at?",
+    },
+    point: {
+      change: "Change",
+      count: "Number of stocks",
+      no_data: "There is no market data for this yet.",
+      no_data_symbol: "There is no data for {symbol} yet.",
+      price: "Price",
+      top_gainer: "Biggest gainer",
+      top_loser: "Biggest loser",
+    },
+  },
 }

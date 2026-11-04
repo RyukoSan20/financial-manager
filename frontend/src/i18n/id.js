@@ -1674,4 +1674,27 @@ export default {
     voice_failed: "Maaf, suaranya tidak terbaca.",
     copy_failed: "Tidak bisa menyalin. Salin manual saja.",
   },
+
+  // The labels the market co-pilot draws its numbers under.
+  // The server sends the key, the browser draws the word.
+    "market_advisor.point.top_loser": "Paling turun",
+
+  // The labels the market co-pilot draws its numbers under. The
+  // server sends the key, the browser draws the word.
+  market_advisor: {
+    example: {
+      movers: "Contoh: saham mana yang paling banyak bergerak?",
+      overview: "Contoh: bagaimana pasar hari ini?",
+      price: "Contoh: berapa harga BBCA?",
+    },
+    point: {
+      change: "Perubahan",
+      count: "Jumlah saham",
+      no_data: "Belum ada data pasar untuk ini.",
+      no_data_symbol: "Belum ada data untuk {symbol}.",
+      price: "Harga",
+      top_gainer: "Paling naik",
+      top_loser: "Paling turun",
+    },
+  },
 }
