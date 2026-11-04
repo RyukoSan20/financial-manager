@@ -411,3 +411,28 @@ class SplitDecomposeResponse(BaseModel):
     discrepancy: Optional[str] = None
     # Whether the model was asked, and whether it answered.
     understood_by_model: bool = False
+
+
+class SplitImportRequest(EmptyStringAsNone):
+    """
+    A transaction of the reader's, pulled into a bill.
+
+    The tax and the discount are optional. When they are not given,
+    the ones the receipt carries are used, so that the bill adds up to
+    what was paid without the reader having to type them.
+    """
+
+    tax: Optional[Decimal] = Field(default=None, ge=0)
+    discount: Optional[Decimal] = Field(default=None, ge=0)
+
+
+class SplitAssignRequest(EmptyStringAsNone):
+    """
+    Who had what, all at once.
+
+    The keys of the map are the ids of the lines of the receipt, and
+    the values are the ids of the people at the table. A line whose
+    value is null is free again.
+    """
+
+    assignments: dict = Field(default_factory=dict)

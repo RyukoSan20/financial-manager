@@ -35,6 +35,7 @@ from app.models.split_bill import (
 )
 from app.models.user import User
 from app.schemas.split_bill import (
+    SplitAssignRequest,
     SplitBalanceResponse,
     SplitDecomposeRequest,
     SplitDecomposeResponse,
@@ -44,6 +45,7 @@ from app.schemas.split_bill import (
     SplitExpenseResponse,
     SplitGroupCreate,
     SplitGroupResponse,
+    SplitImportRequest,
     SplitItemResponse,
     SplitMemberCreate,
     SplitMemberResponse,
@@ -736,6 +738,164 @@ def create_expense(
     recompute_expense(db, expense, members, currency=group.currency or "IDR")
     db.commit()
     db.refresh(expense)
+    return _expense_response(db, expense)
+
+
+@router.get("/importable-transactions")
+def list_importable_transactions(
+    limit: int = Query(default=20, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    The reader's recent transactions that can be pulled into a bill.
+
+    Only the reader's own transactions are looked at, and only the
+    ones that came from a receipt: a bill is made of lines, and a
+    transaction without a receipt has only one line.
+    """
+    from app.services.split_import_service import importable_transactions
+
+    return importable_transactions(db, current_user.id, limit=limit)
+
+
+@router.post("/import-transaction/{transaction_id}")
+def import_transaction(
+    transaction_id: int,
+    payload: Optional[SplitImportRequest] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    A transaction of the reader's, as the payload of a new bill.
+
+    This writes nothing down. It gives back the shape a bill is made
+    of - the lines, the subtotal, the tax, the discount and the total
+    - so that the reader can look at it before it becomes a bill.
+
+    The tax and the discount of the receipt come with it. When the
+    reader has written down their own, those are used instead.
+    """
+    from app.services.split_import_service import (
+        importable_transactions,
+        to_bill_payload,
+    )
+
+    entries = importable_transactions(db, current_user.id, limit=50)
+    entry = next(
+        (row for row in entries if row.get("transaction_id") == transaction_id),
+        None,
+    )
+    if entry is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="That transaction cannot be brought into a bill.",
+        )
+
+    given = payload or SplitImportRequest()
+    return to_bill_payload(
+        entry,
+        tax=given.tax,
+        discount=given.discount,
+    )
+
+
+@router.post("/groups/{group_id}/expenses/{expense_id}/assign")
+def assign_items(
+    group_id: int,
+    expense_id: int,
+    payload: SplitAssignRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Say who had what, all at once.
+
+    This is the other way of using a bill: instead of tapping plate
+    by plate, the reader names the person for each line and the bill
+    is worked out again straight away.
+
+    The names of the lines are the ids of the lines. A line that is
+    not named is left alone, so a reader can fill in the bill in
+    two goes without losing what they have already said.
+    """
+    expense = (
+        db.query(SplitExpense)
+        .filter(SplitExpense.id == expense_id, SplitExpense.group_id == group_id)
+        .first()
+    )
+    if expense is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The receipt was not found.",
+        )
+
+    group = _group_for(db, group_id, current_user)
+    members = {member.id: member for member in _members_of(db, group.id)}
+
+    items = (
+        db.query(SplitItem)
+        .filter(SplitItem.expense_id == expense.id)
+        .order_by(SplitItem.id)
+        .all()
+    )
+    by_id = {item.id: item for item in items}
+
+    # The lines that were named, and the people they were named to.
+    named = 0
+    for raw_id, member_id in (payload.assignments or {}).items():
+        try:
+            item_id = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+
+        item = by_id.get(item_id)
+        if item is None:
+            continue
+
+        if member_id is None:
+            # Nobody is named, so the line is free again.
+            for claim in (
+                db.query(SplitItemClaim)
+                .filter(SplitItemClaim.item_id == item.id)
+                .all()
+            ):
+                db.delete(claim)
+            item.is_claimed = False
+            continue
+
+        member = members.get(int(member_id))
+        if member is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="That person is not in this group.",
+            )
+
+        # The whole line goes to that person. Any claim that was
+        # there before is taken back first, so a line cannot be held
+        # by two people at once.
+        for claim in (
+            db.query(SplitItemClaim)
+            .filter(SplitItemClaim.item_id == item.id)
+            .all()
+        ):
+            db.delete(claim)
+
+        db.add(
+            SplitItemClaim(
+                item_id=item.id,
+                member_id=member.id,
+                quantity=Decimal(str(item.quantity or 1)),
+            )
+        )
+        item.is_claimed = True
+        named += 1
+
+    db.flush()
+    recompute_expense(db, expense, list(members.values()), currency=group.currency or "IDR")
+    db.commit()
+    db.refresh(expense)
+
     return _expense_response(db, expense)
 
 

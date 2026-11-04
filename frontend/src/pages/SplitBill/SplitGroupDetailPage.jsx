@@ -24,6 +24,8 @@ import { inviteLink } from '../../hooks/useLiveReceiptClaim';
 import InviteQr from '../../components/split/InviteQr';
 import AddReceiptPanel from '../../components/split/AddReceiptPanel';
 import SplitInvitations from '../../components/split/SplitInvitations';
+import SmartSplitAssigner from '../../components/split/SmartSplitAssigner';
+import RecentTransactionImporter from '../../components/split/RecentTransactionImporter';
 import useLiveBoard from '../../hooks/useLiveBoard';
 import {
   hasDiscrepancy,
@@ -38,6 +40,8 @@ import {
   claimForMember,
   publishExpense,
   createSettlement,
+  createExpense,
+  assignItems,
 } from '../../services/splitApi';
 import { api } from '../../services/api';
 
@@ -60,6 +64,10 @@ export default function SplitGroupDetailPage() {
   const [error, setError] = useState(null);
   const [adding, setAdding] = useState(false);
   const [accounts, setAccounts] = useState([]);
+  // Whether the assigner is saving. The reader may press the button
+  // twice, and the second press has to know that the first one is
+  // still on its way.
+  const [assigning, setAssigning] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -173,6 +181,44 @@ export default function SplitGroupDetailPage() {
     }
   };
 
+  /**
+   * Say who had what, all at once.
+   *
+   * The server works the bill out again straight away, so the
+   * numbers on the screen are the numbers that were worked out.
+   */
+  const assign = async (assignments) => {
+    if (!active) return;
+    setAssigning(true);
+    setError(null);
+    try {
+      const updated = await assignItems(groupId, active.id, assignments);
+      setExpenses((current) =>
+        current.map((row) => (row.id === updated.id ? updated : row)),
+      );
+      const rows = await getBalances(groupId);
+      setBalances(rows);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  /**
+   * A receipt out of the reader's own records becomes the bill.
+   */
+  const imported = async (payload) => {
+    try {
+      const made = await createExpense(groupId, payload);
+      setExpenses((current) => [made, ...current]);
+      setActiveId(made.id);
+      setAdding(false);
+    } catch (err) {
+      setError(err);
+    }
+  };
+
   const publish = async () => {
     if (!active) return;
     // The bill is not published while the lines do not add up. The
@@ -278,6 +324,13 @@ export default function SplitGroupDetailPage() {
           </button>
         )}
 
+        {/* A receipt that is already in the reader's own records.
+            It saves typing the whole receipt out a second time. */}
+        <RecentTransactionImporter
+          onImported={imported}
+          language={language}
+        />
+
         {expenses.length === 0 && <p>{K.no_receipts_hint}</p>}
 
         {expenses.length > 0 && (
@@ -349,6 +402,16 @@ export default function SplitGroupDetailPage() {
                 if (next) claimFor(item, next.id);
               }}
               language={language}
+            />
+
+            {/* The other way of saying who had what: every line at
+                once, with a person picked for each of them. */}
+            <SmartSplitAssigner
+              expense={active}
+              members={members}
+              language={language}
+              onAssign={assign}
+              saving={assigning}
             />
 
             <SplitMethodSelector

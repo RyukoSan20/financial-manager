@@ -91,6 +91,42 @@ export async function createExpense(groupId, payload) {
 }
 
 /**
+ * The reader's recent transactions that can be brought into a bill.
+ *
+ * Only the ones that came from a receipt: a bill is made of lines,
+ * and a transaction without a receipt has only one line.
+ */
+export async function listImportableTransactions(limit = 20) {
+  const result = await api.get(`/split/importable-transactions?limit=${limit}`);
+  return result;
+}
+
+/**
+ * One of those transactions, as the payload of a new bill.
+ *
+ * Nothing is written down. It gives back the lines, the tax, the
+ * discount and the total, so that the reader can look at it first.
+ */
+export async function importTransaction(transactionId, payload = {}) {
+  const result = await api.post(`/split/import-transaction/${transactionId}`, payload);
+  return result;
+}
+
+/**
+ * Say who had what, all at once.
+ *
+ * The keys of the map are the ids of the lines, and the values are
+ * the ids of the people at the table.
+ */
+export async function assignItems(groupId, expenseId, assignments) {
+  const result = await api.post(
+    `/split/groups/${groupId}/expenses/${expenseId}/assign`,
+    { assignments },
+  );
+  return result;
+}
+
+/**
  * One receipt.
  */
 export async function getExpense(expenseId) {
@@ -221,6 +257,9 @@ export default {
   listExpenses,
   createExpense,
   decomposeReceipt,
+  listImportableTransactions,
+  importTransaction,
+  assignItems,
   getExpense,
   claimForMember,
   releaseClaim,
