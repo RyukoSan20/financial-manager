@@ -98,7 +98,7 @@ const ProductCard = ({ product, source, onSave, saving }) => {
       : null;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col transition-[border-color,box-shadow] hover:shadow-md settle-in">
       <div className="aspect-square overflow-hidden bg-gray-50 dark:bg-gray-800">
         <CatalogPicture src={product.image_url} title={product.title || product.name} />
       </div>

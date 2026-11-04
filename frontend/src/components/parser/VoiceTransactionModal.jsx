@@ -267,7 +267,7 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
           <button
             onClick={listening ? stopListening : startListening}
             disabled={parsing}
-            className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
+            className={`w-20 h-20 rounded-full flex items-center justify-center transition-colors ${
               listening
                 ? 'bg-red-600 text-white animate-pulse shadow-lg shadow-red-600/50'
                 : 'bg-primary-600 text-white hover:bg-primary-600 shadow-lg shadow-primary-500/30'

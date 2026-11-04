@@ -60,7 +60,7 @@ export default function SingleAddButton({ href, label, onClick, className = '' }
         onClick={handle}
         aria-label={text}
         title={text}
-        className="flex items-center gap-2 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 active:scale-95 transition-all h-14 px-4"
+        className="flex items-center gap-2 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 active:scale-95 transition-colors h-14 px-4 pressable"
       >
         <Plus className="w-5 h-5" />
         {/* The text is for the wider screens; on a phone the icon

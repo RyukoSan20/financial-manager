@@ -26,7 +26,7 @@ export const ProgressBar = ({ value, max = 100, color = 'primary', size = 'md', 
       )}
       <div className={clsx('w-full bg-gray-200 rounded-full overflow-hidden', sizes[size])}>
         <div
-          className={clsx('h-full rounded-full transition-all duration-300', colors[color])}
+          className={clsx('h-full rounded-full transition-[width,background-color] duration-300', colors[color])}
           style={{ width: `${percentage}%` }}
         />
       </div>

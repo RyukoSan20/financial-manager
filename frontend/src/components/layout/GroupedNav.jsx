@@ -126,7 +126,7 @@ export default function GroupedNav({ navMap, icons }) {
                   key={item.name}
                   to={item.href}
                   ref={isActive ? activeRef : undefined}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${auroraNavClass({ active: isActive })}`}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors duration-200 ${auroraNavClass({ active: isActive })}`}
                 >
                   {Icon ? <Icon className="w-5 h-5 flex-shrink-0" /> : null}
                   <span className="text-sm">{item.name}</span>
@@ -161,7 +161,7 @@ export default function GroupedNav({ navMap, icons }) {
                     key={item.name}
                     to={item.href}
                     ref={isActive ? activeRef : undefined}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${auroraNavClass({ active: isActive })}`}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors duration-200 ${auroraNavClass({ active: isActive })}`}
                   >
                     {Icon ? <Icon className="w-5 h-5 flex-shrink-0" /> : null}
                     <span className="text-sm">{item.name}</span>

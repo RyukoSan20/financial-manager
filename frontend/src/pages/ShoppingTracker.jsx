@@ -240,7 +240,7 @@ const ShoppingTracker = () => {
         
         <div className="w-full bg-gray-100 rounded-full h-3 mb-2 overflow-hidden">
           <div 
-            className={`h-3 rounded-full transition-all duration-500 ${
+            className={`h-3 rounded-full transition-[width] duration-500 ${
               stats.percentUsed > 90 ? "bg-red-500" : 
               stats.percentUsed > 70 ? "bg-yellow-500" : "bg-green-500"
             }`}

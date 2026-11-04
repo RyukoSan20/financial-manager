@@ -21,12 +21,12 @@ import PortfolioProjectionChart from '../components/market/PortfolioProjectionCh
 const ThemeToggle = ({ isDark, onToggle, label }) => (
   <button
     onClick={onToggle}
-    className={`relative w-14 h-7 rounded-full transition-all duration-300 ${
+    className={`relative w-14 h-7 rounded-full transition-colors duration-300 ${
       isDark ? 'bg-gray-700' : 'bg-gray-300'
     }`}
     aria-label={label}
   >
-    <span className={`absolute top-0.5 w-6 h-6 rounded-full shadow-md flex items-center justify-center transition-all duration-300 ${
+    <span className={`absolute top-0.5 w-6 h-6 rounded-full shadow-md flex items-center justify-center transition-transform duration-300 ${
       isDark ? 'left-7 bg-yellow-400' : 'left-0.5 bg-white'
     }`}>
       {isDark ? (
@@ -41,7 +41,7 @@ const ThemeToggle = ({ isDark, onToggle, label }) => (
 // Market Card with proper theming
 const MarketCard = ({ name, value, change, changeValue, positive, unit = '', isDark }) => {
   return (
-    <div className={`p-4 rounded-xl border transition-all hover:shadow-lg ${
+    <div className={`p-4 rounded-xl border transition-[border-color,background-color,box-shadow] hover:shadow-lg cursor-pointer pressable ${
       isDark 
         ? 'bg-gray-800/80 border-gray-700 hover:bg-gray-800' 
         : 'bg-white border-gray-200 hover:bg-gray-50'
@@ -520,7 +520,7 @@ export const MarketPage = () => {
                     <button
                       key={s.symbol}
                       onClick={() => setSelectedSymbol(s.symbol)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         selectedSymbol === s.symbol
                           ? 'bg-primary-600 text-white shadow-md'
                           : isDarkMode
@@ -547,7 +547,7 @@ export const MarketPage = () => {
             {(() => {
               const ihsg = marketData?.indices?.find(i => i.name === 'IHSG');
               return ihsg ? (
-                <div className={`col-span-2 p-4 rounded-xl border transition-all hover:shadow-lg ${isDarkMode ? 'bg-gradient-to-br from-primary-900/80 to-primary-900/80 border-primary-700' : 'bg-gradient-to-br from-primary-50 to-primary-50 border-primary-200'}`}>
+                <div className={`col-span-2 p-4 rounded-xl border transition-[border-color,background-color,box-shadow] hover:shadow-lg ${isDarkMode ? 'bg-gradient-to-br from-primary-900/80 to-primary-900/80 border-primary-700' : 'bg-gradient-to-br from-primary-50 to-primary-50 border-primary-200'}`}>
                   <div className="flex items-center justify-between">
                     <div>
                       <p className={`text-sm font-medium ${isDarkMode ? 'text-primary-300' : 'text-primary-600'}`}>🇮🇩 IHSG</p>
@@ -643,7 +643,7 @@ export const MarketPage = () => {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     activeTab === tab.key
                       ? 'bg-primary-600 text-white shadow-md'
                       : isDarkMode

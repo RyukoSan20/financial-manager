@@ -142,7 +142,7 @@ const DarkModeToggle = ({ isDark, onToggle }) => {
     }`}
     aria-label={t('dashboard.toggle_dark_mode')}
   >
-    <span className={`absolute top-0.5 w-6 h-6 rounded-full shadow-md flex items-center justify-center transition-all duration-300 ${
+    <span className={`absolute top-0.5 w-6 h-6 rounded-full shadow-md flex items-center justify-center transition-transform duration-300 ${
       isDark ? 'left-7 bg-yellow-400' : 'left-0.5 bg-white'
     }`}>
       {isDark ? <Moon className="w-3.5 h-3.5 text-gray-800" /> : <Sun className="w-3.5 h-3.5 text-yellow-500" />}
@@ -159,7 +159,7 @@ const ModeToggle = ({ mode, onToggle, isDark }) => {
   <div className={`flex rounded-lg p-1 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
     <button
       onClick={() => onToggle('basic')}
-      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${
+      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${
         mode === 'basic' ? 'bg-primary-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
       }`}
     >
@@ -168,7 +168,7 @@ const ModeToggle = ({ mode, onToggle, isDark }) => {
     </button>
     <button
       onClick={() => onToggle('advanced')}
-      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${
+      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${
         mode === 'advanced' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
       }`}
     >
@@ -181,7 +181,7 @@ const ModeToggle = ({ mode, onToggle, isDark }) => {
 
 // Market Card with real-time data
 const MarketCard = ({ name, value, change, positive, isDark }) => (
-  <div className={`p-3 rounded-lg border transition-all hover:shadow-md ${
+  <div className={`p-3 rounded-lg border transition-[border-color,background-color,box-shadow] hover:shadow-md ${
     isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
   }`}>
     <p className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{name}</p>
@@ -199,7 +199,7 @@ const AchievementBadge = ({ achievement, earned, isDark }) => {
   const Icon = ACHIEVEMENT_ICONS[achievement.id] || Award;
   return (
     <div 
-      className={`relative flex flex-col items-center p-3 rounded-xl transition-all ${
+      className={`relative flex flex-col items-center p-3 rounded-xl transition-[background-color,border-color,box-shadow] ${
         earned 
           ? `bg-gradient-to-br from-opacity-20 to-opacity-10` 
           : `opacity-40 grayscale`
@@ -270,7 +270,7 @@ const CategoryBreakdown = ({ categories, type, isDark, maxItems = 5 }) => {
                   </div>
                   <div className={`w-full rounded-full h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
                     <div 
-                      className="h-1.5 rounded-full transition-all" 
+                      className="h-1.5 rounded-full transition-[width]" 
                       style={{ 
                         width: `${percentage}%`, 
                         backgroundColor: CATEGORY_COLORS[colorKey] || '#6b7280' 
@@ -307,7 +307,7 @@ const SpendingProgressBar = ({ current, total, status, isDark }) => {
   return (
     <div className={`w-full rounded-full h-3 overflow-hidden ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
       <div 
-        className={`h-full rounded-full transition-all duration-500 ${colors[status] || colors.safe}`}
+        className={`h-full rounded-full transition-[width,background-color] duration-500 ${colors[status] || colors.safe}`}
         style={{ width: `${percentage}%` }}
       />
     </div>
@@ -900,7 +900,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                 key={tf.key}
                 onClick={() => setTimeframe(tf.key)}
                 title={t(tf.descriptionKey)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
                   timeframe === tf.key 
                     ? 'bg-primary-600 text-white shadow-md' 
                     : `${textSecondary} hover:bg-gray-200 dark:hover:bg-gray-600`
@@ -1380,7 +1380,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         {/* Achievement Progress Bar */}
         <div className={`w-full rounded-full h-2 mb-4 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
           <div 
-            className="h-2 rounded-full bg-gradient-to-r from-primary-500 to-primary-400 transition-all"
+            className="h-2 rounded-full bg-gradient-to-r from-primary-500 to-primary-400 transition-[width]"
             style={{ width: `${(achievements.length / ACHIEVEMENTS.length) * 100}%` }}
           />
         </div>
@@ -1586,7 +1586,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   <div className="mb-2">
                     <div className={`w-full rounded-full h-2 ${isDark ? 'bg-gray-600' : 'bg-gray-200'}`}>
                       <div 
-                        className="h-2 rounded-full bg-primary-500 transition-all"
+                        className="h-2 rounded-full bg-primary-500 transition-[width]"
                         style={{ width: `${Math.min(100, progress)}%` }}
                       />
                     </div>

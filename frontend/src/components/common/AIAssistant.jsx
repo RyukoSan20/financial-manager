@@ -522,7 +522,7 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
   }
 
   return (
-    <div className={`fixed left-4 bottom-24 z-50 w-96 max-h-[600px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all ${isMinimized ? 'h-14' : 'h-[500px]'}`}>
+    <div className={`fixed left-4 bottom-24 z-50 w-96 max-h-[600px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-[height] ${isMinimized ? 'h-14' : 'h-[500px]'}`}>
       {/* Header */}
       <div className="bg-primary-600 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">

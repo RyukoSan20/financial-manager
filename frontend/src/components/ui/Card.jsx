@@ -34,6 +34,7 @@ export const Card = ({
         className={clsx(
           'bg-white rounded-xl shadow-sm border border-gray-100',
           hover && 'card-hover cursor-pointer',
+          hover && 'settle-in',
           className
         )}
         {...props}
@@ -52,6 +53,7 @@ export const Card = ({
         tier === 'row' && 'aurora-card--row',
         `aurora-hue-${hue}`,
         hover && 'aurora-lift cursor-pointer',
+        hover && 'settle-in',
         className
       )}
       {...props}

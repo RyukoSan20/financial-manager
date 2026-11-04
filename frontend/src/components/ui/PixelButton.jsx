@@ -18,7 +18,7 @@ export const PixelButton = ({
 }) => {
   const [pressed, setPressed] = useState(false);
 
-  const baseClasses = 'pixel-btn relative font-pixel transition-all duration-75';
+  const baseClasses = 'pixel-btn relative font-pixel transition-colors duration-75';
   
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-xs',
@@ -183,7 +183,7 @@ export const PixelFAB = ({
         flex items-center justify-center rounded-2xl
         ${sizeClasses[size]}
         ${variantClasses[variant]}
-        transition-all duration-150
+        transition-[color,background-color,border-color] duration-150
         hover:scale-105 active:scale-95
         ${className}
       `}

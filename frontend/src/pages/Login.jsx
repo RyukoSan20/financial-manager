@@ -84,7 +84,7 @@ export const Login = () => {
         <div className="bg-white rounded-2xl shadow-xl p-2 flex mb-6">
           <button
             onClick={() => setLoginMethod('email')}
-            className={`flex-1 py-3 rounded-xl font-medium transition-all ${
+            className={`flex-1 py-3 rounded-xl font-medium transition-colors ${
               loginMethod === 'email' 
                 ? 'bg-primary-600 text-white shadow-md' 
                 : 'text-gray-600 hover:bg-gray-50'
@@ -94,7 +94,7 @@ export const Login = () => {
           </button>
           <button
             onClick={() => setLoginMethod('google')}
-            className={`flex-1 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
               loginMethod === 'google' 
                 ? 'bg-primary-600 text-white shadow-md' 
                 : 'text-gray-600 hover:bg-gray-50'
@@ -131,7 +131,7 @@ export const Login = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="nama@email.com"
                   required
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors"
                 />
               </div>
 
@@ -146,7 +146,7 @@ export const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all pr-12"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors pr-12"
                   />
                   <button
                     type="button"
@@ -170,7 +170,7 @@ export const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -197,7 +197,7 @@ export const Login = () => {
               </p>
               <Link
                 to="/register"
-                className="block w-full py-3 border-2 border-primary-600 text-primary-600 rounded-xl font-semibold text-center hover:bg-primary-50 transition-all"
+                className="block w-full py-3 border-2 border-primary-600 text-primary-600 rounded-xl font-semibold text-center hover:bg-primary-50 transition-colors"
               >
                 {K.register}
               </Link>
@@ -227,7 +227,7 @@ export const Login = () => {
               <button
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center justify-center gap-3"
+                className="w-full py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-300 transition-colors flex items-center justify-center gap-3"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

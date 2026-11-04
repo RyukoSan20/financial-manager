@@ -37,7 +37,7 @@ export default function FloatingAction({
         'relative flex items-center justify-center rounded-full',
         'bg-gradient-to-br from-primary-500 to-primary-600 text-white',
         'shadow-lg shadow-primary-500/30 h-14 w-14',
-        'transition-transform duration-150 active:scale-95',
+        'transition-transform duration-150 active:scale-95 pressable',
         money && 'money-fab money-morph',
         className
       )}

@@ -115,14 +115,14 @@ export default function ConfirmDialog({
               <button
                 type="button"
                 onClick={onCancel}
-                className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-transform duration-150 hover:bg-gray-50 active:scale-95 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-transform duration-150 hover:bg-gray-50 active:scale-95 pressable dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
               >
                 {cancelText}
               </button>
               <button
                 type="button"
                 onClick={onConfirm}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform duration-150 active:scale-95 ${
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform duration-150 active:scale-95 pressable ${
                   isDanger
                     ? 'bg-red-600 hover:bg-red-700'
                     : 'bg-primary-600 hover:bg-primary-700'

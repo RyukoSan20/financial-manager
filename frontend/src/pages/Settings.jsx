@@ -132,7 +132,7 @@ export const Settings = () => {
                 </div>
                 <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    className="h-full rounded-full bg-emerald-500 transition-[width] duration-500"
                     style={{ width: `${passport.readiness_score}%` }}
                   />
                 </div>
@@ -460,7 +460,7 @@ const PreferencesTab = ({ user }) => {
               <button
                 key={code}
                 onClick={() => changeLanguage(code)}
-                className={`p-3 rounded-lg border-2 transition-all text-center ${
+                className={`p-3 rounded-lg border-2 transition-[border-color,background-color] text-center ${
                   language === code
                     ? 'border-primary-500 bg-primary-50 text-primary-700'
                     : 'border-gray-200 hover:border-gray-300 text-gray-700'

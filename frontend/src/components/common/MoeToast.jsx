@@ -79,7 +79,7 @@ export function MoeToastItem({ item, onDismiss }) {
         {item.title ? <p className="moe-toast__title">{item.title}</p> : null}
         <p className="moe-toast__message">{item.message}</p>
         {item.action ? (
-          <button type="button" className="moe-toast__action" onClick={item.action.onClick}>
+          <button type="button" className="moe-toast__action pressable" onClick={item.action.onClick}>
             {item.action.label}
           </button>
         ) : null}
@@ -89,7 +89,7 @@ export function MoeToastItem({ item, onDismiss }) {
 
       <button
         type="button"
-        className="moe-toast__close"
+        className="moe-toast__close pressable"
         onClick={() => onDismiss?.(item.id)}
         aria-label={t('moe.toast_dismiss', 'Close')}
       >

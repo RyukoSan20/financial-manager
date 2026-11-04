@@ -106,7 +106,7 @@ export default function ReadinessChecklist({ onDismiss }) {
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
           <div
-            className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+            className="h-full rounded-full bg-emerald-500 transition-[width] duration-500"
             style={{ width: `${pct}%` }}
           />
         </div>

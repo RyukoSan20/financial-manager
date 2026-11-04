@@ -127,7 +127,7 @@ export const Register = () => {
                 onChange={handleChange}
                 placeholder="nama@email.com"
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors"
               />
             </div>
 
@@ -143,7 +143,7 @@ export const Register = () => {
                 placeholder="••••••••"
                 required
                 minLength={8}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors"
               />
               
               {/* Password Strength Indicator */}
@@ -153,7 +153,7 @@ export const Register = () => {
                     {[0, 1, 2, 3, 4].map((i) => (
                       <div
                         key={i}
-                        className={`h-1 flex-1 rounded-full transition-all ${
+                        className={`h-1 flex-1 rounded-full transition-[width,background-color] ${
                           i <= passwordStrength.score ? getStrengthColor(passwordStrength.score) : 'bg-gray-200'
                         }`}
                       />
@@ -192,7 +192,7 @@ export const Register = () => {
                 onChange={handleChange}
                 placeholder="••••••••"
                 required
-                className={`w-full px-4 py-3 border rounded-xl outline-none transition-all focus:ring-2 focus:ring-primary-500 ${
+                className={`w-full px-4 py-3 border rounded-xl outline-none transition-colors focus:ring-2 focus:ring-primary-500 ${
                   form.confirmPassword && form.password !== form.confirmPassword 
                     ? 'border-red-300 bg-red-50' 
                     : 'border-gray-200'
@@ -228,7 +228,7 @@ export const Register = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -248,7 +248,7 @@ export const Register = () => {
             </p>
             <Link
               to="/login"
-              className="block w-full py-3 border-2 border-primary-600 text-primary-600 rounded-xl font-semibold text-center hover:bg-primary-50 transition-all"
+              className="block w-full py-3 border-2 border-primary-600 text-primary-600 rounded-xl font-semibold text-center hover:bg-primary-50 transition-colors"
             >
               {K.sign_in}
             </Link>

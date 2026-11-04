@@ -55,7 +55,7 @@ export const PixelProgress = ({
         }}
       >
         <div
-          className={`h-full rounded-full transition-all duration-500 ${variantClasses[autoVariant]}`}
+          className={`h-full rounded-full transition-[width,background-color] duration-500 ${variantClasses[autoVariant]}`}
           style={{
             width: `${percentage}%`,
             ...(autoVariant === 'default'

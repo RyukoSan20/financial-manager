@@ -638,7 +638,7 @@ const AddTransactionPage = () => {
                 setType(t);
                 recordTypeCorrection(t);
               }}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
                 type === t ? `${getTypeColor()} text-white` : "text-gray-600"
               }`}
             >

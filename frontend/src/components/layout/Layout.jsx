@@ -49,7 +49,12 @@ export const Layout = () => {
       
       {/* Main Content */}
       <main className="lg:pl-64 pt-16 pb-24 lg:pb-8 min-h-screen">
-        <AuroraCanvas className="max-w-7xl mx-auto px-4 py-6">
+        {/* The page settles into place rather than appearing. The key
+            is the path, so each new page settles again. */}
+        <AuroraCanvas
+          key={location.pathname}
+          className="max-w-7xl mx-auto px-4 py-6 settle-in"
+        >
           <Outlet />
         </AuroraCanvas>
       </main>

@@ -177,7 +177,7 @@ export default function EditableAiCostBreakdown({
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-left dark:border-gray-700 dark:bg-gray-800"
+        className="flex w-full items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-left pressable dark:border-gray-700 dark:bg-gray-800"
       >
         <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{heading}</span>
         <span className="flex items-center gap-2">
@@ -251,7 +251,7 @@ export default function EditableAiCostBreakdown({
                     type="button"
                     onClick={() => removeRow(index)}
                     title={t('goals.ai_cost_remove_row')}
-                    className="mb-0.5 shrink-0 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
+                    className="mb-0.5 shrink-0 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 pressable dark:hover:bg-red-950"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -264,7 +264,7 @@ export default function EditableAiCostBreakdown({
             <button
               type="button"
               onClick={addRow}
-              className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 pressable dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               <Plus className="h-3.5 w-3.5" />
               {t('goals.ai_cost_add_row')}

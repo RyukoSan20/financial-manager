@@ -278,7 +278,7 @@ export const Goals = () => {
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3">
                       <div 
-                        className="h-3 rounded-full transition-all"
+                        className="h-3 rounded-full transition-[width]"
                         style={{ 
                           width: `${Math.min(progress, 100)}%`,
                           backgroundColor: goal.color || COLORS()[0]

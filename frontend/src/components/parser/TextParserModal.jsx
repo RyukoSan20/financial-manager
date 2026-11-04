@@ -419,7 +419,7 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
             {results.map((result, index) => (
               <div
                 key={index}
-                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                className={`border-2 rounded-lg p-4 cursor-pointer transition-[border-color,background-color,box-shadow] ${
                   selectedResult === result 
                     ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' 
                     : 'border-gray-200 dark:border-gray-700 hover:border-primary-300'

@@ -106,7 +106,7 @@ export default function BudgetRecipeSelector({
               key={recipe.id}
               onClick={() => pick(recipe)}
               aria-pressed={isChosen}
-              className={`recipe-card text-left rounded-xl border p-3 transition-all duration-150 ${
+              className={`recipe-card text-left rounded-xl border p-3 transition-[border-color,background-color,box-shadow] duration-150 ${
                 isChosen
                   ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 shadow-sm'
                   : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'

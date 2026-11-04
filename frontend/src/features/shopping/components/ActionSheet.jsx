@@ -177,7 +177,7 @@ export default function ActionSheet({ mode, item, accounts, categories, refsErro
                     role="radio"
                     aria-checked={form.rating === n}
                     aria-label={fill(K.rating_aria, n)}
-                    className={n <= form.rating ? 'is-on' : ''}
+                    className={n <= form.rating ? 'is-on pressable' : 'pressable'}
                     onClick={() => setForm((f) => ({ ...f, rating: f.rating === n ? 0 : n }))}
                   >
                     ★
@@ -199,10 +199,10 @@ export default function ActionSheet({ mode, item, accounts, categories, refsErro
         )}
 
         <div className="sb-actions">
-          <button type="button" className="sb-btn" onClick={onClose} disabled={busy}>
+          <button type="button" className="sb-btn pressable" onClick={onClose} disabled={busy}>
             {K.cancel}
           </button>
-          <button type="submit" className="sb-btn sb-btn-primary" disabled={busy || noAccounts}>
+          <button type="submit" className="sb-btn sb-btn-primary pressable" disabled={busy || noAccounts}>
             {busy ? K.saving : mode === 'purchase' ? K.record_purchase : K.save}
           </button>
         </div>

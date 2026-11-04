@@ -254,7 +254,7 @@ export default function CuteWellnessBento({
     <BentoGrid>
       {/* The score. The wide end of the row. */}
       <BentoItem span="half" order={1}>
-        <div className="wellness-card h-full p-5">
+        <div className="wellness-card h-full p-5 settle-in">
           <div className="wellness-card__wash" style={{ background: WASHES.mint }} />
           <div className="wellness-halo" />
 

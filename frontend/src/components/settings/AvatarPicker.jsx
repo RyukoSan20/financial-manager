@@ -100,7 +100,7 @@ export const AvatarPicker = ({ value, onChange, onUpload }) => {
                 aria-label={t(`profile_settings.avatar_${choice.tone}`)}
                 aria-pressed={active}
                 className={clsx(
-                  'w-14 h-14 rounded-xl overflow-hidden transition-all',
+                  'w-14 h-14 rounded-xl overflow-hidden transition-[border-color,box-shadow,transform]',
                   active
                     ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900'
                     : 'hover:scale-105'
