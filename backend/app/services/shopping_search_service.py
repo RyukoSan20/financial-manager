@@ -544,14 +544,14 @@ def _local_result(
     merchant = market["id"]
     store_name = store or merchant
 
-    if description:
-        snippet = description
-    else:
-        snippet = (
-            "From your own catalogue"
-            + (f" ({category})" if category else "")
-            + " - a reference price learned from your receipts, not a live shop price."
-        )
+    # The description of a product, if there is one.
+    #
+    # When there is no description, there is nothing here. The card
+    # says where the price came from in words of the reader's own
+    # language, and that sentence is written by the client from the
+    # basis below. The server used to write the sentence itself, in
+    # English, which put English on an Indonesian page.
+    snippet = description
 
     return {
         "title": title,
@@ -639,10 +639,10 @@ def _local_results(
                 store=None,
                 query=query,
                 category="",
-                description=(
-                    "Searched for in your own catalogue - the price shown is "
-                    "your own reference price, not a live shop price."
-                ),
+                # No description. The client writes the sentence that
+                # says where the price came from, in the language the
+                # reader is reading in.
+                description="",
             )
         )
 
@@ -694,14 +694,10 @@ async def search_products(
         "count": len(results),
         "source": source,
         "searched_at": datetime.utcnow().isoformat(),
-        "note": (
-            "Live shop prices."
-            if source == "provider"
-            else (
-                "Prices are from your own catalogue (your reference prices), "
-                "not live shop prices. Open the shop to see the real price."
-            )
-        ),
+        # Which kind of answer this is, as a code. The sentence that
+        # tells the reader is written by the client, in their own
+        # language.
+        "price_source": source,
     }
 
     _to_cache(key, answer)
