@@ -1583,6 +1583,8 @@ export default {
     price_own_shop: "自分の店舗価格",
     unit: "{unit}単位",
     // The shops of the reader.
+    basis_reference: "自分のカタログの参考価格です。店先の価格ではありません。",
+    basis_provider: "店で实时に検索した価格です。",
     partner_title: "自分の店の商品",
     partner_loading: "店舗を読み込み中...",
     partner_error: "店舗を読み込めませんでした。",

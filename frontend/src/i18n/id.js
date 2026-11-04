@@ -1583,6 +1583,8 @@ export default {
     price_own_shop: "Harga toko Anda",
     unit: "per {unit}",
     // The shops of the reader.
+    basis_reference: "Harga acuan dari katalog Anda sendiri, bukan harga di toko.",
+    basis_provider: "Harga dari pencarian langsung di toko.",
     partner_title: "Barang dari toko Anda",
     partner_loading: "Memuat toko Anda...",
     partner_error: "Gagal memuat toko Anda.",

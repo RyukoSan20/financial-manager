@@ -90,6 +90,13 @@ const ProductCard = ({ product, source, onSave, saving }) => {
   const isLocal = isReferencePrice({ ...product, source: product.source ?? source });
   const price = product.price_idr ?? product.price ?? product.unit_price ?? null;
 
+  // The sentence that says where the price came from.
+  const basisNote = isLocal
+    ? t('shopping_catalog.basis_reference')
+    : product.price_basis === 'provider'
+      ? t('shopping_catalog.basis_provider')
+      : null;
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
       <div className="aspect-square overflow-hidden bg-gray-50 dark:bg-gray-800">
@@ -104,6 +111,16 @@ const ProductCard = ({ product, source, onSave, saving }) => {
         {product.description_snippet || product.description ? (
           <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2">
             {product.description_snippet || product.description}
+          </p>
+        ) : null}
+
+        {/* Where the price came from, in a sentence rather than a
+            badge. The server sends the code and the words are written
+            here, so the card reads in the language the reader is
+            reading in. */}
+        {!product.description_snippet && !product.description && basisNote ? (
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2">
+            {basisNote}
           </p>
         ) : null}
 

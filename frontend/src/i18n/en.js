@@ -1583,6 +1583,8 @@ export default {
     price_own_shop: "Your own shop price",
     unit: "per {unit}",
     // The shops of the reader.
+    basis_reference: "A reference price from your own catalogue, not a price in a shop.",
+    basis_provider: "A price from a live search of the shop.",
     partner_title: "Things from your own shops",
     partner_loading: "Loading your shops...",
     partner_error: "Your shops could not be loaded.",
