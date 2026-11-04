@@ -55,6 +55,18 @@ def locale_keys(path):
         if not stripped or stripped.startswith("//"):
             continue
 
+        # A hole in a sentence - "{unit}" - is a value that will be
+        # filled in, not a nested block. Counting its braces as
+        # nesting makes every key after it look like it lives one
+        # level deeper than it does, and the report then says a key
+        # that plainly exists is nowhere defined.
+        #
+        # The holes are taken out first, and put back afterwards, so
+        # the count of braces is the count of blocks.
+        holes = re.findall(r"\{(\w+)\}", stripped)
+        for hole in holes:
+            stripped = stripped.replace("{" + hole + "}", "")
+
         # Everything before the first brace or comma is the key.
         m = re.match(r"^([A-Za-z0-9_]+)\s*:", stripped)
         key = m.group(1) if m else None
