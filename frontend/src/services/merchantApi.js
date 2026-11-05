@@ -71,17 +71,12 @@ const merchantApi = {
   //
   // This does not create a product. It answers with a draft, and the
   // owner looks at the draft before the product is made. The writing
-  // is addProduct below, and it is a separate press.
+  // is createProduct above, and it is a separate press.
   captureProduct: (merchantId, file) => {
     const form = new FormData();
     form.append('file', file);
     return api.upload(`/merchant/${merchantId}/capture`, form);
   },
-  
-  addProduct: (merchantId, data) => api.request(`/merchant/${merchantId}/products`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
   
   // The kind of shop this is.
   //

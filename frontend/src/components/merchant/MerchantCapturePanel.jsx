@@ -88,14 +88,21 @@ export default function MerchantCapturePanel({ merchant, onSaved }) {
     }
     setSaving(true);
     try {
-      await merchantApi.addProduct(merchant.id, {
+      // The shelf, and not the older catalogue table.
+      //
+      // The catalogue reads from the shelf table, so a product that
+      // was written to the older table was in the books and nowhere
+      // a reader could see it. The field names follow: a thing on the
+      // shelf is priced in unit_price and counted in stock_quantity.
+      await merchantApi.createProduct(merchant.id, {
         name: draft.name,
         sku: draft.sku || '',
         category: draft.category || '',
-        unit: draft.unit || 'pcs',
-        price: draft.price,
-        stock: 0,
+        unit_of_measure: draft.unit || 'pcs',
+        unit_price: draft.price,
+        stock_quantity: 0,
         image_url: draft.image_url || '',
+        is_active: true,
       });
       toast.success(K.capture.used);
       reset();

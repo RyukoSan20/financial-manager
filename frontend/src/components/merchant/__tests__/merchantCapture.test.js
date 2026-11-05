@@ -79,7 +79,7 @@ check('a draft with no price is not saved', () => {
   const guard = src.indexOf('noPrice', save);
   assert.ok(guard > 0, 'the save checks the price');
   assert.ok(
-    guard < src.indexOf('addProduct', save),
+    guard < src.indexOf('createProduct', save),
     'the price is checked before the product is made',
   );
 });
@@ -88,7 +88,7 @@ check('the panel writes nothing by itself', () => {
   const src = read(PANEL);
   // The product is made by one call, and it is inside the save, which
   // only runs when the owner presses the button.
-  const calls = src.match(/addProduct/g) || [];
+  const calls = src.match(/createProduct/g) || [];
   assert.equal(calls.length, 1, 'the product is made in one place');
   assert.ok(
     /onClick=\{save\}/.test(src),
