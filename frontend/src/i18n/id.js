@@ -779,6 +779,7 @@ export default {
     precision_label: "Ketepatan lokasi",
     precision_street: "Alamat lengkap",
     precision_brand: "Perkiraan brand (tanpa alamat)",
+    precision_district: "Perkiraan area (alamat jalan tidak ditemukan)",
     precision_hint: "Pin perkiraan hanya menunjukkan kota, bukan titik toko.",
     exact_count: "%s lokasi persis",
     map_place_unresolved: "Lokasi tidak ditemukan",

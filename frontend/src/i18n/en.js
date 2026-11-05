@@ -779,6 +779,7 @@ export default {
     precision_label: "Location precision",
     precision_street: "Exact street address",
     precision_brand: "Brand estimate (no street found)",
+    precision_district: "Area estimate (no street address found)",
     precision_hint: "An estimated pin shows the city, not the shop door.",
     exact_count: "%s exact locations",
     map_place_unresolved: "Location not found",

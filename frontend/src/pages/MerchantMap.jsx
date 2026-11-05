@@ -333,6 +333,21 @@ const MerchantMap = () => {
                             {marker.source === 'gps' ? t("merchant_map.source_gps") : marker.source === 'gps_tx' ? t("merchant_map.source_gps_tx") : t("merchant_map.source_merchant")}
                           </span>
                         </div>
+                        {/* The street, and the place next door.
+                            The server was already sending both and
+                            the page was dropping them, so a reader
+                            who wanted to know which shop it was was
+                            told a district and had to guess. */}
+                        {(marker.street || marker.nearest_place) && (
+                          <div className="text-xs text-gray-600 dark:text-gray-300 mt-2 border-t pt-2 space-y-0.5">
+                            {marker.street && (
+                              <p>🛣️ {marker.street}</p>
+                            )}
+                            {marker.nearest_place && (
+                              <p>🏪 {marker.nearest_place}</p>
+                            )}
+                          </div>
+                        )}
                         {marker.address && (
                           <p className="text-xs text-gray-400 mt-2 border-t pt-2">
                             📍 {marker.address}
@@ -340,10 +355,14 @@ const MerchantMap = () => {
                         )}
                         {/* A pin that stands for a whole brand says so.
                             The reader is not left thinking the shop
-                            itself is where the dot is. */}
+                            itself is where the dot is. A pin that is
+                            only a district says that too, rather than
+                            claiming a door number it does not have. */}
                         {marker.precision && !marker.is_exact && (
                           <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
-                            ⚠️ {t("merchant_map.precision_brand")}
+                            ⚠️ {marker.precision === "city"
+                              ? t("merchant_map.precision_brand")
+                              : t("merchant_map.precision_district")}
                           </p>
                         )}
                       </div>

@@ -779,6 +779,7 @@ export default {
     precision_label: "場所の精度",
     precision_street: "住所まで特定",
     precision_brand: "ブランド推定（住所なし）",
+    precision_district: "周辺推定（住所が見つかりません）",
     precision_hint: "推定ピンは市區を示し、店そのものは示しません。",
     exact_count: "正確に特定した場所 %s 件",
     map_place_unresolved: "場所が見つかりません",
