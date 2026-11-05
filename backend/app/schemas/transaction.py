@@ -1,7 +1,7 @@
 """Transaction schemas - Updated with transfer types and idempotency."""
 
 from app.schemas.base import EmptyStringAsNone
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import date as _date, datetime
 from decimal import Decimal
@@ -116,6 +116,31 @@ class TransactionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    # The flag columns have no "not null" on them in the database, so a
+    # row written by an older version of the app, or by a script, can
+    # carry a NULL in one of them. When that row is put into an answer
+    # that promised a boolean, the whole list failed to be written, and
+    # the page told the reader they had no transactions at all.
+    #
+    # The empty flag is read as the flag's own default: a transaction
+    # that was not deleted is not deleted, one that was not recurring
+    # is not recurring, and one that came from nowhere in particular
+    # was written by hand.
+    @field_validator("is_recurring", mode="before")
+    @classmethod
+    def _is_recurring_never_empty(cls, value):
+        return False if value is None else value
+
+    @field_validator("is_deleted", mode="before")
+    @classmethod
+    def _is_deleted_never_empty(cls, value):
+        return False if value is None else value
+
+    @field_validator("detection_type", mode="before")
+    @classmethod
+    def _detection_type_never_empty(cls, value):
+        return "MANUAL" if value is None else value
 
 
 class TransactionWithDetails(TransactionResponse):

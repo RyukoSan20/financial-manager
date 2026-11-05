@@ -172,8 +172,21 @@ def get_cash_flow_trend(
     if len(monthly_data) >= 2:
         latest = monthly_data[-1]
         previous = monthly_data[-2]
-        income_change = float(latest["income"] - previous["income"]) if previous["income"] > 0 else 0
-        expense_change = float(latest["expense"] - previous["expense"]) if previous["expense"] > 0 else 0
+        # The amounts are decimals, because money is never a float.
+        # Casting the change to a float here made one side of the
+        # division a float and the other a decimal, and Python refuses
+        # to divide one by the other. The whole endpoint then answered
+        # with an error, and the analytics page showed nothing.
+        income_change = (
+            Decimal(latest["income"] - previous["income"])
+            if previous["income"] > 0
+            else Decimal("0")
+        )
+        expense_change = (
+            Decimal(latest["expense"] - previous["expense"])
+            if previous["expense"] > 0
+            else Decimal("0")
+        )
         
         income_trend = "up" if income_change > 0 else "down" if income_change < 0 else "stable"
         expense_trend = "up" if expense_change > 0 else "down" if expense_change < 0 else "stable"
@@ -199,11 +212,11 @@ def get_cash_flow_trend(
             "expense_trend": expense_trend,
             "income_change_pct": (
                 float(income_change / previous["income"] * 100)
-                if previous is not None and previous["income"] > 0 else 0
+                if previous is not None and previous["income"] > 0 else 0.0
             ),
             "expense_change_pct": (
                 float(expense_change / previous["expense"] * 100)
-                if previous is not None and previous["expense"] > 0 else 0
+                if previous is not None and previous["expense"] > 0 else 0.0
             ),
         }
     }
