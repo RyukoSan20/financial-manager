@@ -22,7 +22,7 @@ import { useTranslation } from '../../i18n';
 import { batch1, fill } from '../../i18n/keys_batch1';
 import FinBuddyMascot from '../common/FinBuddyMascot';
 
-export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
+export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) => {
   const { language } = useTranslation();
   const K = batch1[language]?.scanner || batch1.id.scanner;
   const [loading, setLoading] = useState(false);
@@ -425,6 +425,30 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess }) => {
     setError('');
 
     try {
+      // When the reader wants to look at the receipt before it is
+      // saved, the reading is handed over instead of being written
+      // down. The lines are shown to them, with the discount, the tax
+      // and the sharing, and they decide.
+      if (onReview) {
+        onReview({
+          amount: parseFloat(amount),
+          type: 'expense',
+          description: merchantName || K.receiptScanDesc,
+          date: transactionDate,
+          account_id: parseInt(selectedAccount),
+          category_id: selectedCategory ? parseInt(selectedCategory) : null,
+          merchant_name: merchantName,
+          location: location,
+          raw_source_text: rawText,
+          confidence_score: confidence,
+          detection_type: 'receipt_ocr',
+          items: parsedData?.items || [],
+        });
+        handleReset();
+        onClose();
+        return;
+      }
+
       await api.transactions.create({
         amount: parseFloat(amount),
         type: 'expense',

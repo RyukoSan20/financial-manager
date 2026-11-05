@@ -38,7 +38,7 @@ export const isVoiceSupported = () => Boolean(SpeechRecognitionCtor);
 
 const VOICE_LANG = 'id-ID';
 
-export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
+export const VoiceTransactionModal = ({ isOpen, onClose, onSave, onReview }) => {
   const { language } = useTranslation();
   const K = batch2[language]?.voice || batch2.id.voice;
 
@@ -235,6 +235,23 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave }) => {
     setError('');
     setSaved(true);
     try {
+      // When the reader wants to look at what was heard before it is
+      // saved, the reading is handed over instead of being written
+      // down. What was heard is a guess, and a guess that was heard
+      // aloud deserves the same review as a guess that was read off
+      // a photograph.
+      if (onReview) {
+        onReview({
+          amount: Number(form.amount),
+          merchant_name: form.merchant_name || null,
+          category: form.category || null,
+          transaction_type: form.transaction_type,
+          description: form.description || recognized || manualText,
+          items: [],
+        });
+        onClose();
+        return;
+      }
       await onSave({
         amount: Number(form.amount),
         merchant_name: form.merchant_name || null,
