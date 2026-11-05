@@ -260,6 +260,114 @@ def _receipt_payload(
     }
 
 
+class PriceMemoryEntry(BaseModel):
+    """
+    One thing the reader has paid for before.
+
+    The name is what the reader types, the unit price is what they
+    paid for one of it, and the count is how many times they have
+    bought it.
+    """
+
+    name: str
+    unit_price: float
+    quantity: float = 1
+    category: Optional[str] = None
+    times_bought: int = 1
+
+
+@router.get("/price-memory", response_model=list[PriceMemoryEntry])
+def get_price_memory(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    The prices the reader has paid before.
+
+    The reader types "Indomie" into the item table and the price comes
+    back, because they paid it last time. The lines of the receipts
+    they have saved are the better source for this, because the price
+    of the Indomie is written on the line and not on the total of the
+    shop.
+
+    Only the reader's own prices are returned. Another reader's Indomie
+    is not this reader's Indomie.
+    """
+    user_id = current_user.id
+
+    # The lines of the receipts.
+    lines = (
+        db.query(ReceiptItem, ReceiptScan)
+        .join(ReceiptScan, ReceiptItem.receipt_scan_id == ReceiptScan.id)
+        .filter(ReceiptScan.user_id == user_id)
+        .all()
+    )
+
+    memory: dict[str, dict] = {}
+
+    def remember(name, unit_price, quantity, category):
+        clean = str(name or "").strip()
+        if not clean:
+            return
+        try:
+            price = float(unit_price)
+        except (TypeError, ValueError):
+            return
+        if price <= 0:
+            return
+        key = clean.lower()
+        known = memory.get(key)
+        if known is None:
+            memory[key] = {
+                "name": clean,
+                "unit_price": price,
+                "quantity": float(quantity or 1),
+                "category": category,
+                "times_bought": 1,
+            }
+        else:
+            known["times_bought"] += 1
+            known["unit_price"] = price
+            if known.get("category") is None and category is not None:
+                known["category"] = category
+
+    for item, _scan in lines:
+        name = item.canonical_name or item.raw_name
+        remember(
+            name,
+            item.price_per_unit,
+            item.quantity,
+            item.category,
+        )
+
+    # The transactions that have no receipt behind them.
+    transactions = (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.is_deleted.is_(False),
+        )
+        .order_by(Transaction.date.desc())
+        .limit(200)
+        .all()
+    )
+    for tx in transactions:
+        remember(
+            tx.description or tx.merchant_name,
+            tx.amount,
+            1,
+            None,
+        )
+
+    # The most bought first, so the suggestion the reader sees first is
+    # the one they are most likely to want.
+    entries = sorted(
+        memory.values(),
+        key=lambda entry: (-entry["times_bought"], entry["name"].lower()),
+    )
+    return entries
+
+
 @router.get("/{transaction_id}")
 def read_receipt_items(
     transaction_id: int,
