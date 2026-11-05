@@ -29,6 +29,8 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
+from app.services.geocoding_service import GeocodingService
+
 from app.services.geocoding_service import GeoLocation, geocoding_service
 
 
@@ -299,6 +301,58 @@ def resolve_place(
             )
 
     return None
+
+
+def resolve_coordinates(latitude: float, longitude: float) -> Optional[ResolvedPlace]:
+    """
+    Ask what is at a point.
+
+    A pin that stands on real coordinates is exact in one sense: the
+    coordinates are where the reader's own phone said they were. But
+    nobody had asked what was there, so the popup could not name the
+    street or the shop next door.
+
+    This asks the geocoder, and answers with the same shape as
+    everything else on the map. When the geocoder finds nothing, or
+    falls over, the answer is nothing, and the caller leaves the pin
+    as it was.
+    """
+    try:
+        location = GeocodingService().reverse_geocode(latitude, longitude)
+    except Exception:  # noqa: BLE001 - the map must not break
+        return None
+
+    if location is None:
+        return None
+
+    street = getattr(location, "street", None)
+    nearest_place = getattr(location, "nearest_place", None)
+    precision = getattr(location, "precision", "city") or "city"
+
+    # The name of the place is what the reader sees first, so the
+    # street is preferred over the bare address.
+    name = (
+        street
+        or nearest_place
+        or getattr(location, "formatted_address", "")
+        or f"({latitude:.4f}, {longitude:.4f})"
+    )
+
+    # The kind decides the shape of the pin, and it is worked out from
+    # what was found rather than from the coordinates.
+    kind = kind_of(name, street or "")
+
+    return ResolvedPlace(
+        name=name,
+        latitude=float(getattr(location, "latitude", latitude)),
+        longitude=float(getattr(location, "longitude", longitude)),
+        address=getattr(location, "formatted_address", "") or "",
+        kind=kind,
+        precision=precision,
+        confidence=float(getattr(location, "confidence", 0.5) or 0.5),
+        street=street,
+        nearest_place=nearest_place,
+    )
 
 
 def pin_for(kind: str) -> str:

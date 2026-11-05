@@ -11,7 +11,13 @@ from collections import defaultdict
 from app.services.currency_totals import total_in_currency
 from app.services.metrics import transaction_count as metrics_transaction_count
 from app.services.transaction_filter import counted_transactions_filter
-from app.services.place_resolution_service import kind_for, kind_of, pin_for, resolve_place
+from app.services.place_resolution_service import (
+    kind_for,
+    kind_of,
+    pin_for,
+    resolve_coordinates,
+    resolve_place,
+)
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.transaction import Transaction
@@ -1218,6 +1224,14 @@ def get_merchant_map_data(
                 Transaction.id == row.transaction_id
             ).scalar() or 0
             place_name = row.nearest_store_name or row.captured_address or "Lokasi GPS"
+
+            # The coordinates are real, but nobody had asked what
+            # was at them, so the pin could not name the street or
+            # the shop next door. Now it asks.
+            looked_up = resolve_coordinates(
+                float(row.captured_latitude),
+                float(row.captured_longitude),
+            )
             kind = kind_of(place_name, row.captured_address or "")
             all_locations.append({
                 "id": f"gps_{row.id}",
@@ -1235,8 +1249,13 @@ def get_merchant_map_data(
                 # address is exact.
                 "kind": kind,
                 "pin": pin_for(kind),
-                "precision": "street",
-                "is_exact": True,
+                # The precision is what the lookup found. The
+                # coordinates are exact, the address beside them may
+                # not be, and saying so is honest.
+                "precision": looked_up.precision if looked_up else "street",
+                "is_exact": looked_up.is_exact if looked_up else True,
+                "street": looked_up.street if looked_up else None,
+                "nearest_place": looked_up.nearest_place if looked_up else None,
             })
 
     # Strategy 2: Transactions with stored lat/lng
@@ -1263,6 +1282,11 @@ def get_merchant_map_data(
         lat_f = float(row.latitude)
         lng_f = float(row.longitude)
         name = row.merchant_address or row.description or f"Lokasi ({lat_f:.4f}, {lng_f:.4f})"
+
+        # The coordinates are real, but nobody had asked what was at
+        # them, so the pin could not name the street or the shop next
+        # door. Now it asks.
+        looked_up = resolve_coordinates(lat_f, lng_f)
         kind = kind_of(name, row.merchant_address or "")
         all_locations.append({
             "id": f"gps_tx_{lat_f}_{lng_f}",
@@ -1277,8 +1301,13 @@ def get_merchant_map_data(
             "category": "GPS Transaction",
             "kind": kind,
             "pin": pin_for(kind),
-            "precision": "street",
-            "is_exact": True,
+            # The precision is what the lookup found. The
+            # coordinates are exact, the address beside them may
+            # not be, and saying so is honest.
+            "precision": looked_up.precision if looked_up else "street",
+            "is_exact": looked_up.is_exact if looked_up else True,
+            "street": looked_up.street if looked_up else None,
+            "nearest_place": looked_up.nearest_place if looked_up else None,
         })
 
     # Strategy 3: The merchants that have a name but no coordinates.
