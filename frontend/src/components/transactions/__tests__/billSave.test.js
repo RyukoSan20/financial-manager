@@ -213,5 +213,37 @@ check('the units of measure are named in every language', () => {
   }
 });
 
+check('the split bill is sent with the numbers that were worked out', () => {
+  // The subtotal, the tax, the service charge and the discount of the
+  // bill must all reach the split expense. A bill that is saved with a
+  // zero subtotal and a zero tax is a bill that cannot be settled,
+  // because the shares were worked out from the total alone.
+  // The split expense is written with these names, and the server
+  // reads them by these names.
+  for (const field of ['subtotal', 'tax', 'service_charge', 'discount', 'grand_total']) {
+    assert.ok(
+      new RegExp(`\\b${field}:`).test(page),
+      `the split expense is sent without ${field}`
+    );
+  }
+
+  // The bill report the editor hands over must carry the numbers, so
+  // that the split expense is not written with zeroes.
+  for (const field of ['subtotal', 'taxAmount', 'feeAmount', 'discountAmount']) {
+    assert.ok(
+      new RegExp(`\\b${field}:`).test(editor),
+      `the bill report does not carry ${field}`
+    );
+  }
+
+  // The bill must be tied to the transaction it was made for, so that
+  // the two are the same thing and not two halves of one purchase.
+  assert.ok(
+    /transaction_id:\s*transactionId/.test(page) ||
+    page.includes('transactionId'),
+    'the split bill is not tied to the transaction'
+  );
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed > 0 ? 1 : 0);

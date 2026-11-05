@@ -191,10 +191,32 @@ export default function ItemizedBillEditor({
       taxRuleId,
       inclusive,
       fee,
+      // The numbers of the bill, so that whatever is written down
+      // from it - the receipt, the split - carries the same figures
+      // the reader saw on the screen.
+      subtotal: bill.subtotal,
+      discountAmount: bill.discount,
+      taxAmount: bill.taxAmount,
+      taxBase: bill.taxBase,
+      feeAmount: bill.fee,
       total: bill.total,
       split,
     }),
-    [rowList, discount, discountType, taxRuleId, inclusive, fee, bill.total, split]
+    [
+      rowList,
+      discount,
+      discountType,
+      taxRuleId,
+      inclusive,
+      fee,
+      bill.subtotal,
+      bill.discount,
+      bill.taxAmount,
+      bill.taxBase,
+      bill.fee,
+      bill.total,
+      split,
+    ]
   );
 
   useEffect(() => {

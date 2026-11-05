@@ -574,11 +574,16 @@ const AddTransactionPage = () => {
       name: label?.trim() || group.name,
       items,
       payers: payer,
-      subtotal: bill?.subtotal || 0,
-      tax: bill?.taxAmount || 0,
-      service_charge: bill?.fee || 0,
-      discount: bill?.discount || 0,
-      grand_total: bill?.total || 0,
+      // The numbers the reader saw on the screen. A bill that is
+      // written down with a zero subtotal cannot be settled later,
+      // because the shares were worked out from the total alone.
+      subtotal: bill?.subtotal ?? 0,
+      tax: bill?.taxAmount ?? 0,
+      service_charge: bill?.feeAmount ?? bill?.fee ?? 0,
+      discount: bill?.discountAmount ?? bill?.discount ?? 0,
+      grand_total: bill?.total ?? 0,
+      // The bill is the transaction, so the two point at each other.
+      transaction_id: transactionId,
       // When the reader gave the lines to people, the bill is shared
       // by item. When they did not, it is shared equally.
       split_mode: billLines.some((row) => row.owner) ? 'ITEMIZED' : 'EQUAL',
@@ -639,8 +644,11 @@ const AddTransactionPage = () => {
             (Number(row.quantity) || 1) * (Number(row.unitPrice) || 0),
           category_id: row.categoryId ?? null,
         })),
-        discount_total: bill?.discount || 0,
-        tax_total: bill?.taxAmount || 0,
+        // The numbers the reader saw on the screen. The discount that
+        // is written down is the one that was worked out, not the
+        // figure that was typed into the box.
+        discount_total: bill?.discountAmount ?? bill?.discount ?? 0,
+        tax_total: bill?.taxAmount ?? 0,
       });
     } catch (e) {
       console.error('Could not save the itemised receipt:', e);
