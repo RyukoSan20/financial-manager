@@ -40,6 +40,97 @@ def _words_from(body_value, query_value):
     return query_value
 
 
+def _find_hint(db, user_id, token):
+    """
+    The hint for a word, if there is one.
+
+    The lookup is on the word alone, not on the word and the category.
+    The table holds one row for a word - a reader cannot have two
+    categories for the same word, and the unique index on
+    ``(user_id, token)`` says so. Looking for a row that includes the
+    category finds nothing when the word is already known under
+    another category, and the insert that follows collides with that
+    index.
+    """
+    from app.models.category_hint import CategoryHint
+
+    return (
+        db.query(CategoryHint)
+        .filter(
+            CategoryHint.user_id == user_id,
+            CategoryHint.token == token,
+        )
+        .first()
+    )
+
+
+def _remember(db, user_id, token, category_id, hits_add):
+    """
+    Remember that a word belongs to a category.
+
+    A word that is taught again is moved rather than duplicated: the
+    new category is the one the reader just used, and the old one
+    goes. A word taught under the category it already has simply
+    counts once more.
+    """
+    from app.models.category_hint import CategoryHint
+
+    existing = _find_hint(db, user_id, token)
+
+    if existing is None:
+        db.add(
+            CategoryHint(
+                user_id=user_id,
+                token=token,
+                category_id=category_id,
+                hits=hits_add,
+            )
+        )
+        return
+
+    if existing.category_id == category_id:
+        existing.hits += hits_add
+    else:
+        # The reader has used this word under a different category.
+        # The old association is replaced, not kept beside the new one.
+        existing.category_id = category_id
+        existing.hits = hits_add
+    existing.last_used = datetime.utcnow()
+
+
+def _correct(db, user_id, token, correct_category_id, wrong_category_id):
+    """
+    Record that a word was taught the wrong category.
+
+    A correction is worth more than an ordinary sighting, so the word
+    gains two hits under the right category. If the word was known
+    under the wrong category, that sighting is taken back.
+    """
+    from app.models.category_hint import CategoryHint
+
+    existing = _find_hint(db, user_id, token)
+
+    if existing is None:
+        db.add(
+            CategoryHint(
+                user_id=user_id,
+                token=token,
+                category_id=correct_category_id,
+                hits=2,
+            )
+        )
+        return
+
+    if wrong_category_id and existing.category_id == wrong_category_id:
+        # The word was known under the wrong category, and that
+        # sighting is the one being corrected.
+        existing.hits = max(0, existing.hits - 1)
+
+    existing.category_id = correct_category_id
+    existing.hits += 2
+    existing.last_used = datetime.utcnow()
+
+
 async def _read_body(request: Request) -> dict:
     """The body as a dictionary, or an empty one when there is none."""
     try:
@@ -173,29 +264,10 @@ async def record_hint(
         )
     db = SessionLocal()
     try:
-        from app.models.category_hint import CategoryHint
-        
-        existing = db.query(CategoryHint).filter(
-            CategoryHint.user_id == current_user.id,
-            CategoryHint.token == token,
-            CategoryHint.category_id == category_id
-        ).first()
-        
-        if existing:
-            existing.hits += hits_add
-            existing.last_used = datetime.utcnow()
-        else:
-            new_hint = CategoryHint(
-                user_id=current_user.id,
-                token=token,
-                category_id=category_id,
-                hits=hits_add
-            )
-            db.add(new_hint)
-        
+        _remember(db, current_user.id, token, category_id, hits_add)
         db.commit()
         return {"status": "recorded", "token": token, "category_id": category_id}
-        
+
     finally:
         db.close()
 
@@ -226,30 +298,11 @@ async def record_batch(
         )
     db = SessionLocal()
     try:
-        from app.models.category_hint import CategoryHint
-        
         for token in tokens:
-            existing = db.query(CategoryHint).filter(
-                CategoryHint.user_id == current_user.id,
-                CategoryHint.token == token,
-                CategoryHint.category_id == category_id
-            ).first()
-            
-            if existing:
-                existing.hits += 1
-                existing.last_used = datetime.utcnow()
-            else:
-                new_hint = CategoryHint(
-                    user_id=current_user.id,
-                    token=token,
-                    category_id=category_id,
-                    hits=1
-                )
-                db.add(new_hint)
-        
+            _remember(db, current_user.id, token, category_id, 1)
         db.commit()
         return {"status": "recorded", "count": len(tokens)}
-        
+
     finally:
         db.close()
 
@@ -286,41 +339,16 @@ async def record_correction(
         )
     db = SessionLocal()
     try:
-        from app.models.category_hint import CategoryHint
-        
-        # Add to correct category (+2 hits)
-        existing = db.query(CategoryHint).filter(
-            CategoryHint.user_id == current_user.id,
-            CategoryHint.token == token,
-            CategoryHint.category_id == correct_category_id
-        ).first()
-        
-        if existing:
-            existing.hits += 2
-            existing.last_used = datetime.utcnow()
-        else:
-            new_hint = CategoryHint(
-                user_id=current_user.id,
-                token=token,
-                category_id=correct_category_id,
-                hits=2
-            )
-            db.add(new_hint)
-        
-        # Penalize wrong category if provided
-        if wrong_category_id:
-            wrong = db.query(CategoryHint).filter(
-                CategoryHint.user_id == current_user.id,
-                CategoryHint.token == token,
-                CategoryHint.category_id == wrong_category_id
-            ).first()
-            
-            if wrong:
-                wrong.hits = max(0, wrong.hits - 1)
-        
+        _correct(
+            db,
+            current_user.id,
+            token,
+            correct_category_id,
+            wrong_category_id,
+        )
         db.commit()
         return {"status": "corrected"}
-        
+
     finally:
         db.close()
 

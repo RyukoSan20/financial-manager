@@ -216,3 +216,108 @@ def test_a_batch_with_nothing_in_it_is_refused(client):
     assert response.status_code == 422, (
         f"an empty batch was accepted: {response.text}"
     )
+
+
+def test_a_correction_of_a_word_known_under_another_category(client):
+    """
+    The bug that was found in production.
+
+    The table holds one row for a word - the unique index is on
+    ``(user_id, token)`` - so a reader cannot have two categories for
+    the same word. The code looked for a row that included the
+    category, found nothing when the word was already known under a
+    different one, and inserted a second row. The insert collided with
+    that index, and the server answered 500.
+
+    The test database is SQLite, which does not enforce the index the
+    way PostgreSQL does, so this has to be checked by reading the rows
+    back: a second row for the same word is the bug.
+    """
+    test_client, session, reader_id = client
+
+    # The word is learned under one category.
+    first = test_client.post(
+        "/api/category-hints/record",
+        json={"token": "kopi", "category_id": 6},
+    )
+    assert first.status_code == 200, f"the first sighting failed: {first.text}"
+
+    # The reader corrects it: the word belongs to another category.
+    second = test_client.post(
+        "/api/category-hints/correct",
+        json={"token": "kopi", "correct_category_id": 9, "wrong_category_id": 6},
+    )
+    assert second.status_code == 200, (
+        f"the correction was refused: {second.text}"
+    )
+
+    from app.models.category_hint import CategoryHint
+
+    rows = (
+        session.query(CategoryHint)
+        .filter(CategoryHint.user_id == reader_id)
+        .all()
+    )
+    assert len(rows) == 1, (
+        f"the word has {len(rows)} rows: a word has one category"
+    )
+    assert rows[0].category_id == 9, (
+        f"the correction did not take: the category is {rows[0].category_id}"
+    )
+
+
+def test_a_word_taught_again_under_another_category_is_moved(client):
+    """
+    Teaching a word again moves it, rather than keeping both.
+
+    A reader who uses the word under a different category has changed
+    their mind about it, so the old association goes.
+    """
+    test_client, session, reader_id = client
+
+    test_client.post(
+        "/api/category-hints/record",
+        json={"token": "susu", "category_id": 6},
+    )
+    again = test_client.post(
+        "/api/category-hints/record",
+        json={"token": "susu", "category_id": 11},
+    )
+    assert again.status_code == 200, f"the second sighting failed: {again.text}"
+
+    from app.models.category_hint import CategoryHint
+
+    rows = (
+        session.query(CategoryHint)
+        .filter(CategoryHint.user_id == reader_id)
+        .all()
+    )
+    assert len(rows) == 1, f"the word has {len(rows)} rows"
+    assert rows[0].category_id == 11, (
+        f"the word was not moved: the category is {rows[0].category_id}"
+    )
+
+
+def test_the_same_word_in_one_batch_is_stored_once(client):
+    """
+    A batch that says the same word twice is one hint.
+
+    Without this the second occurrence collided with the unique index
+    and the whole batch was lost.
+    """
+    test_client, session, reader_id = client
+
+    response = test_client.post(
+        "/api/category-hints/record-batch",
+        json={"tokens": ["kopi", "kopi", "susu"], "category_id": 6},
+    )
+    assert response.status_code == 200, f"the batch was refused: {response.text}"
+
+    from app.models.category_hint import CategoryHint
+
+    rows = (
+        session.query(CategoryHint)
+        .filter(CategoryHint.user_id == reader_id)
+        .all()
+    )
+    assert len(rows) == 2, f"the batch made {len(rows)} rows, not 2"
