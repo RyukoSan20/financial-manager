@@ -678,6 +678,7 @@ def create_expense(
         split_mode=payload.split_mode,
         payer_account_id=payload.payer_account_id,
         record_personal_share=payload.record_personal_share,
+        transaction_id=payload.transaction_id,
         latitude=payload.latitude,
         longitude=payload.longitude,
         place_name=payload.place_name,

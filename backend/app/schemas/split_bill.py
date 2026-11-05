@@ -148,6 +148,10 @@ class SplitExpenseCreate(EmptyStringAsNone):
     created_by_member_id: Optional[int] = None
     record_personal_share: bool = True
 
+    # The transaction this bill came from, when there is one. A bill
+    # made on its own has no transaction, and that is allowed.
+    transaction_id: Optional[int] = None
+
     # Where the bill was, when the reader knows. A bill without a
     # place is still a bill; it just does not go on the map.
     latitude: Optional[Decimal] = Field(None, ge=-90, le=90)
