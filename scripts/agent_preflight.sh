@@ -90,6 +90,10 @@ for test_file in \
   src/styles/__tests__/interfaceFeel.test.js \
   src/styles/__tests__/openPoints.test.js \
   src/components/merchant/__tests__/merchantCapture.test.js \
+  src/utils/__tests__/receiptBill.test.js \
+  src/utils/__tests__/recentCombos.test.js \
+  src/components/transactions/__tests__/itemizedBillEditor.test.js \
+  src/pages/__tests__/transactionsLoadFailure.test.js \
   src/components/merchant/__tests__/captureLandsOnShelf.test.js \
   src/components/market/__tests__/advisorKeyPoints.test.js \
   src/pages/__tests__/merchantMapAddress.test.js \

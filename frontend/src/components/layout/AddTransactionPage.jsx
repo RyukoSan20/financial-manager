@@ -1,10 +1,13 @@
 // Smart Add Transaction Page - Quick, intuitive, professional
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { dedupeRecentCombos, describeCombo } from '../../utils/recentCombos';
 import { useNavigate } from "react-router-dom";
 import { api, API_BASE_URL as API_URL, getToken } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { parseQuickEntry, fetchDirection } from "../../features/transactions/nlp/parseQuickEntry.js";
 import QuantityMultiplierInput from "../transactions/QuantityMultiplierInput.jsx";
+import ItemizedBillEditor from "../transactions/ItemizedBillEditor.jsx";
+import { createGroup, addMember, createExpense, assignItems } from "../../services/splitApi";
 import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
 import { useTranslation } from "../../i18n";
 import { IconText } from "../ui/IconText";
@@ -142,6 +145,22 @@ const AddTransactionPage = () => {
   // to trust it.
   const [breakdown, setBreakdown] = useState([]);
   const [nlpPreview, setNlpPreview] = useState(null);
+
+  // The receipt, written down line by line.
+  //
+  // The quantity breakdown above is one thing: the count and the price
+  // of one, from a quick entry. This is the whole receipt: a list of
+  // things, each with its own category, a discount, a tax, a service
+  // charge, and the people the bill is shared between.
+  const [billLines, setBillLines] = useState([]);
+  const [billSplit, setBillSplit] = useState(null);
+  // The whole bill: the lines, the discount, the tax, the fee. This
+  // is what is written down when the transaction is saved.
+  const [bill, setBill] = useState(null);
+  // The transactions the reader already has, so a name can bring the
+  // price it was paid for last time.
+  const [pastTransactions, setPastTransactions] = useState([]);
+  const [splitGroups, setSplitGroups] = useState([]);
   
   // Idempotency key - prevents duplicate transactions from double-tap
   const [transactionRequestId, setTransactionRequestId] = useState(() => crypto.randomUUID());
@@ -197,7 +216,9 @@ const AddTransactionPage = () => {
           if (accRes[0]?.id) setAccountId(accRes[0].id);
         }
         const combos = JSON.parse(localStorage.getItem("recentCombos") || "[]");
-        setRecentCombos(combos.slice(0, 4));
+        // The history repeats itself. Three trips to the same shop for
+        // the same thing are one chip, not three.
+        setRecentCombos(dedupeRecentCombos(combos, 4));
       } else {
         // Bootstrap succeeded but may not include accounts — load them separately
         const accRes = await api.get('/accounts/');
@@ -210,6 +231,49 @@ const AddTransactionPage = () => {
       // Smart default: last used category
       const lastCatId = localStorage.getItem("lastCategoryId");
       if (lastCatId) setCategoryId(parseInt(lastCatId));
+
+      // The reader's own history, so that typing the name of a thing
+      // brings back the price it was paid for last time.
+      //
+      // The lines of the receipts are the better source for this,
+      // because the price of the Indomie is written on the line and
+      // not on the total of the shop.
+      try {
+        const memory = await api.get('/receipt-items/price-memory');
+        if (Array.isArray(memory)) {
+          setPastTransactions(
+            memory.map((entry) => ({
+              description: entry.name,
+              amount: entry.unit_price,
+              items: [
+                {
+                  name: entry.name,
+                  quantity: entry.quantity,
+                  unit_price: entry.unit_price,
+                  category: entry.category,
+                },
+              ],
+            }))
+          );
+        }
+      } catch (e) {
+        // The memory is a convenience. If it cannot be read, the form
+        // still works.
+      }
+
+      // The split groups the reader already has, so one of them can be
+      // used to share a bill without being made again.
+      try {
+        const groups = await api.get('/split/groups');
+        if (Array.isArray(groups)) {
+          setSplitGroups(
+            groups.map((g) => ({ id: g.id, name: g.name || g.title || `Grup ${g.id}` }))
+          );
+        }
+      } catch (e) {
+        // No groups, no problem. The reader can still name the people
+        // by hand.
+      }
       
     } catch (err) {
       console.error("Load error:", err);
@@ -386,15 +450,38 @@ const AddTransactionPage = () => {
 
   // Apply recent combo
   const applyCombo = (combo) => {
-    setAmount(combo.amount.toString());
-    setCategoryId(combo.category_id);
-    setAccountId(combo.account_id);
-    setDescription(combo.description || "");
-    
-    // Update category if needed
-    if (combo.category_id) {
-      const cat = categories.find(c => c.id === combo.category_id);
-      if (cat) setCategoryId(cat.id);
+    // The chip carries the amount and the thing that was bought, so
+    // pressing it fills the form in: the price, the name, and the
+    // category it was bought under last time.
+    setAmount(String(combo.amount ?? ""));
+    if (combo.category_id) setCategoryId(combo.category_id);
+    if (combo.account_id) setAccountId(combo.account_id);
+    setDescription(combo.description || combo.token || "");
+
+    // The item table is filled in as well, so that the receipt shows
+    // what was bought and what it cost, and not only the total.
+    const name = String(combo.description || combo.token || "").trim();
+    if (name) {
+      setBillLines((lines) => {
+        const already = lines.findIndex(
+          (row) => String(row.name || '').trim().toLowerCase() === name.toLowerCase()
+        );
+        const row = {
+          id: `chip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name,
+          quantity: 1,
+          unit: 'pcs',
+          unitPrice: Number(combo.amount) || '',
+          categoryId: combo.category_id ?? null,
+          owner: null,
+        };
+        if (already >= 0) {
+          const next = [...lines];
+          next[already] = { ...next[already], unitPrice: row.unitPrice, categoryId: row.categoryId };
+          return next;
+        }
+        return [...lines, row];
+      });
     }
   };
 
@@ -439,6 +526,90 @@ const AddTransactionPage = () => {
   }, [selectedAccount?.currency, accountCurrency]);
 
   // Save transaction
+
+  /**
+   * The shared bill, written down as a split bill.
+   *
+   * A group is made for the bill, the people are put in it, and the
+   * receipt is added to it with the lines it has. The people who were
+   * given lines are the payers of those lines, so what each of them
+   * owes is worked out by the server from the same lines the reader
+   * saw.
+   */
+  const createSplitBillForTransaction = async (transactionId, label) => {
+    if (!billSplit || !billSplit.shares?.length) return;
+
+    const group = await createGroup({
+      name: label?.trim() || K.splitDefaultGroupName || 'Split Bill',
+      currency: accountCurrency,
+      allow_guest_claims: true,
+    });
+
+    const members = [];
+    for (const share of billSplit.shares) {
+      const member = await addMember(group.id, {
+        display_name: share.name,
+      });
+      members.push({ name: share.name, id: member.id });
+    }
+
+    // The lines of the receipt.
+    const items = billLines
+      .filter((row) => row.name?.trim())
+      .map((row) => ({
+        name: String(row.name).trim(),
+        quantity: Number(row.quantity) || 1,
+        unit_price: Number(row.unitPrice) || 0,
+        total_price: (Number(row.quantity) || 1) * (Number(row.unitPrice) || 0),
+        kind: 'item',
+        category: null,
+      }));
+
+    const host = members[0];
+    const payer = host
+      ? [{ member_id: host.id, amount: bill?.total || 0 }]
+      : [];
+
+    const made = await createExpense(group.id, {
+      name: label?.trim() || group.name,
+      items,
+      payers: payer,
+      subtotal: bill?.subtotal || 0,
+      tax: bill?.taxAmount || 0,
+      service_charge: bill?.fee || 0,
+      discount: bill?.discount || 0,
+      grand_total: bill?.total || 0,
+      // When the reader gave the lines to people, the bill is shared
+      // by item. When they did not, it is shared equally.
+      split_mode: billLines.some((row) => row.owner) ? 'ITEMIZED' : 'EQUAL',
+      payer_account_id: accountId,
+    });
+
+    // Who had which line. The lines of the receipt are numbered by
+    // the order they were sent in, so the line the reader gave to a
+    // person is the line with that number.
+    const expenseId = made?.id;
+    if (expenseId) {
+      const assignments = {};
+      const madeLines = made.items || [];
+      billLines
+        .filter((row) => row.name?.trim() && row.owner)
+        .forEach((row) => {
+          const index = billLines
+            .filter((r) => r.name?.trim())
+            .findIndex((r) => r.id === row.id);
+          const line = madeLines[index];
+          const member = members.find((m) => m.name === row.owner);
+          if (line?.id && member?.id) assignments[line.id] = member.id;
+        });
+      if (Object.keys(assignments).length > 0) {
+        await assignItems(group.id, expenseId, assignments);
+      }
+    }
+
+    return group.id;
+  };
+
   const handleSave = async (addAnother = false) => {
     const finalAmount = parseNumber(amount);
     if (!finalAmount || finalAmount <= 0) {
@@ -504,7 +675,7 @@ const AddTransactionPage = () => {
           });
         }
       } else {
-        await api.transactions.create({
+        const created = await api.transactions.create({
           type,
           amount: finalAmount,
           description,
@@ -513,6 +684,48 @@ const AddTransactionPage = () => {
           date,
           client_request_id: transactionRequestId,
         });
+
+        // The receipt is written down after the transaction, because
+        // the lines belong to a transaction and a transaction has to
+        // exist before it can have a receipt behind it.
+        //
+        // A failure here must not undo the transaction. The money has
+        // already moved; losing the breakdown is a smaller loss than
+        // losing the transaction, and the reader can open the receipt
+        // again and write the lines down.
+        const txId = created?.id;
+        const hasLines = billLines.length > 0 && billLines.some((row) => row.name?.trim());
+        if (txId && hasLines) {
+          try {
+            await api.put(`/receipt-items/${txId}`, {
+              items: billLines
+                .filter((row) => row.name?.trim())
+                .map((row) => ({
+                  name: String(row.name).trim(),
+                  quantity: Number(row.quantity) || 1,
+                  unit_price: Number(row.unitPrice) || 0,
+                  total_price:
+                    (Number(row.quantity) || 1) * (Number(row.unitPrice) || 0),
+                  category_id: row.categoryId ?? null,
+                })),
+              discount_total: bill?.discount || 0,
+              tax_total: bill?.taxAmount || 0,
+            });
+          } catch (e) {
+            console.error('Could not save the itemised receipt:', e);
+          }
+        }
+
+        // The bill that was shared is written down as a split bill, so
+        // that what each person owes is on record the moment the
+        // transaction is saved.
+        if (billSplit && billSplit.shares.length > 1 && txId) {
+          try {
+            await createSplitBillForTransaction(txId, description);
+          } catch (e) {
+            console.error('Could not create the split bill:', e);
+          }
+        }
         
         // Save as recent combo
         const combos = JSON.parse(localStorage.getItem("recentCombos") || "[]");
@@ -691,6 +904,10 @@ const AddTransactionPage = () => {
             <div className="flex flex-wrap gap-2">
               {recentCombos.map((combo, idx) => {
                 const cat = categories.find(c => c.id === combo.category_id);
+                // The chip says what was bought, so the reader can tell
+                // one from another, and the price is written the way
+                // money is written: whole rupiah, no stray decimals.
+                const what = describeCombo(combo, cat) || K.other;
                 return (
                   <button
                     key={idx}
@@ -698,9 +915,11 @@ const AddTransactionPage = () => {
                     className="bg-white border rounded-full px-3 py-1.5 text-sm flex items-center gap-1 hover:bg-gray-50"
                   >
                     <span>{getCategoryIcon(cat?.name)}</span>
-                    <span>{cat?.name || K.other}</span>
+                    <span>{what}</span>
                     <span className="text-gray-400">·</span>
-                    <span className="font-medium">{formatNumber(combo.amount)}</span>
+                    <span className="font-medium">
+                      {formatNative(combo.amount, accountCurrency)}
+                    </span>
                   </button>
                 );
               })}
@@ -792,6 +1011,34 @@ const AddTransactionPage = () => {
             ))}
           </div>
         </div>
+
+        {/* The receipt, written down line by line, with the discount,
+            the tax, the service charge, and the sharing. It is here
+            and not only behind "Ketik cepat", because a receipt is
+            more than one number and the reader needs to see all of it.
+
+            A transfer has no receipt to break down: the money goes
+            from one account to another, and there is nothing on a
+            paper to itemise. */}
+        {type !== "transfer" && (
+          <ItemizedBillEditor
+            lines={billLines}
+            onLinesChange={setBillLines}
+            categories={categories}
+            accounts={accounts}
+            existingTransactions={pastTransactions}
+            splitGroups={splitGroups}
+            value={type}
+            onTotalChange={(total) => {
+              // The total of the table is the total of the
+              // transaction. The reader never types one that
+              // disagrees with what they can see.
+              if (total > 0) setAmount(String(total));
+            }}
+            onSplitChange={setBillSplit}
+            onBillChange={setBill}
+          />
+        )}
 
         {/* Description */}
         <div className="bg-white rounded-xl p-4 shadow-sm">
