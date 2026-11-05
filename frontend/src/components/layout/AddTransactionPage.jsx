@@ -610,6 +610,43 @@ const AddTransactionPage = () => {
     return group.id;
   };
 
+
+  /**
+   * The receipt is written down on the transaction that was just made.
+   *
+   * The three numbers of a receipt - the subtotal, the discount and
+   * the tax - live on the receipt and not only on the transaction, so
+   * they are written here. A transaction that never had a receipt is
+   * not given one.
+   *
+   * A failure here does not undo the transaction. The money has
+   * already moved, and losing the breakdown is a smaller loss than
+   * losing the transaction.
+   */
+  const writeReceiptItems = async (transactionId) => {
+    // A transaction that never had a receipt is not given one.
+    if (!transactionId || !bill?.lines.length) return;
+    const named = bill.lines.filter((row) => row.name?.trim());
+    if (named.length === 0) return;
+
+    try {
+      await api.put(`/receipt-items/${transactionId}`, {
+        items: named.map((row) => ({
+          name: String(row.name).trim(),
+          quantity: Number(row.quantity) || 1,
+          unit_price: Number(row.unitPrice) || 0,
+          total_price:
+            (Number(row.quantity) || 1) * (Number(row.unitPrice) || 0),
+          category_id: row.categoryId ?? null,
+        })),
+        discount_total: bill?.discount || 0,
+        tax_total: bill?.taxAmount || 0,
+      });
+    } catch (e) {
+      console.error('Could not save the itemised receipt:', e);
+    }
+  };
+
   const handleSave = async (addAnother = false) => {
     const finalAmount = parseNumber(amount);
     if (!finalAmount || finalAmount <= 0) {
@@ -694,26 +731,8 @@ const AddTransactionPage = () => {
         // losing the transaction, and the reader can open the receipt
         // again and write the lines down.
         const txId = created?.id;
-        const hasLines = billLines.length > 0 && billLines.some((row) => row.name?.trim());
-        if (txId && hasLines) {
-          try {
-            await api.put(`/receipt-items/${txId}`, {
-              items: billLines
-                .filter((row) => row.name?.trim())
-                .map((row) => ({
-                  name: String(row.name).trim(),
-                  quantity: Number(row.quantity) || 1,
-                  unit_price: Number(row.unitPrice) || 0,
-                  total_price:
-                    (Number(row.quantity) || 1) * (Number(row.unitPrice) || 0),
-                  category_id: row.categoryId ?? null,
-                })),
-              discount_total: bill?.discount || 0,
-              tax_total: bill?.taxAmount || 0,
-            });
-          } catch (e) {
-            console.error('Could not save the itemised receipt:', e);
-          }
+        if (txId) {
+          await writeReceiptItems(txId);
         }
 
         // The bill that was shared is written down as a split bill, so

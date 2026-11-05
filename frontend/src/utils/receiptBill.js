@@ -39,14 +39,14 @@ export const TAX_RULES = {
     id: 'none',
     rate: 0,
     base: 'none',
-    labelKey: 'tax.none',
+    labelKey: 'taxRules.none',
   },
   pb1: {
     // PB1 Resto: ten percent of the gross price of the meal.
     id: 'pb1',
     rate: 10,
     base: 'gross',
-    labelKey: 'tax.pb1',
+    labelKey: 'taxRules.pb1',
   },
   ppn131: {
     // PPN PMK 131/2024, goods that are not luxury goods.
@@ -55,14 +55,14 @@ export const TAX_RULES = {
     id: 'ppn131',
     rate: 12,
     base: 'non_luxury',
-    labelKey: 'tax.ppn131',
+    labelKey: 'taxRules.ppn131',
   },
   ppn12: {
     // The plain twelve percent.
     id: 'ppn12',
     rate: 12,
     base: 'gross',
-    labelKey: 'tax.ppn12',
+    labelKey: 'taxRules.ppn12',
   },
 };
 
@@ -72,16 +72,16 @@ export const TAX_RULES = {
  * These are the ones a receipt actually uses in Indonesia.
  */
 export const UNIT_OF_MEASURES = [
-  { id: 'pcs', labelKey: 'uom.pcs' },
-  { id: 'bungkus', labelKey: 'uom.bungkus' },
-  { id: 'box', labelKey: 'uom.box' },
-  { id: 'kg', labelKey: 'uom.kg' },
-  { id: 'gram', labelKey: 'uom.gram' },
-  { id: 'liter', labelKey: 'uom.liter' },
-  { id: 'cup', labelKey: 'uom.cup' },
-  { id: 'botol', labelKey: 'uom.botol' },
-  { id: 'porsi', labelKey: 'uom.porsi' },
-  { id: 'topi', labelKey: 'uom.topi' },
+  { id: 'pcs', labelKey: 'units.pcs' },
+  { id: 'bungkus', labelKey: 'units.bungkus' },
+  { id: 'box', labelKey: 'units.box' },
+  { id: 'kg', labelKey: 'units.kg' },
+  { id: 'gram', labelKey: 'units.gram' },
+  { id: 'liter', labelKey: 'units.liter' },
+  { id: 'cup', labelKey: 'units.cup' },
+  { id: 'botol', labelKey: 'units.botol' },
+  { id: 'porsi', labelKey: 'units.porsi' },
+  { id: 'topi', labelKey: 'units.topi' },
 ];
 
 /**

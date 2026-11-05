@@ -93,6 +93,7 @@ for test_file in \
   src/utils/__tests__/receiptBill.test.js \
   src/utils/__tests__/recentCombos.test.js \
   src/components/transactions/__tests__/itemizedBillEditor.test.js \
+  src/components/transactions/__tests__/billSave.test.js \
   src/pages/__tests__/transactionsLoadFailure.test.js \
   src/components/merchant/__tests__/captureLandsOnShelf.test.js \
   src/components/market/__tests__/advisorKeyPoints.test.js \

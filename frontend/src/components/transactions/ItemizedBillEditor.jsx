@@ -169,9 +169,12 @@ export default function ItemizedBillEditor({
 
   // The whole bill is told to the page, so that what is saved carries
   // the discount and the tax with it, and not only the total.
+  //
+  // The lines go with it, because the lines are the receipt. A bill
+  // that carries only the total is a bill that loses the thing.
   useEffect(() => {
-    if (onBillChange) onBillChange(bill);
-  }, [bill, onBillChange]);
+    if (onBillChange) onBillChange({ ...bill, lines: rowList });
+  }, [bill, rowList, onBillChange]);
 
   useEffect(() => {
     if (onSplitChange) onSplitChange(split);
