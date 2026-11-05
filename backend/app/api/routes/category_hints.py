@@ -1,7 +1,9 @@
 """Category Hints API - User learning endpoints"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
+import json
+
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -23,6 +25,34 @@ class BootstrapResponse(BaseModel):
     categories: List[Dict[str, Any]]
     recent_combos: List[Dict[str, Any]]
 
+
+
+
+def _words_from(body_value, query_value):
+    """
+    Read the words the caller sent, from the body or from the query.
+
+    The page sends a body. The endpoint used to read the query string,
+    so both are read and the body wins when both are there.
+    """
+    if body_value not in (None, "", [], {}):
+        return body_value
+    return query_value
+
+
+async def _read_body(request: Request) -> dict:
+    """The body as a dictionary, or an empty one when there is none."""
+    try:
+        raw = await request.body()
+    except Exception:  # noqa: BLE001 - a body that cannot be read is no body
+        return {}
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except Exception:  # noqa: BLE001 - a body that is not JSON is no body
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 def extract_tokens(description: str) -> List[str]:
     """Extract meaningful tokens from description"""
@@ -115,12 +145,32 @@ async def get_bootstrap(current_user: User = Depends(get_current_user)):
 
 @router.post("/record")
 async def record_hint(
-    token: str,
-    category_id: int,
-    hits_add: int = 1,
+    request: Request,
+    token: Optional[str] = Query(None),
+    category_id: Optional[int] = Query(None),
+    hits_add: int = Query(1),
     current_user: User = Depends(get_current_user)
 ):
-    """Record a token-category hit."""
+    """Record a token-category hit.
+
+    The body is what the page sends. The words are also accepted from
+    the query string, because the endpoint used to read them from
+    there and a client that still does that must keep working.
+    """
+    body = await _read_body(request)
+    token = _words_from(
+        body.get("token"), token)
+    category_id = _words_from(
+        body.get("category_id"), category_id
+    )
+    hits_add = _words_from(
+        body.get("hits_add"), hits_add
+    )
+    if not token or category_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail="token and category_id are required",
+        )
     db = SessionLocal()
     try:
         from app.models.category_hint import CategoryHint
@@ -152,11 +202,28 @@ async def record_hint(
 
 @router.post("/record-batch")
 async def record_batch(
-    tokens: List[str],
-    category_id: int,
+    request: Request,
+    tokens: Optional[List[str]] = Query(None),
+    category_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_user)
 ):
-    """Record multiple tokens at once."""
+    """Record multiple tokens at once.
+
+    The body is what the page sends. The words are also accepted from
+    the query string, because the endpoint used to read them from
+    there and a client that still does that must keep working.
+    """
+    body = await _read_body(request)
+    tokens = _words_from(
+        body.get("tokens"), tokens)
+    category_id = _words_from(
+        body.get("category_id"), category_id
+    )
+    if not tokens or category_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail="tokens and category_id are required",
+        )
     db = SessionLocal()
     try:
         from app.models.category_hint import CategoryHint
@@ -189,12 +256,34 @@ async def record_batch(
 
 @router.post("/correct")
 async def record_correction(
-    token: str,
-    correct_category_id: int,
-    wrong_category_id: Optional[int] = None,
+    request: Request,
+    token: Optional[str] = Query(None),
+    correct_category_id: Optional[int] = Query(None),
+    wrong_category_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_user)
 ):
-    """Record user correction (more valuable)."""
+    """Record user correction (more valuable).
+
+    The body is what the page sends. The words are also accepted from
+    the query string, because the endpoint used to read them from
+    there and a client that still does that must keep working.
+    """
+    body = await _read_body(request)
+    token = _words_from(
+        body.get("token"), token)
+    correct_category_id = _words_from(
+        body.get("correct_category_id"),
+        correct_category_id,
+    )
+    wrong_category_id = _words_from(
+        body.get("wrong_category_id"),
+        wrong_category_id,
+    )
+    if not token or correct_category_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail="token and correct_category_id are required",
+        )
     db = SessionLocal()
     try:
         from app.models.category_hint import CategoryHint

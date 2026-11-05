@@ -184,6 +184,7 @@ jobs:
             src/utils/__tests__/gmailState.test.js \
             src/utils/__tests__/marketFormat.test.js \
             src/components/common/__tests__/honestEmptyState.test.js \
+            src/contexts/__tests__/confirmState.test.js \
             src/data/__tests__/privacyManifest.test.js \
             src/pages/__tests__/marketPage.test.js
           do
