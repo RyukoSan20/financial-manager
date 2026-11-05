@@ -43,6 +43,82 @@ def extract_tokens(description: str) -> List[str]:
     return tokens
 
 
+
+def build_recent_combos(db, user_id: int, limit: int = 4) -> List[Dict[str, Any]]:
+    """
+    The reader's own history, as chips they can press.
+
+    A chip is one thing that was bought, with the price that was paid
+    for it. It used to be one word out of a description, which meant
+    one transaction could put three chips on the screen, all of them
+    saying the same thing, and none of them saying what was bought.
+
+    A chip now carries the description itself, and the same thing
+    bought twice is one chip with a count of two.
+
+    The price that is remembered is the price that was paid last. A
+    thing that costs more now than it did before is remembered at the
+    new price, because that is the price the reader will pay next
+    time.
+    """
+    from datetime import datetime
+
+    from app.models.transaction import Transaction
+
+    recent_txs = (
+        db.query(Transaction)
+        .filter(Transaction.user_id == user_id)
+        .order_by(Transaction.date.desc(), Transaction.id.desc())
+        .limit(200)
+        .all()
+    )
+
+    combos: Dict[str, Dict[str, Any]] = {}
+    for tx in recent_txs:
+        description = (tx.description or "").strip()
+        if not description:
+            continue
+        amount = float(tx.amount or 0)
+        key = f"{description.lower()}_{tx.category_id}"
+        if key not in combos:
+            combos[key] = {
+                "token": description,
+                "description": description,
+                "category_id": tx.category_id,
+                "account_id": tx.account_id,
+                "amount": amount,
+                "count": 0,
+                "last_seen": tx.date,
+            }
+        combos[key]["count"] += 1
+        # The list is newest first, so the first time a thing is seen
+        # is the most recent time it was bought. Its price is the one
+        # to remember.
+        if tx.date and (
+            combos[key].get("last_seen") is None
+            or tx.date >= combos[key]["last_seen"]
+        ):
+            combos[key]["amount"] = amount
+            combos[key]["last_seen"] = tx.date
+
+    ordered = sorted(
+        combos.values(),
+        key=lambda c: (-c["count"], c.get("last_seen") or datetime.min),
+        reverse=False,
+    )
+    # The ones that were bought most often come first. Among those,
+    # the most recent comes first.
+    ordered.sort(key=lambda c: c["count"], reverse=True)
+
+    result = []
+    for combo in ordered:
+        combo.pop("last_seen", None)
+        result.append(combo)
+        if len(result) >= limit:
+            break
+    return result
+
+
 @router.get("/bootstrap", response_model=BootstrapResponse)
 async def get_bootstrap(current_user: User = Depends(get_current_user)):
     """Get all data needed for smart category suggestion."""
@@ -67,33 +143,9 @@ async def get_bootstrap(current_user: User = Depends(get_current_user)):
                 hints[h.token] = {}
             hints[h.token][str(h.category_id)] = {"hits": h.hits}
         
-        # Get recent transactions
-        from app.models.transaction import Transaction
-        recent_txs = db.query(Transaction).filter(
-            Transaction.user_id == current_user.id
-        ).order_by(Transaction.date.desc()).limit(100).all()
-        
-        # Build recent combos
-        combos = {}
-        for tx in recent_txs:
-            if tx.description and tx.category_id:
-                tokens = extract_tokens(tx.description)
-                for token in tokens:
-                    key = f"{token}_{tx.category_id}"
-                    if key not in combos:
-                        combos[key] = {
-                            "token": token,
-                            "category_id": tx.category_id,
-                            "amount": tx.amount,
-                            "count": 0
-                        }
-                    combos[key]["count"] += 1
-        
-        recent_combos = sorted(
-            combos.values(),
-            key=lambda x: x["count"],
-            reverse=True
-        )[:20]
+        # The chips of recent things. One transaction is one chip,
+        # carrying the thing that was bought and the price paid.
+        recent_combos = build_recent_combos(db, current_user.id)
         
         return BootstrapResponse(
             hints=hints,
