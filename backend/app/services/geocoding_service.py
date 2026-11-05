@@ -244,6 +244,28 @@ class GeocodingService:
                         city
                     )
 
+                    # The precision says what the answer holds, not
+                    # what was hoped for. A road was found, so it is a
+                    # street. A village or a district was found, so it
+                    # is a district. The geocoder answers at whatever
+                    # depth it can, and a pin that claims to be a
+                    # street when it is a village sends the reader
+                    # looking for a door that is not named.
+                    if street:
+                        precision = "street"
+                    elif (
+                        addr.get("village")
+                        or addr.get("suburb")
+                        or addr.get("city_district")
+                        or addr.get("neighbourhood")
+                        or addr.get("quarter")
+                        or addr.get("hamlet")
+                        or addr.get("city_block")
+                    ):
+                        precision = "district"
+                    else:
+                        precision = "city"
+
                     answer = GeoLocation(
                         latitude=lat,
                         longitude=lon,
@@ -251,7 +273,9 @@ class GeocodingService:
                         city=city_name,
                         country=addr.get("country"),
                         confidence=0.7,
-                        precision="street",
+                        precision=precision,
+                        street=street,
+                        nearest_place=nearest_place,
                     )
                     self._cache_put(key, answer)
                     return answer
@@ -372,6 +396,28 @@ class GeocodingService:
                                 nearest_place = name.strip()
                                 break
 
+                    # The precision says what the answer holds, not
+                    # what was hoped for. A road was found, so it is a
+                    # street. A village or a district was found, so it
+                    # is a district. The geocoder answers at whatever
+                    # depth it can, and a pin that claims to be a
+                    # street when it is a village sends the reader
+                    # looking for a door that is not named.
+                    if street:
+                        precision = "street"
+                    elif (
+                        addr.get("village")
+                        or addr.get("suburb")
+                        or addr.get("city_district")
+                        or addr.get("neighbourhood")
+                        or addr.get("quarter")
+                        or addr.get("hamlet")
+                        or addr.get("city_block")
+                    ):
+                        precision = "district"
+                    else:
+                        precision = "city"
+
                     return GeoLocation(
                         latitude=lat,
                         longitude=lon,
@@ -379,6 +425,7 @@ class GeocodingService:
                         city=city,
                         country=addr.get("country"),
                         confidence=0.8,
+                        precision=precision,
                         street=street,
                         nearest_place=nearest_place,
                     )
