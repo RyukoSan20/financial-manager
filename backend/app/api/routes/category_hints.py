@@ -86,6 +86,11 @@ def _remember(db, user_id, token, category_id, hits_add):
                 hits=hits_add,
             )
         )
+        # The row is written now, so that the next question about the
+        # same word in the same request finds it. Without this a batch
+        # that says the same word twice adds it twice, and the second
+        # one collides with the unique index.
+        db.flush()
         return
 
     if existing.category_id == category_id:
@@ -119,6 +124,7 @@ def _correct(db, user_id, token, correct_category_id, wrong_category_id):
                 hits=2,
             )
         )
+        db.flush()
         return
 
     if wrong_category_id and existing.category_id == wrong_category_id:

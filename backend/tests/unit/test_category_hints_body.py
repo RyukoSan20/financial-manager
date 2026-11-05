@@ -107,10 +107,19 @@ def client():
 
     # The endpoints open their own session rather than taking one, so
     # the session they open has to be the session of the test.
+    #
+    # The session is made with autoflush off, the way the application's
+    # own session is made. That is the whole point: with the flush on,
+    # a query finds a row that was only added a moment ago, and the
+    # code looks as though it handles the duplicate. With the flush
+    # off - which is how the server runs - the query does not find it,
+    # the word is added a second time, and the unique index refuses
+    # it. The test has to be the shape the server is, or it passes
+    # while the server fails.
     import app.api.routes.category_hints as hints_module
 
     original_session_local = hints_module.SessionLocal
-    hints_module.SessionLocal = sessionmaker(bind=engine)
+    hints_module.SessionLocal = sessionmaker(bind=engine, autoflush=False)
 
     try:
         with TestClient(app) as test_client:
