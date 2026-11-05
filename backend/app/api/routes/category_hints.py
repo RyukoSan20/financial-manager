@@ -1,7 +1,9 @@
 """Category Hints API - User learning endpoints"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
+import json
+
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -23,6 +25,131 @@ class BootstrapResponse(BaseModel):
     categories: List[Dict[str, Any]]
     recent_combos: List[Dict[str, Any]]
 
+
+
+
+def _words_from(body_value, query_value):
+    """
+    Read the words the caller sent, from the body or from the query.
+
+    The page sends a body. The endpoint used to read the query string,
+    so both are read and the body wins when both are there.
+    """
+    if body_value not in (None, "", [], {}):
+        return body_value
+    return query_value
+
+
+def _find_hint(db, user_id, token):
+    """
+    The hint for a word, if there is one.
+
+    The lookup is on the word alone, not on the word and the category.
+    The table holds one row for a word - a reader cannot have two
+    categories for the same word, and the unique index on
+    ``(user_id, token)`` says so. Looking for a row that includes the
+    category finds nothing when the word is already known under
+    another category, and the insert that follows collides with that
+    index.
+    """
+    from app.models.category_hint import CategoryHint
+
+    return (
+        db.query(CategoryHint)
+        .filter(
+            CategoryHint.user_id == user_id,
+            CategoryHint.token == token,
+        )
+        .first()
+    )
+
+
+def _remember(db, user_id, token, category_id, hits_add):
+    """
+    Remember that a word belongs to a category.
+
+    A word that is taught again is moved rather than duplicated: the
+    new category is the one the reader just used, and the old one
+    goes. A word taught under the category it already has simply
+    counts once more.
+    """
+    from app.models.category_hint import CategoryHint
+
+    existing = _find_hint(db, user_id, token)
+
+    if existing is None:
+        db.add(
+            CategoryHint(
+                user_id=user_id,
+                token=token,
+                category_id=category_id,
+                hits=hits_add,
+            )
+        )
+        # The row is written now, so that the next question about the
+        # same word in the same request finds it. Without this a batch
+        # that says the same word twice adds it twice, and the second
+        # one collides with the unique index.
+        db.flush()
+        return
+
+    if existing.category_id == category_id:
+        existing.hits += hits_add
+    else:
+        # The reader has used this word under a different category.
+        # The old association is replaced, not kept beside the new one.
+        existing.category_id = category_id
+        existing.hits = hits_add
+    existing.last_used = datetime.utcnow()
+
+
+def _correct(db, user_id, token, correct_category_id, wrong_category_id):
+    """
+    Record that a word was taught the wrong category.
+
+    A correction is worth more than an ordinary sighting, so the word
+    gains two hits under the right category. If the word was known
+    under the wrong category, that sighting is taken back.
+    """
+    from app.models.category_hint import CategoryHint
+
+    existing = _find_hint(db, user_id, token)
+
+    if existing is None:
+        db.add(
+            CategoryHint(
+                user_id=user_id,
+                token=token,
+                category_id=correct_category_id,
+                hits=2,
+            )
+        )
+        db.flush()
+        return
+
+    if wrong_category_id and existing.category_id == wrong_category_id:
+        # The word was known under the wrong category, and that
+        # sighting is the one being corrected.
+        existing.hits = max(0, existing.hits - 1)
+
+    existing.category_id = correct_category_id
+    existing.hits += 2
+    existing.last_used = datetime.utcnow()
+
+
+async def _read_body(request: Request) -> dict:
+    """The body as a dictionary, or an empty one when there is none."""
+    try:
+        raw = await request.body()
+    except Exception:  # noqa: BLE001 - a body that cannot be read is no body
+        return {}
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except Exception:  # noqa: BLE001 - a body that is not JSON is no body
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 def extract_tokens(description: str) -> List[str]:
     """Extract meaningful tokens from description"""
@@ -167,123 +294,119 @@ async def get_bootstrap(current_user: User = Depends(get_current_user)):
 
 @router.post("/record")
 async def record_hint(
-    token: str,
-    category_id: int,
-    hits_add: int = 1,
+    request: Request,
+    token: Optional[str] = Query(None),
+    category_id: Optional[int] = Query(None),
+    hits_add: int = Query(1),
     current_user: User = Depends(get_current_user)
 ):
-    """Record a token-category hit."""
+    """Record a token-category hit.
+
+    The body is what the page sends. The words are also accepted from
+    the query string, because the endpoint used to read them from
+    there and a client that still does that must keep working.
+    """
+    body = await _read_body(request)
+    token = _words_from(
+        body.get("token"), token)
+    category_id = _words_from(
+        body.get("category_id"), category_id
+    )
+    hits_add = _words_from(
+        body.get("hits_add"), hits_add
+    )
+    if not token or category_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail="token and category_id are required",
+        )
     db = SessionLocal()
     try:
-        from app.models.category_hint import CategoryHint
-        
-        existing = db.query(CategoryHint).filter(
-            CategoryHint.user_id == current_user.id,
-            CategoryHint.token == token,
-            CategoryHint.category_id == category_id
-        ).first()
-        
-        if existing:
-            existing.hits += hits_add
-            existing.last_used = datetime.utcnow()
-        else:
-            new_hint = CategoryHint(
-                user_id=current_user.id,
-                token=token,
-                category_id=category_id,
-                hits=hits_add
-            )
-            db.add(new_hint)
-        
+        _remember(db, current_user.id, token, category_id, hits_add)
         db.commit()
         return {"status": "recorded", "token": token, "category_id": category_id}
-        
+
     finally:
         db.close()
 
 
 @router.post("/record-batch")
 async def record_batch(
-    tokens: List[str],
-    category_id: int,
+    request: Request,
+    tokens: Optional[List[str]] = Query(None),
+    category_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_user)
 ):
-    """Record multiple tokens at once."""
+    """Record multiple tokens at once.
+
+    The body is what the page sends. The words are also accepted from
+    the query string, because the endpoint used to read them from
+    there and a client that still does that must keep working.
+    """
+    body = await _read_body(request)
+    tokens = _words_from(
+        body.get("tokens"), tokens)
+    category_id = _words_from(
+        body.get("category_id"), category_id
+    )
+    if not tokens or category_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail="tokens and category_id are required",
+        )
     db = SessionLocal()
     try:
-        from app.models.category_hint import CategoryHint
-        
         for token in tokens:
-            existing = db.query(CategoryHint).filter(
-                CategoryHint.user_id == current_user.id,
-                CategoryHint.token == token,
-                CategoryHint.category_id == category_id
-            ).first()
-            
-            if existing:
-                existing.hits += 1
-                existing.last_used = datetime.utcnow()
-            else:
-                new_hint = CategoryHint(
-                    user_id=current_user.id,
-                    token=token,
-                    category_id=category_id,
-                    hits=1
-                )
-                db.add(new_hint)
-        
+            _remember(db, current_user.id, token, category_id, 1)
         db.commit()
         return {"status": "recorded", "count": len(tokens)}
-        
+
     finally:
         db.close()
 
 
 @router.post("/correct")
 async def record_correction(
-    token: str,
-    correct_category_id: int,
-    wrong_category_id: Optional[int] = None,
+    request: Request,
+    token: Optional[str] = Query(None),
+    correct_category_id: Optional[int] = Query(None),
+    wrong_category_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_user)
 ):
-    """Record user correction (more valuable)."""
+    """Record user correction (more valuable).
+
+    The body is what the page sends. The words are also accepted from
+    the query string, because the endpoint used to read them from
+    there and a client that still does that must keep working.
+    """
+    body = await _read_body(request)
+    token = _words_from(
+        body.get("token"), token)
+    correct_category_id = _words_from(
+        body.get("correct_category_id"),
+        correct_category_id,
+    )
+    wrong_category_id = _words_from(
+        body.get("wrong_category_id"),
+        wrong_category_id,
+    )
+    if not token or correct_category_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail="token and correct_category_id are required",
+        )
     db = SessionLocal()
     try:
-        from app.models.category_hint import CategoryHint
-        
-        # Add to correct category (+2 hits)
-        existing = db.query(CategoryHint).filter(
-            CategoryHint.user_id == current_user.id,
-            CategoryHint.token == token,
-            CategoryHint.category_id == correct_category_id
-        ).first()
-        
-        if existing:
-            existing.hits += 2
-            existing.last_used = datetime.utcnow()
-        else:
-            new_hint = CategoryHint(
-                user_id=current_user.id,
-                token=token,
-                category_id=correct_category_id,
-                hits=2
-            )
-            db.add(new_hint)
-        
-        # Penalize wrong category if provided
-        if wrong_category_id:
-            wrong = db.query(CategoryHint).filter(
-                CategoryHint.user_id == current_user.id,
-                CategoryHint.token == token,
-                CategoryHint.category_id == wrong_category_id
-            ).first()
-            
-            if wrong:
-                wrong.hits = max(0, wrong.hits - 1)
-        
+        _correct(
+            db,
+            current_user.id,
+            token,
+            correct_category_id,
+            wrong_category_id,
+        )
         db.commit()
         return {"status": "corrected"}
-        
+
     finally:
         db.close()
 

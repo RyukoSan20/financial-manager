@@ -27,66 +27,23 @@
  * `ask` is deliberately a plain function rather than a hook. The pages
  * that ask a question are ordinary functions that may live in a
  * callback, and a hook cannot be called from one.
+ *
+ * The rule that holds the question up - that answering it takes it off
+ * the screen as well as settling the promise - lives in
+ * `confirmState.js`, apart from the drawing, so that it can be read and
+ * tested on its own.
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import {
+  ask,
+  settle,
+  REQUEST_EVENT,
+  ANSWERED_EVENT,
+} from './confirmState';
 
 const ConfirmContext = createContext(null);
-
-/**
- * The one question that is on screen, and the promise waiting for its
- * answer.
- *
- * These live outside the component so that `ask` can be a plain
- * function. The component fills them in when it mounts.
- */
-let pendingResolve = null;
-let pendingRequest = null;
-let openRequest = null;
-
-/**
- * Ask the reader a question.
- *
- * @param {object} options
- * @param {string} options.message       What is about to happen.
- * @param {string} [options.title]
- * @param {string} [options.confirmLabel]
- * @param {string} [options.cancelLabel]
- * @param {'warning'|'danger'} [options.tone]
- * @returns {Promise<boolean>} Whether the reader said yes.
- */
-export const ask = (options = {}) => {
-  return new Promise((resolve) => {
-    // A question still open is answered with "no", so its promise is
-    // never left hanging. The reader cannot see two questions at
-    // once, so they cannot have meant to answer the first one after
-    // asking the second.
-    if (pendingResolve) {
-      pendingResolve(false);
-      pendingResolve = null;
-    }
-    pendingResolve = resolve;
-    pendingRequest = options;
-    openRequest = options;
-    // The provider listens for this, so it can put the question on
-    // the screen.
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('app-confirm-request', { detail: options }));
-    }
-  });
-};
-
-/**
- * Answer the question that is on screen.
- */
-const settle = (answer) => {
-  const resolve = pendingResolve;
-  pendingResolve = null;
-  pendingRequest = null;
-  openRequest = null;
-  resolve?.(answer);
-};
 
 /**
  * The provider.
@@ -98,10 +55,20 @@ export const ConfirmProvider = ({ children }) => {
 
   // The provider listens for the question, because `ask` is a plain
   // function and cannot reach into the component tree.
+  //
+  // It also listens for the answer. Without that, the promise was
+  // settled and the question stayed on the screen, so a reader who
+  // deleted anything was left looking at a question that had already
+  // been answered.
   useEffect(() => {
     const handler = (event) => setRequest(event.detail);
-    window.addEventListener('app-confirm-request', handler);
-    return () => window.removeEventListener('app-confirm-request', handler);
+    const answered = () => setRequest(null);
+    window.addEventListener(REQUEST_EVENT, handler);
+    window.addEventListener(ANSWERED_EVENT, answered);
+    return () => {
+      window.removeEventListener(REQUEST_EVENT, handler);
+      window.removeEventListener(ANSWERED_EVENT, answered);
+    };
   }, []);
 
   const onConfirm = useCallback(() => settle(true), []);
@@ -140,5 +107,5 @@ export const useConfirm = () => {
   return context?.ask || ask;
 };
 
-export { openRequest, pendingRequest };
+export { ask, settle, REQUEST_EVENT, ANSWERED_EVENT };
 export default ConfirmProvider;

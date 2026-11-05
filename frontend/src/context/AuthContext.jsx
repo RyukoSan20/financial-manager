@@ -302,6 +302,16 @@ export const AuthProvider = ({ children }) => {
       throw new Error(error.detail || 'Registration failed');
     }
     const data = await res.json();
+    // The token is kept, the same as it is after a sign-in.
+    //
+    // It used to be dropped here. The server hands out a token with the
+    // answer, and the answer was thrown away, so a reader who had just
+    // made an account was sent back to the sign-in page and asked to
+    // sign in with the password they had only just chosen. The
+    // registration worked; the reader was simply never signed in.
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    setUser(data.user);
     return data;
   };
 
