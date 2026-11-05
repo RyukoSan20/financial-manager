@@ -338,6 +338,22 @@ test('the memory knows the price of a line inside a receipt', () => {
   assert.strictEqual(found.unit, 'pcs');
 });
 
+test('the price of the line wins over the total of the transaction', () => {
+  // A receipt of Rp 12.000 with an Indomie of Rp 3.500 in it has a
+  // transaction of Rp 12.000 and a line of Rp 3.500. The price of the
+  // Indomie is the line. If the total of the shop overwrites it, the
+  // reader is told that the Indomie cost twelve thousand, and the
+  // memory teaches them the wrong price.
+  const memory = M.buildPriceMemory([
+    {
+      description: 'Indomie Goreng',
+      amount: 12000,
+      items: [{ name: 'Indomie Goreng', quantity: 2, unit_price: 3500 }],
+    },
+  ]);
+  assert.strictEqual(memory.get('indomie goreng').amount, 3500);
+});
+
 test('a line without a price is not remembered', () => {
   const memory = M.buildPriceMemory([
     {

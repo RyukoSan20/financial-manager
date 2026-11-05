@@ -416,9 +416,24 @@ export const buildPriceMemory = (transactions = []) => {
     }
   };
 
+  // The transactions come first, so that the lines can correct them.
+  //
+  // A receipt of Rp 12.000 with an Indomie of Rp 3.500 in it has a
+  // transaction of Rp 12.000 and a line of Rp 3.500. The price of the
+  // Indomie is the line. If the total of the shop were to overwrite
+  // it, the memory would teach the wrong price for every Indomie
+  // bought from then on.
   for (const tx of transactions) {
-    // The lines of the receipt come first, because the price of the
-    // Indomie is written on the line, not on the total of the shop.
+    remember(
+      tx.description || tx.merchant_name,
+      tx.amount,
+      tx.category_id ?? null,
+      null
+    );
+  }
+
+  // The lines of the receipts, which know the price of one thing.
+  for (const tx of transactions) {
     const items = Array.isArray(tx.items) ? tx.items : [];
     for (const item of items) {
       remember(
@@ -428,13 +443,6 @@ export const buildPriceMemory = (transactions = []) => {
         item.unit || item.uom
       );
     }
-
-    remember(
-      tx.description || tx.merchant_name,
-      tx.amount,
-      tx.category_id ?? null,
-      null
-    );
   }
   return memory;
 };

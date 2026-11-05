@@ -331,16 +331,14 @@ def get_price_memory(
             if known.get("category") is None and category is not None:
                 known["category"] = category
 
-    for item, _scan in lines:
-        name = item.canonical_name or item.raw_name
-        remember(
-            name,
-            item.price_per_unit,
-            item.quantity,
-            item.category,
-        )
-
-    # The transactions that have no receipt behind them.
+    # The transactions come first, so that the lines can correct them.
+    #
+    # A receipt of Rp 12.000 with an Indomie of Rp 3.500 in it has a
+    # transaction of Rp 12.000 and a line of Rp 3.500. The price of the
+    # Indomie is the line. If the total of the shop were to overwrite
+    # it, the reader would be told that the Indomie cost twelve
+    # thousand, and the memory would teach them the wrong price for
+    # every Indomie they buy from then on.
     transactions = (
         db.query(Transaction)
         .filter(
@@ -357,6 +355,16 @@ def get_price_memory(
             tx.amount,
             1,
             None,
+        )
+
+    # The lines of the receipts, which know the price of one thing.
+    for item, _scan in lines:
+        name = item.canonical_name or item.raw_name
+        remember(
+            name,
+            item.price_per_unit,
+            item.quantity,
+            item.category,
         )
 
     # The most bought first, so the suggestion the reader sees first is

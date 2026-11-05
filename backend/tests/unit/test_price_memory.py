@@ -251,10 +251,49 @@ def test_the_memory_holds_the_price_of_a_whole_transaction(reader_client, reader
     assert "Indomie Goreng" in names, response.json()
 
 
+def test_the_price_of_the_line_wins_over_the_total_of_the_transaction(reader_client, reader_db):
+    # A receipt of Rp 12.000 with an Indomie of Rp 3.500 in it has a
+    # transaction of Rp 12.000 and a line of Rp 3.500. The price of the
+    # Indomie is the line. If the total of the shop overwrites it, the
+    # reader is told that the Indomie cost twelve thousand, and the
+    # memory teaches them the wrong price.
+    user = _make_user(reader_db, "linewins")
+    TheReader.id = user.id
+    account = _make_account(reader_db, user)
+    category = _make_category(reader_db, user, "Makanan")
+    transaction = Transaction(
+        user_id=user.id,
+        account_id=account.id,
+        category_id=category.id,
+        type="expense",
+        amount=12000,
+        description="Indomie Goreng",
+        date=date(2026, 11, 5),
+        is_deleted=False,
+    )
+    reader_db.add(transaction)
+    reader_db.commit()
+    reader_db.refresh(transaction)
+
+    _make_receipt(
+        reader_db,
+        user,
+        transaction,
+        [("Indomie Goreng", 2, 3500, 7000)],
+    )
+
+    response = reader_client.get("/api/receipt-items/price-memory")
+
+    assert response.status_code == 200, response.text
+    by_name = {entry["name"]: entry for entry in response.json()}
+    assert by_name["Indomie Goreng"]["unit_price"] == 3500, by_name
+
+
 def test_the_memory_of_one_reader_is_not_shown_to_another(reader_client, reader_db):
     the_reader = reader_client.reader
     mine = _make_user(reader_db, "mine")
     theirs = _make_user(reader_db, "theirs")
+    the_reader = reader_client.reader
     account = _make_account(reader_db, mine)
     category = _make_category(reader_db, mine, "Makanan")
     transaction = Transaction(
