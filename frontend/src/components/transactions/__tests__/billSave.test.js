@@ -54,6 +54,7 @@ console.log('\nthe receipt on the add page is saved\n');
 
 const page = read('src/components/layout/AddTransactionPage.jsx');
 const editor = read('src/components/transactions/ItemizedBillEditor.jsx');
+const review = read('src/components/transactions/ReceiptReviewModal.jsx');
 const billSource = read('src/utils/receiptBill.js');
 const bill = await import(path.join(ROOT, 'src/utils/receiptBill.js'));
 
@@ -242,6 +243,35 @@ check('the split bill is sent with the numbers that were worked out', () => {
     /transaction_id:\s*transactionId/.test(page) ||
     page.includes('transactionId'),
     'the split bill is not tied to the transaction'
+  );
+});
+
+check('a transaction that is already written down still gets its bill', () => {
+  /**
+   * When the reader shares a transaction that is already on record,
+   * the transaction is not made again - only the bill is made, and it
+   * points at the transaction that is already there.
+   *
+   * But the bill has to be made. A reader who opens the receipt of a
+   * purchase, shares it, and presses save, expects the people to owe
+   * what they owe. If the bill is quietly dropped, the sharing is
+   * lost with nothing to show that it ever happened.
+   */
+  const branch = review.slice(
+    review.indexOf('if (reading?.transaction_id)'),
+    review.indexOf('const created = await api.transactions.create')
+  );
+  assert.ok(branch.length > 0, 'the branch for a transaction that is already there was not found');
+  assert.ok(
+    /makeSplitBill\s*\(/.test(branch),
+    'the shared bill is not made when the transaction is already written down'
+  );
+
+  // The bill must point at the transaction it belongs to.
+  assert.ok(
+    /transaction_id:\s*transactionId/.test(review) ||
+    /transaction_id:\s*reading\.transaction_id/.test(review),
+    'the bill is not tied to the transaction'
   );
 });
 
