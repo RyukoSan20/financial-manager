@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, Spinner, Badge } from '../components/ui';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing, Mic, ReceiptText } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing, Mic, ReceiptText, Users } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { TextParserModal } from '../components/parser/TextParserModal';
@@ -12,6 +12,7 @@ import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddBu
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import ItemizedReceiptEditorModal from '../components/transactions/ItemizedReceiptEditorModal';
+import ReceiptReviewModal from '../components/transactions/ReceiptReviewModal';
 import { categoryName } from '../utils/categoryName';
 import { useTranslation } from '../i18n';
 import { batch1, fill } from '../i18n/keys_batch1';
@@ -35,7 +36,7 @@ const SourceBadge = ({ type, K }) => {
 };
 
 export const Transactions = () => {
-  const { language } = useTranslation();
+  const { language, t } = useTranslation();
   const K = batch1[language]?.txns || batch1.id.txns;
   const typeOptions = [
     { value: '', label: K.all },
@@ -46,6 +47,11 @@ export const Transactions = () => {
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Whether the list could be read at all. This is not the same as
+  // the list being empty, and the page has to tell them apart: a
+  // reader with four transactions must never be told they have none
+  // because the server answered with an error.
+  const [loadError, setLoadError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
   const [filters, setFilters] = useState({ type: '', search: '', status: '' });
@@ -54,6 +60,12 @@ export const Transactions = () => {
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
+  // A receipt that was read, or a transaction that was spoken, waiting
+  // for the reader to look at it before it is saved.
+  const [reviewReading, setReviewReading] = useState(null);
+  // The transaction whose lines are being shared, when the reader
+  // opens a bill that is already written down.
+  const [splittingTx, setSplittingTx] = useState(null);
   const [prefillQRText, setPreFillQRText] = useState('');
   const [expandedTxId, setExpandedTxId] = useState(null);
   // The receipt being edited, if any. The editor is a window over the
@@ -107,10 +119,20 @@ export const Transactions = () => {
         api.categories.list(),
         api.get('/feed/stats').catch(() => null),
       ]);
-      const rows = Array.isArray(txRes.value) ? txRes.value : [];
-      setTransactions(rows);
-      // A full block means there is probably more behind it.
-      setHasMore(rows.length >= limit);
+      // A failure of the list is a failure of the list. It is not the
+      // same as a list with nothing in it, and it must not be shown
+      // as one.
+      if (txRes.status === 'rejected') {
+        setLoadError(txRes.reason?.message || 'Gagal memuat transaksi');
+        setTransactions([]);
+        setHasMore(false);
+      } else {
+        setLoadError(null);
+        const rows = Array.isArray(txRes.value) ? txRes.value : [];
+        setTransactions(rows);
+        // A full block means there is probably more behind it.
+        setHasMore(rows.length >= limit);
+      }
       setAccounts(Array.isArray(accRes.value) ? accRes.value : []);
       setCategories(Array.isArray(catRes.value) ? catRes.value : []);
       if (feedStatsRes.status === 'fulfilled' && feedStatsRes.value) {
@@ -118,6 +140,7 @@ export const Transactions = () => {
       }
     } catch (err) {
       console.error('Failed to fetch transactions:', err);
+      setLoadError(err?.message || 'Gagal memuat transaksi');
       setTransactions([]);
     } finally {
       setLoading(false);
@@ -166,6 +189,47 @@ export const Transactions = () => {
    * against the user's own category list - if the suggested category does
    * not exist, the transaction is saved without one rather than failing.
    */
+  /**
+   * Sharing a transaction that is already written down.
+   *
+   * The lines of the receipt are read, and the bill is brought up
+   * with them, so the reader only has to say who had what.
+   */
+  const startSplit = async (tx) => {
+    try {
+      const receipt = await api.get(`/receipt-items/${tx.id}`);
+      const items = receipt?.items || [];
+      setSplittingTx({
+        transaction_id: tx.id,
+        amount: Number(tx.amount),
+        type: tx.type,
+        description: tx.description || '',
+        date: tx.date,
+        account_id: tx.account_id,
+        category_id: tx.category_id,
+        detection_type: tx.detection_type,
+        items: items.map((item) => ({
+          name: item.name || item.raw_name || '',
+          quantity: Number(item.quantity) || 1,
+          unit_price: Number(item.unit_price ?? 0) || 0,
+        })),
+      });
+    } catch (e) {
+      // A transaction without a receipt has only one line: itself.
+      setSplittingTx({
+        transaction_id: tx.id,
+        amount: Number(tx.amount),
+        type: tx.type,
+        description: tx.description || '',
+        date: tx.date,
+        account_id: tx.account_id,
+        category_id: tx.category_id,
+        detection_type: tx.detection_type,
+        items: [],
+      });
+    }
+  };
+
   const handleVoiceSave = async (voice) => {
     const accountId = accounts[0]?.id;
     if (!accountId) {
@@ -384,19 +448,42 @@ export const Transactions = () => {
 
       {/* Transactions List */}
       {filteredTransactions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center min-h-[40vh] p-4">
-          <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-            <ArrowDownRight className="w-10 h-10 text-gray-400" />
+        loadError ? (
+          /* The list could not be read. This is not an empty list,
+             and it is not shown as one: the reader is told that the
+             list could not be loaded, and given a way to try again. */
+          <div className="flex flex-col items-center justify-center min-h-[40vh] p-4">
+            <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-4">
+              <RefreshCw className="w-10 h-10 text-red-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {t('transactions.loadFailed')}
+            </h3>
+            <p className="text-gray-500 text-center mb-6">
+              {t('transactions.loadFailedDesc')}
+            </p>
+            <button
+              onClick={() => fetchData()}
+              className="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium shadow-lg pressable"
+            >
+              {t('transactions.retry')}
+            </button>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">{K.noTransactions}</h3>
-          <p className="text-gray-500 text-center mb-6">{K.noTransactionsDesc}</p>
-          <button
-            onClick={() => window.location.href = '/add'}
-            className="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium shadow-lg active:bg-primary-600"
-          >
-            {K.addTransaction}
-          </button>
-        </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center min-h-[40vh] p-4">
+            <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+              <ArrowDownRight className="w-10 h-10 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{K.noTransactions}</h3>
+            <p className="text-gray-500 text-center mb-6">{K.noTransactionsDesc}</p>
+            <button
+              onClick={() => window.location.href = '/add'}
+              className="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium shadow-lg active:bg-primary-600"
+            >
+              {K.addTransaction}
+            </button>
+          </div>
+        )
       ) : (
         <div className="space-y-4">
           {Object.entries(groupedTx).map(([date, txs]) => (
@@ -463,7 +550,17 @@ export const Transactions = () => {
                             >
                               {K.cancel}
                             </button>
+                                                        {/* Sharing this bill while it is being
+                                edited. The bill opens with the lines
+                                already written down. */}
                             <button
+                              onClick={() => { cancelEdit(); startSplit(tx); }}
+                              className="px-3 py-2 border border-emerald-300 text-emerald-700 rounded-lg flex items-center justify-center gap-1"
+                              title={t('bill.splitTransaction')}
+                            >
+                              <Users className="w-4 h-4" />
+                            </button>
+<button
                               onClick={() => saveEdit(tx.id)}
                               className="flex-1 py-2 bg-primary-600 text-white rounded-lg flex items-center justify-center gap-2"
                             >
@@ -548,6 +645,17 @@ export const Transactions = () => {
                               className="p-2 text-gray-400 hover:text-primary-500 hover:bg-gray-100 rounded-lg"
                             >
                               <Edit2 className="w-4 h-4" />
+                            </button>
+                            {/* Sharing this bill. The reader opens it
+                                with the lines already written down, so
+                                they only have to say who had what. */}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); startSplit(tx); }}
+                              className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg"
+                              title={t('bill.splitTransaction')}
+                              aria-label={t('bill.splitTransaction')}
+                            >
+                              <Users className="w-4 h-4" />
                             </button>
                             {/* Editing the lines of the receipt itself. */}
                             <button
@@ -671,6 +779,7 @@ export const Transactions = () => {
           setShowReceiptScanner(false);
           fetchData();
         }}
+        onReview={(reading) => setReviewReading(reading)}
       />
       <QRScannerModal
         isOpen={showQRScanner}
@@ -685,6 +794,25 @@ export const Transactions = () => {
         isOpen={showVoiceModal}
         onClose={() => setShowVoiceModal(false)}
         onSave={handleVoiceSave}
+        onReview={(reading) => setReviewReading(reading)}
+      />
+      {/* What was read from paper, or spoken aloud, waiting for the
+          reader to look at it before it is saved. */}
+      <ReceiptReviewModal
+        isOpen={!!reviewReading || !!splittingTx}
+        reading={reviewReading || splittingTx}
+        categories={categories}
+        accounts={accounts}
+        existingTransactions={transactions}
+        onClose={() => {
+          setReviewReading(null);
+          setSplittingTx(null);
+        }}
+        onSaved={() => {
+          setReviewReading(null);
+          setSplittingTx(null);
+          fetchData();
+        }}
       />
       {/* The itemised receipt of one transaction, edited line by line. */}
       <ItemizedReceiptEditorModal
