@@ -49,20 +49,49 @@ export default function ReceiptReviewModal({
   useEffect(() => {
     if (!isOpen || !reading) return;
     const items = Array.isArray(reading.items) ? reading.items : [];
-    setLines(
-      items.map((item) => ({
-        id: `review-${nextId++}`,
-        name: item.name || item.raw_name || '',
-        quantity: Number(item.quantity) || 1,
-        unit: item.unit || 'pcs',
-        unitPrice: Number(item.unit_price ?? item.price_per_unit ?? 0) || '',
-        categoryId:
-          item.category_id ??
-          categories.find((c) => c.name === item.category)?.id ??
-          null,
-        owner: null,
-      }))
-    );
+
+    // A reading that has no lines - a spoken transaction, most of all -
+    // is still one thing that was heard: an amount and a name. It
+    // becomes one line, so that the reader sees what was heard and
+    // can change it. A table with nothing in it and a total of zero
+    // says nothing at all, and cannot be saved.
+    const seeded =
+      items.length > 0
+        ? items.map((item) => ({
+            id: `review-${nextId++}`,
+            name: item.name || item.raw_name || '',
+            quantity: Number(item.quantity) || 1,
+            unit: item.unit || 'pcs',
+            unitPrice:
+              Number(item.unit_price ?? item.price_per_unit ?? 0) || '',
+            categoryId:
+              item.category_id ??
+              categories.find((c) => c.name === item.category)?.id ??
+              null,
+            owner: null,
+          }))
+        : reading.amount
+          ? [
+              {
+                id: `review-${nextId++}`,
+                name:
+                  reading.merchant_name ||
+                  reading.description ||
+                  reading.raw_source_text ||
+                  '',
+                quantity: 1,
+                unit: 'pcs',
+                unitPrice: Number(reading.amount) || '',
+                categoryId:
+                  reading.category_id ??
+                  categories.find((c) => c.name === reading.category)?.id ??
+                  null,
+                owner: null,
+              },
+            ]
+          : [];
+
+    setLines(seeded);
     setError(null);
   }, [isOpen, reading, categories]);
 

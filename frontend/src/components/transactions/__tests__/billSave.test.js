@@ -275,5 +275,26 @@ check('a transaction that is already written down still gets its bill', () => {
   );
 });
 
+check('a reading with no lines still shows what was read', () => {
+  /**
+   * A spoken transaction is one amount and one description. It has no
+   * lines, because nothing was read off a list of items.
+   *
+   * But the reader still has to be able to look at it. A review form
+   * with an empty table and a total of zero says nothing about what
+   * was heard, and saving it is refused because the total is nothing.
+   * So the amount that was read becomes one line, which the reader
+   * can then change.
+   */
+  assert.ok(
+    /reading\.amount/.test(review),
+    'the review does not use the amount that was read'
+  );
+  assert.ok(
+    /merchant_name/.test(review),
+    'the review does not use the name that was read'
+  );
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed > 0 ? 1 : 0);
