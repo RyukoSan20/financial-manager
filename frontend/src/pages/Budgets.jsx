@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { BudgetMethodPanels } from '../components/fintech/BudgetMethodPanels';
+import { useEnvelopeMover } from '../components/fintech/useEnvelopeMover';
+import { useSyncedPreference } from '../hooks/useSyncedPreference';
 import { Card, Button, Input, Select, Modal, ProgressBar, Badge, Spinner } from '../components/ui';
 import FluidProgressBar from '../components/ui/FluidProgressBar';
 import { moneyLayerOn } from '../utils/animation';
@@ -21,6 +24,22 @@ export const Budgets = () => {
   const { t, language } = useTranslation();
   // With the polish switch off, the page keeps the header it has.
   const polished = buildFlag('UI_POLISH');
+  // Which way the reader runs their money. It is their own
+  // preference, so it is kept with their other preferences.
+  // Behind the switch, so the page is unchanged when it is off.
+  const fintech = buildFlag('FINTECH_SYNTHESIS');
+  const [method, setMethod] = useSyncedPreference(
+    'fintech_budget_method',
+    'fintechBudgetMethod',
+    'flex'
+  );
+  // Which envelopes carry their leftover over. The reader's own
+  // choice, kept with their other preferences.
+  const [carry, setCarry] = useSyncedPreference(
+    'fintech_budget_carry',
+    'fintechBudgetCarry',
+    {}
+  );
   const [budgets, setBudgets] = useState([]);
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -38,6 +57,13 @@ export const Budgets = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // The mover for the envelopes. It puts the money back if the
+  // second change fails, and it says whether it worked.
+  const { moveBetweenBudgets } = useEnvelopeMover({
+    budgets,
+    onDone: fetchData,
+  });
 
   const fetchData = async () => {
     setLoading(true);
@@ -161,6 +187,19 @@ export const Budgets = () => {
             </p>
           </Card>
         </div>
+      )}
+
+      {/* The way of running the money, and the flexible view of it.
+          Behind the switch. */}
+      {fintech && budgets.length > 0 && (
+        <BudgetMethodPanels
+          method={method}
+          onMethodChange={setMethod}
+          budgets={budgets}
+          carry={carry}
+          onCarryChange={setCarry}
+          onMove={moveBetweenBudgets}
+        />
       )}
 
       {/* Budget List */}
