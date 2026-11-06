@@ -12,6 +12,8 @@ import { canShowHealthScore, healthMetrics, transactionCount } from '../utils/he
 import { useSyncedPreference } from '../hooks/useSyncedPreference';
 import { useTranslation } from '../i18n';
 import { categoryName } from '../utils/categoryName';
+import { CashFlowDiagram } from '../components/fintech/CashFlowDiagram';
+import { buildFlag } from '../utils/featureFlags';
 import { chartPalette } from '../utils/appearance';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -231,6 +233,7 @@ export const Analytics = () => {
   const [health, setHealth] = useState(null);
   const [cashFlow, setCashFlow] = useState(null);
   const [expenseBreakdown, setExpenseBreakdown] = useState(null);
+  const [incomeBreakdown, setIncomeBreakdown] = useState(null);
   const [budgetComparison, setBudgetComparison] = useState(null);
   const [monthlyComparison, setMonthlyComparison] = useState(null);
   const [topExpenses, setTopExpenses] = useState(null);
@@ -238,6 +241,9 @@ export const Analytics = () => {
   const [recurring, setRecurring] = useState(null);
 
   const period = prefs.period;
+  // The river of money. Behind the switch, so the page is
+  // unchanged when it is off.
+  const fintech = buildFlag('FINTECH_SYNTHESIS');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -252,11 +258,12 @@ export const Analytics = () => {
         api.request('/analytics/top-expenses?limit=8'),
         api.request('/analytics/spending-patterns'),
         api.request('/analytics/recurring-expenses'),
+        api.request('/analytics/income-breakdown'),
       ]);
       const names = ['health', 'cashFlow', 'expenseBreakdown', 'budgetComparison',
-        'monthlyComparison', 'topExpenses', 'patterns', 'recurring'];
+        'monthlyComparison', 'topExpenses', 'patterns', 'recurring', 'incomeBreakdown'];
       const setters = [setHealth, setCashFlow, setExpenseBreakdown, setBudgetComparison,
-        setMonthlyComparison, setTopExpenses, setPatterns, setRecurring];
+        setMonthlyComparison, setTopExpenses, setPatterns, setRecurring, setIncomeBreakdown];
       results.forEach((r, i) => {
         if (r.status === 'fulfilled' && r.value) setters[i](r.value);
         else setters[i](null);
@@ -985,6 +992,16 @@ export const Analytics = () => {
           </div>
         ))}
       </div>
+
+      {/* The river of money: where it came from, what it was spent on,
+          and what is left over. Behind the switch, so the page is
+          unchanged when it is off. */}
+      {fintech && (
+        <CashFlowDiagram
+          incomeBreakdown={incomeBreakdown}
+          expenseBreakdown={expenseBreakdown}
+        />
+      )}
 
       {visible.length === 0 && (
         <Card>
