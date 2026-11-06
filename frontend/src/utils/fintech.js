@@ -81,9 +81,9 @@ export function readyToBeAssigned({
  * - Flexible: everything else, the part that moves around.
  */
 export const ENVELOPE_KINDS = [
-  { key: 'fixed', labelKey: 'fintech.envelope_fixed', fallback: 'Tetap' },
-  { key: 'sinking', labelKey: 'fintech.envelope_sinking', fallback: 'Tidak Rutin' },
-  { key: 'flexible', labelKey: 'fintech.envelope_flexible', fallback: 'Fleksibel' },
+  { key: 'fixed', labelKey: 'envelope_fixed', fallback: 'Tetap' },
+  { key: 'sinking', labelKey: 'envelope_sinking', fallback: 'Tidak Rutin' },
+  { key: 'flexible', labelKey: 'envelope_flexible', fallback: 'Fleksibel' },
 ];
 
 /**
@@ -214,8 +214,8 @@ export function debtStrategyIsKnown(strategy) {
  * per cent.
  */
 export const DEBT_STRATEGIES = [
-  { key: 'snowball', labelKey: 'fintech.debt_snowball', fallback: 'Snowball' },
-  { key: 'avalanche', labelKey: 'fintech.debt_avalanche', fallback: 'Avalanche' },
+  { key: 'snowball', labelKey: 'debt_snowball', fallback: 'Snowball' },
+  { key: 'avalanche', labelKey: 'debt_avalanche', fallback: 'Avalanche' },
 ];
 
 /**
@@ -343,9 +343,9 @@ export function netWorth({ accounts = [], debts = [] } = {}) {
  * that changes, twelve for one that stops.
  */
 export const EMERGENCY_MONTHS = [
-  { key: 3, labelKey: 'fintech.emergency_3', fallback: '3 bulan' },
-  { key: 6, labelKey: 'fintech.emergency_6', fallback: '6 bulan' },
-  { key: 12, labelKey: 'fintech.emergency_12', fallback: '12 bulan' },
+  { key: 3, labelKey: 'emergency_3', fallback: '3 bulan' },
+  { key: 6, labelKey: 'emergency_6', fallback: '6 bulan' },
+  { key: 12, labelKey: 'emergency_12', fallback: '12 bulan' },
 ];
 
 /**

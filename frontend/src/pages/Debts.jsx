@@ -13,6 +13,7 @@ import SplitMoneyMovements from '../components/split/SplitMoneyMovements';
 import { useCurrency, sumInDisplay } from '../utils/currency';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
+import { DebtPlanner } from '../components/fintech/DebtPlanner';
 
 export const Debts = () => {
   const { t } = useTranslation();
@@ -21,6 +22,10 @@ export const Debts = () => {
   // The money that a shared bill left on loan. Only shown when the
   // shared bill switch is on, so that the page is unchanged otherwise.
   const splitBill = readerFlag('SMART_SPLIT_BILL');
+  // The order the debts are paid in, and what would happen if the
+  // reader paid a bit more. Behind the switch.
+  const fintech = buildFlag('FINTECH_SYNTHESIS');
+  const [debtStrategy, setDebtStrategy] = useState('snowball');
   const { currency: displayCurrency } = useCurrency();
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -211,6 +216,17 @@ export const Debts = () => {
       />
 
       {/* Summary Cards */}
+      {/* The order to pay the debts in, and what paying a bit more
+          would save. Behind the switch, so the page is unchanged
+          when it is off. */}
+      {fintech && (
+        <DebtPlanner
+          debts={debts}
+          strategy={debtStrategy}
+          onStrategyChange={setDebtStrategy}
+        />
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card tier="tile" hue="rose" className="p-4">
           <div className="flex items-center gap-3">
