@@ -210,6 +210,11 @@ jobs:
           # Off in the repository by default, on in the build that is
           # deployed.
           VITE_LOGIN_GATEWAY: '1'
+          # The synthesis set: the safe-to-spend figure, the three
+          # ways to run the money, the river of money and the
+          # reconciliation bar. Off in the repository, on in the
+          # build that is deployed.
+          VITE_FINTECH_SYNTHESIS: '1'
         run: npm run build
 
       - name: Guard - no /api/api double prefix in bundle
