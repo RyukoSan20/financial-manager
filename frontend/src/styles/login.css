@@ -1,0 +1,760 @@
+/*
+ * The login gateway.
+ *
+ * The page used to be a form on a coloured box: one column, centred,
+ * with a gradient behind it. It did not say what the application is,
+ * and the right-hand column of the design it was built from was a
+ * picture of numbers that could not be touched.
+ *
+ * This is the shape it has now: two columns. The left one is the form,
+ * which is the only thing on the page that does something. The right
+ * one is a preview the reader can move, so the numbers on it answer
+ * when a number is changed.
+ *
+ * The dark forest green and the lime are taken from the reference
+ * design. Everything else is the application's own accent, so a reader
+ * who has picked a colour keeps it.
+ *
+ * The motion answers a gesture and nothing else. A reader who has
+ * asked the system for less movement gets none of it.
+ */
+
+/* ---------------------------------------------------------------------------
+   The page
+   --------------------------------------------------------------------------- */
+
+.login-gateway {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1fr;
+  background: #071410;
+  color: #f4f7f5;
+  overflow-x: hidden;
+}
+
+/* The wide end. On a phone the two columns stack, and the form comes
+   first: the reader came here to sign in, not to look at a preview. */
+@media (min-width: 1024px) {
+  .login-gateway {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.login-gateway__form {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem 1.25rem 3rem;
+}
+
+@media (min-width: 640px) {
+  .login-gateway__form {
+    padding: 3rem 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .login-gateway__form {
+    padding: 3rem clamp(2.5rem, 5vw, 5rem);
+  }
+}
+
+/* The preview. */
+.login-gateway__preview {
+  position: relative;
+  z-index: 1;
+  display: none;
+  padding: 3rem clamp(2rem, 4vw, 4rem);
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .login-gateway__preview {
+    display: flex;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The background
+   --------------------------------------------------------------------------- */
+
+/* The wash. It is behind the columns, and the columns let it through,
+   so it is a tint on the page rather than a block of colour. */
+.login-gateway::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      78% 58% at 50% 0%,
+      rgba(140, 210, 160, 0.16) 0%,
+      rgba(140, 210, 160, 0) 100%
+    ),
+    radial-gradient(
+      68% 52% at 50% 100%,
+      rgba(170, 225, 120, 0.18) 0%,
+      rgba(170, 225, 120, 0) 100%
+    ),
+    linear-gradient(180deg, #04120c 0%, #08211a 42%, #0b2b1f 100%);
+}
+
+/* The grain. It keeps the gradient from looking like a gradient. */
+.login-gateway::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------------------------------------------------------------------------
+   The mark
+   --------------------------------------------------------------------------- */
+
+.login-gateway__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.login-gateway__brand img {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.login-gateway__brand-name {
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   The headline
+   --------------------------------------------------------------------------- */
+
+.login-gateway__title {
+  margin: 0;
+  font-size: clamp(2rem, 5.2vw, 3.1rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  color: #ffffff;
+  text-wrap: balance;
+}
+
+.login-gateway__title em {
+  font-style: normal;
+  color: #ccff00;
+}
+
+.login-gateway__lead {
+  margin: 0.9rem 0 0;
+  max-width: 34rem;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* ---------------------------------------------------------------------------
+   The form
+   --------------------------------------------------------------------------- */
+
+.login-gateway__card {
+  width: 100%;
+  max-width: 27rem;
+  padding: 1.6rem;
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.97);
+  color: #10161a;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.22) inset,
+    0 1px 0 rgba(255, 255, 255, 0.3) inset,
+    0 26px 60px -26px rgba(4, 16, 10, 0.7);
+}
+
+@media (min-width: 640px) {
+  .login-gateway__card {
+    padding: 2rem;
+  }
+}
+
+.login-gateway__field {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.login-gateway__label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2b3742;
+}
+
+.login-gateway__input {
+  width: 100%;
+  padding: 0.72rem 0.9rem;
+  font-size: 0.95rem;
+  color: #10161a;
+  background: #ffffff;
+  border: 1px solid #d7dee3;
+  border-radius: 0.85rem;
+  outline: none;
+  transition:
+    border-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-gateway__input::placeholder {
+  color: #97a3ad;
+}
+
+.login-gateway__input:focus-visible {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
+}
+
+/* The password box, with the eye on the right of it. */
+.login-gateway__password {
+  position: relative;
+}
+
+.login-gateway__password .login-gateway__input {
+  padding-right: 3rem;
+}
+
+.login-gateway__eye {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  color: #6b7883;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-gateway__eye:hover {
+  color: #10161a;
+}
+
+.login-gateway__eye:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}
+
+/* The row with the password and the question about it. */
+.login-gateway__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: -0.35rem 0 1.1rem;
+}
+
+.login-gateway__link {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: #0f766e;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.login-gateway__link:hover {
+  text-decoration: underline;
+}
+
+.login-gateway__link:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+/* ---------------------------------------------------------------------------
+   The buttons
+   --------------------------------------------------------------------------- */
+
+.login-gateway__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.8rem 1.4rem;
+  font-size: 0.97rem;
+  font-weight: 700;
+  color: #10161a;
+  background: #ccff00;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-gateway__submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -14px rgba(204, 255, 0, 0.8);
+}
+
+.login-gateway__submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.login-gateway__submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.login-gateway__submit:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}
+
+.login-gateway__google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.8rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2b3742;
+  background: #ffffff;
+  border: 1.5px solid #d7dee3;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    border-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-gateway__google:hover:not(:disabled) {
+  border-color: #b6c0c8;
+  background: #f6f8f9;
+}
+
+.login-gateway__google:focus-visible {
+  outline: 3px solid rgba(15, 118, 110, 0.5);
+  outline-offset: 2px;
+}
+
+.login-gateway__google:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.login-gateway__guest {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.7rem;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #2b3742;
+  background: #f2f5f6;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-gateway__guest:hover:not(:disabled) {
+  background: #e7edef;
+}
+
+.login-gateway__guest:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.login-gateway__guest:focus-visible {
+  outline: 3px solid rgba(15, 118, 110, 0.5);
+  outline-offset: 2px;
+}
+
+/* The line between the two ways in. */
+.login-gateway__or {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 1rem 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8b98a3;
+}
+
+.login-gateway__or::before,
+.login-gateway__or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e2e8ec;
+}
+
+/* The error. It is red, and it is where the reader looks. */
+.login-gateway__error {
+  margin-bottom: 1rem;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.85rem;
+  color: #9f1239;
+  background: #fff1f3;
+  border: 1px solid #fecdd6;
+  border-radius: 0.85rem;
+}
+
+.login-gateway__foot {
+  margin: 0;
+  font-size: 0.87rem;
+  color: #5d6b76;
+  text-align: center;
+}
+
+.login-gateway__foot a {
+  font-weight: 600;
+  color: #0f766e;
+  text-decoration: none;
+}
+
+.login-gateway__foot a:hover {
+  text-decoration: underline;
+}
+
+/* ---------------------------------------------------------------------------
+   The preview
+   --------------------------------------------------------------------------- */
+
+.login-gateway__preview-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 1.4rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ccff00;
+}
+
+.login-gateway__preview-head::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #ccff00;
+}
+
+.login-gateway__preview-title {
+  margin: 0 0 0.4rem;
+  font-size: clamp(1.5rem, 3.4vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+}
+
+.login-gateway__preview-lead {
+  margin: 0 0 1.6rem;
+  max-width: 30rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* The three cards of the preview. */
+.login-gateway__cards {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1280px) {
+  .login-gateway__cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* A card of the preview. It is glass, because it sits on the dark
+   wash, and it is the one place on the page that is. */
+.login-gateway__card--glass {
+  padding: 1.1rem 1.2rem;
+  border-radius: 1.15rem;
+  background: linear-gradient(
+    160deg,
+    rgba(200, 240, 210, 0.17) 0%,
+    rgba(120, 190, 150, 0.07) 55%,
+    rgba(40, 110, 80, 0.17) 100%
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+    0 1px 0 rgba(255, 255, 255, 0.3) inset,
+    0 18px 40px -22px rgba(4, 16, 10, 0.8);
+}
+
+.login-gateway__card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.7rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.login-gateway__big {
+  font-size: clamp(1.5rem, 3.2vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.login-gateway__muted {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.66);
+}
+
+/* On the light card the muted colour has to be darker. The one above
+   is 2.9:1 against white, and the guidelines ask for 4.5:1, so the
+   card gets its own: a grey that reads on white without shouting. */
+.login-gateway__card .login-gateway__muted {
+  color: #5d6b76;
+}
+
+.login-gateway__card .login-gateway__or {
+  color: #6b7883;
+}
+
+/* The control the reader moves. */
+.login-gateway__control {
+  display: block;
+  margin-top: 0.9rem;
+}
+
+.login-gateway__control-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.login-gateway__control-value {
+  font-weight: 700;
+  color: #ccff00;
+  font-variant-numeric: tabular-nums;
+}
+
+.login-gateway__slider {
+  width: 100%;
+  height: 1.6rem;
+  accent-color: #ccff00;
+  cursor: pointer;
+}
+
+.login-gateway__slider:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+/* The three rows of a divided budget. */
+.login-gateway__bars {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.4rem;
+}
+
+.login-gateway__bar-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+}
+
+.login-gateway__bar-name {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.login-gateway__bar-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.login-gateway__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #9fe870 0%, #ccff00 100%);
+}
+
+.login-gateway__bar-amount {
+  font-weight: 700;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The lines of a divided bill. */
+.login-gateway__lines {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+}
+
+.login-gateway__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.login-gateway__line-amount {
+  font-weight: 700;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The tax row. */
+.login-gateway__tax {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.66);
+}
+
+/* ---------------------------------------------------------------------------
+   The security note
+   --------------------------------------------------------------------------- */
+
+.login-gateway__trust {
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.login-gateway__trust-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.login-gateway__trust-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.login-gateway__trust-item {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  gap: 0.6rem;
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.login-gateway__trust-item svg {
+  margin-top: 0.18rem;
+  color: #9fe870;
+}
+
+/* ---------------------------------------------------------------------------
+   The reader's own colour
+   --------------------------------------------------------------------------- */
+
+/* The accent the reader picked still draws the things that are theirs.
+   The form card is a light surface, so the focus ring and the links
+   take the accent from the root rather than a fixed teal. */
+.login-gateway__card .login-gateway__input:focus-visible {
+  border-color: rgb(var(--scheme-500-rgb, 15 118 110));
+  box-shadow: 0 0 0 3px rgb(var(--scheme-500-rgb, 15 118 110) / 0.2);
+}
+
+.login-gateway__card .login-gateway__link,
+.login-gateway__card .login-gateway__foot a {
+  color: rgb(var(--scheme-600-rgb, 15 118 110));
+}
+
+/* ---------------------------------------------------------------------------
+   The old page
+   --------------------------------------------------------------------------- */
+
+/* Kept exactly as it was, so a reader who has not asked for the new
+   shape sees the same page they saw before. */
+.login-legacy {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgb(var(--scheme-500-rgb, 59 130 246)) 0%, rgb(var(--scheme-600-rgb, 37 99 235)) 100%);
+}
+
+/* ---------------------------------------------------------------------------
+   Less movement
+   --------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .login-gateway *,
+  .login-gateway *::before,
+  .login-gateway *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

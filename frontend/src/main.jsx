@@ -11,6 +11,7 @@ import './styles/money.css'
 import './styles/split.css'
 import './styles/moe.css'
 import './styles/merchant.css'
+import './styles/login.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
