@@ -117,6 +117,7 @@ class TransactionResponse(BaseModel):
     # Location fields
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    merchant_address: Optional[str] = None
     # Idempotency
     client_request_id: Optional[str] = None
     created_at: Optional[datetime]

@@ -21,6 +21,7 @@ answer naming the columns that actually exist.
 
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine
@@ -152,6 +153,30 @@ def test_the_place_survives_the_round_trip(session):
     answer = TransactionResponse.model_validate(written)
     assert float(answer.latitude) == pytest.approx(-6.2088)
     assert float(answer.longitude) == pytest.approx(106.8456)
+
+
+def test_the_list_names_the_place_too():
+    """
+    The list is written by hand, so a field that is not named in it
+    is not in the answer. The place was kept in the row and never
+    shown in the list, so the reader could not tell that it had been
+    remembered.
+    """
+    source = Path(__file__).resolve().parents[2] / "app" / "api" / "routes" / "transactions.py"
+    text = source.read_text()
+
+    start = text.find("def list_transactions")
+    assert start > 0, "the list of transactions is not there"
+    body = text[start:start + 6000]
+
+    assert '"latitude": t.latitude' in body, (
+        "the list of transactions does not say where the transaction "
+        "happened"
+    )
+    assert '"longitude": t.longitude' in body, (
+        "the list of transactions does not say where the transaction "
+        "happened"
+    )
 
 
 def test_the_answer_names_only_columns_that_exist():

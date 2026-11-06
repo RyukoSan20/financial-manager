@@ -108,6 +108,14 @@ def list_transactions(
             "raw_source_text": t.raw_source_text,
             "confidence_score": t.confidence_score,
             "receipt_scan_id": t.receipt_scan_id,
+            # Where it happened. The list is built by hand, so a field
+            # that is not named here is not in the answer. The place a
+            # transaction happened at was kept in the row and never
+            # shown, so the reader could not tell that it had been
+            # remembered.
+            "latitude": t.latitude,
+            "longitude": t.longitude,
+            "merchant_address": t.merchant_address,
             "created_at": t.created_at,
             "updated_at": t.updated_at,
             # The name of the category and the account. Without these
