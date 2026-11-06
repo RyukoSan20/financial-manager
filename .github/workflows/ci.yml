@@ -205,6 +205,11 @@ jobs:
           # The same build switches the deployment uses, so the build
           # that is tested is the build that is deployed.
           VITE_UI_SHOPPING_FOUR_COLUMNS: '1'
+          # The login page as a gateway: two columns, the form on one
+          # side and a preview on the other that the reader can move.
+          # Off in the repository by default, on in the build that is
+          # deployed.
+          VITE_LOGIN_GATEWAY: '1'
         run: npm run build
 
       - name: Guard - no /api/api double prefix in bundle

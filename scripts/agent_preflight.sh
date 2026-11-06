@@ -95,6 +95,7 @@ for test_file in \
   src/components/transactions/__tests__/itemizedBillEditor.test.js \
   src/components/transactions/__tests__/billSave.test.js \
   src/pages/__tests__/transactionsLoadFailure.test.js \
+  src/pages/__tests__/loginGateway.test.js \
   src/components/merchant/__tests__/captureLandsOnShelf.test.js \
   src/components/market/__tests__/advisorKeyPoints.test.js \
   src/pages/__tests__/merchantMapAddress.test.js \

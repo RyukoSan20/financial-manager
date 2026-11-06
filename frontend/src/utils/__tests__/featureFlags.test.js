@@ -53,6 +53,7 @@ store.clear();
 check('a build switch is off by default', buildFlag('UI_POLISH'), false);
 check('the aurora build switch is off by default', buildFlag('UI_AURORA'), false);
 check('the money build switch is off by default', buildFlag('UI_MONEY'), false);
+check('the login gateway build switch is off by default', buildFlag('LOGIN_GATEWAY'), false);
 check('a reader switch is off by default', readerFlag('NAV_V2'), false);
 check('an unknown switch is off', buildFlag('NOPE'), false);
 check('an unknown reader switch is off', readerFlag('NOPE'), false);

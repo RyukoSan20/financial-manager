@@ -52,6 +52,14 @@ const BUILD_FLAGS = {
    * floating button that breathes. Off by default.
    */
   UI_MONEY: 'VITE_UI_MONEY',
+  /**
+   * The login page as a gateway: two columns, the form on one side
+   * and a preview on the other that the reader can move.
+   *
+   * Off by default. When it is off, the login page is exactly the
+   * page it was, and nothing about signing in changes.
+   */
+  LOGIN_GATEWAY: 'VITE_LOGIN_GATEWAY',
 };
 
 /**
