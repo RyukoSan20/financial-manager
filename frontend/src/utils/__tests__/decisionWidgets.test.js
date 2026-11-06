@@ -141,6 +141,17 @@ check('a goal without a monthly figure is spread over the time left', () => {
   assert.strictEqual(result.target, 333334);
 });
 
+check('the deadline is read from the field the server uses', () => {
+  // The server calls it `target_date`. A goal read from the server has
+  // no `deadline`, so reading only that name would leave every goal
+  // uncounted.
+  const target = new Date(Date.now() + 180 * 86400000).toISOString();
+  const result = monthlySavingsTarget([
+    { target_amount: 2000000, current_amount: 0, target_date: target },
+  ]);
+  assert.strictEqual(result.target, 333334);
+});
+
 check('a goal with no deadline and no monthly figure does not count', () => {
   // A wish is not a promise, and it should not eat into the money
   // available today.

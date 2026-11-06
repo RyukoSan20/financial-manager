@@ -50,10 +50,13 @@ export function envelopeKindOf(budget) {
   const kind = budget?.envelope_kind;
   if (kind === 'fixed' || kind === 'sinking' || kind === 'flexible') return kind;
   const name = String(budget?.name || '').toLowerCase();
-  if (/(sewa|rent|kontrakan|bayar|tagihan|listrik|internet|angsuran|loan)/.test(name)) {
+  // The names the reader is likely to give their categories. The
+  // words are matched on the whole word where it matters, so
+  // "makan" is not read as "akan".
+  if (/(tetap|fixed|sewa|rent|kontrakan|bayar|tagihan|listrik|internet|angsuran|loan|kredit|subscription|langganan)/.test(name)) {
     return 'fixed';
   }
-  if (/(tabungan|target|renovasi|liburan|travel|dana darurat|emergency)/.test(name)) {
+  if (/(tabungan|target|renovasi|liburan|travel|dana darurat|emergency|sinking|menabung)/.test(name)) {
     return 'sinking';
   }
   return 'flexible';

@@ -105,7 +105,11 @@ export function monthlySavingsTarget(goals = [], { income = 0 } = {}) {
 
     let needed = monthly;
     if (!needed) {
-      const deadline = goal.deadline ? new Date(goal.deadline) : null;
+      // The goal names the day it is wanted by. It is called
+      // `target_date` on the server and `deadline` in some places, so
+      // both are read.
+      const raw = goal.target_date || goal.deadline || null;
+      const deadline = raw ? new Date(raw) : null;
       if (!deadline || Number.isNaN(deadline.getTime())) continue;
       const monthsLeft = Math.max(
         1,

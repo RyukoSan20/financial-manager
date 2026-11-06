@@ -171,6 +171,21 @@ check('moving money between envelopes writes to the server', () => {
   );
 });
 
+check('the transfer finds the budgets even though the ids are strings', () => {
+  // The ids come from a select box, so they are strings. A strict
+  // comparison of '427' with 427 finds nothing, and the move refuses
+  // to happen without saying why.
+  const mover = read('src/components/fintech/useEnvelopeMover.js');
+  assert.ok(
+    /String\(b\.id\)\s*===\s*String\(fromId\)/.test(mover),
+    'the source budget is not found when the id is a string'
+  );
+  assert.ok(
+    /String\(b\.id\)\s*===\s*String\(toId\)/.test(mover),
+    'the target budget is not found when the id is a string'
+  );
+});
+
 check('a failed transfer puts the money back', () => {
   const mover = read('src/components/fintech/useEnvelopeMover.js');
   assert.ok(
@@ -219,6 +234,21 @@ check('the reconciliation bar is on the transactions page', () => {
   );
 });
 
+check('the reconciliation reads what the reader typed', () => {
+  // The result has to follow the figure the reader gave. A bar that
+  // only ever shows the balance on the screen is not a reconciliation
+  // at all.
+  const bar = read('src/components/fintech/ReconciliationBar.jsx');
+  assert.ok(
+    /reconciliationState\(\{\s*recorded,\s*bank:\s*typed\s*\}\)/.test(bar),
+    'the bar does not work out the result from what was typed'
+  );
+  assert.ok(
+    /typed === ''/.test(bar),
+    'the bar does not wait for a figure'
+  );
+});
+
 check('the adjusting entry is written to the server', () => {
   const writer = read('src/components/fintech/useAdjustmentWriter.js');
   assert.ok(
@@ -257,6 +287,26 @@ check('the two pages use the same figure', () => {
     /heldCash\(accounts\)/.test(transactions),
     'the transactions page does not sum the balances'
   );
+});
+
+// ---------------------------------------------------------------------------
+// Which envelope a budget belongs to
+// ---------------------------------------------------------------------------
+check('the envelope kinds are read from the category names', () => {
+  const panel = read('src/components/fintech/FlexBudgetPanel.jsx');
+  // A reader names their categories, and the three groups are worked
+  // out from those names. If the names are not read, every category
+  // lands in the same group and the split says nothing.
+  assert.ok(
+    /envelopeKindOf/.test(panel),
+    'the panel does not work out the kind of a budget'
+  );
+  for (const word of ['tetap', 'tabungan']) {
+    assert.ok(
+      panel.includes(word),
+      `the panel does not read the word "${word}"`
+    );
+  }
 });
 
 // ---------------------------------------------------------------------------
