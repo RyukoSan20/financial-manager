@@ -35,11 +35,19 @@ export function ReconciliationBar({
 }) {
   const { language } = useTranslation();
   const W = batch3[language]?.fintech || {};
-  const [typed, setTyped] = useState('');
+  // The figure the reader typed. When the page already knows the
+  // bank balance it is offered as the starting point.
+  const [typed, setTyped] = useState(bank === null ? '' : String(bank));
 
+  // The result is worked out from what the reader typed, not from the
+  // `bank` prop. The prop says whether a bank balance is expected at
+  // all; the typed figure is the one the reader gave.
   const state = useMemo(
-    () => (bank === null || bank === '' ? null : reconciliationState({ recorded, bank: typed })),
-    [recorded, bank, typed]
+    () =>
+      typed === ''
+        ? null
+        : reconciliationState({ recorded, bank: typed }),
+    [recorded, typed]
   );
 
   // The entry that would close the gap. Shown before it is written.

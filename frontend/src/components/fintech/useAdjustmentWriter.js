@@ -17,11 +17,12 @@
  *   reported success without knowing would be lying.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import api from '../../services/api';
 import { toast } from '../../contexts/ToastContext';
 import { ask } from '../../contexts/ConfirmContext';
 import { useTranslation } from '../../i18n';
+import { batch4 } from '../../i18n/keys_batch4';
 import { formatNative } from '../../utils/currency';
 
 /**
@@ -43,7 +44,11 @@ export function pickAdjustmentAccount(accounts = []) {
  * The hook the pages use.
  */
 export function useAdjustmentWriter({ accounts = [], onDone }) {
-  const { t } = useTranslation();
+  const { language } = useTranslation();
+  // These words live in the batch file with the other screens that
+  // were moved over, so they are read from there rather than through
+  // the main lookup.
+  const A = useMemo(() => batch4[language]?.accounts || {}, [language]);
 
   const createAdjustment = useCallback(
     async (entry) => {
@@ -51,18 +56,18 @@ export function useAdjustmentWriter({ accounts = [], onDone }) {
 
       const target = pickAdjustmentAccount(accounts);
       if (!target) {
-        toast.error(t('accounts.no_account_to_adjust'));
+        toast.error(A.no_account_to_adjust);
         return false;
       }
 
       const ok = await ask({
-        title: t('accounts.adjust_confirm_title'),
-        message: t('accounts.adjust_confirm_message').replace(
+        title: A.adjust_confirm_title,
+        message: A.adjust_confirm_message.replace(
           '%amount%',
           formatNative(entry.amount, target.currency || 'IDR')
         ),
-        confirmLabel: t('accounts.adjust_confirm_yes'),
-        cancelLabel: t('accounts.adjust_confirm_no'),
+        confirmLabel: A.adjust_confirm_yes,
+        cancelLabel: A.adjust_confirm_no,
       });
       if (!ok) return false;
 
@@ -75,15 +80,15 @@ export function useAdjustmentWriter({ accounts = [], onDone }) {
           description: entry.description,
           date: new Date().toISOString().slice(0, 10),
         });
-        toast.success(t('accounts.adjust_done'));
+        toast.success(A.adjust_done);
         await onDone?.();
         return true;
       } catch {
-        toast.error(t('accounts.adjust_failed'));
+        toast.error(A.adjust_failed);
         return false;
       }
     },
-    [accounts, onDone, t]
+    [accounts, onDone, A]
   );
 
   return { createAdjustment };
