@@ -60,6 +60,19 @@ const BUILD_FLAGS = {
    * page it was, and nothing about signing in changes.
    */
   LOGIN_GATEWAY: 'VITE_LOGIN_GATEWAY',
+  /**
+   * The seventeen features from the five reference products.
+   *
+   * One switch for the whole set, so it can be turned on and off in
+   * one place. Off by default: when it is off, every page is exactly
+   * the page it was, and nothing about the reader's records changes.
+   *
+   * The switch covers the visible behaviour only. The arithmetic in
+   * `utils/fintech.js` is always there, because a calculation that
+   * only works when a switch is on is a calculation that is never
+   * checked.
+   */
+  FINTECH_SYNTHESIS: 'VITE_FINTECH_SYNTHESIS',
 };
 
 /**

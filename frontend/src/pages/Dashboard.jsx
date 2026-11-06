@@ -30,6 +30,7 @@ import Onboarding from '../components/dashboard/Onboarding';
 import { useTheme } from '../contexts/ThemeContext';
 import { IconText } from '../components/ui/IconText';
 import { buildFlag } from '../utils/featureFlags';
+import { ReadyToBeAssignedBanner, DataAccuracyIndicator } from '../components/fintech/ReadyToBeAssignedBanner';
 import { batch3 } from '../i18n/keys_batch3';
 
 // ============================================================================
@@ -351,6 +352,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const fintech = buildFlag('FINTECH_SYNTHESIS');
   const [goals, setGoals] = useState([]);
   const [feedStats, setFeedStats] = useState(null);
   const [achievements, setAchievements] = useState([]);
@@ -929,6 +931,27 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           next and the button goes straight there. */}
       <Onboarding />
       <ReadinessChecklist />
+
+      {/* The money that has not been given a job, and how fresh the
+          data is. Both are about trust, and both are here because the
+          survey behind this work found that the commonest complaint
+          about the tools people already use is that the numbers are
+          wrong and nothing says so.
+
+          Nothing is drawn at all when the switch is off. */}
+      {fintech && (
+        <div className="flex flex-col gap-2.5">
+          <DataAccuracyIndicator
+            updatedAt={transactions?.[0]?.created_at || null}
+            pendingReview={0}
+          />
+          <ReadyToBeAssignedBanner
+            cash={summary?.total_balance || 0}
+            budgets={budgets}
+            spent={summary?.total_spent || 0}
+          />
+        </div>
+      )}
 
       {/* What the records already say: a bill paid twice, a
           subscription never set up, the balance for the month ahead.
