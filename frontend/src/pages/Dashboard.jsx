@@ -31,6 +31,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { IconText } from '../components/ui/IconText';
 import { buildFlag } from '../utils/featureFlags';
 import { ReadyToBeAssignedBanner, DataAccuracyIndicator } from '../components/fintech/ReadyToBeAssignedBanner';
+import { SafeToSpendWidget } from '../components/fintech/SafeToSpendWidget';
 import { batch3 } from '../i18n/keys_batch3';
 
 // ============================================================================
@@ -941,6 +942,15 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           Nothing is drawn at all when the switch is off. */}
       {fintech && (
         <div className="flex flex-col gap-2.5">
+          {/* The first thing on the page: what can be spent today.
+              It comes before everything else because it is the
+              question people open the app to ask. */}
+          <SafeToSpendWidget
+            cash={summary?.total_balance || 0}
+            rules={recurringTransactions}
+            goals={goals}
+            income={summary?.total_income || 0}
+          />
           <DataAccuracyIndicator
             updatedAt={transactions?.[0]?.created_at || null}
             pendingReview={0}
