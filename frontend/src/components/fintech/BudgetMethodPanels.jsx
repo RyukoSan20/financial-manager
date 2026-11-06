@@ -23,13 +23,19 @@ export function BudgetMethodPanels({
   onCarryChange,
   onMove,
 }) {
+  // The choice of way is offered before there is anything to divide
+  // up, because the reader picks the way first and then makes their
+  // budgets in it. The panels that need budgets wait for the first
+  // one.
+  const hasBudgets = (budgets || []).length > 0;
   return (
     <div className="flex flex-col gap-4">
       <BudgetMethodPicker method={method} onChange={onMethodChange} />
 
       {/* The three groups are not the zero-based way of looking at the
-          money, so they are not shown there. */}
-      {method !== 'zero' && (
+          money, so they are not shown there. They also need budgets to
+          divide up, so they wait for the first one. */}
+      {method !== 'zero' && hasBudgets && (
         <FlexBudgetPanel
           budgets={budgets}
           carry={carry}
@@ -39,7 +45,7 @@ export function BudgetMethodPanels({
 
       {/* Moving money between envelopes is the envelope method's
           own thing. */}
-      {method === 'envelope' && (
+      {method === 'envelope' && hasBudgets && (
         <EnvelopeTransfer budgets={budgets} onMove={onMove} />
       )}
     </div>

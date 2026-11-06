@@ -140,7 +140,7 @@ check('the flexible view is not shown in the zero-based method', () => {
   // money, and the three groups are not its way.
   const panels = read('src/components/fintech/BudgetMethodPanels.jsx');
   assert.ok(
-    /method\s*!==\s*'zero'\s*&&\s*\(/.test(panels),
+    /method\s*!==\s*'zero'\s*&&\s*hasBudgets\s*&&\s*\(/.test(panels),
     'the flexible view is shown in the zero-based method'
   );
 });
@@ -148,7 +148,7 @@ check('the flexible view is not shown in the zero-based method', () => {
 check('the transfer between envelopes is only in the envelope method', () => {
   const panels = read('src/components/fintech/BudgetMethodPanels.jsx');
   assert.ok(
-    /method\s*===\s*'envelope'\s*&&\s*\(/.test(panels),
+    /method\s*===\s*'envelope'\s*&&\s*hasBudgets\s*&&\s*\(/.test(panels),
     'the transfer is not limited to the envelope method'
   );
   assert.ok(
@@ -168,6 +168,30 @@ check('moving money between envelopes writes to the server', () => {
   assert.ok(
     /api\.budgets\.update\(toId/.test(mover),
     'the transfer does not change the target budget'
+  );
+});
+
+check('the choice of way is offered before there is anything to divide', () => {
+  // The reader picks the way first and then makes their budgets in
+  // it. If the choice waits for the first budget, the reader can
+  // never pick a way on an empty page.
+  const panels = read('src/components/fintech/BudgetMethodPanels.jsx');
+  const choice = panels.indexOf('<BudgetMethodPicker');
+  const groups = panels.indexOf('method !==');
+  assert.ok(choice >= 0, 'the choice of way is not on the page at all');
+  assert.ok(
+    choice < groups,
+    'the choice of way comes after the panels that need budgets'
+  );
+  assert.ok(
+    /hasBudgets && \(/.test(panels),
+    'the panels that need budgets do not wait for the first one'
+  );
+
+  const page = read('src/pages/Budgets.jsx');
+  assert.ok(
+    /\{fintech && \(/.test(page),
+    'the choice of way is only shown once there are budgets'
   );
 });
 

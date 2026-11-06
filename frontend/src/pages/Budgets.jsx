@@ -199,7 +199,7 @@ export const Budgets = () => {
 
       {/* The way of running the money, and the flexible view of it.
           Behind the switch. */}
-      {fintech && budgets.length > 0 && (
+      {fintech && (
         <BudgetMethodPanels
           method={method}
           onMethodChange={setMethod}
