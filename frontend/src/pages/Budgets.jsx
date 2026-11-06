@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BudgetMethodPanels } from '../components/fintech/BudgetMethodPanels';
 import { useEnvelopeMover } from '../components/fintech/useEnvelopeMover';
+import { resolveBudgetMethod } from '../utils/decisionWidgets';
 import { useSyncedPreference } from '../hooks/useSyncedPreference';
 import { Card, Button, Input, Select, Modal, ProgressBar, Badge, Spinner } from '../components/ui';
 import FluidProgressBar from '../components/ui/FluidProgressBar';
@@ -31,7 +32,14 @@ export const Budgets = () => {
   const [method, setMethod] = useSyncedPreference(
     'fintech_budget_method',
     'fintechBudgetMethod',
-    'flex'
+    'flex',
+    // The hook spreads the default into an object, so a plain string
+    // comes back as its letters. This puts it back together and
+    // refuses anything that is not one of the three methods.
+    (stored, base) => {
+      const value = typeof stored === 'string' ? stored : base;
+      return resolveBudgetMethod(value);
+    }
   );
   // Which envelopes carry their leftover over. The reader's own
   // choice, kept with their other preferences.
@@ -58,13 +66,6 @@ export const Budgets = () => {
     fetchData();
   }, []);
 
-  // The mover for the envelopes. It puts the money back if the
-  // second change fails, and it says whether it worked.
-  const { moveBetweenBudgets } = useEnvelopeMover({
-    budgets,
-    onDone: fetchData,
-  });
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -84,7 +85,14 @@ export const Budgets = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  // The mover for the envelopes. It puts the money back if the
+  // second change fails, and it says whether it worked.
+  const { moveBetweenBudgets } = useEnvelopeMover({
+    budgets,
+    onDone: fetchData,
+  });
 
   const handleSubmit = async (formData) => {
     try {

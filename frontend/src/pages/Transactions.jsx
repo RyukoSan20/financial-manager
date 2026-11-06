@@ -122,13 +122,6 @@ export const Transactions = () => {
   // so the two bars can be compared with each other.
   const accountTotal = useMemo(() => heldCash(accounts), [accounts]);
 
-  // The writer for the adjusting entry. It asks the reader first,
-  // and it says afterwards whether the entry was made.
-  const { createAdjustment } = useAdjustmentWriter({
-    accounts,
-    onDone: fetchData,
-  });
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -164,7 +157,14 @@ export const Transactions = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  // The writer for the adjusting entry. It asks the reader first,
+  // and it says afterwards whether the entry was made.
+  const { createAdjustment } = useAdjustmentWriter({
+    accounts,
+    onDone: fetchData,
+  });
 
   /**
    * Read the next block of transactions.

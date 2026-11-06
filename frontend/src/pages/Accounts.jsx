@@ -53,13 +53,6 @@ export const Accounts = () => {
     fetchData();
   }, []);
 
-  // The writer for the adjusting entry. It asks the reader first,
-  // and it says afterwards whether the entry was made.
-  const { createAdjustment } = useAdjustmentWriter({
-    accounts,
-    onDone: fetchData,
-  });
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -75,7 +68,14 @@ export const Accounts = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  // The writer for the adjusting entry. It asks the reader first,
+  // and it says afterwards whether the entry was made.
+  const { createAdjustment } = useAdjustmentWriter({
+    accounts,
+    onDone: fetchData,
+  });
 
   const handleSubmit = async (formData) => {
     try {
