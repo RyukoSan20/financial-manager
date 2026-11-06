@@ -720,6 +720,24 @@ const AddTransactionPage = () => {
           });
         }
       } else {
+        // Where it happened, if the reader said.
+        //
+        // The coordinates are what the map reads, and the name of the
+        // place is what the reader recognises. They were collected on
+        // the sheet and never sent, so a place the reader had already
+        // given was thrown away when they saved.
+        const place = location
+          ? {
+              ...(locationCoords
+                ? {
+                    latitude: locationCoords.lat,
+                    longitude: locationCoords.lng,
+                  }
+                : {}),
+              merchant_address: location,
+            }
+          : {};
+
         const created = await api.transactions.create({
           type,
           amount: finalAmount,
@@ -728,6 +746,7 @@ const AddTransactionPage = () => {
           category_id: categoryId,
           date,
           client_request_id: transactionRequestId,
+          ...place,
         });
 
         // The receipt is written down after the transaction, because

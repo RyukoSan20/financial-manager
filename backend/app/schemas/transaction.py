@@ -35,8 +35,17 @@ class TransactionBase(EmptyStringAsNone):
     source: str = Field(default="manual")  # camera_scan, email_forward, whatsapp, manual, ocr, api
     merchant_name: Optional[str] = Field(None, max_length=100)
     # Location fields
+    #
+    # The reader can say where they were. The page sends the
+    # coordinates when the phone knows them, and the name of the place
+    # either way, because the name is what the reader recognises.
+    # The address of the shop is what the map looks the place up by.
+    #
+    # Without these, the place a reader typed was thrown away when the
+    # transaction was saved, and the map never heard of it.
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    merchant_address: Optional[str] = Field(None, max_length=255)
 
 
 class TransactionItemCreate(BaseModel):
@@ -108,7 +117,6 @@ class TransactionResponse(BaseModel):
     # Location fields
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    location_name: Optional[str] = None
     # Idempotency
     client_request_id: Optional[str] = None
     created_at: Optional[datetime]

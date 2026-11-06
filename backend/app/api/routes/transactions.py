@@ -341,6 +341,7 @@ def create_transaction(
         receipt_scan_id=transaction.receipt_scan_id,
         latitude=transaction.latitude,
         longitude=transaction.longitude,
+        merchant_address=transaction.merchant_address,
         client_request_id=transaction.client_request_id,
         # Feed/Review Workflow fields
         status=new_status,
