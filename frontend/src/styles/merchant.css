@@ -585,6 +585,13 @@
   left: 50%;
   bottom: 0;
   display: block;
+  /* The size is given here, so that the drawing is scaled to the
+     place instead of keeping a size of its own. A drawing that kept
+     its own size would stand well above the circle of spending
+     underneath it, and the reader would see a map with nothing on
+     it. */
+  width: 34px;
+  height: 31px;
   transition: transform 0.2s ease;
   pointer-events: none;
 }
@@ -609,6 +616,11 @@
   display: block;
   flex-shrink: 0;
   object-fit: contain;
+  /* The legend draws the same drawing at a smaller size, and the size
+     is given here for the same reason. */
+  width: auto;
+  height: auto;
+  max-width: 100%;
 }
 
 /* -------------------------------------------------------------------------
