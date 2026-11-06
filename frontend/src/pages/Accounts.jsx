@@ -14,6 +14,9 @@ import { CURRENCIES, CURRENCY_CODES, formatNative, useCurrency } from '../utils/
 import { formatCurrency } from '../utils/format';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
+import { ReconciliationBar } from '../components/fintech/ReconciliationBar';
+import { useAdjustmentWriter } from '../components/fintech/useAdjustmentWriter';
+import { buildFlag } from '../utils/featureFlags';
 
 // The kinds of holding there are. The name of each one follows the
 // currency it is in, because a rupiah savings account and a yen
@@ -37,6 +40,9 @@ export const Accounts = () => {
   const K = batch3[language]?.accounts;
   const A = batch4[language]?.accounts;
   const { currency: displayCurrency } = useCurrency();
+  // The reconciliation bar. Behind the switch, so the page is
+  // unchanged when it is off.
+  const fintech = buildFlag('FINTECH_SYNTHESIS');
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -46,6 +52,13 @@ export const Accounts = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // The writer for the adjusting entry. It asks the reader first,
+  // and it says afterwards whether the entry was made.
+  const { createAdjustment } = useAdjustmentWriter({
+    accounts,
+    onDone: fetchData,
+  });
 
   const fetchData = async () => {
     setLoading(true);
@@ -162,6 +175,16 @@ export const Accounts = () => {
         label={K.add_account}
         onClick={() => { setEditingAccount(null); setShowModal(true); }}
       />
+
+      {/* The reconciliation bar: the reader types in what their bank
+          says, and the application says whether the figures agree.
+          Behind the switch. */}
+      {fintech && summary && (
+        <ReconciliationBar
+          recorded={summary?.total_balance || 0}
+          onCreateEntry={createAdjustment}
+        />
+      )}
 
       {/* Account Summary Cards */}
       {summary && (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, Spinner, Badge } from '../components/ui';
 import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing, Mic, ReceiptText, Users } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
@@ -18,6 +18,10 @@ import { useTranslation } from '../i18n';
 import { batch1, fill } from '../i18n/keys_batch1';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
+import { ReconciliationBar } from '../components/fintech/ReconciliationBar';
+import { useAdjustmentWriter } from '../components/fintech/useAdjustmentWriter';
+import { heldCash } from '../utils/decisionWidgets';
+import { buildFlag } from '../utils/featureFlags';
 
 // Source badge component
 const SourceBadge = ({ type, K }) => {
@@ -43,6 +47,9 @@ export const Transactions = () => {
     { value: 'income', label: K.income },
     { value: 'expense', label: K.expense },
   ];
+  // The reconciliation bar. Behind the switch, so the page is
+  // unchanged when it is off.
+  const fintech = buildFlag('FINTECH_SYNTHESIS');
   const [transactions, setTransactions] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -109,6 +116,18 @@ export const Transactions = () => {
     }, 300);
     return () => clearTimeout(timer);
   }, [highlightId, loading, transactions.length]);
+
+  // The total the application holds. It is the sum of the balances of
+  // the accounts, which is the same figure the accounts page shows,
+  // so the two bars can be compared with each other.
+  const accountTotal = useMemo(() => heldCash(accounts), [accounts]);
+
+  // The writer for the adjusting entry. It asks the reader first,
+  // and it says afterwards whether the entry was made.
+  const { createAdjustment } = useAdjustmentWriter({
+    accounts,
+    onDone: fetchData,
+  });
 
   const fetchData = async () => {
     setLoading(true);
@@ -363,6 +382,16 @@ export const Transactions = () => {
 
       {/* The one add button, in the same place on every page. */}
       <SingleAddButton href="/add" label={K.addTransaction} />
+
+      {/* The reconciliation bar: the reader types in what their bank
+          says, and the application says whether the figures agree.
+          Behind the switch. */}
+      {fintech && (
+        <ReconciliationBar
+          recorded={accountTotal}
+          onCreateEntry={createAdjustment}
+        />
+      )}
 
       {/* Smart Parser Buttons */}
       <div className="flex gap-2">
