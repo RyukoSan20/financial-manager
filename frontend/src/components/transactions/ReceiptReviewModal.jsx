@@ -187,6 +187,8 @@ export default function ReceiptReviewModal({
       // bill is made, and it points at the transaction that is
       // already there.
       if (reading?.transaction_id) {
+        // The transaction is already there, waiting for the review.
+        // It is confirmed now, not made again.
         await api.put(`/receipt-items/${reading.transaction_id}`, {
           items: lines
             .filter((row) => row.name?.trim())

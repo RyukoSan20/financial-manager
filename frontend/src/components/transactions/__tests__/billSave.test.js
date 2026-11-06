@@ -296,5 +296,46 @@ check('a reading with no lines still shows what was read', () => {
   );
 });
 
+check('a scan that already made a transaction is not made twice', () => {
+  /**
+   * A scan that ran in the background has already written a
+   * transaction down, waiting for the review. The review is where the
+   * reader confirms it.
+   *
+   * If the review makes a second transaction, the reader pays twice
+   * for one purchase: one transaction waiting, and one that counts.
+   * So when the reading carries the transaction that is already there,
+   * that one is used.
+   */
+  assert.ok(
+    /reading\?\.transaction_id/.test(review),
+    'the review does not look for the transaction that is already there'
+  );
+  // The branch that handles a transaction that is already there must
+  // come before the one that makes a new transaction, and it must
+  // return. Otherwise the new transaction is made as well, and the
+  // reader pays twice for one purchase.
+  const already = review.indexOf('if (reading?.transaction_id)');
+  const makes = review.indexOf('api.transactions.create');
+  assert.ok(already > -1, 'the branch for a transaction that is already there was not found');
+  assert.ok(makes > already, 'the review makes a new transaction before it looks at the one that is already there');
+  const branch = review.slice(already, makes);
+  assert.ok(
+    /return;/.test(branch),
+    'the branch for a transaction that is already there does not stop, so a second transaction is made'
+  );
+
+  // The scanner has to hand the transaction over. A scan that ran in
+  // the background has already written one down, waiting for the
+  // review; if the review is not told which one it is, it cannot
+  // reuse it and makes a second.
+  const scanner = read('src/components/parser/ReceiptScannerModal.jsx');
+  const handOver = scanner.slice(scanner.indexOf('if (onReview)'));
+  assert.ok(
+    /transaction_id/.test(handOver),
+    'the scanner does not hand the transaction that is already there to the review'
+  );
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed > 0 ? 1 : 0);

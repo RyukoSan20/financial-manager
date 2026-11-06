@@ -443,6 +443,11 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
           confidence_score: confidence,
           detection_type: 'receipt_ocr',
           items: parsedData?.items || [],
+          // A scan that ran in the background has already written a
+          // transaction down, waiting for the review. The review has
+          // to know which one it is, or it will make a second and the
+          // reader will pay twice for one purchase.
+          transaction_id: parsedData?.transaction_id ?? null,
         });
         handleReset();
         onClose();
