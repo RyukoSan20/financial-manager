@@ -77,6 +77,14 @@ export const batch4 = {
     accounts: {
       save_failed: 'Gagal menyimpan akun: ',
       unknown_error: 'Kesalahan tidak diketahui',
+    
+      no_account_to_adjust: 'Tidak ada akun yang bisa disesuaikan.',
+      adjust_confirm_title: 'Buat jurnal penyesuaian?',
+      adjust_confirm_message: 'Jurnal %amount% akan dibuat supaya saldo di aplikasi sama dengan saldo di bank.',
+      adjust_confirm_yes: 'Buat jurnal',
+      adjust_confirm_no: 'Batal',
+      adjust_done: 'Jurnal penyesuaian dibuat.',
+      adjust_failed: 'Jurnal penyesuaian gagal dibuat.',
     },
     auth_callback: {
       failed: 'Autentikasi gagal: ',
@@ -149,6 +157,14 @@ export const batch4 = {
     accounts: {
       save_failed: 'Could not save the account: ',
       unknown_error: 'Unknown error',
+    
+      no_account_to_adjust: 'There is no account to adjust.',
+      adjust_confirm_title: 'Create an adjusting entry?',
+      adjust_confirm_message: 'An entry of %amount% will be created so the balance in the app matches the balance at the bank.',
+      adjust_confirm_yes: 'Create the entry',
+      adjust_confirm_no: 'Cancel',
+      adjust_done: 'The adjusting entry was created.',
+      adjust_failed: 'The adjusting entry could not be created.',
     },
     auth_callback: {
       failed: 'Authentication failed: ',
@@ -221,6 +237,14 @@ export const batch4 = {
     accounts: {
       save_failed: '口座を保存できませんでした：',
       unknown_error: '不明なエラー',
+    
+      no_account_to_adjust: '調整できる口座がありません。',
+      adjust_confirm_title: '調整仕訳を作成しますか？',
+      adjust_confirm_message: '%amount%の仕訳を作成して、アプリの残高を銀行の残高と一致させます。',
+      adjust_confirm_yes: '仕訳を作成',
+      adjust_confirm_no: 'キャンセル',
+      adjust_done: '調整仕訳を作成しました。',
+      adjust_failed: '調整仕訳を作成できませんでした。',
     },
     auth_callback: {
       failed: '認証に失敗しました：',

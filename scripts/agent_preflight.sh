@@ -95,6 +95,9 @@ for test_file in \
   src/utils/__tests__/fintech.test.js \
   src/components/fintech/__tests__/trustBanners.test.js \
   src/components/fintech/__tests__/dashboardTrust.test.js \
+  src/components/fintech/__tests__/debtPlanner.test.js \
+  src/components/fintech/__tests__/decisionWidgets.test.js \
+  src/utils/__tests__/decisionWidgets.test.js \
   src/components/transactions/__tests__/itemizedBillEditor.test.js \
   src/components/transactions/__tests__/billSave.test.js \
   src/pages/__tests__/transactionsLoadFailure.test.js \
