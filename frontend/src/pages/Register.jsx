@@ -257,9 +257,9 @@ export const Register = () => {
           <div className="mt-4 text-center">
             <p className="text-xs text-gray-400">
               Dengan daftar, Anda menyetujui{' '}
-              <a href="/terms" className="text-primary-600 hover:underline">{K.terms}</a>
-              {' '}dan{' '}
-              <a href="/privacy" className="text-primary-600 hover:underline">{K.privacy}</a>
+              <Link to="/privacy" className="text-primary-600 hover:underline">
+                {K.privacy}
+              </Link>
             </p>
           </div>
         </div>

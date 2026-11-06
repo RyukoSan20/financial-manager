@@ -45,6 +45,10 @@ import AppSettings from './pages/Settings/AppSettings';
 import Appearance from './pages/Settings/Appearance';
 import { CatalogPage } from './pages/CatalogPage';
 import HelpSupport from './pages/Settings/HelpSupport';
+// The privacy page is public. A reader has to be able to read what
+// leaves their device BEFORE they make an account, so it is not
+// behind the sign-in.
+import PrivacyPage from './pages/Settings/PrivacyPage';
 import ProfileSummary from './pages/ProfileSummary';
 import { AuthCallback } from './pages/AuthCallback';
 import SplitDashboardPage from './pages/SplitBill/SplitDashboardPage';
@@ -148,6 +152,8 @@ function App() {
               } 
             />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            {/* Public: what leaves the device, readable before signing in. */}
+            <Route path="/privacy" element={<PrivacyPage />} />
             
             {/* Protected app routes */}
             <Route path="/" element={
