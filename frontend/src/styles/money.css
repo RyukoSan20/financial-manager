@@ -109,6 +109,14 @@
   grid-row: span 2 / span 2;
 }
 
+/* A cell that holds two rows has to fill them. The grid puts its
+   items at the top of the area they hold, so without this the tall
+   card stops at its own height and leaves the row below it empty
+   again - which is the gap this whole arrangement was for. */
+[data-ui-money="on"] .fm-bento-item.fm-span-tall {
+  align-self: stretch;
+}
+
 @media (max-width: 1023px) {
   [data-ui-money="on"] .fm-bento {
     grid-template-columns: repeat(3, minmax(0, 1fr));

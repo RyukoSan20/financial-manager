@@ -258,7 +258,7 @@ export default function CuteWellnessBento({
   return (
     <BentoGrid>
       {/* The score. The wide end of the row. */}
-      <BentoItem span="half" order={1}>
+      <BentoItem span="tall" order={1} className="fm-span-half">
         <div className="wellness-card h-full p-5 settle-in">
           <div className="wellness-card__wash" style={{ background: WASHES.mint }} />
           <div className="wellness-halo" />
@@ -320,7 +320,7 @@ export default function CuteWellnessBento({
           four numbers in two narrow columns, and the columns were so
           narrow that the labels cut off in the middle and the amounts
           were reduced to `Rp...`. */}
-      <BentoItem span="normal" order={2}>
+      <BentoItem span="third" order={2}>
         <div className="wellness-card h-full p-4">
           <div className="wellness-card__wash" style={{ background: WASHES.sky }} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -349,7 +349,7 @@ export default function CuteWellnessBento({
       </BentoItem>
 
       {/* The ratios, as pills. */}
-      <BentoItem span="third" order={4}>
+      <BentoItem span="normal" order={4}>
         <div className="wellness-card h-full p-4">
           <div className="wellness-card__wash" style={{ background: WASHES.peach }} />
           <div className="flex items-center gap-3">
@@ -384,8 +384,8 @@ export default function CuteWellnessBento({
 
       {/* The audit. */}
       {audit ? (
-        <BentoItem span="full" order={5}>
-          <div className="wellness-card p-5">
+        <BentoItem span="third" order={5}>
+          <div className="wellness-card p-5 h-full">
             <div className="wellness-card__wash" style={{ background: WASHES.blush }} />
             <h2 className="font-semibold text-gray-900 dark:text-gray-100">
               {t('health_coach.ai_audit')}
@@ -405,7 +405,7 @@ export default function CuteWellnessBento({
               audit.immediate_actions?.length > 0 ||
               audit.recommendations?.length > 0 ||
               (audit.monthly_plan && Object.keys(audit.monthly_plan).length > 0)) && (
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3">
                 {audit.findings?.length > 0 && (
                   <section className="rounded-xl bg-amber-50/70 dark:bg-amber-900/15 p-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
@@ -500,7 +500,7 @@ export default function CuteWellnessBento({
 
       {/* The refresh. */}
       {onRefresh ? (
-        <BentoItem span="full" order={6}>
+        <BentoItem span="normal" order={6}>
           <button
             type="button"
             onClick={onRefresh}

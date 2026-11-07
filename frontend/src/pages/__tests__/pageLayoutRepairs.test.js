@@ -227,3 +227,78 @@ if (failed) {
   process.exit(1);
 }
 console.log(`\nall ${passed} passing`);
+
+check('the health bento has no gap beside the ratios', () => {
+  const bento = read('src/components/health/CuteWellnessBento.jsx');
+
+  // The score took three of the six columns and the ratios took two.
+  // The audit then took the whole row, so the four columns beside the
+  // ratios were left empty: a gap the size of half the screen.
+  //
+  // The findings card is now a third of a row and sits beside the
+  // ratios, so the row is filled.
+  const items = bento.match(/BentoItem span="[^"]+" order=\{\d+\}/g) || [];
+  assert.ok(
+    items.some((i) => /span="third"/.test(i)),
+    'there is no third of a row beside the ratios'
+  );
+
+  // The findings are their own card, not folded into the audit.
+  assert.ok(
+    /key_findings|finding_title/.test(bento),
+    'there is no findings card of its own'
+  );
+  assert.ok(
+    !/span="full" order=\{5\}/.test(bento),
+    'the findings still take the whole row, which leaves the gap'
+  );
+});
+
+check('the calculation and the sharing can be put away', () => {
+  const editor = read('src/components/transactions/ItemizedBillEditor.jsx');
+
+  // The core fields - what was bought, which category, which account,
+  // which day - have to be visible without scrolling past two panels
+  // that are usually empty.
+  assert.ok(
+    /calcOpen|setCalcOpen/.test(editor),
+    'the calculation cannot be put away'
+  );
+  assert.ok(
+    /splitOpen|setSplitOpen/.test(editor),
+    'the sharing cannot be put away'
+  );
+  assert.ok(
+    /aria-expanded/.test(editor),
+    'the reader cannot tell whether the panel is open'
+  );
+});
+
+check('the shopping results carry the shop, the rating and both buttons', () => {
+  const grid = read('src/components/shopping/VisualProductCatalogGrid.jsx');
+
+  // Every card says which shop it is from.
+  assert.ok(
+    /merchant_source/.test(grid),
+    'the card does not say which shop it is from'
+  );
+  // Every card says how the shop rated it.
+  assert.ok(
+    /rating/.test(grid) && /review_count/.test(grid),
+    'the card does not carry the rating'
+  );
+  // Every card can be saved and every card can be opened.
+  assert.ok(
+    /save_to_wishlist/.test(grid),
+    'the card cannot be saved'
+  );
+  assert.ok(
+    /shopping_catalog.open/.test(grid),
+    'the card cannot be opened in the shop'
+  );
+  // And the picture.
+  assert.ok(
+    /image_url/.test(grid),
+    'the card has no picture'
+  );
+});
