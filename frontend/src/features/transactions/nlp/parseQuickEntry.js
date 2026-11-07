@@ -9,6 +9,7 @@ import { parseAmount, evalMath } from './parseAmount.js';
 import { findMath } from './amountScan.js';
 import { suggestCategory } from './suggestCategory.js';
 import { parseQuantity } from './parseQuantity.js';
+import { suggestSubCategory } from './subCategories.js';
 
 
 /**
@@ -46,6 +47,30 @@ function detectTypeLocally(normalized) {
  * @param {Date} options.now - Current date (for WIB)
  * @returns {Object} Parsed transaction data
  */
+/**
+ * The description, with the figure taken out.
+ *
+ * The amount has a field of its own. When the description keeps it
+ * too, the transaction is saved with the amount written into its
+ * name, and the list reads "Kopi Jago 10rb -Rp 10.000".
+ *
+ * Only the figure is taken out. The words are the reader's own and
+ * they are left exactly as they were written.
+ */
+function stripAmount(text, amountResult) {
+  const raw = String(text || '');
+  if (!amountResult || !amountResult.span) {
+    return raw.trim();
+  }
+  const span = amountResult.span;
+  const before = raw.slice(0, span[0]);
+  const after = raw.slice(span[1]);
+  const out = `${before} ${after}`.replace(/\s+/g, ' ').trim();
+  // If there is nothing left but the figure, the reader wrote only a
+  // figure, and the description is what there is.
+  return out || raw.trim();
+}
+
 export function parseQuickEntry(text, options = {}) {
   const {
     categories = [],
@@ -133,10 +158,22 @@ export function parseQuickEntry(text, options = {}) {
     // The form uses these to show the reader the multiplication.
     quantity: quantity ? quantity.quantity : null,
     unitPrice: quantity ? quantity.unitPrice : null,
-    description: text, // Original text as description
+    // The description is what the reader wrote, with the figure
+    // taken out.
+    //
+    // "Kopi Jago 10rb" describes a purchase of coffee, not a
+    // purchase of the string "Kopi Jago 10rb". The figure is the
+    // amount, and the amount has its own field. Leaving the figure
+    // in the description meant the transaction was saved with the
+    // amount written into its name.
+    description: stripAmount(text, amountResult),
     categoryId: null,
     categorySuggestion: null,
     categoryConfidence: null,
+    // The sub-category, when the words point at one. The parent is
+    // what is recorded; the sub-category is what the reader chose.
+    subCategoryKey: null,
+    subCategoryName: null,
     accountId: null,
     toAccountId: null,
     date: wibDate,
@@ -159,6 +196,20 @@ export function parseQuickEntry(text, options = {}) {
     }
   }
   
+  // The sub-category.
+  //
+  // The parent is what the budget and the report understand, so it is
+  // what is recorded. The sub-category is what the reader chose, and
+  // it is found from the words they wrote: "Kopi Jago" is "Kopi &
+  // Kafe", "Pertamax" is "BBM & Parkir".
+  if (result.categorySuggestion) {
+    const sub = suggestSubCategory(text, result.categorySuggestion);
+    if (sub) {
+      result.subCategoryKey = sub.key;
+      result.subCategoryName = sub.name;
+    }
+  }
+
   // Build preview suggestions
   if (amountResult) {
     result.suggestions.push({

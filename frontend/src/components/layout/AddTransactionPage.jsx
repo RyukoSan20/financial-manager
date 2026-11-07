@@ -14,6 +14,7 @@ import { IconText } from "../ui/IconText";
 import { buildFlag } from "../../utils/featureFlags";
 import { batch1, fill } from "../../i18n/keys_batch1";
 import { categoryName } from '../../utils/categoryName';
+import CategoryTreeSheet from '../transactions/CategoryTreeSheet';
 import {
   sanitizeAmount,
   formatAmountInput,
@@ -119,6 +120,13 @@ const AddTransactionPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
+  // The sub-category the reader chose, and the name of the category
+  // they want to make for themselves.
+  const [subCategoryKey, setSubCategoryKey] = useState(null);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryParent, setNewCategoryParent] = useState(null);
+  const [savingCategory, setSavingCategory] = useState(false);
   const [showAccountSheet, setShowAccountSheet] = useState(false);
   // Which end of a transfer is being picked: the source or the
   // destination. Both used to open the same sheet, which meant the two
@@ -320,6 +328,22 @@ const AddTransactionPage = () => {
     if (parsed.amount && !amount) {
       setAmount(String(parsed.amount));
     }
+    // The name of the purchase.
+    //
+    // The box was read correctly - the figure was found and the
+    // category was chosen - but the description was left empty, so
+    // the transaction was saved with no name at all. A list of
+    // unnamed purchases is a list the reader cannot read.
+    //
+    // It is only filled in when the reader has not written one
+    // themselves: what they typed is theirs.
+    if (parsed.description && !description) {
+      setDescription(parsed.description);
+    }
+    // The sub-category the words point at.
+    if (parsed.subCategoryKey && !subCategoryKey) {
+      setSubCategoryKey(parsed.subCategoryKey);
+    }
     // A breakdown written in words becomes a row the reader can change.
     if (parsed.quantity && parsed.unitPrice) {
       setBreakdown([
@@ -393,6 +417,42 @@ const AddTransactionPage = () => {
       // stop the user from saving the transaction.
     }
   }, [quickEntry, nlpPreview]);
+
+  /**
+   * Make a category of the reader's own.
+   *
+   * The category sheet had no way to make one, so a reader who spent
+   * money on something the application had never heard of had to
+   * record it under the nearest thing that existed.
+   *
+   * The new category is made under the category that was open when
+   * they asked for it, so it lands in the right part of the tree.
+   */
+  const createCategory = useCallback(
+    async (name) => {
+      if (!name.trim() || savingCategory) return;
+      setSavingCategory(true);
+      try {
+        const parent = categories.find((c) => c.id === categoryId);
+        const created = await api.categories.create({
+          name: name.trim(),
+          type: type === 'income' ? 'income' : 'expense',
+          parent_id: parent ? parent.id : null,
+        });
+        if (created && created.id) {
+          setCategories((current) => [...current, created]);
+          setCategoryId(created.id);
+          setSubCategoryKey(null);
+          setShowCategorySheet(false);
+        }
+      } catch (err) {
+        console.error('The category could not be made:', err);
+      } finally {
+        setSavingCategory(false);
+      }
+    },
+    [categories, categoryId, type, savingCategory]
+  );
 
   // Format number with dots
   //
@@ -790,6 +850,8 @@ const AddTransactionPage = () => {
           category_id: categoryId,
           date,
           client_request_id: transactionRequestId,
+          // The sub-category the reader chose, if they chose one.
+          tags: subCategoryKey || undefined,
           ...place,
         });
 
@@ -1271,40 +1333,30 @@ const AddTransactionPage = () => {
         </div>
       </div>
 
-      {/* Category Bottom Sheet */}
-      {/* Category Bottom Sheet */}
+      {/* The category sheet.
+
+          It was a long flat list with nothing under it. A reader who
+          wanted to say "Kopi & Kafe" had nowhere to say it, and a
+          reader who wanted a category of their own had no button to
+          press.
+
+          It is a tree now: each category is a heading, the
+          sub-categories sit under it, and there is a button to make
+          one of their own. The categories shown are the ones that
+          belong to the kind of transaction being recorded, so a
+          reader adding an expense is not offered "Gaji". */}
       {showCategorySheet && (
-        <div className="fixed inset-0 z-50 flex items-end">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowCategorySheet(false)}></div>
-          <div className="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col">
-            <div className="shrink-0 p-4 border-b">
-              <h2 className="font-semibold text-lg">{K.pickCategoryTitle}</h2>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {categories
-                .filter(c => {
-                  // Categories with no type are system-wide — show them
-                  if (!c.type) return true;
-                  // Filter by type match
-                  if (type === 'expense') return c.type !== 'income';
-                  if (type === 'income') return c.type !== 'expense';
-                  return true;
-                })
-                .map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => { setCategoryId(cat.id); setShowCategorySheet(false); }}
-                  className={`w-full p-4 rounded-xl flex items-center gap-3 ${
-                    categoryId === cat.id ? "bg-primary-50 border-2 border-primary-500" : "bg-gray-50"
-                  }`}
-                >
-                  <span className="text-2xl">{cat.icon || getCategoryIcon(cat.name)}</span>
-                  <span className="font-medium">{categoryName(cat, language)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <CategoryTreeSheet
+          categories={categories}
+          selectedId={categoryId}
+          subKey={subCategoryKey}
+          type={type}
+          language={language}
+          onPick={(id) => setCategoryId(id)}
+          onPickSub={(key) => setSubCategoryKey(key)}
+          onCreate={createCategory}
+          onClose={() => setShowCategorySheet(false)}
+        />
       )}
 
       {/* Account Bottom Sheet */}

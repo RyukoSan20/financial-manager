@@ -355,6 +355,10 @@ def create_transaction(
         status=new_status,
         source=transaction.source,
         merchant_name=transaction.merchant_name,
+        # The sub-category travels with the transaction, so the reader
+        # can see what they actually bought and not only the broad
+        # kind of spending it was.
+        tags=transaction.tags,
     )
     
     db.add(db_transaction)

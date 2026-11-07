@@ -12,6 +12,7 @@ import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddBu
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import ItemizedReceiptEditorModal from '../components/transactions/ItemizedReceiptEditorModal';
+import TransactionEditForm from '../components/transactions/TransactionEditForm';
 import ReceiptReviewModal from '../components/transactions/ReceiptReviewModal';
 import { categoryName } from '../utils/categoryName';
 import { useTranslation } from '../i18n';
@@ -115,6 +116,7 @@ export const Transactions = () => {
   // Edit mode state
   const [editingTx, setEditingTx] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -323,8 +325,27 @@ export const Transactions = () => {
   };
 
   const saveEdit = async (id) => {
+    setSavingEdit(true);
     try {
-      await api.transactions.update(id, editForm);
+      // Only the fields the reader can change are sent. The lines of
+      // the bill and the calculation are not part of the update -
+      // they are written down through their own routes, which keep
+      // the two sides of the receipt in step.
+      const payload = {
+        description: editForm.description,
+        amount: editForm.amount,
+        date: editForm.date,
+        category_id: editForm.category_id,
+        account_id: editForm.account_id,
+        // The place the reader gave, so it can be corrected.
+        latitude: editForm.latitude ?? null,
+        longitude: editForm.longitude ?? null,
+        merchant_address: editForm.merchant_address || '',
+        // The sub-category, which is the tag on the transaction.
+        tags: editForm.tags || '',
+      };
+
+      await api.transactions.update(id, payload);
       setEditingTx(null);
       setEditForm({});
       fetchData();
@@ -332,6 +353,8 @@ export const Transactions = () => {
     } catch (err) {
       console.error('Failed to update transaction:', err);
       toast.error(fill(K.updateFailed, { message: err.message || K.unknown }));
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -581,77 +604,28 @@ export const Transactions = () => {
 
                   // Edit mode
                   if (isEditing) {
+                    // The edit form.
+                    //
+                    // It was five fields: what it was, how much, which
+                    // day, which category, which account. A
+                    // transaction recorded with the place, the lines
+                    // of the bill, the discount, the tax and the
+                    // person it was shared with could not be
+                    // corrected with any of that.
+                    //
+                    // It carries what the add form carries now.
                     return (
                       <div key={tx.id} className="bg-white rounded-2xl p-4 shadow-sm border-2 border-primary-500">
-                        <div className="space-y-3">
-                          <input
-                            type="text"
-                            value={editForm.description || ''}
-                            onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
-                            placeholder={K.description}
-                            className="w-full px-3 py-2 border rounded-lg"
-                          />
-                          <div className="grid grid-cols-2 gap-2">
-                            <input
-                              type="number"
-                              value={editForm.amount || 0}
-                              onChange={(e) => setEditForm(f => ({ ...f, amount: parseFloat(e.target.value) }))}
-                              className="px-3 py-2 border rounded-lg"
-                            />
-                            <input
-                              type="date"
-                              value={editForm.date || ''}
-                              onChange={(e) => setEditForm(f => ({ ...f, date: e.target.value }))}
-                              className="px-3 py-2 border rounded-lg"
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <select
-                              value={editForm.category_id || ''}
-                              onChange={(e) => setEditForm(f => ({ ...f, category_id: parseInt(e.target.value) || null }))}
-                              className="flex-1 px-3 py-2 border rounded-lg"
-                            >
-                              <option value="">{K.selectCategory}</option>
-                              {categories.filter(c => c.type === editForm.type).map(c => (
-                                <option key={c.id} value={c.id}>{categoryName(c, language)}</option>
-                              ))}
-                            </select>
-                            <select
-                              value={editForm.account_id || ''}
-                              onChange={(e) => setEditForm(f => ({ ...f, account_id: parseInt(e.target.value) }))}
-                              className="flex-1 px-3 py-2 border rounded-lg"
-                            >
-                              <option value="">{K.selectAccount}</option>
-                              {accounts.map(a => (
-                                <option key={a.id} value={a.id}>{a.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={cancelEdit}
-                              className="flex-1 py-2 bg-gray-100 text-gray-600 rounded-lg"
-                            >
-                              {K.cancel}
-                            </button>
-                                                        {/* Sharing this bill while it is being
-                                edited. The bill opens with the lines
-                                already written down. */}
-                            <button
-                              onClick={() => { cancelEdit(); startSplit(tx); }}
-                              className="px-3 py-2 border border-emerald-300 text-emerald-700 rounded-lg flex items-center justify-center gap-1"
-                              title={t('bill.splitTransaction')}
-                            >
-                              <Users className="w-4 h-4" />
-                            </button>
-<button
-                              onClick={() => saveEdit(tx.id)}
-                              className="flex-1 py-2 bg-primary-600 text-white rounded-lg flex items-center justify-center gap-2"
-                            >
-                              <Check className="w-4 h-4" /> {K.save}
-                            </button>
-                          </div>
-                        </div>
+                        <TransactionEditForm
+                          transaction={tx}
+                          categories={categories}
+                          accounts={accounts}
+                          language={language}
+                          saving={savingEdit}
+                          onChange={setEditForm}
+                          onSave={() => saveEdit(tx.id)}
+                          onCancel={cancelEdit}
+                        />
                       </div>
                     );
                   }

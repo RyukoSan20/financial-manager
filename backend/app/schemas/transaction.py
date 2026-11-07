@@ -46,6 +46,19 @@ class TransactionBase(EmptyStringAsNone):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     merchant_address: Optional[str] = Field(None, max_length=255)
+    # The sub-category.
+    #
+    # "Makanan & Minuman" says what kind of spending this is. It does
+    # not say whether it was coffee or groceries, and a reader who
+    # buys coffee every morning and groceries once a week has the
+    # same category for both.
+    #
+    # So the sub-category travels with the transaction as a tag: the
+    # parent stays what the budget and the report understand, and the
+    # sub-category says what the reader actually bought. The tags are
+    # a list of words separated by commas, which is what the column
+    # already holds.
+    tags: Optional[str] = Field(None, max_length=500)
 
 
 class TransactionItemCreate(BaseModel):
@@ -88,11 +101,15 @@ class TransactionUpdate(EmptyStringAsNone):
     # Without this field the update was silently ignored, because
     # exclude_unset only ever carried the fields the schema declares.
     status: Optional[str] = None
+    # The sub-category, for the same reason it is on the create.
+    tags: Optional[str] = Field(None, max_length=500)
 
 
 class TransactionResponse(BaseModel):
     id: int
     user_id: Optional[int]
+    # The sub-category the reader chose, if they chose one.
+    tags: Optional[str] = None
     type: str
     amount: Decimal
     currency: str
