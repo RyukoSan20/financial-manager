@@ -150,6 +150,37 @@ class AuditGenerator:
         # Emergency fund finding
         emergency_months = health.emergency_fund_months.value
         if emergency_months < 3:
+            # How much to put away each month.
+            #
+            # Three months of spending is the usual answer, but a
+            # reader who has not recorded what they spend has no
+            # three months to work from, and the sentence said
+            # "Tambahkan Rp 0 ke dana darurat", which is not advice.
+            #
+            # So the amount is worked out from what there is to work
+            # from: the spending if it is known, the money in hand if
+            # it is not. And if neither is known, the sentence says
+            # what to do first instead of naming a figure of nothing.
+            expense = financial_data.get("monthly_expense", 0) or 0
+            cash = financial_data.get("total_cash", 0) or 0
+
+            if expense > 0:
+                amount = expense * 3
+                suggestion = (
+                    f"Tambahkan Rp {_rupiah(amount)} ke dana darurat"
+                )
+            elif cash > 0:
+                amount = cash * 0.05
+                suggestion = (
+                    f"Sisihkan Rp {_rupiah(amount)} per bulan dari saldo "
+                    f"Rp {_rupiah(cash)} (5%) untuk dana darurat"
+                )
+            else:
+                suggestion = (
+                    "Catat pengeluaran bulanan Anda dulu, lalu targetkan "
+                    "dana darurat 3-6 bulan pengeluaran"
+                )
+
             findings.append(AuditFinding(
                 severity="critical" if emergency_months < 1 else "alert",
                 category="emergency_fund",
@@ -157,7 +188,7 @@ class AuditGenerator:
                 description=f"Dana darurat Anda hanya {emergency_months:.1f} bulan, idealnya minimal 3-6 bulan",
                 current_value=emergency_months,
                 target_value=6,
-                suggestion=f"Tambahkan Rp {financial_data.get('monthly_expense', 0) * 3:,.0f} ke dana darurat",
+                suggestion=suggestion,
                 action_type="savings_plan"
             ))
         
@@ -300,9 +331,23 @@ class AuditGenerator:
                 )
         
         if health.emergency_fund_months.value < 6:
-            target = financial_data.get("monthly_expense", 0) * 6
-            current = financial_data.get("total_cash", 0)
-            plan["dana_darurat"] = f"Target dana darurat Rp {target:,.0f} (progress: Rp {current:,.0f})"
+            # The target is six months of spending. A reader who has
+            # not recorded what they spend has no six months to work
+            # from, and the line said "Target dana darurat Rp 0",
+            # which is not a target.
+            expense = financial_data.get("monthly_expense", 0) or 0
+            current = financial_data.get("total_cash", 0) or 0
+            if expense > 0:
+                target = expense * 6
+                plan["dana_darurat"] = (
+                    f"Target dana darurat Rp {_rupiah(target)} "
+                    f"(progress: Rp {_rupiah(current)})"
+                )
+            else:
+                plan["dana_darurat"] = (
+                    "Catat pengeluaran bulanan Anda dulu agar target dana "
+                    "darurat 6 bulan bisa dihitung"
+                )
         
         if health.dsr_ratio.value > 30:
             plan["pelunasan_utang"] = "Prioritaskan utang dengan bunga tertinggi"

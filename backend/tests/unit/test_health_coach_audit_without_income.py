@@ -98,3 +98,121 @@ def test_a_reader_with_real_income_still_gets_the_old_advice():
         f"20% of Rp 10,000,000 income should still be suggested, "
         f"but the plan said: {plan!r}"
     )
+
+def test_the_emergency_fund_advice_is_never_about_zero():
+    """
+    "Tambahkan Rp 0 ke dana darurat" is not advice.
+
+    A reader who has not recorded what they spend has no three months
+    of spending to work from, so the figure came out as zero and was
+    shown as if it were a plan.
+    """
+    from app.modules.ai_advisor.health_coach.audit_generator import (
+        AuditGenerator,
+    )
+
+    generator = AuditGenerator()
+
+    class _Health:
+        class emergency_fund_months:
+            value = 0.0
+            status = "danger"
+
+        class savings_ratio:
+            value = 0.0
+            status = "danger"
+
+        class dsr_ratio:
+            value = 0.0
+            status = "good"
+
+        overall_score = 40
+
+    findings = generator._analyze_findings(
+        _Health(),
+        {},
+        {"monthly_income": 0, "monthly_expense": 0, "total_cash": 0},
+    )
+
+    emergency = [f for f in findings if f.category == "emergency_fund"]
+    assert emergency, "the reader was not told about the emergency fund at all"
+
+    for finding in emergency:
+        assert "Rp 0" not in finding.suggestion, (
+            "the advice was about zero rupiah: %r" % finding.suggestion
+        )
+
+
+def test_the_emergency_fund_target_is_never_zero():
+    """The plan says what to aim for, and zero is not a target."""
+    from app.modules.ai_advisor.health_coach.audit_generator import (
+        AuditGenerator,
+    )
+
+    generator = AuditGenerator()
+
+    class _Health:
+        class emergency_fund_months:
+            value = 0.0
+            status = "danger"
+
+        class savings_ratio:
+            value = 0.0
+            status = "danger"
+
+        class dsr_ratio:
+            value = 0.0
+            status = "good"
+
+        overall_score = 40
+
+    _immediate, plan = generator._generate_recommendations(
+        [],
+        _Health(),
+        {},
+        {"monthly_income": 0, "monthly_expense": 0, "total_cash": 0},
+    )
+
+    target = plan.get("dana_darurat", "")
+    assert target, "there was no emergency fund line in the plan"
+    assert "Rp 0" not in target, "the target was zero rupiah: %r" % target
+
+
+def test_a_reader_with_cash_is_told_a_real_figure():
+    """
+    There is money in the bank. A fifth of it, or a twentieth, is a
+    figure the reader can act on.
+    """
+    from app.modules.ai_advisor.health_coach.audit_generator import (
+        AuditGenerator,
+    )
+
+    generator = AuditGenerator()
+
+    class _Health:
+        class emergency_fund_months:
+            value = 0.0
+            status = "danger"
+
+        class savings_ratio:
+            value = 0.0
+            status = "danger"
+
+        class dsr_ratio:
+            value = 0.0
+            status = "good"
+
+        overall_score = 40
+
+    findings = generator._analyze_findings(
+        _Health(),
+        {},
+        {"monthly_income": 0, "monthly_expense": 0, "total_cash": 5_975_000},
+    )
+
+    emergency = [f for f in findings if f.category == "emergency_fund"]
+    assert emergency
+    assert "Rp 0" not in emergency[0].suggestion
+    assert "5.975.000" in emergency[0].suggestion or "298.750" in emergency[0].suggestion, (
+        "the advice did not mention the money in hand: %r" % emergency[0].suggestion
+    )

@@ -208,7 +208,18 @@ const MiniStat = ({ label, value, tint, illustration }) => (
       <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 leading-tight break-words">
         {label}
       </p>
-      <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums break-words leading-tight">
+      {/* The amount.
+
+          A number is never cut in the middle. `break-words` breaks
+          wherever the line runs out of room, so "Rp 5.975.000" was
+          drawn as "Rp 5.975" with ".000" on the line below, and the
+          reader saw two numbers where there was one.
+
+          So the amount is kept whole, and it is made a little smaller
+          when it has to be. The label above it wraps instead, and the
+          label is a word rather than a number, so a word broken over
+          two lines is still one word read over two lines. */}
+      <p className="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 tabular-nums leading-tight break-words">
         {value}
       </p>
     </div>
