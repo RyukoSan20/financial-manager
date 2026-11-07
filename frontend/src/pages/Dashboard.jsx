@@ -22,13 +22,14 @@ import api, { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../config/url';
 import { useTranslation } from '../i18n';
 import { categoryName, categoryKey, transactionCategoryName } from '../utils/categoryName';
-import AIAssistant from '../components/common/AIAssistant';
+import AICommandBar from '../components/common/AICommandBar';
 import ReadinessChecklist from '../components/ReadinessChecklist';
 import InsightsPanel from '../components/insights/InsightsPanel';
 import MonthTimeline from '../components/dashboard/MonthTimeline';
 import Onboarding from '../components/dashboard/Onboarding';
 import { useTheme } from '../contexts/ThemeContext';
 import { IconText } from '../components/ui/IconText';
+import { goalIcon } from '../utils/goalIcon';
 import { buildFlag } from '../utils/featureFlags';
 import { ReadyToBeAssignedBanner, DataAccuracyIndicator } from '../components/fintech/ReadyToBeAssignedBanner';
 import { SafeToSpendWidget } from '../components/fintech/SafeToSpendWidget';
@@ -1611,10 +1612,29 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
               const progress = goal.target_amount > 0 ? ((goal.current_amount || 0) / goal.target_amount) * 100 : 0;
               return (
                 <div key={goal.id || idx} className={`p-4 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className={`font-medium ${textPrimary}`}>{goal.name}</p>
-                      <p className={`text-xs ${textSecondary}`}>{categoryName(goal.category, language) || t('dashboard.savings')}</p>
+                  {/* The picture holds its place and the words are
+                      allowed to shrink.
+
+                      Without this the picture could be pushed over the
+                      name of the goal, the line under it, and the
+                      amount beside it. The goal on the goals page
+                      already worked this way; this is the same card
+                      and it now behaves the same way. */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
+                      style={{ backgroundColor: goal.color || '#3b82f6' }}
+                    >
+                      {/* The picture is the one the goal asks for, not
+                          always the same target. */}
+                      {(() => {
+                        const Icon = goalIcon(goal);
+                        return <Icon className="w-5 h-5 shrink-0" />;
+                      })()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`font-medium truncate ${textPrimary}`}>{goal.name}</p>
+                      <p className={`text-xs truncate ${textSecondary}`}>{categoryName(goal.category, language) || t('dashboard.savings')}</p>
                     </div>
                     {goal.is_completed && <Badge variant="success">✓</Badge>}
                   </div>
@@ -1638,8 +1658,16 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         </Card>
       )}
       
-      {/* AI Assistant */}
-      <AIAssistant userData={{
+      {/* The assistant.
+
+          It used to be a window in the bottom left of the screen, and
+          it sat on top of the cards the reader came to read: the
+          review of the last transactions, the goals, the balance.
+
+          It is a bar at the top of the page now, so it never covers a
+          card. It records a quick transaction, answers a question,
+          and takes the reader to a page, all from the same line. */}
+      <AICommandBar userData={{
         totalBalance: summary?.total_balance || 0,
         totalIncome: summary?.total_income || 0,
         totalExpense: summary?.total_expense || 0,
