@@ -67,7 +67,10 @@ export const BreakdownViewer = ({
   const [expanded, setExpanded] = useState(!compact);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState({ name: '', total_price: '' });
+  // The draft carries a count, because a line is "how many of this
+  // thing" and "what one of them costs". Without the count the reader
+  // has to work out "3 x 5000" themselves.
+  const [draft, setDraft] = useState({ name: '', quantity: 1, total_price: '' });
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(Boolean(initialLines));
 
@@ -137,19 +140,24 @@ export const BreakdownViewer = ({
       setError(M.name_and_amount_required);
       return;
     }
+    // How many there were. A line of one is the usual case, but three
+    // of something is three lines' worth of money, and the reader has
+    // to be able to say so.
+    const count = Number(draft.quantity);
+    const quantity = Number.isFinite(count) && count > 0 ? count : 1;
     setBusy(true);
     try {
       const res = await api.breakdown.addLine(parentType, parentId, {
         name: draft.name.trim(),
-        quantity: 1,
+        quantity,
         unit_price: amount,
-        total_price: amount,
+        total_price: amount * quantity,
         kind: 'expense',
         source: 'user',
         is_estimated: false,
       });
       setLines(res.lines || []);
-      setDraft({ name: '', total_price: '' });
+      setDraft({ name: '', quantity: 1, total_price: '' });
       setAdding(false);
       setError('');
       onChanged?.(res);
@@ -179,9 +187,14 @@ export const BreakdownViewer = ({
           )}
         </span>
         <span className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-            {money(total)}
-          </span>
+          {/* A total of nothing is not a number worth showing. It reads
+              like a mistake, and an empty list is already said to be
+              empty below. */}
+          {lines.length > 0 && (
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+              {money(total)}
+            </span>
+          )}
           {expanded ? (
             <ChevronUp className="h-4 w-4 text-gray-500" />
           ) : (
@@ -221,6 +234,15 @@ export const BreakdownViewer = ({
                     {line.name}
                     {line.is_discount && ' (diskon)'}
                   </p>
+                  {/* How many there were, and what one of them cost.
+                      A line of three things is not the same as a line
+                      of one thing that costs three times as much, and
+                      the reader has to be able to tell them apart. */}
+                  {!line.is_discount && Number(line.quantity || 0) !== 1 && (
+                    <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+                      {Number(line.quantity).toLocaleString('id-ID')} x {money(line.unit_price)}
+                    </p>
+                  )}
                   {(line.category || line.notes) && (
                     <p className="truncate text-xs text-gray-500 dark:text-gray-400">
                       {line.category && CATEGORY_LABELS[line.category]}
@@ -259,14 +281,27 @@ export const BreakdownViewer = ({
                 placeholder="Nama"
                 className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800"
               />
-              <input
-                type="text"
-                inputMode="numeric"
-                value={draft.total_price}
-                onChange={(e) => setDraft({ ...draft, total_price: e.target.value })}
-                placeholder="Nominal"
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  inputMode="numeric"
+                  value={draft.quantity}
+                  onChange={(e) => setDraft({ ...draft, quantity: e.target.value })}
+                  aria-label={M.quantity}
+                  placeholder={M.quantity}
+                  className="w-24 rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800"
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={draft.total_price}
+                  onChange={(e) => setDraft({ ...draft, total_price: e.target.value })}
+                  placeholder="Nominal"
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800"
+                />
+              </div>
               <div className="flex gap-2">
                 <button
                   type="submit"

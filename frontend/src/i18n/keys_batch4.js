@@ -73,6 +73,7 @@ export const batch4 = {
       add_row: 'Tambah baris',
       empty: 'Belum ada rincian',
       total: 'Total',
+      quantity: 'Jumlah',
     },
     accounts: {
       save_failed: 'Gagal menyimpan akun: ',
@@ -153,6 +154,7 @@ export const batch4 = {
       add_row: 'Add a row',
       empty: 'No breakdown yet',
       total: 'Total',
+      quantity: 'Quantity',
     },
     accounts: {
       save_failed: 'Could not save the account: ',
@@ -233,6 +235,7 @@ export const batch4 = {
       add_row: '行を追加',
       empty: '内訳はまだありません',
       total: '合計',
+      quantity: '数量',
     },
     accounts: {
       save_failed: '口座を保存できませんでした：',
