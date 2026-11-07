@@ -622,31 +622,109 @@ def _local_results(
             )
         )
 
-    # The query itself, at each shop, so that the grid is never empty.
-    shown_title = _title_of(query)
-    for market in MARKETPLACES:
-        if len(results) >= limit:
-            break
-        if shown_title in seen_titles:
-            continue
-        seen_titles.add(shown_title)
-        results.append(
-            _local_result(
-                title=shown_title,
-                price=fallback_price,
-                basis="catalog_median" if median else "catalog_default",
-                market=market,
-                store=None,
-                query=query,
-                category="",
-                # No description. The client writes the sentence that
-                # says where the price came from, in the language the
-                # reader is reading in.
-                description="",
-            )
+    # Nothing in the reader's own catalogue answers the query.
+    #
+    # The old answer was the query itself at each shop, priced at the
+    # median of every price in the catalogue. The catalogue is mostly
+    # food and household goods, so that median is about four thousand
+    # rupiah, and a search for a laptop came back priced at four
+    # thousand rupiah. It was a false price, shown as confidently as
+    # a real one, and it filled one card of a wide grid.
+    #
+    # So the answer is now the things that would actually be sold for
+    # this query, at prices worked out from the kind of thing it is.
+    # Those prices are estimates and the cards say so.
+    # The band of prices the reader's own catalogue knows about. When
+    # the catalogue has prices, they are the best answer there is to
+    # what this kind of thing costs.
+    catalogue_band = None
+    if median:
+        catalogue_band = (
+            max(1, int(median * 0.4)),
+            int(median * 2.5),
         )
 
+    if not results:
+        return _market_results(query, limit, catalogue_band)
+
+    # The reader's catalogue answered.
+    #
+    # The grid is not topped up with guesses. A reader who searched
+    # for noodles and got eight cards of noodles, priced from the
+    # kind of thing rather than from the market, would be shown prices
+    # a thousand times too high. A short grid of real things is
+    # better than a full grid of invented ones.
+    #
+    # But when the catalogue answered with only one or two things, and
+    # the query is plainly about something else, the market answers
+    # instead. A laptop searched among a catalogue of instant noodles
+    # deserves a laptop.
+    if len(results) < 3 and _query_is_about_something_else(query, entries):
+        return _market_results(query, limit, catalogue_band)
+
     return results[:limit]
+
+
+def _query_is_about_something_else(
+    query: str, entries: List[Dict[str, Any]]
+) -> bool:
+    """
+    Whether the things the catalogue answered with are the wrong kind
+    of thing.
+
+    The catalogue holds food and household goods. A search for a
+    laptop matches nothing, and a search for noodles matches a packet
+    of noodles. The test is whether the words of the query are in the
+    names of the things that matched: if they are, the catalogue
+    answered the question that was asked.
+    """
+    query_tokens = set(_tokens(query))
+    if not query_tokens:
+        return False
+
+    matched = []
+    for entry in entries:
+        if _score(entry, list(query_tokens)) > 0:
+            matched.append(entry)
+    if not matched:
+        return True
+
+    # Every word of the query should be in the name of something that
+    # matched. "Indomie Goreng" matches "Indomie Goreng", so both
+    # words are there.
+    for token in query_tokens:
+        if not any(token in _tokens(entry.get("title", "")) for entry in matched):
+            return True
+    return False
+
+
+def _market_results(
+    query: str,
+    limit: int,
+    catalogue_band: Optional[Tuple[int, int]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    The things that would be sold, for a search the reader's own
+    catalogue cannot answer.
+
+    The prices here are worked out from the kind of thing that was
+    asked for. They are estimates, and the answer says so; they are
+    never presented as the price a shop is asking.
+
+    The band is the reader's own, when their catalogue knows about
+    this kind of thing. A reader who searches for noodles should be
+    shown noodles at the price noodles cost, and their own receipts
+    are the best answer there is to what that is.
+    """
+    from app.services.shopping_market_catalogue import build_market_results
+
+    markets = [
+        {"id": m["id"], "search_url": m["search_url"], "color": m["color"]}
+        for m in MARKETPLACES
+    ]
+    return build_market_results(
+        query, markets, limit=limit, catalogue_band=catalogue_band
+    )
 
 
 # ---------------------------------------------------------------------------

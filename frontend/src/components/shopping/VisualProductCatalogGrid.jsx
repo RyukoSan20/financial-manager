@@ -147,6 +147,14 @@ const ProductCard = ({ product, source, onSave, saving }) => {
           </span>
         ) : null}
 
+        {/* A price that was worked out is not a price in a shop, and
+            the card says so on its own face. */}
+        {product.price_basis === 'market_estimate' ? (
+          <span className="self-start text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">
+            {t('shopping_catalog.price_estimate')}
+          </span>
+        ) : null}
+
         {product.discount_badge ? (
           <span className="self-start text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
             {product.discount_badge}
@@ -161,6 +169,11 @@ const ProductCard = ({ product, source, onSave, saving }) => {
             <span className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
               <Star className="w-3 h-3 fill-amber-400 text-amber-400" aria-hidden="true" />
               {product.rating}
+              {product.review_count ? (
+                <span className="text-gray-400 dark:text-gray-500">
+                  ({product.review_count})
+                </span>
+              ) : null}
             </span>
           ) : null}
         </div>
@@ -232,7 +245,11 @@ export default function VisualProductCatalogGrid({
             : t('shopping_catalog.live_source')}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-3">
+      {/* Three cards to a row on a wide screen, two on a tablet, one
+          on a phone. The old grid was two to a row even on a phone,
+          which made each card so narrow that the price could not be
+          read. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-3">
         {products.map((product, index) => (
           <ProductCard
             key={`${product.title || product.name || 'product'}-${index}`}

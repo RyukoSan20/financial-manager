@@ -162,36 +162,6 @@ const ShoppingTracker = () => {
     }
   };
   
-  // Add to Wishlist
-  const addToWishlist = async (marketplace) => {
-    try {
-      const wishlistItem = {
-        name: aiQuery,
-        target_price: 0,
-        marketplace: marketplace.marketplace,
-        search_url: marketplace.search_url,
-        priority: "medium"
-      };
-      
-      const result = await api.request("/shopping/wishlist", {
-        method: "POST",
-        body: JSON.stringify(wishlistItem)
-      });
-      
-      if (result) {
-        // Refresh wishlist
-        const newWishlist = await api.request("/shopping/wishlist");
-        if (Array.isArray(newWishlist)) setWishlist(newWishlist);
-        
-        // Show success
-        toast.success(t("shopping_tracker.added_to_wishlist").replace("%s", marketplace.name));
-      }
-    } catch (e) {
-      console.error("Add to wishlist error:", e);
-      toast.error(t("shopping_tracker.add_failed"));
-    }
-  };
-  
   // Remove from Wishlist
   const removeFromWishlist = async (id) => {
     try {
@@ -226,7 +196,12 @@ const ShoppingTracker = () => {
   
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header */}
+      {/* Header.
+
+          It is sticky, and the card under it was flush against it, so
+          the top of the search box sat behind the bar and the reader
+          could not see what they were typing into. The room between
+          the two is what the search box was missing. */}
       <div className="bg-primary-600 text-white p-4 sticky top-0 z-10 shadow-md">
         <h1 className="text-xl font-bold"><IconText name="cart" emoji="🛒" on={polished}>{t('nav.shopping')}</IconText></h1>
       </div>
@@ -416,7 +391,7 @@ const ShoppingTracker = () => {
 
       {/* Tab: AI Search */}
       {activeTab === "ai" && (
-        <div className="px-4">
+        <div className="px-4 pt-4 mt-2">
           <div className="bg-white rounded-xl p-4 shadow-sm border border-primary-100">
             <h3 className="font-bold text-lg mb-2"><IconText name="search" emoji="🔍" on={polished}>{t('shopping_tracker.ai_price_search')}</IconText></h3>
             <p className="text-sm text-gray-500 mb-4">
@@ -493,47 +468,34 @@ const ShoppingTracker = () => {
                   {/* The shops themselves. This is the way out to the
                       shop, for a reader who wants to see the thing
                       for themselves before they buy it. The prices are
-                      above. */}
+                      above.
+
+                      These were five rows that each took up the whole
+                      width of the page, which pushed everything below
+                      them out of sight and made a page of links look
+                      like a page of results. They are now a row of
+                      small chips that a reader can click and be gone. */}
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                     {t('shopping_catalog.shop_links')}
                   </p>
-                  
-                  <div className="grid grid-cols-1 gap-3">
+
+                  <div className="flex flex-wrap items-center gap-2">
                     {aiResults.marketplaces?.map((mp, idx) => {
                       const style = getMarketplaceStyle(mp.marketplace);
                       return (
-                        <div 
+                        <a
                           key={idx}
-                          className={`bg-white rounded-xl p-4 shadow-sm border ${style.border}`}
+                          href={mp.search_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={t('shopping_tracker.click_to_search').replace("%s", mp.name)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${style.bg} ${style.text} ${style.border} hover:opacity-80`}
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className="text-3xl">{polished ? null : (mp.icon || "🛒")}
-                                {polished ? <ShoppingCart className="w-7 h-7" aria-hidden="true" /> : null}
-                              </span>
-                              <div>
-                                <p className={`font-bold text-lg ${style.text}`}>{mp.name}</p>
-                                <p className="text-xs text-gray-500">{t('shopping_tracker.click_to_search').replace("%s", mp.name)}</p>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <a
-                                href={mp.search_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium"
-                              >
-                                {t('shopping_tracker.open')}
-                              </a>
-                              <button
-                                onClick={() => addToWishlist(mp)}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium"
-                              >
-                                {t('shopping_tracker.add_wishlist')}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+                          <span aria-hidden="true">{polished ? null : (mp.icon || "🛒")}
+                            {polished ? <ShoppingCart className="w-3.5 h-3.5" aria-hidden="true" /> : null}
+                          </span>
+                          {mp.name}
+                        </a>
                       );
                     })}
                   </div>
