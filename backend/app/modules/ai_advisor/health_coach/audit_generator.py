@@ -7,6 +7,20 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 
+def _rupiah(amount: float) -> str:
+    """Write an amount the way the Indonesian reader writes it.
+
+    The interface shows `Rp 5.765.000`, with a dot for the thousands
+    separator. The rest of this module still writes `5,765,000`, which
+    is the English way, so a reader saw two different spellings of the
+    same number on the same page. The strings written here are the
+    ones the new logic adds, and they are written in the reader's own
+    way.
+    """
+    rounded = int(round(float(amount)))
+    return f"{rounded:,}".replace(",", ".")
+
+
 @dataclass
 class AuditFinding:
     """Individual finding from financial audit."""
@@ -176,9 +190,14 @@ class AuditGenerator:
             ))
         
         # Spending pattern finding
+        #
+        # This must not fire when no income has been recorded. With no
+        # income there is nothing for the spending to have exhausted,
+        # and saying so told the reader something untrue about their
+        # own money.
         expense = financial_data.get("monthly_expense", 0)
-        income = financial_data.get("monthly_income", 1)
-        if expense > income * 0.9:
+        income = financial_data.get("monthly_income", 0) or 0
+        if income > 0 and expense > income * 0.9:
             findings.append(AuditFinding(
                 severity="warning",
                 category="spending",
@@ -188,6 +207,28 @@ class AuditGenerator:
                 target_value=float(income) * 0.8,
                 suggestion="Identifikasi pengeluaran yang bisa dikurangi (langganan, jajan)",
                 action_type="budget_adjust"
+            ))
+        elif income <= 0 and expense > 0:
+            # No income recorded. The honest note is that the reader
+            # needs to record where their income comes from before any
+            # ratio can be judged.
+            findings.append(AuditFinding(
+                severity="info",
+                category="income",
+                title="Belum Ada Sumber Penghasilan Tercatat",
+                description=(
+                    "Belum ada penghasilan bulanan yang tercatat, jadi rasio "
+                    "penghasilan dan tabungan belum bisa dinilai. Catat sumber "
+                    "penghasilan Anda (gaji, usaha, atau pemasukan lain) agar "
+                    "audit bisa menghitungnya dengan benar."
+                ),
+                current_value=0.0,
+                target_value=1.0,
+                suggestion=(
+                    "Catat penghasilan bulanan Anda di halaman Transaksi dengan "
+                    "kategori Pemasukan, lalu jalankan ulang audit."
+                ),
+                action_type="awareness"
             ))
         
         return findings
@@ -237,8 +278,26 @@ class AuditGenerator:
         
         # Monthly plan
         if health.savings_ratio.value < 20:
-            monthly_savings_target = financial_data.get("monthly_income", 0) * 0.2
-            plan["tabungan"] = f"Tambahkan Rp {monthly_savings_target:,.0f}/bulan ke tabungan"
+            income = financial_data.get("monthly_income", 0) or 0
+            cash = financial_data.get("total_cash", 0) or 0
+            if income > 0:
+                monthly_savings_target = income * 0.2
+                plan["tabungan"] = f"Tambahkan Rp {_rupiah(monthly_savings_target)}/bulan ke tabungan"
+            elif cash > 0:
+                # No income recorded, but there is money in the bank.
+                # Twenty percent of what is actually there is a target
+                # the reader can act on; Rp 0 a month is not.
+                monthly_savings_target = cash * 0.2
+                plan["tabungan"] = (
+                    f"Belum ada penghasilan tercatat. Sementara itu, sisihkan "
+                    f"Rp {_rupiah(monthly_savings_target)}/bulan (20% dari saldo "
+                    f"Rp {_rupiah(cash)}) sampai penghasilan Anda tercatat"
+                )
+            else:
+                plan["tabungan"] = (
+                    "Catat penghasilan bulanan Anda terlebih dahulu agar target "
+                    "tabungan bisa dihitung"
+                )
         
         if health.emergency_fund_months.value < 6:
             target = financial_data.get("monthly_expense", 0) * 6

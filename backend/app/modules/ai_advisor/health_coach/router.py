@@ -210,6 +210,10 @@ async def get_health_audit(
             ],
             "highlights": report.positive_highlights,
             "recommendations": report.immediate_actions,
+            # The plan for next month, so the page can draw it as a
+            # card of its own instead of leaving it buried in the
+            # narrative text.
+            "monthly_plan": report.monthly_plan,
             "narrative": narrative
         }
     finally:

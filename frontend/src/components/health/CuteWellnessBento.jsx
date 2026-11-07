@@ -24,7 +24,6 @@ import { useTranslation } from '../../i18n';
 import BentoGrid, { BentoItem } from '../dashboard/BentoGrid';
 import FluidProgressBar from '../ui/FluidProgressBar';
 import { MascotCompanion } from '../common/MascotCompanion';
-import { IconText } from '../ui/IconText';
 import { readerFlag } from '../../utils/featureFlags';
 import { moneyLayerOn } from '../../utils/animation';
 import FinancialRatioPills from './FinancialRatioPills';
@@ -195,15 +194,21 @@ const MiniFace = ({ mood, size = 52, tint = '#f472b6' }) => {
 
 /**
  * A small number with its label.
+ *
+ * The amount must be readable in full. It was cut off with an
+ * ellipsis, so `Rp 5.765.000` was shown as `Rp...` and the reader
+ * could not see what they had. Money that cannot be read is not money
+ * the reader can act on, so the amount is never truncated; the label
+ * wraps instead, and the amount breaks rather than disappearing.
  */
 const MiniStat = ({ label, value, tint, illustration }) => (
-  <div className="flex items-center gap-3">
+  <div className="flex items-start gap-3 min-w-0">
     <div className="wellness-drift shrink-0">{illustration}</div>
-    <div className="min-w-0">
-      <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+    <div className="min-w-0 flex-1">
+      <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 leading-tight break-words">
         {label}
       </p>
-      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums truncate">
+      <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums break-words leading-tight">
         {value}
       </p>
     </div>
@@ -309,11 +314,16 @@ export default function CuteWellnessBento({
         </div>
       </BentoItem>
 
-      {/* The money that comes in, and the money that goes out. */}
+      {/* The money that comes in, and the money that goes out.
+
+          These four numbers sit in one card, two to a row. They were
+          four numbers in two narrow columns, and the columns were so
+          narrow that the labels cut off in the middle and the amounts
+          were reduced to `Rp...`. */}
       <BentoItem span="normal" order={2}>
         <div className="wellness-card h-full p-4">
           <div className="wellness-card__wash" style={{ background: WASHES.sky }} />
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <MiniStat
               label={t('health_coach.monthly_income')}
               value={formatCurrency(monthlyIncome)}
@@ -324,15 +334,6 @@ export default function CuteWellnessBento({
               value={formatCurrency(monthlyExpense)}
               illustration={<Sprout tint="#f97316" />}
             />
-          </div>
-        </div>
-      </BentoItem>
-
-      {/* What is in the bank, and what is owed. */}
-      <BentoItem span="normal" order={3}>
-        <div className="wellness-card h-full p-4">
-          <div className="wellness-card__wash" style={{ background: WASHES.lilac }} />
-          <div className="space-y-4">
             <MiniStat
               label={t('health_coach.total_cash')}
               value={formatCurrency(totalCash)}
@@ -390,63 +391,107 @@ export default function CuteWellnessBento({
               {t('health_coach.ai_audit')}
             </h2>
 
-            {audit.highlights?.length > 0 && (
-              <div className="mt-3 space-y-1">
-                {audit.highlights.map((highlight, idx) => (
-                  <div
-                    key={idx}
-                    className="text-sm text-emerald-600 dark:text-emerald-300 flex items-start gap-2"
-                  >
-                    <IconText name="success" emoji="✅" on={polished} />
-                    <span>{String(highlight).replace(/^[✅❌🌟]\s*/u, '')}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* The narrative used to be drawn as it was written: a
+                wall of text with `=====` rules through it and a hard
+                black border. It read like a terminal dump, not like
+                the reader's own report.
 
-            {audit.findings?.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {audit.findings.slice(0, 3).map((finding, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl bg-amber-50/80 dark:bg-amber-900/20 p-3"
-                  >
-                    <div className="flex items-center gap-2">
-                      <IconText name="warning" emoji="⚠️" on={polished} className="w-4 h-4 text-amber-600" />
-                      <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                        {finding.title}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                      {finding.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
+                The same sentences are now drawn as four plain cards:
+                what was found, what is already good, what to do now,
+                and the tips. The text is unchanged; only the way it is
+                drawn has changed. */}
+            {(audit.findings?.length > 0 ||
+              audit.highlights?.length > 0 ||
+              audit.immediate_actions?.length > 0 ||
+              audit.recommendations?.length > 0 ||
+              (audit.monthly_plan && Object.keys(audit.monthly_plan).length > 0)) && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {audit.findings?.length > 0 && (
+                  <section className="rounded-xl bg-amber-50/70 dark:bg-amber-900/15 p-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                      {t('health_coach.finding_title')}
+                    </h3>
+                    <ul className="mt-2 space-y-1.5">
+                      {audit.findings.slice(0, 3).map((finding, idx) => (
+                        <li key={idx} className="text-xs text-gray-700 dark:text-gray-200">
+                          <span className="font-medium">{finding.title}</span>
+                          <span className="block text-gray-600 dark:text-gray-300">
+                            {finding.description}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
 
-            {audit.recommendations?.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-gray-200/60 dark:border-white/10">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                  {t('health_coach.improvement_tips')}
-                </h3>
-                {audit.recommendations.map((rec, idx) => (
-                  <div
-                    key={idx}
-                    className="text-sm flex items-start gap-2 mb-1 text-gray-700 dark:text-gray-200"
-                  >
-                    <IconText name="note" emoji="💡" on={polished} />
-                    <span>{rec}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+                {audit.highlights?.length > 0 && (
+                  <section className="rounded-xl bg-emerald-50/70 dark:bg-emerald-900/15 p-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
+                      {t('health_coach.strength_title')}
+                    </h3>
+                    <ul className="mt-2 space-y-1.5">
+                      {audit.highlights.map((highlight, idx) => (
+                        <li
+                          key={idx}
+                          className="text-xs text-gray-700 dark:text-gray-200"
+                        >
+                          {String(highlight).replace(/^[✅❌🌟]\s*/u, '')}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
 
-            {audit.narrative && (
-              <div className="mt-4 rounded-xl bg-white/60 dark:bg-white/5 p-3">
-                <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
-                  {audit.narrative}
-                </p>
+                {audit.immediate_actions?.length > 0 && (
+                  <section className="rounded-xl bg-sky-50/70 dark:bg-sky-900/15 p-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-200">
+                      {t('health_coach.action_title')}
+                    </h3>
+                    <ul className="mt-2 space-y-1.5">
+                      {audit.immediate_actions.slice(0, 4).map((action, idx) => (
+                        <li
+                          key={idx}
+                          className="text-xs text-gray-700 dark:text-gray-200"
+                        >
+                          {String(action).replace(/^[\u{1F6A8}\u26A0]\s*/u, '')}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                {audit.recommendations?.length > 0 && (
+                  <section className="rounded-xl bg-amber-50/70 dark:bg-amber-900/15 p-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                      {t('health_coach.improvement_tips')}
+                    </h3>
+                    <ul className="mt-2 space-y-1.5">
+                      {audit.recommendations.map((rec, idx) => (
+                        <li key={idx} className="text-xs text-gray-700 dark:text-gray-200">
+                          {String(rec).replace(/^[\u{1F4A1}]\s*/u, '')}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                {audit.monthly_plan && Object.keys(audit.monthly_plan).length > 0 && (
+                  <section className="rounded-xl bg-violet-50/70 dark:bg-violet-900/15 p-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-violet-800 dark:text-violet-200">
+                      {t('health_coach.plan_title')}
+                    </h3>
+                    <ul className="mt-2 space-y-1.5">
+                      {Object.entries(audit.monthly_plan).map(([key, value]) => (
+                        <li key={key} className="text-xs text-gray-700 dark:text-gray-200">
+                          <span className="font-medium capitalize">{key}</span>
+                          <span className="block text-gray-600 dark:text-gray-300">
+                            {value}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
               </div>
             )}
           </div>
