@@ -302,3 +302,199 @@ check('the shopping results carry the shop, the rating and both buttons', () => 
     'the card has no picture'
   );
 });
+
+check('the health money amounts are never cut in half', () => {
+  const bento = read('src/components/health/CuteWellnessBento.jsx');
+
+  // `break-words` cuts a word wherever it happens to run out of
+  // room. On a money amount that means "Rp 5.975" on one line and
+  // ".000" on the next, which reads as two numbers.
+  //
+  // The amount has to be allowed to be a little smaller rather than
+  // be cut in two.
+  assert.ok(
+    /text-(sm|base).*font-bold/.test(bento),
+    'the amount is not sized so that it fits'
+  );
+  assert.ok(
+    !/tabular-nums break-words/.test(bento),
+    'the amount is still cut wherever it runs out of room'
+  );
+  // The money card has to be wide enough for the amount at all.
+  assert.ok(
+    /BentoItem span="third" order=\{2\}/.test(bento),
+    'the money card is only one column wide'
+  );
+});
+
+check('the status labels on the ratios are not cut off', () => {
+  // The pills that say "Perlu diperbaiki" and "Perlu dipertahankan"
+  // were cut into "Per / dip" at the right edge, because the card was
+  // too narrow for them and the text was not allowed to wrap.
+  const pills = read('src/components/health/FinancialRatioPills.jsx');
+  assert.ok(
+    /break-words|leading-tight|flex-wrap/.test(pills),
+    'the status labels cannot wrap, so they are cut in half'
+  );
+});
+
+check('the dashboard goal card has a picture that fits the goal', () => {
+  const dashboard = read('src/pages/Dashboard.jsx');
+
+  // The goal on the dashboard was drawn without any picture at all,
+  // while the one on the goals page had a picture that could be
+  // pushed over the words. Both are the same card and must behave
+  // the same way.
+  assert.ok(
+    /goalIcon/.test(dashboard),
+    'the dashboard goal card does not choose a picture that fits the goal'
+  );
+  assert.ok(
+    /shrink-0/.test(dashboard),
+    'the picture on the dashboard goal card can be pushed over the words'
+  );
+  assert.ok(
+    /min-w-0 flex-1/.test(dashboard),
+    'the words on the dashboard goal card cannot shrink'
+  );
+});
+
+check('the quick entry fills in what it was told', () => {
+  const addPage = read('src/components/layout/AddTransactionPage.jsx');
+
+  // "Kopi Jago 10rb" was read correctly - the amount was found and
+  // the category was chosen - but the description was left empty, so
+  // the transaction was saved with no name at all.
+  assert.ok(
+    /setDescription\(/.test(addPage),
+    'the description is never filled in from what was typed'
+  );
+  // And it must not overwrite what the reader has already written.
+  assert.ok(
+    /!description/.test(addPage),
+    'the quick entry would overwrite the description the reader wrote'
+  );
+});
+
+check('the edit form carries everything the add form carries', () => {
+  const form = read('src/components/transactions/TransactionEditForm.jsx');
+
+  // The edit form was five fields: description, amount, date,
+  // category, account. The location, the lines of the bill, the
+  // calculation and the sharing were all missing, so a transaction
+  // that was recorded with all of that could not be corrected with
+  // any of it.
+  assert.ok(
+    /merchant_address/.test(form),
+    'the edit form cannot change where the transaction was'
+  );
+  assert.ok(
+    /breakdown/i.test(form),
+    'the edit form cannot change the lines of the bill'
+  );
+  assert.ok(
+    /discount/i.test(form) && /tax/i.test(form),
+    'the edit form cannot change the calculation'
+  );
+  // And the sub-category.
+  assert.ok(
+    /subCategory|sub_categories/i.test(form),
+    'the edit form cannot change the sub-category'
+  );
+});
+
+check('the categories are a tree, not a flat list', () => {
+  const addPage = read('src/components/layout/AddTransactionPage.jsx');
+
+  // The category sheet was a long flat list. A reader who wants to
+  // say "Kopi & Kafe" has nowhere to say it.
+  assert.ok(
+    /parent_id/.test(addPage),
+    'the categories are not read as a tree'
+  );
+  assert.ok(
+    /sub.?categor|subCategory|sub_category/i.test(addPage),
+    'there is no way to choose a sub-category'
+  );
+  assert.ok(
+    /create.*categor|new.*categor|custom.*categor/i.test(addPage),
+    'there is no way to make a category of their own'
+  );
+});
+
+check('the map counts every expense, not only the ones with a shop', () => {
+  const analytics = read('../backend/app/api/routes/analytics.py');
+
+  // Only the map itself is looked at. The list of merchants may
+  // rightly ask for a merchant name - a merchant list without one is
+  // a list of blanks - but the map is the picture of where the money
+  // went, and it has to show all of it.
+  const mapStart = analytics.indexOf('def get_merchant_map_data');
+  const mapEnd = analytics.indexOf('\n@router.', mapStart + 10);
+  const map = analytics.slice(mapStart, mapEnd === -1 ? undefined : mapEnd);
+
+  assert.ok(mapStart !== -1, 'the map endpoint was not found');
+
+  // The map asked only for the transactions that had a shop name.
+  // A transaction recorded from the quick entry box has no shop
+  // name, so it was left off the map entirely: the reader was shown
+  // "0 Lokasi" for money they had spent.
+  assert.ok(
+    !/Transaction\.merchant_name\.isnot\(None\)/.test(map),
+    'the map still drops the transactions that have no shop name'
+  );
+  assert.ok(
+    /nullif\(Transaction\.description/.test(map),
+    'the map does not look at the description of the transaction'
+  );
+});
+
+check('the dashboard assistant is a bar at the top, not a box over the page', () => {
+  // The assistant was a window in the bottom left of the screen. It
+  // sat on top of the cards the reader came to read.
+  //
+  // It is now a bar at the top of the page: it never covers a card,
+  // and it does three things at once - it takes a quick transaction,
+  // it answers a question, and it can take the reader to a page.
+  const bar = read('src/components/common/AICommandBar.jsx');
+
+  assert.ok(bar, 'there is no command bar');
+  assert.ok(
+    /sticky/.test(bar),
+    'the command bar is not stuck to the top of the page'
+  );
+  assert.ok(
+    !/fixed/.test(bar),
+    'the command bar is still a window that covers the page'
+  );
+  // The three jobs.
+  assert.ok(
+    /api\.transactions\.create|quickEntry|parseQuickEntry|api\.ai\.agent/.test(bar),
+    'the command bar cannot record a transaction'
+  );
+  assert.ok(
+    /api\.ai\.agent/.test(bar),
+    'the command bar cannot answer a question'
+  );
+  assert.ok(
+    /navigate\(|window\.location/.test(bar),
+    'the command bar cannot take the reader to a page'
+  );
+  // The mascot in the corner.
+  assert.ok(
+    /FinBuddyMascot/.test(bar),
+    'the command bar has no mascot in its corner'
+  );
+});
+
+check('the dashboard does not draw the floating assistant', () => {
+  const dashboard = read('src/pages/Dashboard.jsx');
+  assert.ok(
+    !/<AIAssistant/.test(dashboard),
+    'the floating assistant is still drawn over the dashboard'
+  );
+  assert.ok(
+    /AICommandBar/.test(dashboard),
+    'the command bar is not on the dashboard'
+  );
+});
