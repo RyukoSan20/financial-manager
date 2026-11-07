@@ -328,9 +328,17 @@ const MerchantMap = () => {
                           <span className={`text-xs px-2 py-0.5 rounded-full ${
                             marker.source === 'gps' || marker.source === 'gps_tx'
                               ? 'bg-green-100 text-green-700'
-                              : 'bg-blue-100 text-blue-700'
+                              : marker.source === 'estimated'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-blue-100 text-blue-700'
                           }`}>
-                            {marker.source === 'gps' ? t("merchant_map.source_gps") : marker.source === 'gps_tx' ? t("merchant_map.source_gps_tx") : t("merchant_map.source_merchant")}
+                            {marker.source === 'gps'
+                              ? t("merchant_map.source_gps")
+                              : marker.source === 'gps_tx'
+                                ? t("merchant_map.source_gps_tx")
+                                : marker.source === 'estimated'
+                                  ? t("merchant_map.source_estimated")
+                                  : t("merchant_map.source_merchant")}
                           </span>
                         </div>
                         {/* The street, and the place next door.
@@ -363,6 +371,14 @@ const MerchantMap = () => {
                             ⚠️ {marker.precision === "city"
                               ? t("merchant_map.precision_brand")
                               : t("merchant_map.precision_district")}
+                          </p>
+                        )}
+                        {/* A pin that stands for an area can be made
+                            exact. The reader clicks it and tells the
+                            application where the shop really was. */}
+                        {marker.is_estimated && (
+                          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                            📍 {t("merchant_map.estimated_hint")}
                           </p>
                         )}
                       </div>
@@ -404,29 +420,36 @@ const MerchantMap = () => {
             })}
           </MapContainer>
 
-          {/* Legend */}
-          <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 dark:bg-gray-900/95 backdrop-blur rounded-xl p-3 shadow-lg text-xs max-w-[180px] text-gray-900 dark:text-gray-100">
+          {/* Legend.
+
+              The pins used to spill out of the card onto the map, and
+              the labels sat on top of the drawings. The card is now a
+              fixed width with a maximum height and its own scroll, so
+              nothing it holds can ever be drawn outside it, and the
+              pins are laid out two to a row in a grid that cannot
+              overflow. */}
+          <div className="map-legend absolute bottom-4 left-4 z-[1000] bg-white/95 dark:bg-gray-900/95 backdrop-blur rounded-xl p-3 shadow-lg text-xs text-gray-900 dark:text-gray-100">
             <p className="font-semibold mb-2">{t("merchant_map.legend")}</p>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span>{t("category.makanan")}</span>
+                <div className="w-3 h-3 rounded-full bg-red-500 shrink-0"></div>
+                <span className="truncate">{t("category.makanan")}</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                <span>{t("category.transport")}</span>
+                <div className="w-3 h-3 rounded-full bg-blue-500 shrink-0"></div>
+                <span className="truncate">{t("category.transport")}</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-pink-500"></div>
-                <span>{t("category.belanja")}</span>
+                <div className="w-3 h-3 rounded-full bg-pink-500 shrink-0"></div>
+                <span className="truncate">{t("category.belanja")}</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span>{t("merchant_map.gps_real_location")}</span>
+                <div className="w-3 h-3 rounded-full bg-green-500 shrink-0"></div>
+                <span className="truncate">{t("merchant_map.gps_real_location")}</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
-                <span>{t("merchant_map.gps_transaction")}</span>
+                <div className="w-3 h-3 rounded-full bg-blue-400 shrink-0"></div>
+                <span className="truncate">{t("merchant_map.gps_transaction")}</span>
               </div>
             </div>
             {/* The shape of the pin says what kind of place it is.
@@ -434,11 +457,13 @@ const MerchantMap = () => {
                 was spent on. Two layers, two different facts. */}
             <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
               <p className="font-semibold mb-1.5">{t("merchant_map.pin_legend")}</p>
-              <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+              <div className="map-legend__pins">
                 {PIN_KINDS.map((kind) => (
-                  <div key={kind} className="flex items-center gap-1.5">
-                    <PinSwatch kind={kind} size={18} />
-                    <span className="text-[10px]">{t(`merchant_map.pin_${kind}`)}</span>
+                  <div key={kind} className="flex items-center gap-1.5 min-w-0">
+                    <span className="w-6 h-6 shrink-0 flex items-center justify-center">
+                      <PinSwatch kind={kind} size={24} />
+                    </span>
+                    <span className="text-[10px] truncate">{t(`merchant_map.pin_${kind}`)}</span>
                   </div>
                 ))}
               </div>

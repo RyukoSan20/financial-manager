@@ -892,3 +892,60 @@
     0 1px 0 0 var(--money-sheen) inset,
     10px 0 40px -20px rgba(0, 0, 0, 0.7);
 }
+
+/* ---- the bill calculation -------------------------------------------
+   Three zones: the label, the control, the money. Every amount sits
+   in the same column on the right edge so the reader can add the
+   column up. On a narrow screen the zones wrap instead of squeezing
+   the money into nothing. */
+.bill-calc-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr) 110px;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .bill-calc-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label amount'
+      'control control';
+    row-gap: 6px;
+  }
+
+  .bill-calc-row > :first-child { grid-area: label; }
+  .bill-calc-row > :last-child { grid-area: amount; }
+  .bill-calc-row > :nth-child(2) { grid-area: control; }
+}
+
+/* ---- the map legend ------------------------------------------------
+   The legend is a card that sits on top of the map. It has to hold
+   everything it draws: the pins used to spill out of the white card
+   onto the map, and the labels sat on top of the pictures.
+
+   So the card has a width of its own and a maximum height, and
+   scrolls when it has more to say than fits. The pins are laid out
+   in a grid of two columns, and each one is given a fixed box so it
+   cannot push its label out of the card. */
+.map-legend {
+  max-height: 260px;
+  overflow-y: auto;
+  width: 230px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.map-legend__pins {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dark .map-legend {
+  background: rgba(17, 24, 39, 0.95);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}

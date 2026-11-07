@@ -3,10 +3,11 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
-from typing import Optional, List
+from typing import Any, Dict, Optional, List, Tuple
 from datetime import date, timedelta
 from decimal import Decimal
 from collections import defaultdict
+import math
 
 from app.services.currency_totals import total_in_currency
 from app.services.metrics import transaction_count as metrics_transaction_count
@@ -1208,6 +1209,146 @@ def get_merchant_analytics(
     return result
 
 
+# The districts and cities a pin can fall back to.
+#
+# When a shop cannot be found on the map, the spending is not thrown
+# away. It is put at a point in the area it is known to be in, and the
+# pin says that is what it is.
+#
+# The point is worked out from the name of the shop, so the same shop
+# is always in the same place and a reader who comes back sees the
+# map they saw before.
+#
+# The offset is small - about a kilometre across - so that several
+# shops in the same area are close together without sitting on top of
+# each other.
+_DISTRICT_CENTRES: Dict[str, Tuple[float, float]] = {
+    "jakarta": (-6.2088, 106.8456),
+    "bandung": (-6.9175, 107.6191),
+    "surabaya": (-7.2575, 112.7521),
+    "yogyakarta": (-7.7956, 110.3637),
+    "semarang": (-6.9667, 110.4205),
+    "medan": (3.5952, 98.6722),
+    "makassar": (-5.1426, 119.4123),
+    "palembang": (-2.9912, 104.7617),
+    "tangerang": (-6.1783, 106.6300),
+    "bekasi": (-6.2349, 106.9926),
+    "depok": (-6.4025, 106.7942),
+    "bogor": (-6.5950, 106.8166),
+    "bali": (-8.3405, 115.0920),
+    "denpasar": (-8.6705, 115.2126),
+}
+
+# The words in an address that name a city the pin can be put in.
+_CITY_WORDS: Tuple[Tuple[str, str], ...] = (
+    ("yogyakarta", "yogyakarta"),
+    ("jogja", "yogyakarta"),
+    ("bandung", "bandung"),
+    ("surabaya", "surabaya"),
+    ("semarang", "semarang"),
+    ("medan", "medan"),
+    ("makassar", "makassar"),
+    ("palembang", "palembang"),
+    ("tangerang", "tangerang"),
+    ("bekasi", "bekasi"),
+    ("depok", "depok"),
+    ("bogor", "bogor"),
+    ("denpasar", "denpasar"),
+    ("bali", "bali"),
+    ("jakarta", "jakarta"),
+)
+
+
+def _estimated_marker(
+    merchant_name: str,
+    merchant_address: str,
+    category: str,
+    total_spent: float,
+    visit_count: int,
+    avg_spent: float,
+) -> Dict[str, Any]:
+    """
+    A pin for spending that could not be placed exactly.
+
+    The spending is not thrown away. A reader with a transaction for
+    "Kopi Starbucks" should see that their spending is on the map,
+    even when the shop itself cannot be found, because a map that
+    shows "0 Lokasi" for money that was spent tells the reader their
+    own records are wrong.
+
+    The pin is marked as estimated, and the map says so, so the reader
+    knows the difference between "this is where you spent it" and
+    "this is around here". Clicking it is how the reader tells the
+    application where it really was.
+
+    The point is worked out from the name of the shop, so it is the
+    same every time.
+    """
+    import hashlib
+
+    name = str(merchant_name or "").strip()
+    address = str(merchant_address or "").strip()
+
+    # A city the reader wrote down is better than a guess.
+    centre = None
+    place_label = ""
+    lowered_address = address.lower()
+    for word, city in _CITY_WORDS:
+        if word in lowered_address:
+            centre = _DISTRICT_CENTRES.get(city)
+            place_label = city
+            break
+
+    if centre is None:
+        lowered_name = name.lower()
+        for word, city in _CITY_WORDS:
+            if word in lowered_name:
+                centre = _DISTRICT_CENTRES.get(city)
+                place_label = city
+                break
+
+    if centre is None:
+        # Nothing said where it is. Jakarta is where the reader most
+        # likely is, and the pin says it is an estimate.
+        centre = _DISTRICT_CENTRES["jakarta"]
+        place_label = "jakarta"
+
+    # The offset is worked out from the name of the shop, so the same
+    # shop is always in the same place, and two shops are not on top
+    # of each other.
+    digest = hashlib.sha256(name.lower().encode("utf-8")).digest()
+    # A circle of about a kilometre around the centre.
+    angle = (digest[0] / 255.0) * 2.0 * math.pi
+    distance = 0.004 + (digest[1] / 255.0) * 0.009
+
+    latitude = centre[0] + distance * math.cos(angle)
+    longitude = centre[1] + distance * math.sin(angle) / math.cos(math.radians(centre[0]))
+
+    kind = kind_of(name, address)
+    display_name = name or address or "Lokasi"
+
+    return {
+        "id": f"estimated_{name}_{address}".replace(" ", "_"),
+        "name": display_name,
+        "latitude": latitude,
+        "longitude": longitude,
+        "address": address or f"Area {place_label.title()}",
+        "visit_count": visit_count,
+        "total_spent": float(total_spent or 0),
+        "avg_transaction": float(avg_spent or 0),
+        "source": "estimated",
+        "category": category or "Lainnya",
+        "kind": kind,
+        "pin": pin_for(kind),
+        # This is the whole point: the pin is not exact, and it says so.
+        "precision": "district",
+        "is_exact": False,
+        "is_estimated": True,
+        "street": None,
+        "nearest_place": None,
+    }
+
+
 @router.get("/merchants/map")
 def get_merchant_map_data(
     current_user: User = Depends(get_current_user),
@@ -1378,9 +1519,27 @@ def get_merchant_map_data(
             place = None
 
         if place is None:
-            # The shop could not be found. It is left off the map
-            # rather than put in the middle of the city, because a
-            # pin in the wrong place is worse than no pin.
+            # The shop could not be found on the map.
+            #
+            # It used to be left off the map entirely. That was right
+            # about the pin and wrong about the money: a reader whose
+            # transactions had no GPS coordinates was shown "0 Lokasi"
+            # and "Rp 0", and told their own records were empty when
+            # they were not.
+            #
+            # So the spending is put on the map at a point in the area
+            # it is known to be in, marked as an estimate, and the map
+            # says so and lets the reader refine it.
+            all_locations.append(
+                _estimated_marker(
+                    merchant_name=merchant_name,
+                    merchant_address=merchant_address,
+                    category=spending_category,
+                    total_spent=float(row.total_spent or 0),
+                    visit_count=int(row.visit_count or 0),
+                    avg_spent=float(row.avg_spent or 0),
+                )
+            )
             continue
 
         all_locations.append({
@@ -1428,6 +1587,10 @@ def get_merchant_map_data(
             "gps": sum(1 for m in unique if m["source"] == "gps"),
             "gps_tx": sum(1 for m in unique if m["source"] == "gps_tx"),
             "merchant": sum(1 for m in unique if m["source"] == "merchant"),
+            # The pins that stand for an area rather than a shop. The
+            # reader is told how many there are, so they know how much
+            # of the map is approximate.
+            "estimated": sum(1 for m in unique if m["source"] == "estimated"),
         },
         # How many of the pins stand for a whole brand rather than a
         # single shop. The reader is told, because a pin in the
