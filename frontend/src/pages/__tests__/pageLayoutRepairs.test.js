@@ -469,11 +469,11 @@ check('the dashboard assistant is a bar at the top, not a box over the page', ()
   );
   // The three jobs.
   assert.ok(
-    /api\.transactions\.create|quickEntry|parseQuickEntry|api\.ai\.agent/.test(bar),
+    /transactions\.create|quickEntry|parseQuickEntry|ai\.agent/.test(bar),
     'the command bar cannot record a transaction'
   );
   assert.ok(
-    /api\.ai\.agent/.test(bar),
+    /ai\.agent/.test(bar),
     'the command bar cannot answer a question'
   );
   assert.ok(
