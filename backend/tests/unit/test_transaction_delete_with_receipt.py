@@ -159,8 +159,16 @@ def test_the_receipt_scan_is_unlinked_before_the_transaction_goes(session):
     assert session.query(Transaction).filter(Transaction.id == tx.id).first() is None
 
 
-def test_the_lines_of_the_receipt_go_with_the_transaction(session):
-    """A delete that leaves the lines behind is half a delete."""
+def test_the_receipt_is_kept_when_the_transaction_goes(session):
+    """
+    The receipt is the proof of what was bought. Removing the line
+    from the list does not make the proof false, so the receipt stays
+    and is simply let go of the transaction.
+
+    Earlier the delete threw the receipt away with the transaction. A
+    reader who took a photograph of a receipt and then removed the
+    line lost the photograph too, and could not get it back.
+    """
     from app.api.routes.transactions import delete_transaction
 
     tx, scan = _make_with_receipt(session)
@@ -170,10 +178,28 @@ def test_the_lines_of_the_receipt_go_with_the_transaction(session):
 
     delete_transaction(tx.id, current_user=_User(), db=session)
 
-    # The scan that produced the transaction is gone.
-    assert session.query(ReceiptScan).filter(ReceiptScan.id == scan.id).first() is None
-    # And so are the lines that were on it.
+    # The transaction is gone.
+    assert session.query(Transaction).filter(Transaction.id == tx.id).first() is None
+
+    # The receipt is still there.
+    left = session.query(ReceiptScan).filter(ReceiptScan.id == scan.id).first()
+    assert left is not None, "the receipt was thrown away with the transaction"
+    # But it no longer says which transaction it made.
+    assert left.transaction_id is None, "the receipt still points at a transaction that is gone"
+
+
+def test_the_lines_of_the_receipt_are_kept(session):
+    """The lines on the receipt are the proof. They stay with it."""
+    from app.api.routes.transactions import delete_transaction
+
+    tx, scan = _make_with_receipt(session)
+
+    class _User:
+        id = 1
+
+    delete_transaction(tx.id, current_user=_User(), db=session)
+
     left = session.query(ReceiptItem).filter(
         ReceiptItem.receipt_scan_id == scan.id
     ).all()
-    assert left == []
+    assert left, "the lines on the receipt were thrown away"

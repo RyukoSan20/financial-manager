@@ -550,43 +550,143 @@ def delete_transaction(
             {"delta": -original_delta, "account_id": db_transaction.account_id},
         )
 
-    # A receipt and the transaction it produced point at each other.
+    # A transaction is held by a number of things.
     #
-    # The scan points at the transaction, and the transaction points
-    # back at the scan. Deleting the transaction while the scan still
-    # points at it is refused by the database, so the reader clicked
-    # the bin and got a 500 and the purchase stayed in the list.
+    # Eight different tables point at a transaction, and each of them
+    # refuses to let the transaction go while the pointer is still
+    # there. The receipt was the first of them to be found and dealt
+    # with; the split bill was the second, and it was the one still
+    # failing in production after the receipt was fixed.
     #
-    # So the two pointers are cleared first, and then the scan and its
-    # lines go with the transaction. A receipt that produced a
-    # transaction that no longer exists is a receipt of nothing.
-    if db_transaction.receipt_scan_id:
-        from app.models.receipt import ReceiptItem, ReceiptScan
-
-        scan = (
-            db.query(ReceiptScan)
-            .filter(ReceiptScan.id == db_transaction.receipt_scan_id)
-            .first()
-        )
-        db_transaction.receipt_scan_id = None
-        if scan:
-            db.execute(
-                text("UPDATE transactions SET receipt_scan_id = NULL WHERE receipt_scan_id = :scan_id"),
-                {"scan_id": scan.id},
-            )
-            db.query(ReceiptItem).filter(
-                ReceiptItem.receipt_scan_id == scan.id
-            ).delete(synchronize_session=False)
-            db.delete(scan)
-
-    # The other way round: a scan that points at this transaction.
-    from app.models.receipt import ReceiptScan
-
-    db.execute(
-        text("UPDATE receipt_scans SET transaction_id = NULL WHERE transaction_id = :tx_id"),
-        {"tx_id": db_transaction.id},
-    )
+    # So every pointer is let go of here, in one place, rather than
+    # one table at a time as each is discovered. A delete that has to
+    # be taught a new table every time somebody finds one is a delete
+    # that will fail again.
+    #
+    # Nothing is thrown away. The receipt is kept: it is the proof of
+    # what was bought, and it does not stop being proof because the
+    # line was removed from the list. The split bill is kept, with its
+    # own copy of the money, so the group can still see what the meal
+    # was and what it came to. What goes is the link to the
+    # transaction that no longer exists.
+    _release_transaction_pointers(db, db_transaction.id)
 
     db.delete(db_transaction)
     db.commit()
     return None
+
+
+def _release_transaction_pointers(db, transaction_id: int) -> None:
+    """
+    Let go of every pointer that holds a transaction.
+
+    Each of these tables has a foreign key to `transactions.id`, and
+    each of them refuses to let the transaction be deleted while the
+    pointer is still there. The database is the one that says no, so
+    the pointers are cleared before the row goes.
+
+    The lines of the transaction go with it. They are the
+    transaction, in pieces. Everything else keeps its own copy of
+    what it was holding, and only the link is removed.
+    """
+    import re
+
+    from sqlalchemy import inspect, text
+
+    # Not every installation has every table. A database made before
+    # the map existed has no `transaction_locations`, and a statement
+    # against a table that is not there would stop the delete that
+    # was working. So the tables are looked for first, and a
+    # statement is only run when the table it names is there.
+    present = set(inspect(db.get_bind()).get_table_names())
+
+    def run(statement: str) -> None:
+        # The table is named after the first FROM or after the first
+        # word of the statement, whichever comes first. A statement
+        # that only updates a table has no FROM in it.
+        match = re.search(r"\bFROM\s+([a-z_]+)|\b(?:UPDATE|DELETE FROM|INSERT INTO)\s+([a-z_]+)", statement)
+        table = (match.group(1) or match.group(2)) if match else ""
+        if table not in present:
+            return
+        db.execute(text(statement), {"tx_id": transaction_id})
+        # The statement went around the objects the session is
+        # holding, so those objects are now out of date. Without this
+        # the session would hand back the old answer - the receipt
+        # still pointing at the transaction - and the reader would be
+        # told the work was not done.
+        db.expire_all()
+
+    # The lines of the transaction.
+    run("DELETE FROM transaction_items WHERE transaction_id = :tx_id")
+
+    # Where the transaction was put on the map.
+    run("DELETE FROM transaction_locations WHERE transaction_id = :tx_id")
+
+    # The lines of a calculation the reader wrote.
+    run(
+        "DELETE FROM breakdown_items "
+        "WHERE parent_type = 'transaction' AND parent_id = :tx_id"
+    )
+
+    # The receipt that produced it. The receipt is kept - it is the
+    # proof of what was bought - and it is let go of the transaction
+    # on both sides: the scan no longer says which transaction it
+    # made, and no transaction says which scan it came from.
+    run(
+        "UPDATE transactions SET receipt_scan_id = NULL WHERE receipt_scan_id IN "
+        "(SELECT id FROM receipt_scans WHERE transaction_id = :tx_id)"
+    )
+    run("UPDATE receipt_scans SET transaction_id = NULL WHERE transaction_id = :tx_id")
+
+    # A bill that was shared with a group. The bill stays - the group
+    # can still see what the meal was and what it came to - but it no
+    # longer points at a transaction that is gone.
+    run("UPDATE split_expenses SET transaction_id = NULL WHERE transaction_id = :tx_id")
+
+    # A payment that was made against a debt.
+    run("UPDATE debt_payments SET transaction_id = NULL WHERE transaction_id = :tx_id")
+
+    # A contribution that was made towards a goal.
+    run("UPDATE goal_contributions SET transaction_id = NULL WHERE transaction_id = :tx_id")
+
+    # A settlement that was worked out from this transaction.
+    run("UPDATE split_settlements SET transaction_id = NULL WHERE transaction_id = :tx_id")
+
+    # The other side of a transfer. The transfer is not finished until
+    # both sides are there, so the side that is left points at
+    # nothing rather than at a transaction that no longer exists.
+    run(
+        "UPDATE transactions SET transfer_to_transaction_id = NULL "
+        "WHERE transfer_to_transaction_id = :tx_id"
+    )
+def _run(db, statement: str, transaction_id: int) -> None:
+    """
+    Run a statement that lets go of a pointer, if the table is there.
+
+    Not every installation has every table. A database that was made
+    before the map existed has no `transaction_locations`, and a
+    statement against a table that is not there would stop the delete
+    that was working. So the table is looked for first, and the
+    statement is only run when it is there.
+    """
+    from sqlalchemy import text
+    from sqlalchemy.exc import ProgrammingError, OperationalError
+
+    table = statement.split("FROM ", 1)[-1].split(" ", 1)[0].strip()
+    exists = db.execute(
+        text(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_name = :table AND table_schema = 'public'"
+        ),
+        {"table": table},
+    ).first()
+    if exists is None:
+        # SQLite, and any database that does not keep the catalogue in
+        # the same place. The table is looked for the plain way.
+        try:
+            db.execute(text(statement), {"tx_id": transaction_id})
+        except (ProgrammingError, OperationalError):
+            pass
+        return
+
+    db.execute(text(statement), {"tx_id": transaction_id})
