@@ -240,6 +240,9 @@ export const batch1 = {
       discountTag: '[DISKON]',
       netTotal: 'Total Bersih:',
       details: 'Rincian',
+      filterByCategory: 'Saring menurut kategori',
+      allCategories: 'Semua kategori',
+      clearFilters: 'Hapus filter',
     },
   },
 
@@ -454,6 +457,9 @@ export const batch1 = {
       discountTag: '[DISCOUNT]',
       netTotal: 'Net Total:',
       details: 'Details',
+      filterByCategory: 'Filter by category',
+      allCategories: 'All categories',
+      clearFilters: 'Clear filters',
     },
   },
 
@@ -670,6 +676,9 @@ export const batch1 = {
       discountTag: '[割引]',
       netTotal: '合計:',
       details: '明細',
+      filterByCategory: 'カテゴリーで絞り込む',
+      allCategories: 'すべてのカテゴリー',
+      clearFilters: 'フィルターを解除',
     },
   },
 };

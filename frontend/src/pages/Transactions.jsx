@@ -61,7 +61,22 @@ export const Transactions = () => {
   const [loadError, setLoadError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
-  const [filters, setFilters] = useState({ type: '', search: '', status: '' });
+  // The filters the reader can apply to the list.
+  //
+  // The type and the category are the two questions a list of money is
+  // asked most often: which way did it go, and what was it for. The
+  // search box answers the third.
+  const [filters, setFilters] = useState({
+    type: '',
+    category: '',
+    search: '',
+    status: '',
+  });
+
+  // Back to the whole list. A filter that cannot be undone is a
+  // filter that hides money from the reader.
+  const clearFilters = () =>
+    setFilters({ type: '', category: '', search: '', status: '' });
   const [selectedTx, setSelectedTx] = useState(null);
   const [showTextParser, setShowTextParser] = useState(false);
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
@@ -323,6 +338,10 @@ export const Transactions = () => {
   // Filter transactions
   const filteredTransactions = transactions.filter(tx => {
     if (filters.type && tx.type !== filters.type) return false;
+    // The category, when one is chosen. A category with no transactions
+    // simply brings nothing back, which is what was asked for.
+    if (filters.category && String(tx.category_id) !== String(filters.category))
+      return false;
     if (filters.search) {
       const search = filters.search.toLowerCase();
       const desc = (tx.description || '').toLowerCase();
@@ -440,8 +459,11 @@ export const Transactions = () => {
         <button
           onClick={() => setShowFilter(!showFilter)}
           className={`p-3 rounded-2xl shadow-sm transition-colors ${
-            filters.type ? 'bg-primary-100 text-primary-600' : 'bg-white text-gray-600'
+            filters.category ? 'bg-primary-100 text-primary-600' : 'bg-white text-gray-600'
           }`}
+          title={K.filterByCategory}
+          aria-label={K.filterByCategory}
+          aria-expanded={showFilter}
         >
           <Filter className="w-5 h-5" />
         </button>
@@ -453,25 +475,58 @@ export const Transactions = () => {
         </button>
       </div>
 
-      {/* Filter Dropdown */}
+      {/* The way the money went.
+          These three choices are on the page, because a list of money
+          is asked which way it went more often than anything else, and
+          a reader should not have to find a small icon to answer it. */}
+      <div className="flex gap-2">
+        {typeOptions.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() =>
+              setFilters(f => ({ ...f, type: f.type === opt.value ? '' : opt.value }))
+            }
+            aria-pressed={filters.type === opt.value}
+            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+              filters.type === opt.value
+                ? 'bg-primary-600 text-white shadow-sm'
+                : 'bg-white text-gray-600 shadow-sm'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* The category, when one is chosen. */}
       {showFilter && (
-        <div className="bg-white rounded-2xl shadow-lg p-2 flex gap-2 animate-slideUp">
-          {typeOptions.map(opt => (
+        <div className="bg-white rounded-2xl shadow-lg p-3 animate-slideUp space-y-3">
+          <div className="flex gap-2">
+            <select
+              value={filters.category}
+              onChange={(e) =>
+                setFilters(f => ({ ...f, category: e.target.value }))
+              }
+              aria-label={K.filterByCategory}
+              className="flex-1 px-3 py-2 border rounded-xl text-sm bg-white"
+            >
+              <option value="">{K.allCategories}</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>
+                  {categoryName(c, language)}
+                </option>
+              ))}
+            </select>
             <button
-              key={opt.value}
               onClick={() => {
-                setFilters(f => ({ ...f, type: opt.value }));
+                clearFilters();
                 setShowFilter(false);
               }}
-              className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${
-                filters.type === opt.value
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
+              className="px-3 py-2 border rounded-xl text-sm text-gray-600 hover:bg-gray-50 whitespace-nowrap"
             >
-              {opt.label}
+              {K.clearFilters}
             </button>
-          ))}
+          </div>
         </div>
       )}
 
@@ -618,9 +673,9 @@ export const Transactions = () => {
                       style={{ '--money-row-index': Math.min(index, 12) }}
                       onClick={() => hasItems && setExpandedTxId(isExpanded ? null : tx.id)}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ${
                             isIncoming(tx.type)
                               ? 'bg-success-100 text-success-600'
                               : isOutgoing(tx.type)
@@ -650,9 +705,9 @@ export const Transactions = () => {
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-start gap-2 sm:gap-3 shrink-0">
                           <div className="text-right">
-                            <p className={`font-bold text-lg ${
+                            <p className={`font-bold text-base sm:text-lg whitespace-nowrap ${
                               isIncoming(tx.type) ? 'text-success-600' : 'text-gray-900'
                             }`}>
                               {amountSign(tx.type)}{formatCurrency(tx.amount, tx.currency)}
@@ -667,8 +722,14 @@ export const Transactions = () => {
                               {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                             </button>
                           )}
-                          {/* Action buttons - hidden until hover */}
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* The actions on this row.
+                              They used to appear only when the pointer
+                              hovered over the row. A touch screen has
+                              no hover, so on a phone they were not
+                              there at all. They are always drawn
+                              now, and they are small and quiet so they
+                              do not shout over the money. */}
+                          <div className="flex gap-0.5 sm:gap-1">
                             <button
                               onClick={(e) => { e.stopPropagation(); startEdit(tx); }}
                               className="p-2 text-gray-400 hover:text-primary-500 hover:bg-gray-100 rounded-lg"
