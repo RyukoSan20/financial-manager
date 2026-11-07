@@ -144,3 +144,42 @@ def test_every_card_still_has_the_fields_the_grid_needs():
         assert result["merchant_source"]
         assert result["product_url"]
         assert result["price_idr"] > 0
+
+def test_a_query_the_catalogue_cannot_answer_ignores_the_catalogue_prices():
+    """
+    The catalogue is a shelf of instant noodles. When a reader asks
+    for a laptop, the price of the noodles has nothing to say about
+    the price of the laptop, and using it as the band made a laptop
+    come back priced like a snack.
+    """
+    from app.services.shopping_search_service import _local_results
+
+    from app.services.shopping_search_service import _market_results
+
+    # The band the reader's own catalogue would have supplied: the
+    # middle price of a shelf of instant noodles.
+    catalogue_band = (max(1, int(3500 * 0.4)), int(3500 * 2.5))
+
+    # The band that says what a laptop goes for.
+    from app.services.shopping_market_catalogue import _band_for
+
+    low, high = _band_for("hp pavilion")
+    assert low >= 6_000_000, "the laptop band is too low: %s" % low
+
+    # The search must not use the noodle band for a laptop.
+    results = _market_results("hp pavilion", 24, catalogue_band=None)
+    assert results, "the search answered with nothing"
+    for item in results:
+        assert item["price_idr"] >= 6_000_000, (
+            "a laptop was priced at %s, which is the price of the "
+            "reader's noodles" % item["price_idr"]
+        )
+
+
+def test_a_kettle_is_not_a_two_thousand_rupiah_thing():
+    """A kettle bought by name goes for what a kettle goes for."""
+    from app.services.shopping_market_catalogue import _band_for
+
+    low, high = _band_for("kettle")
+    assert low >= 30_000, "the band for a kettle is too low: %s" % low
+    assert high >= 300_000, "the band for a kettle is too low: %s" % high

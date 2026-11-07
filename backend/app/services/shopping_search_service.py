@@ -645,7 +645,12 @@ def _local_results(
         )
 
     if not results:
-        return _market_results(query, limit, catalogue_band)
+        # Nothing in the catalogue answered, so the catalogue's prices
+        # are about a different kind of thing and have no bearing on
+        # this one. A reader whose catalogue is instant noodles must
+        # not be shown a laptop at the price of a noodle: the band
+        # for the kind of thing asked for is the only honest one.
+        return _market_results(query, limit, None)
 
     # The reader's catalogue answered.
     #
@@ -660,7 +665,9 @@ def _local_results(
     # instead. A laptop searched among a catalogue of instant noodles
     # deserves a laptop.
     if len(results) < 3 and _query_is_about_something_else(query, entries):
-        return _market_results(query, limit, catalogue_band)
+        # The catalogue answered with the wrong kind of thing, so its
+        # prices are about the wrong kind of thing too.
+        return _market_results(query, limit, None)
 
     return results[:limit]
 

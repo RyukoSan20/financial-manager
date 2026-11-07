@@ -208,7 +208,31 @@ KNOWN_PRODUCTS: Tuple[Dict[str, Any], ...] = (
 # The order matters: the first band whose words are found wins, so the
 # specific ones come before the general ones.
 PRICE_BANDS: Tuple[Tuple[Tuple[str, ...], int, int], ...] = (
-    (("rog", "laptop", "notebook", "komputer", "pc gaming", "strix", "zenbook", "vivobook"), 12_000_000, 33_000_000),
+    # The laptop band carries the brand names as well as the word
+    # "laptop", because a reader searching for "Asus Rog" or "HP
+    # Pavilion" never uses the word laptop at all.
+    ((
+        "rog",
+        "laptop",
+        "notebook",
+        "komputer",
+        "pc gaming",
+        "strix",
+        "zenbook",
+        "vivobook",
+        "pavilion",
+        "ideapad",
+        "thinkpad",
+        "victus",
+        "omen",
+        "predator",
+        "swift go",
+        "macbook",
+        "aspire",
+        "talent",
+        "infinix book",
+        "matebook",
+    ), 6_500_000, 33_000_000),
     (("iphone", "galaxy", "pixel", "oppo", "vivo", "realme", "xiaomi", "redmi", "honor", "infinix"), 2_500_000, 18_500_000),
     (("smartphone", "hape", "ponsel", "smartphone"), 1_500_000, 6_500_000),
     (("tablet", "ipad", "tab"), 1_800_000, 12_000_000),
@@ -224,6 +248,27 @@ PRICE_BANDS: Tuple[Tuple[Tuple[str, ...], int, int], ...] = (
     (("ac", "air conditioner", "pendingin", "ac ", "ac1"), 2_500_000, 12_000_000),
     (("vacuum", "vacuum cleaner", "penyedot"), 700_000, 5_500_000),
     (("rice cooker", "magic com", "penanak nasi"), 250_000, 2_500_000),
+    # The kitchen things that are bought by name. A kettle is not a
+    # two thousand rupiah thing, whatever the reader's own catalogue
+    # happens to hold.
+    ((
+        "kettle",
+        "teko",
+        "panci",
+        "wajan",
+        "talenan",
+        "pisau",
+        "knife",
+        "sendok",
+        "spoon",
+        "kompor",
+        "stove",
+        "thermos",
+        "botol",
+        "tumbler",
+        "dispenser",
+        "rice cooker electric",
+    ), 45_000, 900_000),
     (("blender", "mixer", "juicer"), 300_000, 3_500_000),
     (("motor", "motorcycle", "motor", "bebek", "vario", "beat", "ninja", "yamaha", "honda"), 13_000_000, 60_000_000),
     (("mobil", "car", "toyota", "honda mobil", "suzuki", "daihatsu", "wuling"), 90_000_000, 400_000_000),
