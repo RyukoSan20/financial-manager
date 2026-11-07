@@ -1325,7 +1325,10 @@ def _estimated_marker(
     longitude = centre[1] + distance * math.sin(angle) / math.cos(math.radians(centre[0]))
 
     kind = kind_of(name, address)
-    display_name = name or address or "Lokasi"
+    # A transaction with nothing to go on still needs a name on the
+    # pin. The category is the best thing left to call it by, and
+    # "Pengeluaran" is better than an empty box.
+    display_name = name or address or "Pengeluaran"
 
     return {
         "id": f"estimated_{name}_{address}".replace(" ", "_"),
@@ -1477,9 +1480,26 @@ def get_merchant_map_data(
     # the one for the kind of place it is - a minimarket is not a
     # supermarket - and the answer says how exact it is, so that a
     # pin standing for a whole brand is not passed off as a shop.
+    # Every expense that has not been placed on the map already.
+    #
+    # The question used to be "which expenses have a shop name?", and
+    # the answer left out everything else. A transaction recorded from
+    # the quick entry box has no shop name - it has a description, a
+    # category and an amount - so it was dropped, and the reader was
+    # shown "0 Lokasi" and "Rp 0" for money they had spent.
+    #
+    # So the question is now "which expenses have not been placed
+    # yet?". A transaction with no shop name is placed by what it
+    # says, and one with nothing to go on is placed at the centre of
+    # the area, marked as an estimate.
     merchant_q = db.query(
-        Transaction.merchant_name.label("merchant_name"),
-        Transaction.merchant_address.label("merchant_address"),
+        func.coalesce(
+            func.nullif(Transaction.merchant_name, ""),
+            func.nullif(Transaction.description, ""),
+            Transaction.merchant_address,
+            "",
+        ).label("merchant_name"),
+        func.coalesce(Transaction.merchant_address, "").label("merchant_address"),
         Category.name.label("cat_name"),
         func.count(Transaction.id).label("visit_count"),
         func.sum(Transaction.amount).label("total_spent"),
@@ -1488,8 +1508,7 @@ def get_merchant_map_data(
         Category, Category.id == Transaction.category_id
     ).filter(
         Transaction.type == "expense",
-        Transaction.merchant_name.isnot(None),
-        Transaction.merchant_name != "",
+        Transaction.is_deleted.isnot(True),
     )
     if user_id:
         merchant_q = merchant_q.filter(Transaction.user_id == user_id)
