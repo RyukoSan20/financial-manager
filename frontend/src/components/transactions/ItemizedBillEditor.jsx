@@ -85,6 +85,20 @@ export default function ItemizedBillEditor({
   const [newPerson, setNewPerson] = useState('');
   const [openPanel, setOpenPanel] = useState('items');
 
+  // The calculation and the sharing are panels the reader opens when
+  // they want them.
+  //
+  // They were both always open, and both are usually empty: most
+  // purchases are one thing from one shop, with nothing to calculate
+  // and nobody to split it with. So two panels of empty rows stood
+  // between the reader and the four things they came for - what was
+  // bought, which category, which account, which day.
+  //
+  // They start closed, and they open when the reader asks. What is
+  // inside them has not changed.
+  const [calcOpen, setCalcOpen] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
+
   // The prices that were paid before, so a name can bring its price
   // back with it.
   const priceMemory = useMemo(
@@ -472,8 +486,28 @@ export default function ItemizedBillEditor({
           figures that are all the same width so the digits line up
           under each other. */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-3">
-        <p className="text-sm font-semibold text-gray-800">🧮 {t('bill.calcTitle')}</p>
+        {/* The header is the handle. It says what the panel is, and
+            it opens and closes it. A reader who wants to see the
+            calculation opens it; a reader who has one thing to record
+            never has to scroll past it. */}
+        <button
+          type="button"
+          onClick={() => setCalcOpen(!calcOpen)}
+          aria-expanded={calcOpen}
+          data-testid="calc-toggle"
+          className="w-full flex items-center justify-between gap-2 text-left"
+        >
+          <span className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            <span aria-hidden="true">🧮</span>
+            {t('bill.calcTitle')}
+          </span>
+          <ChevronDown
+            className={`w-4 h-4 text-gray-400 transition-transform ${calcOpen ? '' : '-rotate-90'}`}
+            aria-hidden="true"
+          />
+        </button>
 
+        {calcOpen && (
         <div className="space-y-2">
           {/* the subtotal: nothing to set, only to read */}
           <div className="bill-calc-row">
@@ -579,26 +613,42 @@ export default function ItemizedBillEditor({
             </span>
           </div>
         </div>
+        )}
       </div>
 
       {/* ---- the sharing --------------------------------------------- */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           {/* One icon, not two. The picture and the emoji were both
               being drawn. */}
-          <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSplitOpen(!splitOpen)}
+            aria-expanded={splitOpen}
+            data-testid="split-panel-toggle"
+            className="flex items-center gap-2 text-left min-w-0"
+          >
             <Users className="w-4 h-4 shrink-0" />
-            {t('bill.splitTitle')}
-          </p>
+            <span className="text-sm font-semibold text-gray-800 truncate">
+              {t('bill.splitTitle')}
+            </span>
+            <ChevronDown
+              className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${splitOpen ? '' : '-rotate-90'}`}
+              aria-hidden="true"
+            />
+          </button>
           <button
             type="button"
             onClick={() => {
               setSplitOn(!splitOn);
               if (!splitOn && participants.length === 0) {
                 setParticipants(['Saya']);
+                // Turning it on means the reader wants to see it, so
+                // the panel opens too.
+                setSplitOpen(true);
               }
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium pressable ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium pressable shrink-0 ${
               splitOn
                 ? 'bg-primary-600 text-white'
                 : 'bg-gray-100 text-gray-600'
@@ -609,7 +659,7 @@ export default function ItemizedBillEditor({
           </button>
         </div>
 
-        {splitOn && (
+        {splitOpen && (
           <>
             <div className="flex flex-wrap gap-2 items-center">
               {participants.map((person) => (
