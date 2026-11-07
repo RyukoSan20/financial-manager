@@ -1592,6 +1592,7 @@ export default {
     // catalogue is not a price in a shop, and the card says so.
     live_source: "Harga ini dari toko, jadi harganya harga di toko.",
     local_source: "Harga ini dari katalog Anda sendiri, bukan harga di toko.",
+    own_shop_open: "Lihat di toko saya",
     own_shop_source: "Harga ini dari toko Anda sendiri.",
     price_reference: "Harga acuan Anda",
     price_estimate: "Perkiraan harga pasar",

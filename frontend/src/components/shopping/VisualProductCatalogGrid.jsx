@@ -20,7 +20,7 @@
  */
 
 import { useState } from 'react';
-import { ExternalLink, Package, Star } from 'lucide-react';
+import { ExternalLink, Package, Star, Store } from 'lucide-react';
 import { formatRupiah } from '../../utils/money';
 import { buildWishlistPayload, isReferencePrice, isShopPrice } from '../../utils/shoppingCatalog';
 import { useTranslation } from '../../i18n';
@@ -190,13 +190,22 @@ const ProductCard = ({ product, source, onSave, saving }) => {
           {product.product_url ? (
             <a
               href={product.product_url}
-              target="_blank"
+              target={product.source === 'own_shop' ? undefined : '_blank'}
               rel="noopener noreferrer"
               title={t('shopping_catalog.open')}
               className="px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-[11px] font-medium inline-flex items-center gap-1"
             >
-              <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
-              {t('shopping_catalog.open')}
+              {/* The reader's own shop is not somewhere else to be
+                  opened. The button says what it is: the shelf the
+                  thing is already on. */}
+              {product.source === 'own_shop' ? (
+                <Store className="w-3.5 h-3.5" aria-hidden="true" />
+              ) : (
+                <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+              )}
+              {product.source === 'own_shop'
+                ? t('shopping_catalog.own_shop_open')
+                : t('shopping_catalog.open')}
             </a>
           ) : null}
         </div>

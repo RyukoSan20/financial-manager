@@ -1592,6 +1592,7 @@ export default {
     // catalogue is not a price in a shop, and the card says so.
     live_source: "この価格は店舗からの価格です。",
     local_source: "この価格は自分のカタログからのもので、店舗の価格ではありません。",
+    own_shop_open: "自分の店で見る",
     own_shop_source: "この価格は自分の店舗の価格です。",
     price_reference: "あなたの参考価格",
     price_estimate: "市場価格の目安",

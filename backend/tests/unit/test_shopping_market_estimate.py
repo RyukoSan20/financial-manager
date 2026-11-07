@@ -183,3 +183,87 @@ def test_a_kettle_is_not_a_two_thousand_rupiah_thing():
     low, high = _band_for("kettle")
     assert low >= 30_000, "the band for a kettle is too low: %s" % low
     assert high >= 300_000, "the band for a kettle is too low: %s" % high
+
+def test_a_partner_shop_that_sells_the_thing_is_in_the_answer():
+    """
+    The reader is the owner of a shop as well as a shopper.
+
+    When they search for something their own shop sells, the shop's
+    own item belongs in the answer, beside the marketplace ones. It
+    is the one result they can act on without leaving the page.
+
+    The shelf of the shop was never asked, so the answer only ever
+    held things from elsewhere.
+    """
+    from app.services.shopping_search_service import _partner_entries
+
+    class _Product:
+        id = 7
+        name = "Kopi Susu Gula Aren"
+        sku = "KS-001"
+        price = 28000.0
+        unit = "pcs"
+        image_url = None
+        category = "Minuman"
+        is_active = True
+
+    class _Merchant:
+        id = 3
+        store_name = "Ked Kopi Reader"
+        business_type = "cafe"
+
+    class _MerchantProduct:
+        id = 7
+        merchant_id = 3
+        name = "Kopi Susu Gula Aren"
+        sku = "KS-001"
+        price = 28000.0
+        unit = "pcs"
+        image_url = None
+        category = "Minuman"
+        is_active = True
+        merchant = _Merchant()
+
+    class _Rows:
+        def limit(self, *_args):
+            return self
+
+        def all(self):
+            return [_MerchantProduct()]
+
+    class _Db:
+        def query(self, *_args):
+            return _Rows()
+
+    entries = _partner_entries(_Db())
+
+    assert entries, "the shelf of the reader own shop was not asked"
+    entry = entries[0]
+    assert "Kopi Susu Gula Aren" in entry["title"]
+    assert entry["price"] == 28000.0
+    assert entry["store"] == "Ked Kopi Reader"
+    assert entry["owner"] == "partner"
+
+def test_the_partner_item_reaches_the_answer_as_its_own_shop():
+    """
+    The item has to arrive as a card, and the card has to say which
+    shop it is from. The reader's own shop is not a marketplace, and
+    putting it at one would be a lie about where the thing is.
+    """
+    from app.services.shopping_search_service import _partner_result
+
+    card = _partner_result(
+        title="Kopi Susu Gula Aren",
+        price=28000.0,
+        store="Ked Kopi Reader",
+        category="Minuman",
+        sku="KS-001",
+    )
+
+    assert card["merchant_source"] == "Ked Kopi Reader"
+    assert card["store_name"] == "Ked Kopi Reader"
+    assert card["source"] == "own_shop"
+    assert card["price_basis"] == "own_shop"
+    assert card["price_idr"] == 28000
+    assert card["image_url"], "the card has no picture"
+    assert "Minuman" in card["description_snippet"]

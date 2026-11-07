@@ -487,6 +487,59 @@ def _database_catalogue(user_id: Optional[int]) -> List[Dict[str, Any]]:
     return entries
 
 
+def _partner_entries(db) -> List[Dict[str, Any]]:
+    """
+    The shelf of the reader's own shop.
+
+    The reader is the owner of a shop as well as a shopper. When they
+    search for something their own shop sells, the shop's own item
+    belongs in the answer, beside the marketplace ones. It is the one
+    result they can act on without leaving the page.
+
+    The shelf was never asked, so the answer only ever held things
+    from elsewhere.
+    """
+    entries: List[Dict[str, Any]] = []
+
+    try:
+        from app.models.merchant import MerchantProduct
+    except Exception:  # noqa: BLE001
+        return entries
+
+    try:
+        rows = db.query(MerchantProduct).limit(200).all()
+    except Exception:  # noqa: BLE001
+        return entries
+
+    for row in rows:
+        name = str(getattr(row, "name", "") or "").strip()
+        if not name:
+            continue
+        store = None
+        try:
+            merchant = getattr(row, "merchant", None)
+            if merchant is not None:
+                store = str(
+                    getattr(merchant, "store_name", "") or ""
+                ).strip() or None
+        except Exception:  # noqa: BLE001
+            store = None
+        entries.append(
+            {
+                "title": name,
+                "category": getattr(row, "category", "") or "",
+                "price": _to_number(getattr(row, "price", None)),
+                "basis": "partner_shop",
+                "store": store,
+                "owner": "partner",
+                "sku": getattr(row, "sku", None),
+                "image_url": getattr(row, "image_url", None),
+            }
+        )
+
+    return entries
+
+
 def _score(entry: Dict[str, Any], query_tokens: List[str]) -> int:
     """
     How well an entry answers the query.
@@ -526,6 +579,46 @@ def _market_for(seed: str) -> Dict[str, str]:
 def _search_url(market: Dict[str, str], query: str) -> str:
     """The shop's own search page for this query."""
     return market["search_url"].format(query=urllib.parse.quote(query))
+
+
+def _partner_result(
+    title: str,
+    price: float,
+    store: str,
+    category: str = "",
+    image_url: Optional[str] = None,
+    sku: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    A card for an item from the reader's own shop.
+
+    The price is the one the shop charges, not an estimate, so the
+    card says where it came from in a different way from the
+    marketplace cards. The reader can act on this one without leaving
+    the page.
+    """
+    parts = [part for part in (category, sku) if part]
+    snippet = " · ".join(parts) if parts else ""
+
+    return {
+        "title": title,
+        "image_url": image_url or _picture(title, _colour_for(store)),
+        "price_idr": _rounded_idr(price),
+        "original_price": None,
+        "discount_badge": None,
+        "merchant_source": store,
+        "store_name": store,
+        "rating": None,
+        "description_snippet": snippet,
+        # The reader's own shop has no public page to open - it is
+        # their shop. The card still carries a way through, so every
+        # card has the same two buttons, and this one goes to the
+        # shelf the item is already on.
+        "product_url": "/merchant/catalog",
+        "source": "own_shop",
+        "is_live_price": False,
+        "price_basis": "own_shop",
+    }
 
 
 def _local_result(
@@ -583,6 +676,21 @@ def _local_results(
     reader's own reference price where there is one.
     """
     entries = _database_catalogue(user_id) + _built_in_catalogue()
+
+    # The shelf of the reader's own shop. A reader who owns a shop
+    # and searches for one of the things they sell should find their
+    # own item in the answer.
+    if user_id is not None:
+        try:
+            from app.core.database import SessionLocal
+
+            session = SessionLocal()
+            try:
+                entries = entries + _partner_entries(session)
+            finally:
+                session.close()
+        except Exception:  # noqa: BLE001
+            pass
     query_tokens = _tokens(query)
 
     scored = []
@@ -609,6 +717,22 @@ def _local_results(
         basis = entry.get("basis") or "catalog_default"
         if not entry.get("price"):
             basis = "catalog_median" if median else "catalog_default"
+        if entry.get("owner") == "partner":
+            # The reader's own shop is not a marketplace. The card
+            # says which shop it is, and the price is the one the
+            # shop itself charges, not an estimate.
+            results.append(
+                _partner_result(
+                    title=title,
+                    price=price,
+                    store=entry.get("store") or "own_shop",
+                    category=entry.get("category", ""),
+                    image_url=entry.get("image_url"),
+                    sku=entry.get("sku"),
+                )
+            )
+            continue
+
         market = _market_for(title)
         results.append(
             _local_result(
