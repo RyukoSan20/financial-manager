@@ -1606,6 +1606,14 @@ export default {
     partner_loading: "Loading your shops...",
     partner_error: "Your shops could not be loaded.",
   },
+  ai_assistant: {
+    command_bar_label: 'Command bar',
+    command_bar_placeholder: 'Record, ask, or open a page...',
+    command_bar_thinking: 'Thinking...',
+    command_bar_listening: 'Listening...',
+    command_bar_recorded: 'Transaction recorded',
+    command_bar_failed: 'Could not record it. Try again.',
+  },
   passport: {
     count: {
       accounts: "Accounts",

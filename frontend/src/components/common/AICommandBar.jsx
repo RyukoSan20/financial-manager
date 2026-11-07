@@ -27,7 +27,7 @@
  * transaction without saying so first.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, CornerDownLeft, Mic, MicOff, Loader2, X, Command } from 'lucide-react';
 
@@ -106,41 +106,13 @@ export default function AICommandBar({ userData = {} }) {
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  const K = useMemo(
-    () => ({
-      placeholder: {
-        id: 'Catat, tanyakan, atau buka halaman...',
-        en: 'Record, ask, or open a page...',
-        ja: '記録・質問・ページを開く...',
-      }[language] || 'Record, ask, or open a page...',
-      thinking: {
-        id: 'Berpikir...',
-        en: 'Thinking...',
-        ja: '考えています...',
-      }[language] || 'Thinking...',
-      listening: {
-        id: 'Mendengar...',
-        en: 'Listening...',
-        ja: '聞いています...',
-      }[language] || 'Listening...',
-      recorded: {
-        id: 'Transaksi dicatat',
-        en: 'Transaction recorded',
-        ja: '記録しました',
-      }[language] || 'Transaction recorded',
-      failed: {
-        id: 'Tidak bisa dicatat. Coba lagi.',
-        en: 'Could not record it. Try again.',
-        ja: '記録できませんでした。もう一度お試しください。',
-      }[language] || 'Could not record it. Try again.',
-      label: {
-        id: 'Bilah perintah',
-        en: 'Command bar',
-        ja: 'コマンドバー',
-      }[language] || 'Command bar',
-    }),
-    [language]
-  );
+  // The words of the bar, in the language the reader is reading in.
+  const label = t('ai_assistant.command_bar_label');
+  const placeholder = t('ai_assistant.command_bar_placeholder');
+  const thinking = t('ai_assistant.command_bar_thinking');
+  const listening = t('ai_assistant.command_bar_listening');
+  const recorded = t('ai_assistant.command_bar_recorded');
+  const failed = t('ai_assistant.command_bar_failed');
 
   // The voice, when the browser has it.
   useEffect(() => {
@@ -222,7 +194,7 @@ export default function AICommandBar({ userData = {} }) {
         try {
           const result = await recordTransaction(line);
           const reply = result.reply || result.message || '';
-          setAnswer(reply || K.recorded);
+          setAnswer(reply || recorded);
           setText('');
           window.dispatchEvent(new Event('transactionUpdated'));
           return;
@@ -236,7 +208,7 @@ export default function AICommandBar({ userData = {} }) {
             setText('');
             return;
           }
-          setError(K.failed);
+          setError(failed);
           return;
         }
       }
@@ -246,11 +218,11 @@ export default function AICommandBar({ userData = {} }) {
       setAnswer(reply);
       setText('');
     } catch (err) {
-      setError(K.failed);
+      setError(failed);
     } finally {
       setBusy(false);
     }
-  }, [text, busy, navigate, recordTransaction, askTheAgent, K]);
+  }, [text, busy, navigate, recordTransaction, askTheAgent, recorded, failed]);
 
   const onKeyDown = (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -277,7 +249,7 @@ export default function AICommandBar({ userData = {} }) {
   return (
     <div
       className="sticky top-0 z-40 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-3 pb-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-gray-100 dark:border-white/10"
-      aria-label={K.label}
+      aria-label={label}
     >
       <div className="flex items-center gap-2">
         {/* The mascot, in the corner of the bar. */}
@@ -295,16 +267,16 @@ export default function AICommandBar({ userData = {} }) {
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
               onFocus={() => setOpen(true)}
-              placeholder={K.placeholder}
-              aria-label={K.placeholder}
+              placeholder={placeholder}
+              aria-label={placeholder}
               className="flex-1 min-w-0 bg-transparent outline-none text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400"
             />
             {voiceSupported ? (
               <button
                 type="button"
                 onClick={toggleVoice}
-                title={isListening ? K.listening : K.label}
-                aria-label={isListening ? K.listening : K.label}
+                title={isListening ? listening : label}
+                aria-label={isListening ? listening : label}
                 className="shrink-0 p-1 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors"
               >
                 {isListening ? (
@@ -318,8 +290,8 @@ export default function AICommandBar({ userData = {} }) {
               type="button"
               onClick={submit}
               disabled={busy || !text.trim()}
-              title={K.label}
-              aria-label={K.label}
+              title={label}
+              aria-label={label}
               className="shrink-0 p-1 rounded-lg text-gray-400 hover:text-primary-600 disabled:opacity-40 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors"
             >
               {busy ? (
@@ -362,7 +334,7 @@ export default function AICommandBar({ userData = {} }) {
           aria-hidden="true"
         >
           <Command className="w-3 h-3" />
-          {busy ? K.thinking : ''}
+          {busy ? thinking : ''}
         </span>
       </div>
     </div>

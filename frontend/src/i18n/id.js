@@ -1606,6 +1606,14 @@ export default {
     partner_loading: "Memuat toko Anda...",
     partner_error: "Gagal memuat toko Anda.",
   },
+  ai_assistant: {
+    command_bar_label: 'Bilah perintah',
+    command_bar_placeholder: 'Catat, tanyakan, atau buka halaman...',
+    command_bar_thinking: 'Berpikir...',
+    command_bar_listening: 'Mendengar...',
+    command_bar_recorded: 'Transaksi dicatat',
+    command_bar_failed: 'Tidak bisa dicatat. Coba lagi.',
+  },
   passport: {
     count: {
       accounts: "Rekening",

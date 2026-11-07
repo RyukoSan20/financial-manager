@@ -1606,6 +1606,14 @@ export default {
     partner_loading: "店舗を読み込み中...",
     partner_error: "店舗を読み込めませんでした。",
   },
+  ai_assistant: {
+    command_bar_label: 'コマンドバー',
+    command_bar_placeholder: '記録・質問・ページを開く...',
+    command_bar_thinking: '考えています...',
+    command_bar_listening: '聞いています...',
+    command_bar_recorded: '記録しました',
+    command_bar_failed: '記録できませんでした。もう一度お試しください。',
+  },
   passport: {
     count: {
       accounts: "口座",
