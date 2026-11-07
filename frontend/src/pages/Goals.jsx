@@ -6,6 +6,7 @@ import GoalPriorityKanban from '../components/goals/GoalPriorityKanban';
 import EditableAiCostBreakdown from '../components/goals/EditableAiCostBreakdown';
 import HonestEmptyState from '../components/common/HonestEmptyState';
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp, TrendingDown, Clock, CheckCircle } from 'lucide-react';
+import { goalIcon } from '../utils/goalIcon';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
 import { formatCurrency, formatPercent, formatDate } from '../utils/format';
 import { useCurrency, sumInDisplay } from '../utils/currency';
@@ -223,15 +224,23 @@ export const Goals = () => {
               <TiltCard key={goal.id} className="rounded-2xl">
               <Card className="!p-5 hover:shadow-md transition-shadow h-full">
                 <div className="flex items-start justify-between mb-4">
+                  {/* The icon holds its place and the text is allowed
+                      to shrink. Without this a long goal name pushed
+                      the picture over the words. */}
                   <div className="flex items-center gap-3">
                     <div 
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0"
                       style={{ backgroundColor: goal.color || COLORS()[0] }}
                     >
-                      <Target className="w-6 h-6" />
+                      {/* The picture is the one the goal asks for, not
+                          always the same target. */}
+                      {(() => {
+                        const Icon = goalIcon(goal);
+                        return <Icon className="w-6 h-6 shrink-0" />;
+                      })()}
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{goal.name}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-900 truncate">{goal.name}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge 
                           size="sm" 

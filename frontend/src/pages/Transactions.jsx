@@ -688,9 +688,16 @@ export const Transactions = () => {
                               <ArrowDownRight className="w-6 h-6" />
                             )}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-semibold text-gray-900 truncate">
+                          {/* The text column.
+
+                              It has to be allowed to shrink. Without
+                              `min-w-0` on the row inside it, the
+                              title kept the width of its own text
+                              and was drawn on top of the amount: a
+                              reader saw "Manu-Rp 25.000". */}
+                          <div className="flex-1 min-w-0 pr-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <p className="font-semibold text-gray-900 truncate min-w-0">
                                 {tx.description || (category ? categoryName(category, language) : null) || (tx.type === 'income' ? K.income : K.expense)}
                               </p>
                               <SourceBadge type={tx.detection_type} K={K} />
@@ -705,8 +712,13 @@ export const Transactions = () => {
                             </p>
                           </div>
                         </div>
+                        {/* The money and the actions.
+
+                            This part never shrinks and never wraps,
+                            so the amount is always whole and always
+                            in the same place. */}
                         <div className="flex items-start gap-2 sm:gap-3 shrink-0">
-                          <div className="text-right">
+                          <div className="text-right shrink-0">
                             <p className={`font-bold text-base sm:text-lg whitespace-nowrap ${
                               isIncoming(tx.type) ? 'text-success-600' : 'text-gray-900'
                             }`}>

@@ -1596,9 +1596,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       {goals.length > 0 && (
         <Card className={`p-4 ${bgCard} border ${borderColor}`}>
           <div className="flex items-center justify-between mb-4">
+            {/* One target, not two. The picture and the word's own
+                icon were both being drawn, so the heading read
+                "◎ ◎ Target Keuangan". */}
             <div className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-primary-500" />
-              <h3 className={`font-semibold ${textPrimary}`}><IconText name="goal" emoji="🎯" on={polished}>{t('dashboard.financial_goals')}</IconText></h3>
+              <h3 className={`font-semibold ${textPrimary}`}><IconText name="goal" emoji="🎯" on={polished} className="w-5 h-5 text-primary-500">{t('dashboard.financial_goals')}</IconText></h3>
             </div>
             <Button variant="ghost" size="sm" onClick={() => window.location.href = '/goals'}>
               {t('dashboard.view_all')} →

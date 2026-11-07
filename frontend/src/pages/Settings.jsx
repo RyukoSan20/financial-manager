@@ -20,6 +20,10 @@ export const Settings = () => {
   // it.
   const [search, setSearch] = useState('');
   const [passport, setPassport] = useState(null);
+  // Whether the setup list has been put away. It is a welcome, and a
+  // welcome that pushes the form out of sight is a welcome in the
+  // wrong place.
+  const [checklistDismissed, setChecklistDismissed] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -92,10 +96,37 @@ export const Settings = () => {
         )}
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* The tab column: the identity card, the readiness
-            checklist, and the tabs themselves. */}
-        <div className="lg:w-72 space-y-4">
+      {/* The setup list, as a banner.
+
+          It was in the narrow left column, above the navigation and
+          the form, so it pushed the form the reader came for below
+          the fold. It is a welcome, not the page, so it now sits
+          across the top and can be put away. */}
+      {!checklistDismissed && (
+        <div className="relative">
+          <ReadinessChecklist onDismiss={() => setChecklistDismissed(true)} />
+          <button
+            type="button"
+            onClick={() => setChecklistDismissed(true)}
+            className="absolute top-2 right-2 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label={t('settings.checklist_dismiss')}
+            title={t('settings.checklist_dismiss')}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* The two columns: the navigation on the left, the settings
+          themselves on the right, at the top of the page.
+
+          This was one narrow column with the checklist, the identity
+          card and the navigation stacked in it, and the whole right
+          side of the screen empty. The form the reader came for was
+          pushed below the fold. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 items-start">
+        {/* The navigation column. */}
+        <div className="lg:w-64 shrink-0 space-y-4">
           {/* Passport card: who the reader is and how far along they
               are, in one glance. */}
           {passport && (
@@ -156,8 +187,6 @@ export const Settings = () => {
               </div>
             </Card>
           )}
-
-          <ReadinessChecklist />
 
           <Card className="p-2 settings-glass">
             {visibleTabs.map((tab) => (

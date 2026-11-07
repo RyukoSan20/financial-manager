@@ -461,115 +461,134 @@ export default function ItemizedBillEditor({
         )}
       </div>
 
-      {/* ---- the calculation ----------------------------------------- */}
+      {/* ---- the calculation -----------------------------------------
+          Three zones: the label on the left, the control in the
+          middle, and the money on the right.
+
+          The money used to sit wherever the control happened to end,
+          so `Rp 0` and `-Rp 0` and `Total Akhir` did not line up and
+          the eye could not add the column up. Now every amount is in
+          the same column on the right edge, and the amounts use
+          figures that are all the same width so the digits line up
+          under each other. */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-3">
         <p className="text-sm font-semibold text-gray-800">🧮 {t('bill.calcTitle')}</p>
 
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">{t('bill.subtotalGoods')}</span>
-          <span className="font-medium">{formatCurrency(bill.subtotal)}</span>
-        </div>
-
-        <div className="flex items-center justify-between gap-2 text-sm">
-          <span className="text-gray-600">{t('bill.discount')}</span>
-          <span className="flex items-center gap-2">
-            <input
-              type="text"
-              inputMode="decimal"
-              value={discount}
-              onChange={(e) => setDiscount(e.target.value)}
-              placeholder={t('bill.zero')}
-              className="w-24 px-2 py-1 border rounded-lg text-sm"
-              data-testid="bill-discount"
-            />
-            <select
-              value={discountType}
-              onChange={(e) => setDiscountType(e.target.value)}
-              className="px-2 py-1 border rounded-lg text-sm"
-            >
-              <option value="nominal">Rp</option>
-              <option value="percent">%</option>
-            </select>
-            <span className="w-28 text-right font-medium">
-              −{formatCurrency(bill.discount)}
-            </span>
-          </span>
-        </div>
-
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-gray-600">{t('bill.tax')}</span>
-            <span className="flex items-center gap-2">
-              <select
-                value={taxRuleId}
-                onChange={(e) => setTaxRuleId(e.target.value)}
-                className="px-2 py-1 border rounded-lg text-sm"
-                data-testid="bill-tax-rule"
-              >
-                {Object.values(TAX_RULES).map((rule) => (
-                  <option key={rule.id} value={rule.id}>
-                    {t(`bill.${rule.labelKey}`)}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => setInclusive(!inclusive)}
-                className="px-2 py-1 border rounded-lg text-xs text-gray-600 pressable"
-              >
-                {inclusive ? t('bill.taxInclusive') : t('bill.taxExclusive')}
-              </button>
-              <span className="w-28 text-right font-medium">
-                +{formatCurrency(bill.taxAmount)}
-              </span>
+        <div className="space-y-2">
+          {/* the subtotal: nothing to set, only to read */}
+          <div className="bill-calc-row">
+            <span className="text-gray-600 text-sm">{t('bill.subtotalGoods')}</span>
+            <div />
+            <span className="text-right font-medium text-sm tabular-nums">
+              {formatCurrency(bill.subtotal)}
             </span>
           </div>
-          {bill.taxAmount > 0 && (
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>
-                {t('bill.taxBase')}: {formatCurrency(bill.taxBase)} (
-                {bill.taxEffectiveRate.toFixed(2).replace(/\.00$/, '')}%)
-              </span>
-              <span>{t('bill.taxAmount')}: {formatCurrency(bill.taxAmount)}</span>
-            </div>
-          )}
-        </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">{t('bill.fee')}</span>
-          <span className="flex items-center gap-2">
-            <input
-              type="text"
-              inputMode="decimal"
-              value={fee}
-              onChange={(e) => setFee(e.target.value)}
-              placeholder={t('bill.zero')}
-              className="w-24 px-2 py-1 border rounded-lg text-sm"
-              data-testid="bill-fee"
-            />
-            <span className="w-28 text-right font-medium">
+          <div className="bill-calc-row">
+            <span className="text-gray-600 text-sm">{t('bill.discount')}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                placeholder={t('bill.zero')}
+                className="w-24 px-2 py-1 border rounded-lg text-sm"
+                data-testid="bill-discount"
+              />
+              <select
+                value={discountType}
+                onChange={(e) => setDiscountType(e.target.value)}
+                className="px-2 py-1 border rounded-lg text-sm"
+              >
+                <option value="nominal">Rp</option>
+                <option value="percent">%</option>
+              </select>
+            </div>
+            <span className="text-right font-medium text-sm tabular-nums">
+              −{formatCurrency(bill.discount)}
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <div className="bill-calc-row">
+              <span className="text-gray-600 text-sm">{t('bill.tax')}</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={taxRuleId}
+                  onChange={(e) => setTaxRuleId(e.target.value)}
+                  className="px-2 py-1 border rounded-lg text-sm"
+                  data-testid="bill-tax-rule"
+                >
+                  {Object.values(TAX_RULES).map((rule) => (
+                    <option key={rule.id} value={rule.id}>
+                      {t(`bill.${rule.labelKey}`)}
+                    </option>
+                  ))}
+                </select>
+                {/* The pill used to wrap onto two cramped lines. */}
+                <button
+                  type="button"
+                  onClick={() => setInclusive(!inclusive)}
+                  className="px-2 py-1 border rounded-lg text-xs text-gray-600 pressable whitespace-nowrap"
+                >
+                  {inclusive ? t('bill.taxInclusive') : t('bill.taxExclusive')}
+                </button>
+              </div>
+              <span className="text-right font-medium text-sm tabular-nums">
+                +{formatCurrency(bill.taxAmount)}
+              </span>
+            </div>
+            {bill.taxAmount > 0 && (
+              <div className="flex justify-between text-xs text-gray-500 pl-1">
+                <span>
+                  {t('bill.taxBase')}: {formatCurrency(bill.taxBase)} (
+                  {bill.taxEffectiveRate.toFixed(2).replace(/\.00$/, '')}%)
+                </span>
+                <span>{t('bill.taxAmount')}: {formatCurrency(bill.taxAmount)}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="bill-calc-row">
+            <span className="text-gray-600 text-sm">{t('bill.fee')}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={fee}
+                onChange={(e) => setFee(e.target.value)}
+                placeholder={t('bill.zero')}
+                className="w-24 px-2 py-1 border rounded-lg text-sm"
+                data-testid="bill-fee"
+              />
+            </div>
+            <span className="text-right font-medium text-sm tabular-nums">
               +{formatCurrency(bill.fee)}
             </span>
-          </span>
-        </div>
+          </div>
 
-        <div className="border-t pt-3 flex justify-between items-baseline">
-          <span className="text-sm font-semibold text-gray-800">{t('bill.grandTotal')}</span>
-          <span
-            className="text-2xl font-bold text-gray-900"
-            data-testid="bill-total"
-          >
-            {formatCurrency(bill.total)}
-          </span>
+          <div className="border-t pt-3 bill-calc-row">
+            <span className="text-sm font-semibold text-gray-800">{t('bill.grandTotal')}</span>
+            <div />
+            <span
+              className="text-right text-2xl font-bold text-gray-900 tabular-nums"
+              data-testid="bill-total"
+            >
+              {formatCurrency(bill.total)}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* ---- the sharing --------------------------------------------- */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-3">
         <div className="flex items-center justify-between">
+          {/* One icon, not two. The picture and the emoji were both
+              being drawn. */}
           <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            👥 {t('bill.splitTitle')}
+            <Users className="w-4 h-4 shrink-0" />
+            {t('bill.splitTitle')}
           </p>
           <button
             type="button"
