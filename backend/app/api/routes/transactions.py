@@ -550,6 +550,43 @@ def delete_transaction(
             {"delta": -original_delta, "account_id": db_transaction.account_id},
         )
 
+    # A receipt and the transaction it produced point at each other.
+    #
+    # The scan points at the transaction, and the transaction points
+    # back at the scan. Deleting the transaction while the scan still
+    # points at it is refused by the database, so the reader clicked
+    # the bin and got a 500 and the purchase stayed in the list.
+    #
+    # So the two pointers are cleared first, and then the scan and its
+    # lines go with the transaction. A receipt that produced a
+    # transaction that no longer exists is a receipt of nothing.
+    if db_transaction.receipt_scan_id:
+        from app.models.receipt import ReceiptItem, ReceiptScan
+
+        scan = (
+            db.query(ReceiptScan)
+            .filter(ReceiptScan.id == db_transaction.receipt_scan_id)
+            .first()
+        )
+        db_transaction.receipt_scan_id = None
+        if scan:
+            db.execute(
+                text("UPDATE transactions SET receipt_scan_id = NULL WHERE receipt_scan_id = :scan_id"),
+                {"scan_id": scan.id},
+            )
+            db.query(ReceiptItem).filter(
+                ReceiptItem.receipt_scan_id == scan.id
+            ).delete(synchronize_session=False)
+            db.delete(scan)
+
+    # The other way round: a scan that points at this transaction.
+    from app.models.receipt import ReceiptScan
+
+    db.execute(
+        text("UPDATE receipt_scans SET transaction_id = NULL WHERE transaction_id = :tx_id"),
+        {"tx_id": db_transaction.id},
+    )
+
     db.delete(db_transaction)
     db.commit()
     return None
