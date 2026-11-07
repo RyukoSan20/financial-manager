@@ -35,12 +35,17 @@ const page = read('src/components/layout/AddTransactionPage.jsx');
 /* --- the coordinates are sent ----------------------------------------- */
 
 // The place is collected. It has to be sent.
+//
+// The point that is sent is the one the lookup found, when there was a
+// lookup, and the one the phone gave otherwise. Both are named the
+// same way here so that the check says what matters: a point reaches
+// the payload.
 assert.ok(
-  /latitude:\s*locationCoords/.test(page),
+  /latitude:\s*(placePoint|locationCoords)/.test(page),
   'the coordinates are collected but never sent with the transaction'
 );
 assert.ok(
-  /longitude:\s*locationCoords/.test(page),
+  /longitude:\s*(placePoint|locationCoords)/.test(page),
   'the coordinates are collected but never sent with the transaction'
 );
 

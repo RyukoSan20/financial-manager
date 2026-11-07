@@ -655,7 +655,51 @@ const AddTransactionPage = () => {
     }
   };
 
+  // A place the reader typed still has to reach the map.
+  //
+  // The phone's own position is a set of coordinates already. A typed
+  // name is not: it is words, and the map needs a point. So the name is
+  // asked about and the answer carries the point. Without this the
+  // transaction was saved with a name but no coordinates, and the
+  // spending at that place never showed up on the map.
+  const lookUpTypedPlace = async (name) => {
+    const query = (name || '').trim();
+    if (!query) return null;
+    try {
+      const token = getToken();
+      const res = await fetch(
+        `${API_URL}/location/search-places?query=${encodeURIComponent(query)}`,
+        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+      );
+      if (!res.ok) return null;
+      const places = await res.json();
+      const first = Array.isArray(places) ? places[0] : null;
+      if (!first) return null;
+      const lat = Number(first.latitude);
+      const lng = Number(first.longitude);
+      // A place without a real point would put the transaction in the
+      // wrong place on the map, which is worse than leaving it off.
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      if (lat === 0 && lng === 0) return null;
+      const point = { lat, lng };
+      setLocationCoords(point);
+      return point;
+    } catch {
+      // A place that cannot be found is still a place. The name is
+      // kept; only the point on the map is missing.
+      return null;
+    }
+  };
+
   const handleSave = async (addAnother = false) => {
+    // A typed place name is only a name until it is looked up. The
+    // sheet may have been closed without pressing Enter, so the lookup
+    // is made here too, when it is known for certain that the
+    // transaction is being saved.
+    let placePoint = locationCoords;
+    if (!placePoint && location && location.trim()) {
+      placePoint = await lookUpTypedPlace(location);
+    }
     const finalAmount = parseNumber(amount);
     if (!finalAmount || finalAmount <= 0) {
       toast.warning(K.invalidAmount);
@@ -728,10 +772,10 @@ const AddTransactionPage = () => {
         // given was thrown away when they saved.
         const place = location
           ? {
-              ...(locationCoords
+              ...(placePoint
                 ? {
-                    latitude: locationCoords.lat,
-                    longitude: locationCoords.lng,
+                    latitude: placePoint.lat,
+                    longitude: placePoint.lng,
                   }
                 : {}),
               merchant_address: location,
@@ -1407,10 +1451,17 @@ const AddTransactionPage = () => {
                   type="text"
                   placeholder={K.placePlaceholder}
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  onChange={(e) => {
+                    setLocation(e.target.value);
+                    // The point that was found belongs to the old name.
+                    // Typing a new name must not keep the old point,
+                    // or the transaction would land at the wrong place.
+                    setLocationCoords(null);
+                  }}
                   className="w-full p-4 border rounded-xl"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && location) {
+                      lookUpTypedPlace(location);
                       setShowLocationSheet(false);
                     }
                   }}

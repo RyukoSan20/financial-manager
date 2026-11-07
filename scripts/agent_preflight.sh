@@ -112,6 +112,7 @@ for test_file in \
   src/components/split/__tests__/splitMath.test.js \
   src/components/split/__tests__/splitAssignmentMath.test.js \
   src/components/map/__tests__/mapPins.test.js \
+  src/components/layout/__tests__/typedPlaceLookup.test.js \
   src/components/map/__tests__/mapPinSize.test.js \
   src/components/layout/__tests__/transactionLocation.test.js \
   src/services/__tests__/receiptItemsApi.test.js \
