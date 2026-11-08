@@ -135,6 +135,7 @@ export default {
     to: "Sampai",
     currency: "Rp",
     refresh: "Muat ulang",
+    saving: "Menyimpan...",
   },
   
   // Navigation
@@ -509,6 +510,8 @@ export default {
     account_count: "%count% akun",
     receipts_scanned: "%count% struk discan",
     active_days_30: "%count% hari aktif (30 hari terakhir)",
+    change_avatar: "Ubah Ikon Avatar",
+    choose_avatar: "Pilih ikon avatar",
   },
 
   // Category Expenses
@@ -1664,6 +1667,7 @@ export default {
     quick_goal: '🎯 Cek Target',
     quick_analysis_prompt: 'Analisis keuangan saya bulan ini. Di mana uang saya paling banyak keluar, dan apa satu hal yang paling sebaiknya saya perbaiki?',
     quick_record_prompt: 'Ketik apa yang baru kamu beli, misalnya "Kopi Jago 10rb".',
+    saved_badge: "Tersimpan di Transaksi",
   },
   passport: {
     count: {

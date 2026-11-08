@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../services/api";
 import { useTranslation } from '../i18n';
+import { useOnDataMutated } from '../utils/dataSyncBus';
 import { useCurrency } from '../utils/currency';
 import { buildFlag } from '../utils/featureFlags';
 import CuteWellnessBento from '../components/health/CuteWellnessBento';
@@ -22,6 +23,16 @@ const HealthCoach = () => {
   useEffect(() => {
     loadHealthData();
   }, []);
+
+  // The health coach reads the reader's money, so it hears about
+  // every write to a transaction. A score worked out from yesterday's
+  // transactions is not the reader's score.
+  useOnDataMutated(
+    () => {
+      loadHealthData();
+    },
+    ['transaction']
+  );
 
   // The description of a ratio. The backend names it by a key and
   // gives the numbers that go into it, so it reads in the language of

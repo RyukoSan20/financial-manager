@@ -18,6 +18,7 @@
 import { useState } from 'react';
 import { clsx } from 'clsx';
 import { useTranslation } from '../../i18n';
+import { getUserAvatarUrl } from '../../utils/avatarHelper';
 
 /**
  * The drawn faces.
@@ -49,9 +50,14 @@ export const AvatarPicker = ({ value, onChange, onUpload }) => {
     (choice) => value === assetUrl(choice.id) || value === choice.id
   );
 
-  const preview = chosen
-    ? assetUrl(chosen.id)
-    : value || assetUrl('avatar-default');
+  // The preview is always one of ours.
+  //
+  // A reader who signed in with Google had their Google photo in
+  // this box - a picture of a person, from a server we do not
+  // control, and a licence question nobody asked about. The picture
+  // in the box is now always one of the four we drew, and a photo
+  // from an email provider is ignored.
+  const preview = chosen ? assetUrl(chosen.id) : getUserAvatarUrl({ avatar_url: value });
 
   return (
     <div className="space-y-3">

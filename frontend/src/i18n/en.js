@@ -135,6 +135,7 @@ export default {
     to: "To",
     currency: "$",
     refresh: "Refresh",
+    saving: "Saving...",
   },
   
   // Navigation
@@ -509,6 +510,8 @@ export default {
     account_count: "%count% accounts",
     receipts_scanned: "%count% receipts scanned",
     active_days_30: "%count% active days (last 30 days)",
+    change_avatar: "Change Avatar Icon",
+    choose_avatar: "Choose an avatar icon",
   },
 
   // Category Expenses
@@ -1664,6 +1667,7 @@ export default {
     quick_goal: '🎯 Check Goals',
     quick_analysis_prompt: 'Analyse my finances this month. Where is my money going the most, and what is the one thing I should fix first?',
     quick_record_prompt: 'Type what you just bought, for example "Kopi Jago 10rb".',
+    saved_badge: "Saved in Transactions",
   },
   passport: {
     count: {

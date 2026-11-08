@@ -33,9 +33,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Sparkles,
+  CheckCircle2,
   CornerDownLeft,
   Mic,
   MicOff,
@@ -53,6 +54,7 @@ import { api } from '../../services/api';
 import { useTranslation } from '../../i18n';
 import FinBuddyMascot from '../common/FinBuddyMascot';
 import MarkdownText from '../common/MarkdownText';
+import { emitDataMutated } from '../../utils/dataSyncBus';
 
 /**
  * The pages the reader can ask for by name.
@@ -136,6 +138,13 @@ export default function TopAiCommandBar({ userData = {} }) {
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [open, setOpen] = useState(false);
+  // The transaction that was really written, if one was.
+  //
+  // The reply says what happened. This is the row the reader can go
+  // and look at, and the badge under the reply is the proof that it
+  // is there - because the reader was told their lunch was recorded
+  // and it was not, and they had no way of telling.
+  const [writtenTransaction, setWrittenTransaction] = useState(null);
   // Which quick action is running, if one is. The drawer says what is
   // happening, so the reader is never left watching a bar that has
   // not answered yet.
@@ -236,7 +245,23 @@ export default function TopAiCommandBar({ userData = {} }) {
           const reply = result.reply || result.message || '';
           setAnswer(reply || recorded);
           setText('');
-          window.dispatchEvent(new Event('transactionUpdated'));
+          // The world is told, so every page that shows the
+          // consequence of a transaction asks the server again.
+          //
+          // It is said only after the server confirmed the write,
+          // and only when the server says a row was really written.
+          // The bar is not allowed to announce a transaction it did
+          // not record.
+          if (result?.action_executed === 'transaction_created') {
+            emitDataMutated('transaction', {
+              id: result.transaction?.id,
+              amount: result.transaction?.amount,
+              type: result.transaction?.type,
+            });
+            setWrittenTransaction(result.transaction || null);
+          } else {
+            setWrittenTransaction(null);
+          }
           return;
         } catch (err) {
           // It might still have been a question that happened to have
@@ -402,16 +427,28 @@ export default function TopAiCommandBar({ userData = {} }) {
               that opened by itself and covered the page on every
               visit was the old problem in a new place. */}
           {open && (answer || error || busy) ? (
-            <div className="absolute left-0 right-0 top-full mt-2 rounded-2xl border border-gray-200 dark:border-white/10 bg-white/85 dark:bg-gray-800/85 backdrop-blur-md shadow-lg p-3 text-sm">
+            /* The answer.
+
+               It used to float over the page on a half-transparent
+               surface, so the "Beranda" header and the "Dasar |
+               Lanjutan" buttons showed through it and the two ran
+               into each other. A reader could not read the answer
+               and could not read the page.
+
+               Now it is in the flow of the page, so the content
+               below it is pushed down rather than covered, and the
+               surface is solid - there is nothing behind it to bleed
+               through. */
+            <div className="relative mt-2 mb-4 rounded-2xl border border-emerald-200 dark:border-emerald-500/25 bg-white dark:bg-slate-900 shadow-lg p-4 text-sm z-30">
               <div className="flex items-start justify-between gap-3">
                 {/* The answer, with the agent's emphasis put where it
                     belongs.
 
-                        The agent writes "**Rp 5.965.000**" and the reader
-                        was seeing the asterisks. They are the agent's
-                        punctuation, not the reader's words, so they are
-                        read as emphasis here and never shown. */}
-                <p className="text-gray-700 dark:text-gray-200 leading-relaxed min-w-0 whitespace-pre-wrap break-words">
+                    The agent writes "**Rp 5.965.000**" and the reader
+                    was seeing the asterisks. They are the agent's
+                    punctuation, not the reader's words, so they are
+                    read as emphasis here and never shown. */}
+                <p className="text-gray-700 dark:text-gray-200 leading-relaxed min-w-0 whitespace-pre-wrap break-words flex-1">
                   {busy && activeAction ? (
                     thinking
                   ) : error ? (
@@ -425,14 +462,47 @@ export default function TopAiCommandBar({ userData = {} }) {
                   onClick={() => {
                     setAnswer('');
                     setError('');
+                    setWrittenTransaction(null);
                     setOpen(false);
                   }}
                   aria-label={t('common.close')}
-                  className="shrink-0 p-0.5 rounded text-gray-400 hover:text-gray-700"
+                  className="shrink-0 p-1 -m-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-white/10 transition-colors"
                 >
-                  <X className="w-3.5 h-3.5" aria-hidden="true" />
+                  <X className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
+
+              {/* The proof.
+
+                  The reader was told their lunch was recorded and it
+                  was not. This badge is the transaction itself - the
+                  name, the figure, and a link to the list where it
+                  is - so the reader can go and see it rather than
+                  take the agent's word for it.
+
+                  It is only drawn when the server said a row was
+                  really written. */}
+              {writtenTransaction ? (
+                <Link
+                  to="/transactions"
+                  className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/25 hover:border-emerald-300 transition-colors"
+                >
+                  <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 truncate">
+                    {t('ai_assistant.saved_badge', 'Tersimpan di Transaksi')}:{' '}
+                    <span className="font-semibold">
+                      {writtenTransaction.description}
+                    </span>{' '}
+                    <span className="tabular-nums">
+                      ({writtenTransaction.type === 'income' ? '+' : '-'}
+                      Rp{Number(writtenTransaction.amount || 0).toLocaleString('id-ID')})
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-semibold underline underline-offset-2">
+                    Lihat →
+                  </span>
+                </Link>
+              ) : null}
             </div>
           ) : null}
         </div>

@@ -18,6 +18,7 @@ from app.models.account import Account
 from app.models.user import User
 from app.schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse, TransactionWithDetails
 from app.models.receipt import ReceiptScan
+from app.models.category import Category
 
 def balance_delta(tx_type: str, amount) -> float:
     """
@@ -306,6 +307,37 @@ def create_transaction(
             {"delta": delta, "account_id": transaction.account_id}
         )
     
+    # The category has to match the kind of transaction.
+    #
+    # A reader was shown "Gaji" under their lunch. The transaction was
+    # an expense of Rp 25.000 for "Makan Siang", and it carried the
+    # id of the salary category - an income category - so the list
+    # said the sub-label of a spending was "Gaji".
+    #
+    # Nothing stopped it: the route took whatever category id it was
+    # given. So a category of the wrong kind is put aside, and the
+    # transaction is left without one rather than with a wrong one.
+    # The reader can choose again, and choosing again is better than
+    # being shown a lie.
+    category_id = transaction.category_id
+    if category_id:
+        _category = db.query(Category).filter(Category.id == category_id).first()
+        if _category is None:
+            category_id = None
+        elif _category.type and transaction.type:
+            # "income" and "expense" are the two kinds. A transfer is
+            # neither, so it is allowed to sit under either.
+            if transaction.type != "transfer" and _category.type != transaction.type:
+                logger.info(
+                    "A %s transaction was given the %s category %r, "
+                    "which is not one of its kind. It was left without "
+                    "a category rather than with the wrong one.",
+                    transaction.type,
+                    _category.type,
+                    _category.name,
+                )
+                category_id = None
+
     # Create transaction record
     # items steers the breakdown, it is not a column.
     given_transaction_items = transaction.items or []
@@ -343,7 +375,7 @@ def create_transaction(
         description=transaction.description,
         notes=transaction.notes,
         account_id=transaction.account_id,
-        category_id=transaction.category_id,
+        category_id=category_id,
         recurring_rule_id=transaction.recurring_rule_id,
         detection_type=transaction.detection_type,
         receipt_scan_id=transaction.receipt_scan_id,
@@ -449,6 +481,40 @@ def update_transaction(
         raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = transaction.model_dump(exclude_unset=True)
+
+    # The category has to match the kind of transaction, on an update
+    # as much as on a create.
+    #
+    # A reader was shown "Gaji" under their lunch: an expense that
+    # carried the id of the salary category. The route took whatever
+    # category id it was given, so correcting the description was not
+    # enough - the wrong category had to be corrected too, and a
+    # reader editing the amount did not know that.
+    #
+    # A category of the wrong kind is put aside. The transaction is
+    # left without one rather than with a wrong one.
+    if "category_id" in update_data and update_data["category_id"]:
+        _category = (
+            db.query(Category)
+            .filter(Category.id == update_data["category_id"])
+            .first()
+        )
+        if _category is None:
+            update_data["category_id"] = None
+        elif _category.type and db_transaction.type:
+            if (
+                db_transaction.type != "transfer"
+                and _category.type != db_transaction.type
+            ):
+                logger.info(
+                    "A %s transaction was given the %s category %r, "
+                    "which is not one of its kind. It was left without "
+                    "a category rather than with the wrong one.",
+                    db_transaction.type,
+                    _category.type,
+                    _category.name,
+                )
+                update_data["category_id"] = None
 
     # The balance is only moved by a transaction that is actually counted.
     # A pending transaction has not moved the balance yet, so changing its

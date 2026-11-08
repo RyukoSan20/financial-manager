@@ -390,8 +390,43 @@ class AgentResponse(BaseModel):
     plan: Optional[dict] = None
     actions: List[dict] = []
     needs_confirmation: bool = False
-    data: Optional[dict] = None
+    # The result of what was done.
+    #
+    # It is one result, or several of them. It was typed as one dict,
+    # and the path that works out several answers handed it a list -
+    # so the answer was a validation error, and a 500, on exactly the
+    # request that had understood the reader.
+    data: Optional[Any] = None
     message: str = ""
+    # What was actually written.
+    #
+    # The reply says what happened. This says what was written, and
+    # it carries the id of the row that was written - so a reader (or
+    # the bar) can point at the transaction and see it is there.
+    #
+    # It is only ever set when a row was committed. The agent is not
+    # allowed to say it recorded something it did not record.
+    action_executed: Optional[str] = None
+    transaction: Optional[dict] = None
+    updated_metrics: Optional[dict] = None
+
+
+
+def _written_reply(reply: str, transaction: Dict[str, Any]) -> str:
+    """
+    Say, in plain words, that the transaction is really there.
+
+    The reply the executor builds says what was done in the
+    executor's words. The reader is owed one more sentence: the
+    amount that was written, and the thing it was written for, so
+    they can look for it in the list.
+    """
+    amount = f"Rp{float(transaction.get('amount') or 0):,.0f}"
+    description = transaction.get("description") or "Transaksi"
+    return (
+        f"{reply}\n\n"
+        f"Tersimpan di Transaksi: {description} ({amount})"
+    )
 
 
 def _agent_reply(plan, executed: bool) -> str:
@@ -608,6 +643,18 @@ async def ai_agent(
         )
 
     plan = await execute_plan(db, current_user.id, plan, message, history, display_currency)
+
+    # The work is written, and only then is anything said.
+    #
+    # The order matters. A reply that says "sudah saya catat" - "I
+    # have recorded it" - is a promise about the database, and a
+    # promise made before the write is a promise that can be broken.
+    # The reader was told their lunch was in the ledger and the
+    # ledger did not have it in it.
+    #
+    # So: the commit happens here, the row is read back, and the
+    # figures are taken from the database after the writing rather
+    # than from whatever was in memory before it.
     try:
         db.commit()
     except Exception as exc:  # noqa: BLE001
@@ -622,7 +669,69 @@ async def ai_agent(
             message=str(exc),
         )
 
+    # The row that was written, read back from the database.
+    written_transaction = None
+    action_executed = None
+    for action in plan.actions:
+        if not action.success:
+            continue
+        if action.kind == "add_transaction" and action.result:
+            tx_id = action.result.get("transaction_id")
+            if tx_id:
+                row = db.get(Transaction, tx_id)
+                if row is not None:
+                    db.refresh(row)
+                    written_transaction = {
+                        "id": row.id,
+                        "amount": float(row.amount),
+                        "type": row.type,
+                        "description": row.description,
+                        "date": row.date.isoformat() if row.date else None,
+                        "category_id": row.category_id,
+                        "account_id": row.account_id,
+                        "merchant_name": row.merchant_name,
+                    }
+                    action_executed = "transaction_created"
+                break
+
+    # The figures, taken after the writing.
+    updated_metrics = None
+    try:
+        from app.services.metrics import period_totals
+        from app.services.metrics import month_range
+        from app.services.metrics import total_balance as _balance
+
+        start, end = month_range()
+        _income, _expense = period_totals(db, current_user.id, start, end)
+        # The balance comes back as a dict - the total, the currency
+        # and anything that could not be converted - so the number
+        # the bar shows is the total inside it.
+        _balance_figure = await _balance(db, current_user.id, display_currency)
+        _total = (
+            _balance_figure.get("total")
+            if isinstance(_balance_figure, dict)
+            else _balance_figure
+        )
+        updated_metrics = {
+            "total_balance": float(_total or 0),
+            "monthly_income": float(_income),
+            "monthly_expense": float(_expense),
+            "currency": (
+                _balance_figure.get("currency")
+                if isinstance(_balance_figure, dict)
+                else display_currency
+            ),
+        }
+    except Exception as exc:  # noqa: BLE001 - the writing still stands
+        logger.warning(f"Could not read the updated figures: {exc}")
+
     reply = _agent_reply(plan, executed=True)
+
+    # When a transaction was written, the reply says so in the words
+    # of a person who can then go and look at it.
+    if written_transaction is not None:
+        reply = _written_reply(reply, written_transaction)
+
     first = plan.actions[0] if plan.actions else None
     return AgentResponse(
         success=bool(first and first.success),
@@ -633,6 +742,9 @@ async def ai_agent(
         actions=[a.to_dict() for a in plan.actions],
         data=first.result if first else None,
         message=reply,
+        action_executed=action_executed,
+        transaction=written_transaction,
+        updated_metrics=updated_metrics,
     )
 
 

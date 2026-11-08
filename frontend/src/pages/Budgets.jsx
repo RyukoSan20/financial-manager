@@ -12,6 +12,7 @@ import { formatCurrency, formatDate } from '../utils/format';
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
+import { useOnDataMutated } from '../utils/dataSyncBus';
 import { PageHeader } from '../components/ui/PageHeader';
 import { buildFlag } from '../utils/featureFlags';
 import { categoryName } from '../utils/categoryName';
@@ -65,6 +66,15 @@ export const Budgets = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // The budgets are a share of the reader's money, so a change to
+  // the money changes them.
+  useOnDataMutated(
+    () => {
+      fetchData();
+    },
+    ['transaction']
+  );
 
   const fetchData = async () => {
     setLoading(true);

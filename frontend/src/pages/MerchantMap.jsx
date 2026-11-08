@@ -6,6 +6,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from "re
 import { api } from "../services/api";
 import { formatCurrency } from "../utils/format";
 import { useTranslation } from "../i18n";
+import { useOnDataMutated } from "../utils/dataSyncBus";
 import { IconText } from "../components/ui/IconText";
 import { RefreshCw } from "lucide-react";
 import { buildFlag } from "../utils/featureFlags";
@@ -115,6 +116,15 @@ const MerchantMap = () => {
   }, [markers, selectedCategory, searchQuery]);
 
   // Fetch data
+  // The map shows where the money went, so it hears about every
+  // write to a transaction.
+  useOnDataMutated(
+    () => {
+      fetchData();
+    },
+    ['transaction']
+  );
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);

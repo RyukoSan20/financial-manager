@@ -13,8 +13,6 @@
 // have them. Those are the fallback when the translation files do not
 // have the key yet.
 
-import { useTranslation } from '../i18n';
-
 // The built-in categories, in the three languages. The key is the same
 // one the database carries.
 export const BUILT_IN_CATEGORIES = {
@@ -167,10 +165,4 @@ export function categoryKey(category) {
   if (typeof category === 'string') return NAME_TO_KEY[category] || null;
   if (category.system_key) return category.system_key;
   return NAME_TO_KEY[category.name] || null;
-}
-
-// The same, but it follows the language of the reader.
-export function useCategoryName() {
-  const { language } = useTranslation();
-  return (category) => categoryName(category, language);
 }

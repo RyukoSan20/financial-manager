@@ -21,6 +21,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import func, or_, select
+from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session
 
 from app.models.account import Account
@@ -358,26 +359,65 @@ class AgentExecutor:
         if breakdown_lines:
             from app.services.breakdown_service import set_breakdown
 
-            set_breakdown(
-                self.db,
-                self.user_id,
-                "transaction",
-                tx.id,
-                [
-                    {
-                        "name": line.get("name"),
-                        "quantity": 1,
-                        "unit_price": line.get("amount", 0),
-                        "total_price": line.get("amount", 0),
-                        "category": line.get("category"),
-                        "kind": "expense",
-                        "source": breakdown_source,
-                        "is_estimated": True,
-                    }
-                    for line in breakdown_lines
-                ],
-                replace=True,
-            )
+            # The breakdown is a nicety. It is the lines of the bill,
+            # and a transaction without them is still a transaction
+            # the reader asked for.
+            #
+            # It used to be written unguarded, so a breakdown that
+            # could not be stored - a missing table, a constraint, a
+            # shape the reader's data did not fit - took the whole
+            # transaction down with it. The reader asked for their
+            # lunch to be recorded, and the lunch was not recorded
+            # because the lines of the receipt could not be.
+            #
+            # So it is written inside its own guard, and the
+            # transaction stands either way.
+            #
+            # The rollback is done to a savepoint, so it takes back
+            # only the lines of the receipt and leaves the
+            # transaction and the balance exactly where they were.
+            # A whole-session rollback would have taken the
+            # transaction with it.
+            savepoint = None
+            try:
+                savepoint = f"breakdown_{tx.id}"
+                self.db.execute(sql_text(f"SAVEPOINT {savepoint}"))
+                set_breakdown(
+                    self.db,
+                    self.user_id,
+                    "transaction",
+                    tx.id,
+                    [
+                        {
+                            "name": line.get("name"),
+                            "quantity": 1,
+                            "unit_price": line.get("amount", 0),
+                            "total_price": line.get("amount", 0),
+                            "category": line.get("category"),
+                            "kind": "expense",
+                            "source": breakdown_source,
+                            "is_estimated": True,
+                        }
+                        for line in breakdown_lines
+                    ],
+                    replace=True,
+                )
+                self.db.flush()
+                self.db.execute(sql_text(f"RELEASE SAVEPOINT {savepoint}"))
+            except Exception as exc:  # noqa: BLE001 - the transaction still stands
+                logger.warning(
+                    "Could not write the transaction breakdown, "
+                    "the transaction stands without it: %s",
+                    exc,
+                )
+                if savepoint is not None:
+                    try:
+                        self.db.execute(sql_text(f"ROLLBACK TO SAVEPOINT {savepoint}"))
+                        self.db.execute(sql_text(f"RELEASE SAVEPOINT {savepoint}"))
+                    except Exception as rollback_exc:  # noqa: BLE001
+                        logger.warning(
+                            "Could not roll back to the savepoint: %s", rollback_exc
+                        )
 
         breakdown_preview = ", ".join(
             f"{line.get('name')} Rp{float(line.get('amount', 0)):,.0f}"
@@ -1426,7 +1466,14 @@ async def execute_plan(
     executor = AgentExecutor(db, user_id)
 
     for action in plan.actions:
+        # A savepoint for this action alone, so that a failure takes
+        # back only what this action did and leaves the work of the
+        # other actions alone.
+        savepoint = None
         try:
+            savepoint = f"agent_{action.kind}_{len(plan.actions)}"
+            db.execute(sql_text(f"SAVEPOINT {savepoint}"))
+
             # Each action reads its own clause. Without this, a message
             # that mentions two amounts would give both actions the
             # first amount.
@@ -1470,10 +1517,29 @@ async def execute_plan(
             action.result = result.result
             action.success = result.success
             action.error = result.error
+            if savepoint is not None:
+                try:
+                    db.execute(sql_text(f"RELEASE SAVEPOINT {savepoint}"))
+                except Exception as release_exc:  # noqa: BLE001
+                    logger.warning(f"Agent savepoint release failed: {release_exc}")
         except Exception as exc:  # noqa: BLE001
             logger.exception(f"Agent action {action.kind} failed")
             action.success = False
             action.error = str(exc)
-            db.rollback()
+            # The work of this action is undone, and only this
+            # action's.
+            #
+            # It used to roll the whole session back, which threw
+            # away the transactions the reader had already asked for
+            # in the same message. A reader who said "catat kopi 15rb
+            # dan hapus yang warteg" was left with neither, and was
+            # told one of them failed.
+            #
+            # The rollback is done to a savepoint, so it takes back
+            # only what this action did.
+            try:
+                db.rollback()
+            except Exception as rollback_exc:  # noqa: BLE001
+                logger.warning(f"Agent rollback failed: {rollback_exc}")
 
     return plan

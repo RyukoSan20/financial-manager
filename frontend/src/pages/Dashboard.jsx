@@ -21,6 +21,7 @@ import { useCurrency } from '../utils/currency';
 import api, { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../config/url';
 import { useTranslation } from '../i18n';
+import { useOnDataMutated } from '../utils/dataSyncBus';
 import { categoryName, categoryKey, transactionCategoryName } from '../utils/categoryName';
 import TopAiCommandBar from '../components/ai/TopAiCommandBar';
 import ReadinessChecklist from '../components/ReadinessChecklist';
@@ -397,6 +398,21 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // Yahoo returns HTTP 429 for datacenter IPs, so that endpoint served empty
   // quote lists (and fell through to the SPA fallback returning HTML).
   // The unified endpoint uses TradingView, which is reachable and live.
+  // The page hears about every write to a transaction.
+  //
+  // The dashboard shows the balance, the spending and the count of
+  // transactions. A reader who recorded one in the bar at the top of
+  // this page, or on the add page, was shown the figures from before
+  // they recorded it, until they pressed the browser's refresh
+  // button.
+  useOnDataMutated(
+    () => {
+      fetchData();
+      fetchCashFlow();
+    },
+    ['transaction']
+  );
+
   const fetchMarketData = useCallback(async () => {
     try {
       const response = await fetch(apiUrl('market/summary'), {

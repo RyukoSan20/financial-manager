@@ -522,6 +522,26 @@ async def google_callback(request: GoogleAuthRequest, db: Session = Depends(get_
 # === Profile Endpoints ===
 
 @router.get("/me")
+
+def _reader_avatar(user) -> Optional[str]:
+    """
+    The picture of a reader.
+
+    It is the one they chose, and nothing else.
+
+    The Google picture is not it. A reader who signed in with Google
+    was shown their Google photo on their profile, in the sidebar and
+    in the header: a picture of a person, from a server we do not
+    control, over a connection we do not own, and a licence question
+    nobody asked about.
+
+    The application has four drawn pictures of its own, and the
+    reader chooses one of them. So the picture that is stored is the
+    only picture that is given out.
+    """
+    return getattr(user, "avatar_url", None) or None
+
+
 def get_me(current_user: User = Depends(get_current_user)):
     """Get current user profile."""
     return {
@@ -530,7 +550,7 @@ def get_me(current_user: User = Depends(get_current_user)):
         "username": current_user.username,
         "full_name": current_user.full_name,
         "phone": getattr(current_user, 'phone', None),
-        "avatar_url": getattr(current_user, 'avatar_url', None) or getattr(current_user, 'google_picture', None),
+        "avatar_url": _reader_avatar(current_user),
         "is_active": current_user.is_active,
         "is_guest": getattr(current_user, 'is_guest', False),
         "created_at": current_user.created_at.isoformat() if current_user.created_at else None,

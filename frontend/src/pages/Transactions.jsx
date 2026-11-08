@@ -15,6 +15,8 @@ import ItemizedReceiptEditorModal from '../components/transactions/ItemizedRecei
 import TransactionEditForm from '../components/transactions/TransactionEditForm';
 import ReceiptReviewModal from '../components/transactions/ReceiptReviewModal';
 import { categoryName } from '../utils/categoryName';
+import { transactionLabel } from '../utils/transactionLabel';
+import { emitDataMutated, useOnDataMutated } from '../utils/dataSyncBus';
 import { useTranslation } from '../i18n';
 import { batch1, fill } from '../i18n/keys_batch1';
 import { toast } from '../contexts/ToastContext';
@@ -205,12 +207,27 @@ export const Transactions = () => {
     }
   };
 
+  // The page listens for what other pages wrote.
+  //
+  // A reader who records a transaction in the bar at the top of the
+  // dashboard, or on the add page, was shown a list that did not
+  // know about it until they pressed the browser's refresh button.
+  //
+  // The list is the truth about the reader's spending, so it hears
+  // about every write to it and asks the server again.
+  useOnDataMutated(
+    () => {
+      fetchData();
+    },
+    ['transaction']
+  );
+
   const handleDelete = async (id) => {
     if (!(await ask({ message: K.deleteConfirm, tone: 'danger' }))) return;
     try {
       await api.transactions.delete(id);
       fetchData();
-      window.dispatchEvent(new Event('transactionUpdated'));
+      emitDataMutated('transaction');
     } catch (err) {
       console.error('Failed to delete transaction:', err);
       toast.error(fill(K.deleteFailed, { message: err.message || K.unknown }));
@@ -303,7 +320,7 @@ export const Transactions = () => {
     });
 
     fetchData();
-    window.dispatchEvent(new Event('transactionUpdated'));
+    emitDataMutated('transaction');
   };
 
   // Edit functions
@@ -370,7 +387,7 @@ export const Transactions = () => {
       setEditingTx(null);
       setEditForm({});
       fetchData();
-      window.dispatchEvent(new Event('transactionUpdated'));
+      emitDataMutated('transaction');
     } catch (err) {
       console.error('Failed to update transaction:', err);
       toast.error(fill(K.updateFailed, { message: err.message || K.unknown }));
@@ -718,8 +735,30 @@ export const Transactions = () => {
                                 </span>
                               )}
                             </div>
+                            {/* The line under the description.
+
+                                It is the category and the
+                                sub-category together: "Makanan &
+                                Minuman" alone does not say whether
+                                this was coffee or groceries, and
+                                this is exactly where the reader
+                                wants to tell them apart.
+
+                                The sub-category is only shown when
+                                it belongs to the category that is
+                                shown. A tag from another category
+                                is not the sub-label of this one -
+                                "Gaji" under "Makan Siang" was the
+                                reader being told their lunch was
+                                salary. */}
                             <p className="text-sm text-gray-500 truncate">
-                              {(category ? categoryName(category, language) : null) || account?.name || K.unknown}
+                              {transactionLabel({
+                                tx,
+                                category,
+                                account,
+                                language,
+                                unknown: K.unknown,
+                              })}
                             </p>
                           </div>
                         </div>

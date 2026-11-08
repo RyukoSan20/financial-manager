@@ -7,6 +7,7 @@ import { useTranslation } from '../i18n';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import api from '../services/api';
 import { useCurrency, CURRENCIES, CURRENCY_CODES } from '../utils/currency';
+import { getUserAvatarUrl } from '../utils/avatarHelper';
 import ReadinessChecklist from '../components/ReadinessChecklist';
 import PrivacyPage from './Settings/PrivacyPage';
 import { toast } from '../contexts/ToastContext';
@@ -132,17 +133,18 @@ export const Settings = () => {
           {passport && (
             <Card className="p-4 settings-glass">
               <div className="flex items-center gap-3">
-                {passport.avatar_url ? (
-                  <img
-                    src={passport.avatar_url}
-                    alt=""
-                    className="w-11 h-11 rounded-xl object-cover"
-                  />
-                ) : (
-                  <div className="w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-semibold text-sm shrink-0">
-                    {passport.initials}
-                  </div>
-                )}
+                {/* The picture of the reader.
+
+                    It is always one of ours - never the Google
+                    photo the reader signed in with. */}
+                <img
+                  src={getUserAvatarUrl(passport)}
+                  alt=""
+                  className="w-11 h-11 rounded-xl object-cover bg-emerald-50"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                     {passport.name}

@@ -165,12 +165,27 @@ export default function Onboarding() {
   const Icon = step.icon;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm relative">
+    <div className="shape-card rounded-2xl p-5 relative overflow-hidden">
+      {/* The wash behind the card.
+
+          The onboarding is the first thing a new reader sees, so it
+          should not look like every other white rectangle on the
+          page. A faint tint of the accent says "this is the way in"
+          without a loud banner. */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            'radial-gradient(110% 100% at 0% 0%, rgba(16,185,129,0.10) 0%, rgba(16,185,129,0) 58%)',
+        }}
+        aria-hidden="true"
+      />
+
       <button
         type="button"
         onClick={close}
         aria-label={K.onboarding_dismiss}
-        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
       >
         <X className="w-4 h-4" />
       </button>
@@ -180,23 +195,45 @@ export default function Onboarding() {
           looks up while the reader is still working through the steps,
           and it cheers when the last one is done. */}
       <div className="flex items-center gap-2">
-        <FinBuddyMascot mood={current === total - 1 ? 'celebrating' : 'thinking'} size={32} />
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        <span className="w-8 h-8 rounded-lg bg-emerald-100/80 dark:bg-emerald-500/15 flex items-center justify-center shrink-0">
+          <FinBuddyMascot mood={current === total - 1 ? 'celebrating' : 'thinking'} size={24} />
+        </span>
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
           {K.onboarding_step_of
             .replace('{current}', String(current + 1))
             .replace('{total}', String(total))}
         </p>
       </div>
 
-      <div className="flex items-start gap-3 mt-3">
-        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center">
+      {/* The stepper.
+
+          "Langkah 1 dari 4" tells the reader where they are in a
+          sentence. Four dots tell them the same thing at a glance,
+          and the space it takes is nothing. */}
+      <div className="flex items-center gap-1.5 mt-3" aria-hidden="true">
+        {pending.map((_, index) => (
+          <span
+            key={index}
+            className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ${
+              index === current
+                ? 'w-6 bg-emerald-500'
+                : index < current
+                  ? 'w-1.5 bg-emerald-300 dark:bg-emerald-700'
+                  : 'w-1.5 bg-slate-200 dark:bg-white/15'
+            }`}
+          />
+        ))}
+      </div>
+
+      <div className="flex items-start gap-3 mt-4">
+        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-500/15 dark:text-primary-300 flex items-center justify-center">
           <Icon className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0 pr-6">
           <h3 className="font-semibold text-gray-900 dark:text-white">
             {K[step.title]}
           </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">
             {K[step.body]}
           </p>
         </div>
@@ -206,10 +243,10 @@ export default function Onboarding() {
         <button
           type="button"
           onClick={() => navigate(step.href)}
-          className="px-3 py-1.5 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 flex items-center gap-1"
+          className="inline-flex items-center gap-1 px-3.5 py-2 bg-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition-colors"
         >
           {K.onboarding_next}
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-4 h-4" aria-hidden="true" />
         </button>
         {current > 0 && (
           <button

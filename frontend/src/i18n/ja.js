@@ -135,6 +135,7 @@ export default {
     to: "まで",
     currency: "¥",
     refresh: "更新",
+    saving: "保存中...",
   },
   
   // Navigation
@@ -509,6 +510,8 @@ export default {
     account_count: "%count%件の口座",
     receipts_scanned: "レシートを%count%枚スキャン",
     active_days_30: "過去30日のアクティブ日数: %count%日",
+    change_avatar: "アバターアイコンを変更",
+    choose_avatar: "アバターアイコンを選択",
   },
 
   // Category Expenses
@@ -1664,6 +1667,7 @@ export default {
     quick_goal: '🎯 目標を確認',
     quick_analysis_prompt: '今月の家計を分析してください。孰が最も出金が多いか、そして最初に直すべき点は何か教えてください。',
     quick_record_prompt: '買ったものを入力してください（例：「Kopi Jago 10rb」）。',
+    saved_badge: "取引に保存されました",
   },
   passport: {
     count: {

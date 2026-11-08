@@ -11,6 +11,7 @@ import ItemizedBillEditor from "../transactions/ItemizedBillEditor.jsx";
 import { createGroup, addMember, createExpense, assignItems } from "../../services/splitApi";
 import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
 import { useTranslation } from "../../i18n";
+import { emitDataMutated } from "../../utils/dataSyncBus";
 import { IconText } from "../ui/IconText";
 import { X } from "lucide-react";
 import { buildFlag } from "../../utils/featureFlags";
@@ -910,6 +911,11 @@ const AddTransactionPage = () => {
           to_account_id: toAccountId,
         });
 
+        // The world is told. A transfer moves the money between two
+        // of the reader's own accounts, so every page that shows a
+        // balance is out of date by the amount that moved.
+        emitDataMutated('transaction');
+
         // Create fee as expense if any
         if (parseNumber(transferFee) > 0) {
           await api.transactions.create({
@@ -921,6 +927,7 @@ const AddTransactionPage = () => {
             category_id: getFeeCategory(),
             client_request_id: `${transactionRequestId}-fee`,
           });
+          emitDataMutated('transaction');
         }
       } else {
         // Where it happened, if the reader said.
@@ -952,6 +959,23 @@ const AddTransactionPage = () => {
           // The sub-category the reader chose, if they chose one.
           tags: subCategoryKey || undefined,
           ...place,
+        });
+
+        // The world is told.
+        //
+        // A reader who recorded their lunch here and then went to
+        // their profile was shown the balance they had before they
+        // recorded it. Every page that shows the consequence of a
+        // transaction is now told about it, so they can ask the
+        // server again.
+        //
+        // It is said after the write has been confirmed, never
+        // before: a page that refetches on the strength of a write
+        // that then failed shows a number that is not true.
+        emitDataMutated('transaction', {
+          id: created?.id,
+          amount: finalAmount,
+          type,
         });
 
         // The receipt is written down after the transaction, because

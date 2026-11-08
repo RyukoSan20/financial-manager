@@ -222,10 +222,10 @@ async def get_profile_summary(
             "username": current_user.username,
             "full_name": current_user.full_name,
             "phone": getattr(current_user, "phone", None),
-            "avatar_url": (
-                getattr(current_user, "avatar_url", None)
-                or getattr(current_user, "google_picture", None)
-            ),
+            # The picture the reader chose. Never the Google photo:
+            # the application has four drawn pictures of its own, and
+            # the reader picks one of them.
+            "avatar_url": getattr(current_user, "avatar_url", None) or None,
             "display_name": display_name,
             "initials": initials,
             "is_verified": getattr(current_user, "is_verified", False),

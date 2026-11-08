@@ -437,14 +437,37 @@ def extract_description(message: str, amount_span: str) -> str:
     """
     text = re.sub(r"\s+", " ", (amount_span or message)).strip()
 
-    # Remove the transaction verb and the words around it.
-    text = re.sub(
-        r"^\s*(tambah|tambahkan|catat|c speedy|add|record|beli|bayar|"
-        r"pengeluaran|pengeluaran|expense|makan|untuk)\s+",
-        "",
-        text,
-        flags=re.IGNORECASE,
+    # The words that make up an instruction rather than a
+    # description.
+    #
+    # "catat pengeluaran Rp45.000 untuk Indomie Goreng" is an
+    # instruction and a description. The reader's own description of
+    # their lunch is "Indomie Goreng", not "pengeluaran untuk Indomie
+    # Goreng" - so the words that belong to the instruction are
+    # taken off the front.
+    #
+    # It is done in a loop, because a message can carry several of
+    # them in a row, and the number of them is not known in
+    # advance.
+    _LEADING = (
+        r"tambah|tambahkan|catat|c speedy|add|record|beli|bayar|"
+        r"pengeluaran|pengeluaran|expense|makan|untuk|untuk|at|for|"
+        r"sebesar|seharga|harga|sejumlah|senilai"
     )
+    for _ in range(6):
+        _before = text
+        text = re.sub(
+            r"^\s*(?:" + _LEADING + r")\s+",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
+        # The currency word can be left behind by the number that was
+        # taken out, and it is not joined to the next word.
+        text = re.sub(r"^\s*(?:rp|rupiah)\s+", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s{2,}", " ", text)
+        if text == _before:
+            break
     # A delete instruction carries its own verb and the word "transaksi".
     text = re.sub(
         r"^\s*(hapus|hilangkan|remove|delete)\s+",

@@ -24,11 +24,14 @@ import {
   ChevronRight,
   Loader2,
   AlertTriangle,
+  Palette,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatCurrency } from '../utils/format';
+import { getUserAvatarUrl, builtInAvatarOptions } from '../utils/avatarHelper';
 import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { useTranslation } from '../i18n';
+import { useOnDataMutated } from '../utils/dataSyncBus';
 
 const StatTile = ({ icon: Icon, label, value, tone = 'neutral', sublabel }) => {
   const tones = {
@@ -55,6 +58,11 @@ const ProfileSummary = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Whether the reader is choosing a picture.
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  // The picture being chosen.
+  const [avatarChoice, setAvatarChoice] = useState(null);
+  const [savingAvatar, setSavingAvatar] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,6 +81,43 @@ const ProfileSummary = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  // The profile is the reader's own summary of their money, so it
+  // hears about every write to a transaction and asks the server
+  // again. A reader who recorded their lunch and then came here was
+  // shown the spending from before they recorded it.
+  useOnDataMutated(
+    () => {
+      load();
+    },
+    ['transaction']
+  );
+
+  /**
+   * Choose one of our pictures.
+   *
+   * The picture is the reader's own, and it is one of ours. It is
+   * written to the profile, and the page reads it back, so the
+   * picture in the sidebar is the same one that is here.
+   */
+  const saveAvatar = async (option) => {
+    if (savingAvatar) return;
+    setSavingAvatar(true);
+    setAvatarChoice(option.key);
+    try {
+      await api.request('/me', {
+        method: 'PUT',
+        body: JSON.stringify({ avatar_url: option.key }),
+      });
+      await load();
+      setShowAvatarPicker(false);
+    } catch (err) {
+      console.error('The picture could not be saved:', err);
+      setAvatarChoice(null);
+    } finally {
+      setSavingAvatar(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -129,23 +174,50 @@ const ProfileSummary = () => {
         {/* Identity card */}
         <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
           <div className="flex items-start gap-4">
-            {identity.avatar_url ? (
+            {/* The picture of the reader.
+
+                It is always one of ours. A reader who signed in with
+                Google kept seeing their Google photo here - a
+                picture of a person rather than a picture of a
+                reader, from a server we do not control. */}
+            {/* The picture, and the button that changes it.
+
+                The picture and the button are one column, so the
+                button is directly under the thing it changes. */}
+            <div className="flex flex-col items-center gap-1.5 shrink-0">
               <img
-                src={identity.avatar_url}
+                src={getUserAvatarUrl(identity)}
                 alt={identity.display_name}
-                className="w-16 h-16 rounded-full object-cover border-2 border-primary-100"
+                className="w-16 h-16 rounded-full object-cover border-2 border-primary-100 bg-primary-50"
                 onError={(e) => {
-                  // Fall back to the initials avatar if the image URL breaks.
+                  // The drawn picture is the last line of defence: if
+                  // even that fails, the initials are shown.
                   e.currentTarget.style.display = 'none';
                   e.currentTarget.nextElementSibling?.style.setProperty('display', 'flex');
                 }}
               />
-            ) : null}
-            <div
-              className="w-16 h-16 rounded-full bg-primary-600 text-white flex items-center justify-center text-xl font-bold shrink-0"
-              style={{ display: identity.avatar_url ? 'none' : 'flex' }}
-            >
-              {identity.initials}
+              <div
+                className="w-16 h-16 rounded-full bg-primary-600 text-white flex items-center justify-center text-xl font-bold shrink-0 -mt-16"
+                style={{ display: 'none' }}
+              >
+                {identity.initials}
+              </div>
+
+              {/* Choose another of our pictures.
+
+                  The reader's picture is theirs to choose, and the
+                  four we have are drawn by us - so they always work,
+                  they are always the same size, and they never
+                  point at a server we do not control. */}
+              <button
+                type="button"
+                onClick={() => setShowAvatarPicker((v) => !v)}
+                aria-expanded={showAvatarPicker}
+                className="text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline inline-flex items-center gap-1 whitespace-nowrap"
+              >
+                <Palette className="w-3.5 h-3.5" aria-hidden="true" />
+                {t('profile.change_avatar', 'Ubah Ikon Avatar')}
+              </button>
             </div>
 
             <div className="min-w-0 flex-1">
@@ -167,6 +239,52 @@ const ProfileSummary = () => {
               )}
             </div>
           </div>
+
+          {/* The four pictures.
+
+              They are drawn by us, so they always work, they are
+              always the same size, and they never point at a server
+              we do not control. The reader picks one and it is
+              theirs, here and in the sidebar and in the header. */}
+          {showAvatarPicker ? (
+            <div className="mt-4 rounded-xl bg-gray-50 dark:bg-white/5 p-3 border border-gray-100 dark:border-white/10">
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2.5">
+                {t('profile.choose_avatar', 'Pilih ikon avatar')}
+              </p>
+              <div className="flex flex-wrap gap-2.5">
+                {builtInAvatarOptions().map((option) => {
+                  const chosen =
+                    (avatarChoice || identity.avatar_url || '').includes(option.key);
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => saveAvatar(option)}
+                      disabled={savingAvatar}
+                      aria-label={option.name}
+                      aria-pressed={chosen}
+                      className={`w-12 h-12 rounded-full overflow-hidden ring-2 transition-all duration-150 disabled:opacity-50 ${
+                        chosen
+                          ? 'ring-primary-500 ring-offset-2 dark:ring-offset-gray-800'
+                          : 'ring-transparent hover:ring-primary-300'
+                      }`}
+                    >
+                      <img
+                        src={option.url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+              {savingAvatar ? (
+                <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                  {t('common.saving', 'Menyimpan...')}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 space-y-2">
             {identity.phone && (

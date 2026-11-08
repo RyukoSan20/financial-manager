@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { User as UserIcon, ChevronRight, Loader2, History, Mail, CalendarDays, Activity } from 'lucide-react';
 import { api } from '../../services/api';
 import { formatCurrency } from '../../utils/format';
+import { getUserAvatarUrl } from '../../utils/avatarHelper';
 import { formatTanggal } from '../../utils/idFormat';
 import { useTranslation } from '../../i18n';
 import { batch3 } from '../../i18n/keys_batch3';
@@ -50,7 +51,13 @@ export const UserProfileSection = ({ variant = 'menu', onNavigate }) => {
   const displayName = identity?.display_name || 'Pengguna';
   const displayEmail = identity?.email || '';
   const initials = identity?.initials || 'U';
-  const avatarUrl = identity?.avatar_url;
+  // The picture of the reader.
+  //
+  // It is always one of ours. A reader who signed in with Google
+  // kept seeing their Google photo here, in the sidebar, in the
+  // header - a picture of a person rather than a picture of a
+  // reader, from a server we do not control.
+  const avatarUrl = getUserAvatarUrl(identity);
 
   const activeDays = stats?.active_days ?? 0;
   const streak = stats?.current_streak ?? 0;
