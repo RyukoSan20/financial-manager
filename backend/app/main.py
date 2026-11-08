@@ -285,6 +285,25 @@ def _run_schema_migrations():
             except Exception as e:
                 print(f"[MIGRATION] shopping_items: {e}")
 
+            # The line items inside a financial record. This table was
+            # created by the models at startup and was never migrated,
+            # so alembic did not know about it and a database that was
+            # built any other way did not have it. A request that wrote
+            # a breakdown answered "no such table: breakdown_items".
+            #
+            # It is made here from the model's own definition, so the
+            # startup path and the migration cannot disagree about
+            # what it looks like.
+            try:
+                if 'breakdown_items' not in existing_tables:
+                    from app.models.breakdown_item import BreakdownItem
+
+                    BreakdownItem.__table__.create(bind=conn, checkfirst=True)
+                    conn.commit()
+                    print("[MIGRATION] Created breakdown_items table")
+            except Exception as e:
+                print(f"[MIGRATION] breakdown_items: {e}")
+
     except Exception as e:
         print(f"[MIGRATION] Warning: {e}")
 

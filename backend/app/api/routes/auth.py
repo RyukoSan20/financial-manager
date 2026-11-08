@@ -521,8 +521,6 @@ async def google_callback(request: GoogleAuthRequest, db: Session = Depends(get_
 
 # === Profile Endpoints ===
 
-@router.get("/me")
-
 def _reader_avatar(user) -> Optional[str]:
     """
     The picture of a reader.
@@ -542,6 +540,7 @@ def _reader_avatar(user) -> Optional[str]:
     return getattr(user, "avatar_url", None) or None
 
 
+@router.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):
     """Get current user profile."""
     return {

@@ -22,6 +22,23 @@ def _add_app_to_path():
         sys.path.insert(0, backend)
 
 
+# The table of the line items inside a financial record.
+#
+# It was created by the models at startup and was never migrated, so
+# it was there but alembic did not know about it. A database that was
+# built any other way did not have it at all, and a request that
+# wrote a breakdown answered "no such table: breakdown_items".
+#
+# So it is checked here, and the check is what says so out loud.
+BREAKDOWN_TABLE = "breakdown_items"
+
+BREAKDOWN_COLUMNS = (
+    "id", "user_id", "parent_type", "parent_id", "name",
+    "quantity", "unit_price", "total_price", "category", "kind",
+    "is_discount", "notes", "source", "is_estimated",
+    "created_at", "updated_at",
+)
+
 # The tables a shared bill is made of.
 SPLIT_TABLES = (
     "split_groups",
@@ -87,6 +104,21 @@ def main():
         else:
             print(f"::error::the table {table} is missing")
             missing.append(table)
+
+    # The line items, and every column the model declares. A table
+    # that is there but half made is as broken as one that is not there
+    # at all.
+    breakdown_columns = _columns_for(engine, BREAKDOWN_TABLE)
+    if not breakdown_columns:
+        print(f"::error::the table {BREAKDOWN_TABLE} is missing")
+        missing.append(BREAKDOWN_TABLE)
+    else:
+        for column in BREAKDOWN_COLUMNS:
+            if column in breakdown_columns:
+                print(f"the column {BREAKDOWN_TABLE}.{column} is there")
+            else:
+                print(f"::error::the column {BREAKDOWN_TABLE}.{column} is missing")
+                missing.append(f"{BREAKDOWN_TABLE}.{column}")
 
     if missing:
         print(f"::error::missing: {', '.join(missing)}")
