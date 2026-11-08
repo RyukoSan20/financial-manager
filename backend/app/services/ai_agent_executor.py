@@ -992,6 +992,47 @@ class AgentExecutor:
 
     # -- query ------------------------------------------------------------
 
+    async def query_analysis(self, message: str) -> AgentAction:
+        """
+        The whole picture, from the reader's own numbers.
+
+        "analisis keuangan saya" is the question the dashboard's own
+        quick action asks. It was answered with a balance, because the
+        word "keuangan" is not in any subject's list and the fallback
+        was the budgets.
+
+        So the analysis is read here, from the ledger, without asking
+        anyone's computer. It is the same analysis the dashboard shows,
+        and it cannot fail: every part of it that could fail is caught
+        where it fails.
+        """
+        try:
+            from app.services.financial_analysis import (
+                deterministic_analysis,
+                render_analysis,
+            )
+
+            analysis = await deterministic_analysis(self.db, self.user_id)
+            reply = render_analysis(analysis)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"Deterministic analysis failed: {exc}")
+            return AgentAction(
+                kind="query_analysis",
+                description=(
+                    "Maaf, analisisnya belum bisa dihitung sekarang. "
+                    "Coba lagi sebentar lagi."
+                ),
+                success=False,
+                error=str(exc),
+            )
+
+        return AgentAction(
+            kind="query_analysis",
+            description=reply,
+            success=True,
+            result={"analysis": analysis},
+        )
+
     async def query_advice(
         self,
         message: str,
@@ -1133,6 +1174,49 @@ class AgentExecutor:
             result={"total": total, "period": "month", "categories": parts},
         )
 
+    def query_income(self, message: str) -> AgentAction:
+        """
+        Report this month's income, split by category.
+
+        "berapa pemasukan saya" is a question about the money that came
+        in. It was answered with the budgets, because there was no read
+        for the income at all and the budgets were what the question
+        fell back to. A reader asking where their money came from was
+        told about the money they had planned to spend.
+        """
+        today = date.today()
+        start = date(today.year, today.month, 1)
+
+        rows = self.db.execute(
+            select(Transaction.category_id, func.sum(Transaction.amount))
+            .where(
+                Transaction.user_id == self.user_id,
+                Transaction.type == "income",
+                *counted_transactions_filter(),
+                Transaction.date >= start,
+            )
+            .group_by(Transaction.category_id)
+        ).all()
+
+        total = sum(float(amount or 0) for _, amount in rows)
+        parts = []
+        for category_id, amount in rows:
+            name = "Lainnya"
+            if category_id is not None:
+                category = self.db.get(Category, category_id)
+                if category is not None:
+                    name = category.name
+            parts.append(f"{name}: Rp{float(amount or 0):,.0f}")
+        parts.sort(key=lambda part: part, reverse=True)
+
+        return AgentAction(
+            kind="query_income",
+            description=f"Pemasukan bulan ini Rp{total:,.0f}"
+            + (f" ({'; '.join(parts)})" if parts else ""),
+            success=True,
+            result={"total": total, "period": "month", "categories": parts},
+        )
+
     def query_goals(self, message: str) -> AgentAction:
         """Report the user's savings goals."""
         rows = self.db.execute(
@@ -1251,15 +1335,26 @@ class AgentExecutor:
 # Which read answers a question. The order matters: the first subject
 # whose words appear in the message wins.
 _QUERY_SUBJECTS = (
+    # The analysis comes first. "analisis keuangan saya bulan ini"
+    # mentions money and a month, and both of those words belong to
+    # other subjects - so it was answered with a balance instead of
+    # the analysis the reader asked for.
+    ("query_analysis", ("analisis", "analysis", "ringkasan keuangan", "evaluasi")),
     ("query_budgets", ("budget", "anggaran", "batas", "limit")),
+    # "uang" alone belongs to the balance, not to the income, or
+    # "berapa uang saya" would be answered with the income. The
+    # income says "uang masuk" when it means the money that came in.
+    ("query_income", ("pemasukan", "income", "gaji", "salary", "pendapatan", "uang masuk")),
     ("query_balance", ("saldo", "balance", "duit", "uang", "sisa")),
     ("query_expenses", ("pengeluaran", "expense", "belanja", "biaya", "habis")),
-    ("query_goals", ("target", "goal", "tujuan", "cita")),
+    ("query_goals", ("target", "goal", "tujuan", "cita", "tabungan")),
     ("query_transactions", ("transaksi", "transaction", "riwayat", "history")),
 )
 
 _QUERY_DESCRIPTIONS = {
+    "query_analysis": "Menganalisis keuangan secara menyeluruh",
     "query_budgets": "Menampilkan informasi anggaran",
+    "query_income": "Menampilkan ringkasan pemasukan",
     "query_balance": "Menampilkan saldo saat ini",
     "query_expenses": "Menampilkan ringkasan pengeluaran",
     "query_goals": "Menampilkan target tabungan",
@@ -1293,8 +1388,8 @@ _ACTION_DESCRIPTIONS = {
 # The actions that only read. They can run together with the ones that
 # write, because a read cannot break anything.
 _READ_ACTIONS = {
-    "query_budgets", "query_balance", "query_expenses", "query_goals",
-    "query_transactions", "query_advice",
+    "query_analysis", "query_budgets", "query_balance", "query_expenses",
+    "query_income", "query_goals", "query_transactions", "query_advice",
 }
 
 
@@ -1499,6 +1594,14 @@ async def execute_plan(
                 result = await executor.query_balance(text)
             elif action.kind == "query_expenses":
                 result = executor.query_expenses(text)
+            elif action.kind == "query_income":
+                result = executor.query_income(text)
+            elif action.kind == "query_analysis":
+                # The analysis is the reader's own numbers, read
+                # without asking anyone's computer. It cannot fail,
+                # because every part of it that could fail is caught
+                # where it fails.
+                result = await executor.query_analysis(text)
             elif action.kind == "query_goals":
                 result = executor.query_goals(text)
             elif action.kind == "query_transactions":

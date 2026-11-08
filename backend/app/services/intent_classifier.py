@@ -79,6 +79,10 @@ QUESTION_WORDS = {
     "dimana": 0.9, "where": 0.7, "mana": 0.7, "which": 0.7,
     "cek": 0.7, "check": 0.6, "lihat": 0.6, "show": 0.6,
     "tampilkan": 0.7, "cari": 0.7, "find": 0.6,
+    # Asking for the analysis is asking a question, even though the
+    # words "analisis keuangan saya" carry no question mark and no
+    # interrogative. The reader is asking to be shown the picture.
+    "analisis": 0.7, "analysis": 0.7, "evaluasi": 0.7,
 }
 
 # Words that ask for advice rather than for an action.
@@ -534,11 +538,19 @@ def analyze(message: str) -> Analysis:
 
 # Which read answers a question. The subject decides which one.
 _QUERY_SUBJECTS = (
+    # The analysis comes first. "analisis keuangan saya" mentions
+    # money and a month, and both of those words belong to other
+    # subjects - so it was answered with a balance instead of the
+    # picture the reader asked for.
+    ("query_analysis", ("analisis", "analysis", "ringkasan keuangan",
+                        "evaluasi")),
     ("query_budgets", ("budget", "anggaran", "batas", "limit")),
+    ("query_income", ("pemasukan", "income", "gaji", "salary",
+                      "pendapatan", "uang masuk")),
     ("query_balance", ("saldo", "balance", "duit", "uang", "sisa")),
     ("query_expenses", ("pengeluaran", "expense", "belanja", "biaya",
                         "habis", "boros")),
-    ("query_goals", ("target", "goal", "tujuan", "cita")),
+    ("query_goals", ("target", "goal", "tujuan", "cita", "tabungan")),
     ("query_transactions", ("transaksi", "transaction", "riwayat", "history")),
     ("query_advice", ("saran", "advice", "tips", "rekomendasi", "help",
                       "bantuan")),

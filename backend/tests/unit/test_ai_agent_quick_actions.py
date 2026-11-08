@@ -456,3 +456,111 @@ async def test_the_analysis_knows_where_the_money_went(client, reader):
 
     words = render_analysis(result)
     assert "Makanan" in words, words
+
+
+# ---------------------------------------------------------------------------
+# The question reaches the right table
+# ---------------------------------------------------------------------------
+
+# A question, and the read that should answer it. The words are the
+# reader's own, and the table is the one that holds the answer.
+#
+# Before this, three of these were answered with the budget table,
+# because there was no read for the income and no read for the
+# analysis, and the fallback was the budgets.
+#
+#   "berapa pemasukan saya"  -> the budgets, which is the opposite
+#                                question: the money that was planned
+#                                instead of the money that came in.
+#   "analisis keuangan saya"  -> the balance, which is one number
+#                                instead of the picture the reader
+#                                asked for.
+#   "cek target tabungan"     -> the goals, which happened to be
+#                                right, but only by luck.
+ROUTING = [
+    ("query_income", "Berapa pemasukan saya bulan ini?"),
+    ("query_income", "berapa gaji saya?"),
+    ("query_expenses", "Berapa pengeluaran saya bulan ini?"),
+    ("query_balance", "Berapa saldo saya?"),
+    ("query_budgets", "Berapa budget saya?"),
+    ("query_goals", "Cek target tabungan saya"),
+    ("query_transactions", "Tampilkan transaksi terbaru"),
+    ("query_analysis", "Analisis keuangan saya bulan ini"),
+]
+
+
+@pytest.mark.parametrize("expected,message", ROUTING)
+def test_the_question_reaches_the_right_read(client, reader, expected, message):
+    """The question is answered from the table that holds the answer.
+
+    The agent picks the read by the words the reader used. So the
+    words are the test: "pemasukan" is the income, "pengeluaran" is
+    the spending, and they are not the same table.
+    """
+    response = client.post("/api/ai/agent", json={"message": message})
+
+    assert response.status_code == 200, response.text[:400]
+
+    body = response.json()
+    kinds = [a.get("kind") for a in (body.get("actions") or [])]
+
+    assert expected in kinds, (
+        "%r was answered by %r, not %r" % (message, kinds, expected)
+    )
+
+
+def test_the_income_is_the_income_and_not_the_budget(client, reader):
+    """"Berapa pemasukan saya" is answered with the income.
+
+    The reader has Rp5.000.000 of salary in the ledger and no
+    budgets at all. An answer that says "belum ada anggaran" is
+    answering a different question than the one that was asked.
+    """
+    response = client.post(
+        "/api/ai/agent", json={"message": "Berapa pemasukan saya bulan ini?"}
+    )
+
+    assert response.status_code == 200, response.text[:400]
+
+    reply = response.json().get("reply") or ""
+
+    assert "5,000,000" in reply, (
+        "the income was not in the answer: %r" % reply
+    )
+    assert "anggaran" not in reply.lower(), (
+        "the income question was answered with the budgets: %r" % reply
+    )
+
+
+def test_the_expenses_are_the_expenses(client, reader):
+    """The spending is reported from the spending table."""
+    response = client.post(
+        "/api/ai/agent", json={"message": "Berapa pengeluaran saya bulan ini?"}
+    )
+
+    assert response.status_code == 200, response.text[:400]
+
+    reply = response.json().get("reply") or ""
+
+    assert "45,000" in reply, "the spending was not in the answer: %r" % reply
+
+
+def test_the_analysis_is_the_analysis_and_not_the_balance(client, reader):
+    """"Analisis keuangan saya" is answered with the analysis.
+
+    The balance is one number. The analysis is the picture: what came
+    in, what went out, what is left, and what to do about it.
+    """
+    response = client.post(
+        "/api/ai/agent",
+        json={"message": "Analisis keuangan saya bulan ini"},
+    )
+
+    assert response.status_code == 200, response.text[:400]
+
+    body = response.json()
+    kinds = [a.get("kind") for a in (body.get("actions") or [])]
+
+    assert "query_analysis" in kinds, (
+        "the analysis was answered by %r" % (kinds,)
+    )
