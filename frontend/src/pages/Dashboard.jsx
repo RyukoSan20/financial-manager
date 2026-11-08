@@ -1647,8 +1647,15 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                       })()}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`font-medium truncate ${textPrimary}`}>{goal.name}</p>
-                      <p className={`text-xs truncate ${textSecondary}`}>{categoryName(goal.category, language) || t('dashboard.savings')}</p>
+                      {/* The name of the goal.
+
+                          It is not cut off. "Operasi Lasik" is short
+                          enough to fit, but a goal with a longer name
+                          was being cut in half at the edge of the
+                          card, and the name of a goal is the one
+                          thing on the card the reader came to read. */}
+                      <p className={`font-medium whitespace-normal break-words ${textPrimary}`}>{goal.name}</p>
+                      <p className={`text-xs whitespace-normal break-words ${textSecondary}`}>{categoryName(goal.category, language) || t('dashboard.savings')}</p>
                     </div>
                     {goal.is_completed && <Badge variant="success">✓</Badge>}
                   </div>

@@ -84,7 +84,13 @@ const Pill = ({ label, value, status, detail }) => {
           className={`wellness-pill__dot ${STATUS_CLASS[safeStatus] || ''}`}
           aria-hidden="true"
         />
-        <span className="text-xs text-gray-600 dark:text-gray-300 truncate">
+        {/* The name of the ratio.
+
+            It is not cut off. A ratio whose name is cut in half at
+            the edge of the card is a ratio the reader cannot act on,
+            and the whole point of the card is that they can. The row
+            wraps instead. */}
+        <span className="text-xs text-gray-600 dark:text-gray-300 whitespace-normal break-words">
           {label}
         </span>
         <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums whitespace-nowrap shrink-0">

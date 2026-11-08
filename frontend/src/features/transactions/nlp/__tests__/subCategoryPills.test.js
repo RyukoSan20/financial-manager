@@ -145,3 +145,32 @@ check('the sheet filters the categories by the kind of transaction', () => {
     'the sheet offers income categories for an expense'
   );
 });
+
+check('no name on the sheet is cut short', () => {
+  const sheet = read('src/components/transactions/CategoryTreeSheet.jsx');
+  assert.ok(
+    !/\btruncate\b/.test(sheet),
+    'a name on the sheet is cut short'
+  );
+  assert.ok(
+    /whitespace-normal/.test(sheet),
+    'a name on the sheet does not wrap'
+  );
+});
+
+check('no name on the dashboard is cut short', () => {
+  const dashboard = read('src/pages/Dashboard.jsx');
+  const goal = dashboard.split('goal.name')[0].slice(-600);
+  assert.ok(
+    !/\btruncate\b/.test(goal),
+    'the name of a goal is cut short'
+  );
+});
+
+check('no name on the health coach is cut short', () => {
+  const pills = read('src/components/health/FinancialRatioPills.jsx');
+  assert.ok(
+    !/\btruncate\b/.test(pills),
+    'the name of a ratio is cut short'
+  );
+});

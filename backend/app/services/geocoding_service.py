@@ -244,6 +244,46 @@ class GeocodingService:
                         city
                     )
 
+                    # The street. The house number is kept with it
+                    # when the geocoder gives one, because "Jalan
+                    # Kemang Raya" without the number is half an
+                    # address and the reader is looking for a door.
+                    #
+                    # It used to be missing here, so every lookup of
+                    # this kind raised a NameError and the place was
+                    # never found. The pin was still drawn, but as an
+                    # estimate, and the reader was told the map was
+                    # approximate when it did not have to be.
+                    street = None
+                    road = (
+                        addr.get("road") or
+                        addr.get("pedestrian") or
+                        addr.get("footway") or
+                        addr.get("path")
+                    )
+                    if road:
+                        house = addr.get("house_number")
+                        street = f"{road} No. {house}" if house else road
+
+                    # The place nearest to the point. This is what
+                    # turns "somewhere on Jalan Kemang Raya" into
+                    # "the shop is the one next to the bakery", and
+                    # it is the difference between an address and a
+                    # place somebody could find.
+                    nearest_place = None
+                    for key in (
+                        "building",
+                        "amenity",
+                        "shop",
+                        "office",
+                        "tourism",
+                        "leisure",
+                    ):
+                        value = addr.get(key)
+                        if value:
+                            nearest_place = value
+                            break
+
                     # The precision says what the answer holds, not
                     # what was hoped for. A road was found, so it is a
                     # street. A village or a district was found, so it

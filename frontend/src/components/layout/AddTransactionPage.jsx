@@ -1343,7 +1343,7 @@ const AddTransactionPage = () => {
                   was coffee or groceries, and the list of transactions
                   is exactly where the reader wants to tell them
                   apart. */}
-              <p className="font-medium truncate">
+              <p className="font-medium whitespace-normal break-words">
                 {selectedCategory
                   ? combinedLabel(
                       categoryName(selectedCategory, language),

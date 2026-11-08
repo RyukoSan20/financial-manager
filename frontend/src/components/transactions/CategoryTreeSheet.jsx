@@ -163,7 +163,7 @@ export default function CategoryTreeSheet({
                     <span className="text-xl" aria-hidden="true">
                       {cat.icon || '📦'}
                     </span>
-                    <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <span className="font-medium text-gray-900 dark:text-gray-100 whitespace-normal break-words">
                       {name}
                     </span>
                     {selectedId === cat.id && !subKey ? (
@@ -233,7 +233,7 @@ export default function CategoryTreeSheet({
                         }`}
                       >
                         <span aria-hidden="true">{child.icon || '🏷️'}</span>
-                        <span className="truncate">{categoryName(child, language)}</span>
+                        <span className="whitespace-normal break-words">{categoryName(child, language)}</span>
                       </button>
                     ))}
 
@@ -318,7 +318,7 @@ export default function CategoryTreeSheet({
                   <span className="text-xl" aria-hidden="true">
                     {cat.icon || '📦'}
                   </span>
-                  <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                  <span className="font-medium text-gray-900 dark:text-gray-100 whitespace-normal break-words">
                     {categoryName(cat, language)}
                   </span>
                   {selectedId === cat.id ? (
