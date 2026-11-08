@@ -19,10 +19,18 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { MapPin, ReceiptText, ChevronDown, ChevronUp, Store } from 'lucide-react';
+import {
+  MapPin,
+  ReceiptText,
+  ChevronDown,
+  ChevronUp,
+  Store,
+  Users,
+} from 'lucide-react';
 
 import { categoryName } from '../../utils/categoryName';
 import { subCategoriesFor, subCategoryName } from '../../features/transactions/nlp/subCategories.js';
+import { formatAmountInput, parseAmount } from '../../utils/amountInput';
 
 /**
  * One field of the form.
@@ -34,6 +42,38 @@ const Field = ({ label, children }) => (
     </span>
     {children}
   </label>
+);
+
+/**
+ * A panel that can be put away.
+ *
+ * The calculation and the sharing are things most transactions do not
+ * have. Opening them by default makes every row twice as tall as it
+ * needs to be, so they are closed until the reader asks.
+ */
+const Panel = ({ icon: Icon, title, count, open, onToggle, children }) => (
+  <div>
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-white/5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+    >
+      <span className="flex items-center gap-2 min-w-0">
+        <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+        <span className="truncate">{title}</span>
+        {count ? (
+          <span className="text-xs text-gray-400 shrink-0 tabular-nums">({count})</span>
+        ) : null}
+      </span>
+      {open ? (
+        <ChevronUp className="w-4 h-4 shrink-0" aria-hidden="true" />
+      ) : (
+        <ChevronDown className="w-4 h-4 shrink-0" aria-hidden="true" />
+      )}
+    </button>
+    {open ? <div className="pt-2">{children}</div> : null}
+  </div>
 );
 
 export default function TransactionEditForm({
@@ -49,6 +89,7 @@ export default function TransactionEditForm({
   const [form, setForm] = useState({});
   const [showLines, setShowLines] = useState(false);
   const [showCalc, setShowCalc] = useState(false);
+  const [showSplit, setShowSplit] = useState(false);
 
   // The form starts as a copy of the transaction, so nothing the
   // reader did not change is lost.
@@ -77,6 +118,9 @@ export default function TransactionEditForm({
       tax: transaction.tax ?? '',
       tax_included: transaction.tax_included ?? false,
       fee: transaction.fee ?? '',
+      // The people it was shared with.
+      split_group_id: transaction.split_group_id ?? null,
+      split_paid_by: transaction.split_paid_by ?? null,
     });
   }, [transaction]);
 
@@ -106,6 +150,21 @@ export default function TransactionEditForm({
   const input =
     'w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100';
 
+  // The amount, written the way the reader reads it.
+  //
+  // It used to be the raw number - "10000,00" - which is what the
+  // database holds, not what money looks like. The reader is looking
+  // at their own money, so it is shown as "Rp 10.000".
+  const amountText = formatAmountInput(
+    String(form.amount ?? ''),
+    form.currency || 'IDR'
+  );
+
+  const onAmountChange = (text) => {
+    const cleaned = text.replace(/[^\d.,-]/g, '');
+    set('amount', parseAmount(cleaned, form.currency || 'IDR'));
+  };
+
   return (
     <div className="space-y-3">
       <Field label="Deskripsi">
@@ -120,10 +179,11 @@ export default function TransactionEditForm({
       <div className="grid grid-cols-2 gap-2">
         <Field label="Jumlah">
           <input
-            type="number"
-            value={form.amount || 0}
-            onChange={(e) => set('amount', parseFloat(e.target.value) || 0)}
-            className={input}
+            type="text"
+            inputMode="decimal"
+            value={amountText}
+            onChange={(e) => onAmountChange(e.target.value)}
+            className={`${input} tabular-nums`}
           />
         </Field>
         <Field label="Tanggal">
@@ -214,29 +274,13 @@ export default function TransactionEditForm({
       </div>
 
       {/* The lines of the bill. */}
-      <button
-        type="button"
-        onClick={() => setShowLines(!showLines)}
-        aria-expanded={showLines}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-white/5 text-sm text-gray-700 dark:text-gray-300"
+      <Panel
+        icon={ReceiptText}
+        title="Rincian Barang"
+        count={(form.breakdown || []).length}
+        open={showLines}
+        onToggle={() => setShowLines(!showLines)}
       >
-        <span className="flex items-center gap-2 min-w-0">
-          <ReceiptText className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="truncate">Rincian Barang</span>
-          {(form.breakdown || []).length ? (
-            <span className="text-xs text-gray-400 shrink-0">
-              ({(form.breakdown || []).length})
-            </span>
-          ) : null}
-        </span>
-        {showLines ? (
-          <ChevronUp className="w-4 h-4 shrink-0" aria-hidden="true" />
-        ) : (
-          <ChevronDown className="w-4 h-4 shrink-0" aria-hidden="true" />
-        )}
-      </button>
-
-      {showLines ? (
         <div className="space-y-2 pl-2 border-l-2 border-gray-100 dark:border-white/10">
           {(form.breakdown || []).length ? (
             (form.breakdown || []).map((line, index) => (
@@ -255,27 +299,15 @@ export default function TransactionEditForm({
             </p>
           )}
         </div>
-      ) : null}
+      </Panel>
 
       {/* The calculation. */}
-      <button
-        type="button"
-        onClick={() => setShowCalc(!showCalc)}
-        aria-expanded={showCalc}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-white/5 text-sm text-gray-700 dark:text-gray-300"
+      <Panel
+        icon={Store}
+        title="Pajak & Diskon"
+        open={showCalc}
+        onToggle={() => setShowCalc(!showCalc)}
       >
-        <span className="flex items-center gap-2 min-w-0">
-          <Store className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="truncate">Perhitungan</span>
-        </span>
-        {showCalc ? (
-          <ChevronUp className="w-4 h-4 shrink-0" aria-hidden="true" />
-        ) : (
-          <ChevronDown className="w-4 h-4 shrink-0" aria-hidden="true" />
-        )}
-      </button>
-
-      {showCalc ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pl-2 border-l-2 border-gray-100 dark:border-white/10">
           <Field label="Diskon">
             <input
@@ -305,7 +337,34 @@ export default function TransactionEditForm({
             />
           </Field>
         </div>
-      ) : null}
+      </Panel>
+
+      {/* The sharing. */}
+      <Panel
+        icon={Users}
+        title="Bagi Tagihan"
+        open={showSplit}
+        onToggle={() => setShowSplit(!showSplit)}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-2 border-l-2 border-gray-100 dark:border-white/10">
+          <Field label="ID Grup Split">
+            <input
+              type="text"
+              value={form.split_group_id ?? ''}
+              onChange={(e) => set('split_group_id', e.target.value)}
+              className={input}
+            />
+          </Field>
+          <Field label="Dibayar Oleh">
+            <input
+              type="text"
+              value={form.split_paid_by ?? ''}
+              onChange={(e) => set('split_paid_by', e.target.value)}
+              className={input}
+            />
+          </Field>
+        </div>
+      </Panel>
 
       <div className="flex gap-2 pt-1">
         <button

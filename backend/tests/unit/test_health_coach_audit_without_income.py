@@ -180,8 +180,8 @@ def test_the_emergency_fund_target_is_never_zero():
 
 def test_a_reader_with_cash_is_told_a_real_figure():
     """
-    There is money in the bank. A fifth of it, or a twentieth, is a
-    figure the reader can act on.
+    There is money in the bank. A tenth of it, or half a million,
+    whichever is larger, is a figure the reader can act on.
     """
     from app.modules.ai_advisor.health_coach.audit_generator import (
         AuditGenerator,
@@ -213,6 +213,43 @@ def test_a_reader_with_cash_is_told_a_real_figure():
     emergency = [f for f in findings if f.category == "emergency_fund"]
     assert emergency
     assert "Rp 0" not in emergency[0].suggestion
-    assert "5.975.000" in emergency[0].suggestion or "298.750" in emergency[0].suggestion, (
+    assert "597.500" in emergency[0].suggestion or "5.975.000" in emergency[0].suggestion, (
         "the advice did not mention the money in hand: %r" % emergency[0].suggestion
     )
+
+
+def test_the_top_up_is_a_tenth_of_the_cash_when_there_is_cash():
+    """
+    The reader has Rp 5,975,000 and no recorded spending. A tenth of
+    that is Rp 597,500, and that is the figure they are given.
+    """
+    from app.modules.ai_advisor.health_coach.audit_generator import (
+        _emergency_top_up,
+    )
+
+    assert _emergency_top_up(0, 5_975_000, 0) == 597_500
+
+
+def test_the_top_up_is_never_below_half_a_million():
+    """
+    A reader with almost nothing in the bank is still given a figure
+    they can act on, not "Rp 0".
+    """
+    from app.modules.ai_advisor.health_coach.audit_generator import (
+        _emergency_top_up,
+    )
+
+    assert _emergency_top_up(0, 0, 0) == 500_000
+    assert _emergency_top_up(0, 100_000, 0) == 500_000
+
+
+def test_a_reader_with_both_known_gets_three_months_of_spending():
+    """
+    The usual advice still stands when there is something to work
+    from.
+    """
+    from app.modules.ai_advisor.health_coach.audit_generator import (
+        _emergency_top_up,
+    )
+
+    assert _emergency_top_up(9_000_000, 5_765_000, 10_000_000) == 27_000_000

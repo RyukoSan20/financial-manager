@@ -1385,11 +1385,19 @@ def get_merchant_map_data(
             # The coordinates are real, but nobody had asked what
             # was at them, so the pin could not name the street or
             # the shop next door. Now it asks.
-            looked_up = resolve_coordinates(
-                float(row.captured_latitude),
-                float(row.captured_longitude),
-            )
-            kind = kind_of(place_name, row.captured_address or "")
+            #
+            # A row that cannot be read is skipped rather than
+            # allowed to break the whole map. One transaction with
+            # half a place in it must not take every other pin down
+            # with it.
+            try:
+                looked_up = resolve_coordinates(
+                    float(row.captured_latitude),
+                    float(row.captured_longitude),
+                )
+                kind = kind_of(place_name, row.captured_address or "")
+            except Exception:  # noqa: BLE001 - one bad row, not a broken map
+                continue
             all_locations.append({
                 "id": f"gps_{row.id}",
                 "name": place_name,
@@ -1436,15 +1444,25 @@ def get_merchant_map_data(
         Transaction.description, Transaction.merchant_address
     )
     for row in tx_q.all():
-        lat_f = float(row.latitude)
-        lng_f = float(row.longitude)
+        # A row that cannot be read is skipped rather than allowed to
+        # break the whole map. One transaction with half a place in it
+        # must not take every other pin down with it.
+        try:
+            lat_f = float(row.latitude)
+            lng_f = float(row.longitude)
+        except (TypeError, ValueError):
+            continue
         name = row.merchant_address or row.description or f"Lokasi ({lat_f:.4f}, {lng_f:.4f})"
 
         # The coordinates are real, but nobody had asked what was at
         # them, so the pin could not name the street or the shop next
         # door. Now it asks.
-        looked_up = resolve_coordinates(lat_f, lng_f)
-        kind = kind_of(name, row.merchant_address or "")
+        try:
+            looked_up = resolve_coordinates(lat_f, lng_f)
+            kind = kind_of(name, row.merchant_address or "")
+        except Exception:  # noqa: BLE001 - one bad row, not a broken map
+            looked_up = None
+            kind = kind_of(name, row.merchant_address or "")
         all_locations.append({
             "id": f"gps_tx_{lat_f}_{lng_f}",
             "name": name,
@@ -1512,8 +1530,17 @@ def get_merchant_map_data(
     )
     if user_id:
         merchant_q = merchant_q.filter(Transaction.user_id == user_id)
+    # The grouping has to name every column the answer names.
+    #
+    # The answer is built from the shop name, the description and the
+    # address, so those three are what is grouped by. PostgreSQL
+    # refuses a grouping that leaves a column out, and the map
+    # answered with a 500 until it was said.
     merchant_q = merchant_q.group_by(
-        Transaction.merchant_name, Transaction.merchant_address, Category.name
+        Transaction.merchant_name,
+        Transaction.description,
+        Transaction.merchant_address,
+        Category.name,
     )
 
     # A shop is usually visited for one thing. The category the money
@@ -1531,7 +1558,10 @@ def get_merchant_map_data(
     for (merchant_name, merchant_address), row in merchant_rows.items():
         spending_category = row.cat_name or "Lainnya"
 
-        place = None
+        # The whole row is read inside a guard. A row with a name
+        # that cannot be read, a figure that is not a number, or a
+        # place that cannot be resolved, is put on the map as an
+        # estimate instead of taking the map down with it.
         try:
             place = resolve_place(merchant_name, merchant_address or None)
         except Exception:  # noqa: BLE001 - the map must not break
@@ -1561,33 +1591,52 @@ def get_merchant_map_data(
             )
             continue
 
-        all_locations.append({
-            "id": f"merchant_{merchant_name}_{merchant_address}".replace(" ", "_"),
-            "name": place.name or merchant_name,
-            "latitude": place.latitude,
-            "longitude": place.longitude,
-            "address": place.address or merchant_address,
-            "visit_count": row.visit_count,
-            "total_spent": float(row.total_spent or 0),
-            "avg_transaction": float(row.avg_spent or 0),
-            "source": "merchant",
-            # The category the money mostly went on, which colours the
-            # ground under the pin.
-            "category": spending_category,
-            # The kind of place it is, which decides the shape of the
-            # pin, and how exact the place is, which decides what the
-            # popup is allowed to say about the address.
-            "kind": kind_for(merchant_name, merchant_address, spending_category),
-            "pin": pin_for(kind_for(merchant_name, merchant_address, spending_category)),
-            "precision": place.precision,
-            "is_exact": place.is_exact,
-            # The street the place is on, and the place nearest to it.
-            # These are what turn a pin in a district into a pin a
-            # reader can find: the street to look for, and the name of
-            # the shop next door that tells them they have arrived.
-            "street": place.street,
-            "nearest_place": place.nearest_place,
-        })
+        try:
+            all_locations.append({
+                "id": f"merchant_{merchant_name}_{merchant_address}".replace(" ", "_"),
+                "name": place.name or merchant_name,
+                "latitude": place.latitude,
+                "longitude": place.longitude,
+                "address": place.address or merchant_address,
+                "visit_count": row.visit_count,
+                "total_spent": float(row.total_spent or 0),
+                "avg_transaction": float(row.avg_spent or 0),
+                "source": "merchant",
+                # The category the money mostly went on, which colours
+                # the ground under the pin.
+                "category": spending_category,
+                # The kind of place it is, which decides the shape of
+                # the pin, and how exact the place is, which decides
+                # what the popup is allowed to say about the address.
+                "kind": kind_for(merchant_name, merchant_address, spending_category),
+                "pin": pin_for(kind_for(merchant_name, merchant_address, spending_category)),
+                "precision": place.precision,
+                "is_exact": place.is_exact,
+                # The street the place is on, and the place nearest to
+                # it. These are what turn a pin in a district into a
+                # pin a reader can find: the street to look for, and
+                # the name of the shop next door that tells them they
+                # have arrived.
+                "street": place.street,
+                "nearest_place": place.nearest_place,
+            })
+        except Exception:  # noqa: BLE001 - one bad row, not a broken map
+            # The row could not be made into a pin, but the spending
+            # is still real, so it is put on the map as an estimate
+            # rather than lost.
+            try:
+                all_locations.append(
+                    _estimated_marker(
+                        merchant_name=merchant_name,
+                        merchant_address=merchant_address,
+                        category=spending_category,
+                        total_spent=float(row.total_spent or 0),
+                        visit_count=int(row.visit_count or 0),
+                        avg_spent=float(row.avg_spent or 0),
+                    )
+                )
+            except Exception:  # noqa: BLE001 - nothing more can be done
+                continue
 
     # Deduplicate by id
     seen = {}

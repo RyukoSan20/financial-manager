@@ -316,6 +316,20 @@ export const Transactions = () => {
       date: tx.date,
       category_id: tx.category_id,
       account_id: tx.account_id,
+      // The place, so it can be corrected rather than only replaced.
+      latitude: tx.latitude ?? null,
+      longitude: tx.longitude ?? null,
+      merchant_address: tx.merchant_address || '',
+      merchant_name: tx.merchant_name || '',
+      // The sub-category, which is the tag on the transaction.
+      tags: tx.tags || '',
+      // The lines of the bill and the calculation.
+      breakdown: tx.breakdown || tx.items || [],
+      discount: tx.discount ?? '',
+      discount_type: tx.discount_type || 'fixed',
+      tax: tx.tax ?? '',
+      tax_included: tx.tax_included ?? false,
+      fee: tx.fee ?? '',
     });
   };
 
@@ -343,6 +357,13 @@ export const Transactions = () => {
         merchant_address: editForm.merchant_address || '',
         // The sub-category, which is the tag on the transaction.
         tags: editForm.tags || '',
+        // The calculation, so a transaction that was recorded with a
+        // discount or a tax can be corrected with one.
+        discount: editForm.discount ?? null,
+        discount_type: editForm.discount_type || 'fixed',
+        tax: editForm.tax ?? null,
+        tax_included: !!editForm.tax_included,
+        fee: editForm.fee ?? null,
       };
 
       await api.transactions.update(id, payload);

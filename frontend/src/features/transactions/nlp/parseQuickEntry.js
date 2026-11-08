@@ -71,6 +71,60 @@ function stripAmount(text, amountResult) {
   return out || raw.trim();
 }
 
+/**
+ * The words the reader wrote, tidied up.
+ *
+ * "kopi jago" is written as "Kopi Jago". The reader's own words are
+ * not changed - only the way they are capitalised, because a name
+ * that begins in the middle of the alphabet is a name the reader has
+ * to read twice.
+ *
+ * A word the reader has written in capitals is left alone: "BRI
+ * LINK" is a brand, and a brand is written how it is written.
+ */
+function tidyDescription(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return '';
+
+  return trimmed
+    .split(/\s+/)
+    .map((word) => {
+      // A word the reader wrote in capitals is left as it is.
+      if (word.length > 1 && word === word.toUpperCase()) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+}
+
+/**
+ * The words that say where something is, rather than what it is.
+ *
+ * "Ojol ke kantor" names a journey, not a shop. The words below are
+ * the ones that point at a place, and a sentence that has one of them
+ * in it is about a journey rather than about a shop.
+ */
+const WAY_WORDS = [
+  'ke', 'di', 'keude', 'dari', 'ke', 'untuk', 'via', 'lewat', 'menuju',
+  'rumah', 'kantor', 'kampus', 'sekolah', 'spbu', 'pom', 'pasar',
+];
+
+/**
+ * Does this name a place?
+ *
+ * A place is a name with no word in it that says where it is going.
+ * "Kopi Jago" is a place. "Ojol ke kantor" is a journey, and putting
+ * it on the map would put a pin in the wrong place.
+ */
+function namesAPlace(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return false;
+
+  const words = trimmed.toLowerCase().split(/\s+/);
+  if (words.length > 5) return false;
+
+  return !words.some((word) => WAY_WORDS.includes(word));
+}
+
 export function parseQuickEntry(text, options = {}) {
   const {
     categories = [],
@@ -166,7 +220,7 @@ export function parseQuickEntry(text, options = {}) {
     // amount, and the amount has its own field. Leaving the figure
     // in the description meant the transaction was saved with the
     // amount written into its name.
-    description: stripAmount(text, amountResult),
+    description: tidyDescription(stripAmount(text, amountResult)),
     categoryId: null,
     categorySuggestion: null,
     categoryConfidence: null,
@@ -174,6 +228,10 @@ export function parseQuickEntry(text, options = {}) {
     // what is recorded; the sub-category is what the reader chose.
     subCategoryKey: null,
     subCategoryName: null,
+    // Where it happened, when the words name a place. "Kopi Jago" is
+    // a shop, and a shop is a place, so the map has something to
+    // work from.
+    location: null,
     accountId: null,
     toAccountId: null,
     date: wibDate,
@@ -201,13 +259,36 @@ export function parseQuickEntry(text, options = {}) {
   // The parent is what the budget and the report understand, so it is
   // what is recorded. The sub-category is what the reader chose, and
   // it is found from the words they wrote: "Kopi Jago" is "Kopi &
-  // Kafe", "Pertamax" is "BBM & Parkir".
+  // Kafe", "Pertamax" is "BBM & Bensin".
+  //
+  // The words are looked for under the key the server knows the
+  // category by. The name of the category - "Makanan & Minuman" - is
+  // a different thing, and looking under it finds nothing, which is
+  // why the sub-category used to come out empty.
   if (result.categorySuggestion) {
-    const sub = suggestSubCategory(text, result.categorySuggestion);
+    const parent = categories.find(
+      (cat) =>
+        cat.id === result.categoryId ||
+        cat.name === result.categorySuggestion ||
+        cat.system_key === result.categorySuggestion
+    );
+    const parentKey =
+      parent?.system_key || result.categorySuggestion || '';
+    const sub = suggestSubCategory(text, parentKey);
     if (sub) {
       result.subCategoryKey = sub.key;
       result.subCategoryName = sub.name;
     }
+  }
+
+  // The place.
+  //
+  // A transaction with a description but no place was dropped from
+  // the map, and the reader was shown "0 Lokasi" for money they had
+  // spent. So the name the reader wrote is offered as the place,
+  // when it names one.
+  if (result.description && namesAPlace(result.description)) {
+    result.location = result.description;
   }
 
   // Build preview suggestions

@@ -47,14 +47,14 @@ const TESTS = {
     {
       desc: 'Exact: kopi → food',
       tokens: ['kopi'],
-      categories: [{ id: 1, name: 'Makanan & Minuman', system_key: 'food' }],
-      expected: 'food'
+      categories: [{ id: 1, name: 'Makanan & Minuman', system_key: 'food_drink' }],
+      expected: 'food_drink'
     },
     {
       desc: 'Typo: kopii → food',
       tokens: ['kopii'],
-      categories: [{ id: 1, name: 'Makanan & Minuman', system_key: 'food' }],
-      expected: 'food'
+      categories: [{ id: 1, name: 'Makanan & Minuman', system_key: 'food_drink' }],
+      expected: 'food_drink'
     },
     {
       // Shopee is an online shop, so it sits with the shops.
@@ -72,19 +72,19 @@ const TESTS = {
     {
       desc: 'Grab: grab → transport',
       tokens: ['grab'],
-      categories: [{ id: 4, name: 'Transportasi', system_key: 'transport' }],
-      expected: 'transport'
+      categories: [{ id: 4, name: 'Transportasi', system_key: 'transportation' }],
+      expected: 'transportation'
     },
     {
       desc: 'Gaji: gaji → income',
       tokens: ['gaji'],
-      categories: [{ id: 5, name: 'Pendapatan', system_key: 'income' }],
-      expected: 'income'
+      categories: [{ id: 5, name: 'Pendapatan', system_key: 'salary' }],
+      expected: 'salary'
     },
     {
       desc: 'Unknown: xyzabcq → low confidence',
       tokens: ['xyzabcq'],
-      categories: [{ id: 1, name: 'Makanan', system_key: 'food' }],
+      categories: [{ id: 1, name: 'Makanan', system_key: 'food_drink' }],
       expected: 'low'
     },
   ],

@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Send, Sparkles, Loader2, AlertCircle, Database, Cpu } from 'lucide-react';
 
 import api from '../../services/api';
+import MarkdownText from '../common/MarkdownText';
 import { useTranslation } from '../../i18n';
 import { batch12 } from '../../i18n/keys_batch12';
 
@@ -147,7 +148,11 @@ export default function AiMarketAdvisorChat({ symbols = [], onChartPoints }) {
                   : 'self-start bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-md'
               }`}
             >
-              {message.text}
+              {message.role === 'reader' ? (
+                message.text
+              ) : (
+                <MarkdownText text={message.text} />
+              )}
             </div>
 
             {/* Where the words came from. */}

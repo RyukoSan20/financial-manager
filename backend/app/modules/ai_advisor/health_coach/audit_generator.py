@@ -21,6 +21,42 @@ def _rupiah(amount: float) -> str:
     return f"{rounded:,}".replace(",", ".")
 
 
+# The smallest emergency-fund top-up that is worth saying out loud.
+#
+# A reader who has recorded nothing is told to put away "Rp 0" a
+# month, which is advice of the kind that teaches a reader to stop
+# reading the advice. So the smallest sum that can be suggested is
+# half a million rupiah - a real, if modest, monthly amount - and it
+# is never smaller than that.
+MIN_EMERGENCY_TOP_UP = 500_000
+
+
+def _emergency_top_up(expense: float, cash: float, income: float = 0) -> int:
+    """How much to put away each month for the emergency fund.
+
+    The usual answer is three months of spending. But a reader who has
+    not recorded what they spend - or who has recorded no income at
+    all - has no three months to work from, and the sentence said
+    "Tambahkan Rp 0 ke dana darurat", which is not advice.
+
+    So when either the spending or the income is unknown, the amount
+    is worked out from what there is to work from: the money in hand,
+    and never less than half a million rupiah. A figure of nothing is
+    never said out loud.
+
+    When both are known, the usual advice stands: three months of
+    spending.
+    """
+    expense = float(expense or 0)
+    cash = float(cash or 0)
+    income = float(income or 0)
+
+    if expense > 0 and income > 0:
+        return int(round(expense * 3))
+
+    return int(max(MIN_EMERGENCY_TOP_UP, round(cash * 0.10)))
+
+
 @dataclass
 class AuditFinding:
     """Individual finding from financial audit."""
@@ -163,22 +199,22 @@ class AuditGenerator:
             # what to do first instead of naming a figure of nothing.
             expense = financial_data.get("monthly_expense", 0) or 0
             cash = financial_data.get("total_cash", 0) or 0
+            income = financial_data.get("monthly_income", 0) or 0
 
-            if expense > 0:
-                amount = expense * 3
+            amount = _emergency_top_up(expense, cash, income)
+            if expense > 0 and income > 0:
                 suggestion = (
                     f"Tambahkan Rp {_rupiah(amount)} ke dana darurat"
                 )
             elif cash > 0:
-                amount = cash * 0.05
                 suggestion = (
                     f"Sisihkan Rp {_rupiah(amount)} per bulan dari saldo "
-                    f"Rp {_rupiah(cash)} (5%) untuk dana darurat"
+                    f"Rp {_rupiah(cash)} untuk dana darurat"
                 )
             else:
                 suggestion = (
-                    "Catat pengeluaran bulanan Anda dulu, lalu targetkan "
-                    "dana darurat 3-6 bulan pengeluaran"
+                    f"Tambahkan Rp {_rupiah(amount)} ke dana darurat, lalu "
+                    f"catat pengeluaran bulanan agar targetnya bisa dihitung"
                 )
 
             findings.append(AuditFinding(
@@ -344,9 +380,21 @@ class AuditGenerator:
                     f"(progress: Rp {_rupiah(current)})"
                 )
             else:
+                # No spending recorded. Six months of nothing is a
+                # target of nothing, so the reader is given a real
+                # starting figure instead: half a million a month, or
+                # a tenth of what is in hand, whichever is larger.
+                amount = _emergency_top_up(expense, current, financial_data.get("monthly_income", 0))
+                # The progress is only written when there is some.
+                # "Progress: Rp 0" reads as a figure of nothing, which
+                # is the thing this line is here to avoid.
+                progress = (
+                    f" (progress: Rp {_rupiah(current)})" if current > 0 else ""
+                )
                 plan["dana_darurat"] = (
-                    "Catat pengeluaran bulanan Anda dulu agar target dana "
-                    "darurat 6 bulan bisa dihitung"
+                    f"Belum ada pengeluaran tercatat. Mulai dengan "
+                    f"Rp {_rupiah(amount)}/bulan untuk dana darurat"
+                    f"{progress}"
                 )
         
         if health.dsr_ratio.value > 30:

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { api, API_BASE_URL as API_URL, getToken } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { parseQuickEntry, fetchDirection } from "../../features/transactions/nlp/parseQuickEntry.js";
+import { chipsFor } from "../../features/transactions/nlp/timeOfDayChips.js";
 import QuantityMultiplierInput from "../transactions/QuantityMultiplierInput.jsx";
 import ItemizedBillEditor from "../transactions/ItemizedBillEditor.jsx";
 import { createGroup, addMember, createExpense, assignItems } from "../../services/splitApi";
@@ -14,6 +15,8 @@ import { IconText } from "../ui/IconText";
 import { buildFlag } from "../../utils/featureFlags";
 import { batch1, fill } from "../../i18n/keys_batch1";
 import { categoryName } from '../../utils/categoryName';
+import { combinedLabel } from '../../data/categoryDictionary';
+import { subCategoryName } from '../../features/transactions/nlp/subCategories.js';
 import CategoryTreeSheet from '../transactions/CategoryTreeSheet';
 import {
   sanitizeAmount,
@@ -153,6 +156,11 @@ const AddTransactionPage = () => {
   // to trust it.
   const [breakdown, setBreakdown] = useState([]);
   const [nlpPreview, setNlpPreview] = useState(null);
+  // The chips of the hour: the three things a reader is most likely
+  // to be buying right now. They change with the time of day, because
+  // what people buy at eight in the morning and what they buy at
+  // eight in the evening are not the same thing.
+  const [hourChips] = useState(() => chipsFor(new Date()));
 
   // The receipt, written down line by line.
   //
@@ -320,7 +328,7 @@ const AddTransactionPage = () => {
     });
     
     setNlpPreview(parsed);
-    
+
     // Auto-fill high confidence results
     if (parsed.categoryConfidence === 'high' && !categoryId) {
       setCategoryId(parsed.categoryId);
@@ -343,6 +351,18 @@ const AddTransactionPage = () => {
     // The sub-category the words point at.
     if (parsed.subCategoryKey && !subCategoryKey) {
       setSubCategoryKey(parsed.subCategoryKey);
+    }
+    // The place.
+    //
+    // "Kopi Jago" is a shop, and a shop is a place. The map reads
+    // the place, so a transaction with nothing but a description was
+    // dropped from it and the reader was shown "0 Lokasi" for money
+    // they had spent.
+    //
+    // It is only suggested when the reader has not written a place
+    // of their own.
+    if (parsed.location && !location) {
+      setLocation(parsed.location);
     }
     // A breakdown written in words becomes a row the reader can change.
     if (parsed.quantity && parsed.unitPrice) {
@@ -370,6 +390,44 @@ const AddTransactionPage = () => {
   // cannot overwrite the answer for the phrase the user is looking at
   // now.
   const directionRequestId = useRef(0);
+
+  /**
+   * Fill the form in from one of the chips of the hour.
+   *
+   * The chip is a sentence, so it goes through the same reader as
+   * anything else the reader types: the amount, the name, the
+   * category and the sub-category are all worked out in one place,
+   * and the reader can change any of them afterwards.
+   */
+  const applyHourChip = useCallback(
+    (chip) => {
+      if (!chip) return;
+
+      // The chip is a sentence, so it goes through the same reader as
+      // anything else the reader types: the amount, the name, the
+      // category and the sub-category are all worked out in one
+      // place.
+      //
+      // The fields are set here as well as through the quick entry
+      // box, because the box only fills in fields that are empty.
+      // A reader who taps a chip means it: they want that coffee,
+      // not the one they typed earlier.
+      setQuickEntry(chip.text);
+
+      const parsed = parseQuickEntry(chip.text, {
+        categories,
+        userHints: {},
+        accounts,
+      });
+
+      if (parsed.amount) setAmount(String(parsed.amount));
+      if (parsed.description) setDescription(parsed.description);
+      if (parsed.categoryId) setCategoryId(parsed.categoryId);
+      if (parsed.subCategoryKey) setSubCategoryKey(parsed.subCategoryKey);
+      if (parsed.location) setLocation(parsed.location);
+    },
+    [categories, accounts]
+  );
 
   const classifyDirection = useCallback(async (text) => {
     const requestId = ++directionRequestId.current;
@@ -452,6 +510,40 @@ const AddTransactionPage = () => {
       }
     },
     [categories, categoryId, type, savingCategory]
+  );
+
+  /**
+   * Make a sub-category of the reader's own.
+   *
+   * The sub-category the reader chooses is recorded in the tags of
+   * the transaction, so a sub-category of their own travels with the
+   * transaction exactly like one of ours does. It is made under the
+   * category that is open, because that is the one the reader is
+   * looking at.
+   */
+  const createSubCategory = useCallback(
+    async (parentId, name) => {
+      if (!name.trim() || savingCategory) return;
+      setSavingCategory(true);
+      try {
+        const parent = categories.find((c) => c.id === parentId);
+        const created = await api.categories.create({
+          name: name.trim(),
+          type: type === 'income' ? 'income' : 'expense',
+          parent_id: parent ? parent.id : null,
+        });
+        if (created && created.id) {
+          setCategories((current) => [...current, created]);
+          setCategoryId(created.id);
+          setSubCategoryKey(null);
+        }
+      } catch (err) {
+        console.error('The sub-category could not be made:', err);
+      } finally {
+        setSavingCategory(false);
+      }
+    },
+    [categories, type, savingCategory]
   );
 
   // Format number with dots
@@ -571,6 +663,12 @@ const AddTransactionPage = () => {
 
   // Get selected category
   const selectedCategory = categories.find(c => c.id === categoryId);
+  // The name of the sub-category that is chosen, so the category
+  // selector can say both at once: "Makanan & Minuman (Kopi & Kafe)".
+  const selectedSubCategoryName = useMemo(() => {
+    if (!subCategoryKey || !selectedCategory?.system_key) return null;
+    return subCategoryName(selectedCategory.system_key, subCategoryKey);
+  }, [subCategoryKey, selectedCategory]);
   const selectedAccount = accounts.find(a => a.id === accountId);
   const selectedToAccount = accounts.find(a => a.id === toAccountId);
 
@@ -1018,6 +1116,33 @@ const AddTransactionPage = () => {
             <IconText name="zap" emoji="⚡" on={polished} className="w-5 h-5" />
             <span className="text-sm font-medium text-gray-600">{K.quickType}</span>
           </div>
+
+          {/* The chips of the hour.
+
+              A reader who opens the page in the morning is usually
+              about to buy a coffee, and one in the evening is usually
+              about to eat. The three chips are those things, and one
+              tap fills in everything. */}
+          {type === "expense" && hourChips.length ? (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {hourChips.map((chip) => (
+                <button
+                  key={chip.text}
+                  type="button"
+                  onClick={() => applyHourChip(chip)}
+                  aria-label={`${chip.label} ${chip.amount}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-200 border border-primary-100 dark:border-primary-900/40 hover:bg-primary-100/70 dark:hover:bg-primary-900/50 transition-colors"
+                >
+                  <span aria-hidden="true">{chip.emoji}</span>
+                  <span>{chip.label}</span>
+                  <span className="tabular-nums opacity-70">
+                    {formatAmountInput(chip.amount)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <input
             type="text"
             value={quickEntry}
@@ -1208,14 +1333,27 @@ const AddTransactionPage = () => {
           onClick={() => setShowCategorySheet(true)}
           className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
         >
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{getCategoryIcon(selectedCategory?.name)}</span>
-            <div className="text-left">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-2xl shrink-0">{getCategoryIcon(selectedCategory?.name)}</span>
+            <div className="text-left min-w-0">
               <p className="text-sm text-gray-500">{K.category}</p>
-              <p className="font-medium">{selectedCategory?.name || K.pickCategory}</p>
+              {/* The category and the sub-category together.
+
+                  "Makanan & Minuman" alone does not say whether this
+                  was coffee or groceries, and the list of transactions
+                  is exactly where the reader wants to tell them
+                  apart. */}
+              <p className="font-medium truncate">
+                {selectedCategory
+                  ? combinedLabel(
+                      categoryName(selectedCategory, language),
+                      selectedSubCategoryName
+                    )
+                  : K.pickCategory}
+              </p>
             </div>
           </div>
-          <span className="text-gray-400">›</span>
+          <span className="text-gray-400 shrink-0">›</span>
         </button>
 
         {/* Account Selector */}
@@ -1355,6 +1493,7 @@ const AddTransactionPage = () => {
           onPick={(id) => setCategoryId(id)}
           onPickSub={(key) => setSubCategoryKey(key)}
           onCreate={createCategory}
+          onCreateSub={createSubCategory}
           onClose={() => setShowCategorySheet(false)}
         />
       )}

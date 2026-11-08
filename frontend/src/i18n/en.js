@@ -1613,6 +1613,15 @@ export default {
     command_bar_listening: 'Listening...',
     command_bar_recorded: 'Transaction recorded',
     command_bar_failed: 'Could not record it. Try again.',
+    // The quick actions on the bar, and what they say when they are
+    // pressed.
+    quick_actions: 'Quick Actions',
+    quick_analysis: '✨ Financial Analysis',
+    quick_record: '⚡ Quick Entry',
+    quick_split: '🧾 Split Receipt',
+    quick_goal: '🎯 Check Goals',
+    quick_analysis_prompt: 'Analyse my finances this month. Where is my money going the most, and what is the one thing I should fix first?',
+    quick_record_prompt: 'Type what you just bought, for example "Kopi Jago 10rb".',
   },
   passport: {
     count: {

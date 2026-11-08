@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
+import MarkdownText from './MarkdownText';
 import { useTranslation } from '../../i18n';
 import { batch3 } from '../../i18n/keys_batch3';
 import FinBuddyMascot from './FinBuddyMascot';
@@ -617,7 +618,9 @@ Silakan tanya dalam bahasa Indonesia, English, 日本語, atau 中文!`;
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-md'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  <p className="text-sm whitespace-pre-wrap">
+                    <MarkdownText text={msg.content} />
+                  </p>
                   {msg.actions && msg.actions.length > 0 && (
                     <ul className="mt-2 pt-2 border-t border-black/5 dark:border-white/10 space-y-1">
                       {msg.actions.map((a, ai) => (

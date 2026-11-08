@@ -10,12 +10,17 @@
  * So the sheet is a tree now. Each category is a heading, and the
  * sub-categories sit under it. The sub-categories are the words a
  * reader would use for the things they actually buy: "Kopi & Kafe",
- * "BBM & Parkir", "Pakaian". The reader chooses one, or makes one
- * of their own.
+ * "BBM & Bensin", "Pakaian & Fashion". The reader chooses one, or
+ * makes one of their own.
  *
  * The parent is what is recorded, because that is what the budget and
  * the report already understand. The sub-category is what the reader
  * chose, and it travels with the transaction.
+ *
+ * And the tree depends on the kind of transaction: an expense is
+ * offered food and transport, an income is offered a salary and
+ * dividends, and a transfer is offered the moving of money between
+ * accounts. A reader adding an expense was being offered "Gaji".
  */
 
 import { useMemo, useState } from 'react';
@@ -39,11 +44,16 @@ export default function CategoryTreeSheet({
   onPick,
   onPickSub,
   onCreate,
+  onCreateSub,
   onClose,
 }) {
   const [expanded, setExpanded] = useState({});
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  // The category the new sub-category is made under. It is the one
+  // that is open when the reader presses the button, because that is
+  // the one they are looking at.
+  const [newSubParent, setNewSubParent] = useState(null);
 
   // The categories of this kind of transaction.
   //
@@ -95,6 +105,14 @@ export default function CategoryTreeSheet({
     await onCreate(name);
     setNewName('');
     setCreating(false);
+  };
+
+  const submitNewSub = async () => {
+    const name = newName.trim();
+    if (!name || !onCreateSub || !newSubParent) return;
+    await onCreateSub(newSubParent, name);
+    setNewName('');
+    setNewSubParent(null);
   };
 
   return (
@@ -156,26 +174,47 @@ export default function CategoryTreeSheet({
 
                 {isOpen ? (
                   <div className="px-3 pb-3 space-y-1">
-                    {subs.map((sub) => (
-                      <button
-                        key={sub.key}
-                        type="button"
-                        onClick={() => {
-                          onPick(cat.id);
-                          onPickSub(sub.key);
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between gap-2 ${
-                          selectedId === cat.id && subKey === sub.key
-                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-800 dark:text-primary-200 font-medium'
-                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'
-                        }`}
-                      >
-                        <span className="truncate">{sub.name}</span>
-                        {selectedId === cat.id && subKey === sub.key ? (
-                          <Check className="w-4 h-4 text-primary-600 shrink-0" aria-hidden="true" />
-                        ) : null}
-                      </button>
-                    ))}
+                    {/* The sub-categories, as a pastel pill grid.
+
+                        A tall list of lines is a list of things to
+                        read. A grid of pills is a set of choices, and
+                        the reader can see them all at once.
+
+                        Each pill says its own name in full. Nothing is
+                        shortened to fit, and nothing is cut off at
+                        the edge of the card: a sub-category the
+                        reader cannot read the whole of is a
+                        sub-category they will not choose. */}
+                    {subs.length ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-emerald-50/40 dark:bg-emerald-900/10 rounded-xl mt-2">
+                        {subs.map((sub) => {
+                          const isSelected = selectedId === cat.id && subKey === sub.key;
+                          return (
+                            <button
+                              key={sub.key}
+                              type="button"
+                              onClick={() => {
+                                onPick(cat.id);
+                                onPickSub(sub.key);
+                              }}
+                              aria-pressed={isSelected}
+                              className={`px-3 py-2 rounded-lg border text-sm font-medium flex items-center justify-between gap-2 transition-[color,background-color,border-color,box-shadow,transform] duration-150 text-left ${
+                                isSelected
+                                  ? 'border-emerald-500 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100 font-semibold ring-1 ring-emerald-500'
+                                  : 'border-slate-200 bg-white dark:border-white/10 dark:bg-gray-800 text-slate-700 dark:text-slate-200 hover:border-emerald-400 hover:bg-emerald-50/80 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-900 hover:shadow-sm hover:-translate-y-0.5 cursor-pointer'
+                              }`}
+                            >
+                              <span className="min-w-0 whitespace-normal break-words">
+                                {sub.name}
+                              </span>
+                              {isSelected ? (
+                                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
 
                     {/* The categories the reader made themselves, under
                         the category they made them under. */}
@@ -197,6 +236,59 @@ export default function CategoryTreeSheet({
                         <span className="truncate">{categoryName(child, language)}</span>
                       </button>
                     ))}
+
+                    {/* A sub-category of the reader's own, under this
+                        category. */}
+                    {onCreateSub ? (
+                      newSubParent === cat.id ? (
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="text"
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') submitNewSub();
+                              if (e.key === 'Escape') setNewSubParent(null);
+                            }}
+                            placeholder="Nama sub-kategori baru"
+                            aria-label="Nama sub-kategori baru"
+                            autoFocus
+                            className="flex-1 min-w-0 px-3 py-2 border rounded-lg bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100"
+                          />
+                          <button
+                            type="button"
+                            onClick={submitNewSub}
+                            className="px-3 py-2 rounded-lg bg-primary-600 text-white text-xs font-medium shrink-0"
+                          >
+                            Simpan
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewSubParent(null);
+                              setNewName('');
+                            }}
+                            className="px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium shrink-0"
+                          >
+                            Batal
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewSubParent(cat.id);
+                            setNewName('');
+                            setCreating(false);
+                          }}
+                          data-testid="create-sub-category"
+                          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 mt-1 rounded-lg border border-dashed border-gray-300 dark:border-white/20 text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 hover:border-primary-400 transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                          Buat Sub-Kategori
+                        </button>
+                      )
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -272,7 +364,10 @@ export default function CategoryTreeSheet({
             ) : (
               <button
                 type="button"
-                onClick={() => setCreating(true)}
+                onClick={() => {
+                  setCreating(true);
+                  setNewSubParent(null);
+                }}
                 data-testid="create-category"
                 className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-gray-300 dark:border-white/20 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 hover:border-primary-400 transition-colors"
               >

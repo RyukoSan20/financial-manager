@@ -1613,6 +1613,15 @@ export default {
     command_bar_listening: 'Mendengar...',
     command_bar_recorded: 'Transaksi dicatat',
     command_bar_failed: 'Tidak bisa dicatat. Coba lagi.',
+    // The quick actions on the bar, and what they say when they are
+    // pressed.
+    quick_actions: 'Aksi Cepat',
+    quick_analysis: '✨ Analisis Keuangan',
+    quick_record: '⚡ Catat Cepat',
+    quick_split: '🧾 Split Struk',
+    quick_goal: '🎯 Cek Target',
+    quick_analysis_prompt: 'Analisis keuangan saya bulan ini. Di mana uang saya paling banyak keluar, dan apa satu hal yang paling sebaiknya saya perbaiki?',
+    quick_record_prompt: 'Ketik apa yang baru kamu beli, misalnya "Kopi Jago 10rb".',
   },
   passport: {
     count: {

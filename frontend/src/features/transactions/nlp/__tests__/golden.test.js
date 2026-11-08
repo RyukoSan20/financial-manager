@@ -22,7 +22,7 @@ const TEST_CASES = [
   { input: 'transfer ke bca 500rb', expectedType: 'transfer', fn: 'parseQuickEntry' },
   
   // Shopping detection  
-  { input: 'shopee baju 150rb', expectedType: 'expense', expectedCategory: 'Fashion', fn: 'parseQuickEntry' },
+  { input: 'shopee baju 150rb', expectedType: 'expense', expectedCategory: 'Belanja', fn: 'parseQuickEntry' },
   
   // Food detection
   { input: 'kopi 2 orang 50k', expectedAmount: 50000, fn: 'parseQuickEntry' },
@@ -53,9 +53,9 @@ function runTests() {
         case 'parseQuickEntry':
           result = parseQuickEntry(tc.input, {
             categories: [
-              { id: 1, name: 'Fashion', system_key: 'fashion' },
-              { id: 2, name: 'Makanan & Minuman', system_key: 'food' },
-              { id: 3, name: 'Pendapatan', system_key: 'income' },
+              { id: 1, name: 'Belanja', system_key: 'shopping' },
+              { id: 2, name: 'Makanan & Minuman', system_key: 'food_drink' },
+              { id: 3, name: 'Pendapatan', system_key: 'salary' },
             ]
           });
 
@@ -119,7 +119,7 @@ console.log('\n=== suggestCategory ===');
 const hints = {};
 const cats = [
   { id: 1, name: 'Fashion', system_key: 'fashion' },
-  { id: 2, name: 'Makanan & Minuman', system_key: 'food' },
+  { id: 2, name: 'Makanan & Minuman', system_key: 'food_drink' },
 ];
 console.log(suggestCategory(['kopi', 'malam'], hints, { food: 2, fashion: 1 }));
 

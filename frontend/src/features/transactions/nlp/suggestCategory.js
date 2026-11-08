@@ -87,10 +87,17 @@ function skeletonMatch(token, categoryMap) {
   const skeletonLookup = new Map();
   
   for (const [key, cat] of Object.entries(SEED_CATEGORIES)) {
+    // The key the server knows the category by.
+    //
+    // The name of the entry in the seed file is not always the same
+    // as the key: "fashion" is a kind of "shopping". A suggestion
+    // that names a key the server has never heard of cannot be
+    // looked up, so the category carries its own key.
+    const systemKey = cat.system_key || key;
     for (const term of [...(cat.brand || []), ...(cat.generic || [])]) {
       const skel = buildSkeleton(term);
       if (!skeletonLookup.has(skel) || skeletonLookup.get(skel).weight < 0.6) {
-        skeletonLookup.set(skel, { systemKey: key, weight: 0.6 });
+        skeletonLookup.set(skel, { systemKey, weight: 0.6 });
       }
     }
   }
@@ -118,11 +125,14 @@ function fuzzyMatchTokens(token, categoryMap) {
 
   for (const [key, cat] of Object.entries(SEED_CATEGORIES)) {
     const weight = 0.5; // Lower weight for fuzzy matches
+    // The key the server knows the category by. See the note in the
+    // skeleton matcher above.
+    const systemKey = cat.system_key || key;
     for (const term of [...(cat.brand || []), ...(cat.generic || [])]) {
       // The word that is looked up is the term itself. The category it
       // belongs to travels with it, so the caller learns which
       // category the word was matched to.
-      allTerms.push({ key: term, term, systemKey: key, weight });
+      allTerms.push({ key: term, term, systemKey, weight });
     }
   }
 

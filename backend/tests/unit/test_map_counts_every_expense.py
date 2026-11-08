@@ -209,3 +209,95 @@ def test_a_deleted_expense_is_not_on_the_map(session):
     assert answer["total_spent"] == 0, (
         "a deleted transaction is still being counted: %r" % answer["total_spent"]
     )
+
+def test_the_map_groups_by_every_column_it_names():
+    """
+    The answer is built from the shop name, the description and the
+    address, so the grouping has to name all three.
+
+    PostgreSQL refuses a grouping that leaves a column out, and the
+    map answered with a 500. SQLite is happy with a grouping that
+    leaves one out, so the test here is not about the database: it is
+    about the columns being named together.
+    """
+    import re
+
+    from app.api.routes import analytics
+
+    source = open(analytics.__file__, encoding="utf-8").read()
+    start = source.index("def get_merchant_map_data")
+    end = source.index("\n@router.", start + 10)
+    body = source[start:end]
+
+    # The columns the answer is built from.
+    match = re.search(
+        r"func\.coalesce\(\s*func\.nullif\(Transaction\.merchant_name.*?"
+        r"Transaction\.merchant_address,\s*\"\"\s*\)",
+        body,
+        re.S,
+    )
+    assert match, "the answer does not name the shop, the description and the address"
+
+    named = set(re.findall(r"Transaction\.(\w+)", match.group(0)))
+
+    # The grouping.
+    group = re.search(r"merchant_q = merchant_q\.group_by\((.*?)\)", body, re.S)
+    assert group, "the map does not group its answer at all"
+    grouped = set(re.findall(r"Transaction\.(\w+)", group.group(1)))
+
+    missing = named - grouped
+    assert not missing, (
+        "the grouping leaves out %s, and PostgreSQL refuses the query "
+        "that uses it" % sorted(missing)
+    )
+
+
+def test_two_expenses_are_both_on_the_map(session):
+    """
+    The two transactions the reader actually has.
+
+    "-Rp 25.000" and "-Rp 10.000 Kopi Jago" - one of them has
+    nothing but a name and a figure, and the other has a shop. Both
+    of them have to be on the map, and the money has to add up.
+    """
+    from app.api.routes.analytics import get_merchant_map_data
+    from app.models.transaction import Transaction
+
+    _make_a_quick_entry(session, description=None, amount=25000.0)
+
+    # The coffee: a shop, a description, and a category.
+    coffee = Transaction(
+        id=902,
+        user_id=1,
+        type="expense",
+        amount=10000.0,
+        currency="IDR",
+        date=date(2026, 11, 8),
+        description="Kopi Jago",
+        category_id=6,
+        account_id=1,
+    )
+    session.add(coffee)
+    session.commit()
+
+    class _User:
+        id = 1
+
+    answer = get_merchant_map_data(current_user=_User(), db=session)
+
+    assert answer["total_locations"] >= 1, (
+        "the expenses were left off the map: %r" % answer
+    )
+    assert answer["total_spent"] == 35000.0, (
+        "the money did not add up: %r" % answer["total_spent"]
+    )
+
+    # Every pin has a place on the map.
+    for marker in answer["markers"]:
+        assert marker.get("latitude") is not None, (
+            "a pin has no place: %r" % marker
+        )
+        assert marker.get("longitude") is not None, (
+            "a pin has no place: %r" % marker
+        )
+        assert marker.get("name"), "a pin has no name: %r" % marker

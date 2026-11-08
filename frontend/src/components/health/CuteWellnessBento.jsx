@@ -11,6 +11,17 @@
  * carries a small drawing, so the page has some texture and the
  * reader can tell the cards apart before reading a word of them.
  *
+ * The layout is two rows of twelve columns.
+ *
+ *   Top:     the score (five) beside the four amounts (seven).
+ *   Bottom:  the ratios (five) beside the audit (seven).
+ *
+ * It used to be three columns, and it did not fit: the score took
+ * three of six columns and the ratios took two, so the audit was
+ * pushed down and the space beside the ratios - half the screen - was
+ * left empty. A reader was shown a gap where their own report should
+ * have been.
+ *
  * The drawings are plain SVG. There is no picture to wait for and no
  * library to load, and they take the colour of the card they sit on.
  *
@@ -21,7 +32,6 @@
  */
 
 import { useTranslation } from '../../i18n';
-import BentoGrid, { BentoItem } from '../dashboard/BentoGrid';
 import FluidProgressBar from '../ui/FluidProgressBar';
 import { MascotCompanion } from '../common/MascotCompanion';
 import { readerFlag } from '../../utils/featureFlags';
@@ -198,28 +208,39 @@ const MiniFace = ({ mood, size = 52, tint = '#f472b6' }) => {
  * The amount must be readable in full. It was cut off with an
  * ellipsis, so `Rp 5.765.000` was shown as `Rp...` and the reader
  * could not see what they had. Money that cannot be read is not money
- * the reader can act on, so the amount is never truncated; the label
- * wraps instead, and the amount breaks rather than disappearing.
+ * the reader can act on, so the amount is never truncated.
+ *
+ * Two separate faults are fixed here.
+ *
+ * The first is the amount. `break-words` breaks wherever the line
+ * runs out of room, so "Rp 5.975.000" was drawn as "Rp 5.975" with
+ * ".000" on the line below - two numbers where there was one. The
+ * amount is now kept whole: it never wraps, and it is made a little
+ * smaller when it has to be.
+ *
+ * The second is the label. "PENGHASILAN BULANAN" was drawn as
+ * "PENGHASILA" and "N" on the line below, because the label was
+ * allowed to break in the middle of a word. A word is a word, so the
+ * label is not allowed to break: it wraps between the words, or it
+ * shrinks.
  */
 const MiniStat = ({ label, value, tint, illustration }) => (
   <div className="flex items-start gap-3 min-w-0">
     <div className="wellness-drift shrink-0">{illustration}</div>
     <div className="min-w-0 flex-1">
-      <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 leading-tight break-words">
+      {/* The label.
+
+          The words are not broken in the middle. The label is the
+          name of the amount, and a name broken in half is two
+          things. It wraps between the words instead. */}
+      <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 leading-tight">
         {label}
       </p>
       {/* The amount.
 
-          A number is never cut in the middle. `break-words` breaks
-          wherever the line runs out of room, so "Rp 5.975.000" was
-          drawn as "Rp 5.975" with ".000" on the line below, and the
-          reader saw two numbers where there was one.
-
-          So the amount is kept whole, and it is made a little smaller
-          when it has to be. The label above it wraps instead, and the
-          label is a word rather than a number, so a word broken over
-          two lines is still one word read over two lines. */}
-      <p className="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 tabular-nums leading-tight break-words">
+          One number, drawn on one line. The size steps down on
+          smaller screens rather than the number being cut. */}
+      <p className="mt-0.5 text-lg xl:text-xl font-bold tabular-nums whitespace-nowrap text-gray-900 dark:text-gray-100 leading-tight">
         {value}
       </p>
     </div>
@@ -267,135 +288,160 @@ export default function CuteWellnessBento({
   const describe = typeof ratioDescription === 'function' ? ratioDescription : () => '';
 
   return (
-    <BentoGrid>
-      {/* The score. The wide end of the row. */}
-      <BentoItem span="tall" order={1} className="fm-span-half">
-        <div className="wellness-card h-full p-5 settle-in">
-          <div className="wellness-card__wash" style={{ background: WASHES.mint }} />
-          <div className="wellness-halo" />
+    <div className="space-y-5">
+      {/* ---- The top row: the score beside the four amounts ------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+        {/* The score. Five columns of the twelve. */}
+        <div className="lg:col-span-5">
+          <div className="wellness-card h-full p-5 settle-in">
+            <div className="wellness-card__wash" style={{ background: WASHES.mint }} />
+            <div className="wellness-halo" />
 
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                {t('health_coach.score')}
-              </p>
-              <p className="text-5xl font-bold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">
-                {numericScore}
-              </p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  {t('health_coach.score')}
+                </p>
+                <p className="text-5xl font-bold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">
+                  {numericScore}
+                </p>
+              </div>
+
+              <div className="wellness-drift wellness-drift--slow shrink-0">
+                <Sun tint={ScoreColour(numericScore)} />
+              </div>
+            </div>
+
+            {/* The grade, as a small pastel pill.
+
+                It used to be a line of text - "Grade: D" - and the
+                grade is the one-word answer the reader came for, so
+                it is given a badge of its own. */}
+            <div className="mt-3">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 shrink-0">
                 {t('health_coach.grade')}{' '}
-                <span className="font-bold text-gray-900 dark:text-gray-100">{grade}</span>
-              </p>
+                <span className="font-bold">{grade}</span>
+              </span>
             </div>
 
-            <div className="wellness-drift wellness-drift--slow shrink-0">
-              <Sun tint={ScoreColour(numericScore)} />
+            {/* The score as a liquid. */}
+            <div className="mt-4">
+              <FluidProgressBar
+                value={numericScore}
+                max={100}
+                size="lg"
+                colour={ScoreColour(numericScore)}
+              />
             </div>
-          </div>
 
-          {/* The score as a liquid. */}
-          <div className="mt-5">
-            <FluidProgressBar
-              value={numericScore}
-              max={100}
-              size="lg"
-              colour={ScoreColour(numericScore)}
-            />
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            {/* The face.
+            {/* The face, and what it says.
 
                 The companion draws nothing until the reader has asked
                 for it, so the card carries its own small face as well.
                 One of the two is always there, and the face always
                 matches the score: a smile when the score is good, a
                 frown when it is not. */}
-            {readerFlag('MASCOT_COMPANION') ? (
-              <MascotCompanion mood={mood} size={52} title={t('health_coach.score')} />
-            ) : (
-              <MiniFace mood={mood} size={52} />
-            )}
-            <span className="text-xs text-gray-600 dark:text-gray-300">
-              {mood === 'happy'
-                ? t('health_coach.mascot_good')
-                : t('health_coach.mascot_worried')}
-            </span>
-          </div>
-        </div>
-      </BentoItem>
-
-      {/* The money that comes in, and the money that goes out.
-
-          These four numbers sit in one card, two to a row. They were
-          four numbers in two narrow columns, and the columns were so
-          narrow that the labels cut off in the middle and the amounts
-          were reduced to `Rp...`. */}
-      <BentoItem span="third" order={2}>
-        <div className="wellness-card h-full p-4">
-          <div className="wellness-card__wash" style={{ background: WASHES.sky }} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <MiniStat
-              label={t('health_coach.monthly_income')}
-              value={formatCurrency(monthlyIncome)}
-              illustration={<CoinStack tint="#10b981" />}
-            />
-            <MiniStat
-              label={t('health_coach.monthly_expense')}
-              value={formatCurrency(monthlyExpense)}
-              illustration={<Sprout tint="#f97316" />}
-            />
-            <MiniStat
-              label={t('health_coach.total_cash')}
-              value={formatCurrency(totalCash)}
-              illustration={<Wallet tint="#8b5cf6" />}
-            />
-            <MiniStat
-              label={t('health_coach.total_debt')}
-              value={formatCurrency(totalDebt)}
-              illustration={<Umbrella tint="#f43f5e" />}
-            />
-          </div>
-        </div>
-      </BentoItem>
-
-      {/* The ratios, as pills. */}
-      <BentoItem span="normal" order={4}>
-        <div className="wellness-card h-full p-4">
-          <div className="wellness-card__wash" style={{ background: WASHES.peach }} />
-          <div className="flex items-center gap-3">
-            <div className="wellness-drift shrink-0">
-              <Umbrella tint="#0ea5e9" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                {t('health_coach.financial_ratios')}
-              </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              {readerFlag('MASCOT_COMPANION') ? (
+                <MascotCompanion mood={mood} size={52} title={t('health_coach.score')} />
+              ) : (
+                <MiniFace mood={mood} size={52} />
+              )}
+              <span className="text-xs text-gray-600 dark:text-gray-300 min-w-0">
+                {mood === 'happy'
+                  ? t('health_coach.mascot_good')
+                  : t('health_coach.mascot_worried')}
+              </span>
             </div>
           </div>
-
-          <FinancialRatioPills
-            className="mt-3"
-            savingsRatio={savingsRatio}
-            emergencyFund={emergencyFund}
-            dsrRatio={dsrRatio}
-          />
-
-          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-            {describe(savingsRatio) || t('health_coach.savings_desc_default')}
-          </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {t('health_coach.emergency_target')}
-          </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {t('health_coach.dsr_note')}
-          </p>
         </div>
-      </BentoItem>
 
-      {/* The audit. */}
-      {audit ? (
-        <BentoItem span="third" order={5}>
+        {/* The four amounts. Seven columns of the twelve, in two
+            comfortable rows of two. */}
+        <div className="lg:col-span-7">
+          <div className="wellness-card h-full p-5">
+            <div className="wellness-card__wash" style={{ background: WASHES.sky }} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <MiniStat
+                label={t('health_coach.monthly_income')}
+                value={formatCurrency(monthlyIncome)}
+                illustration={<CoinStack tint="#10b981" />}
+              />
+              <MiniStat
+                label={t('health_coach.monthly_expense')}
+                value={formatCurrency(monthlyExpense)}
+                illustration={<Sprout tint="#f97316" />}
+              />
+              <MiniStat
+                label={t('health_coach.total_cash')}
+                value={formatCurrency(totalCash)}
+                illustration={<Wallet tint="#8b5cf6" />}
+              />
+              <MiniStat
+                label={t('health_coach.total_debt')}
+                value={formatCurrency(totalDebt)}
+                illustration={<Umbrella tint="#f43f5e" />}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ---- The bottom row: the ratios beside the audit --------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* The ratios, and the refresh. Five columns of the twelve. */}
+        <div className="lg:col-span-5">
+          <div className="wellness-card h-full p-5">
+            <div className="wellness-card__wash" style={{ background: WASHES.peach }} />
+            <div className="flex items-center gap-3">
+              <div className="wellness-drift shrink-0">
+                <Umbrella tint="#0ea5e9" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  {t('health_coach.financial_ratios')}
+                </p>
+              </div>
+            </div>
+
+            <FinancialRatioPills
+              className="mt-4"
+              savingsRatio={savingsRatio}
+              emergencyFund={emergencyFund}
+              dsrRatio={dsrRatio}
+            />
+
+            {/* The notes under the ratios.
+
+                These are sentences, so they are allowed to break
+                wherever they run out of room - they are not numbers,
+                and a sentence cut in half is not a sentence. */}
+            <p className="mt-4 text-xs text-gray-500 dark:text-gray-400 break-words">
+              {describe(savingsRatio) || t('health_coach.savings_desc_default')}
+            </p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {t('health_coach.emergency_target')}
+            </p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {t('health_coach.dsr_note')}
+            </p>
+
+            {onRefresh ? (
+              <button
+                type="button"
+                onClick={onRefresh}
+                className={`mt-4 w-full py-2.5 rounded-2xl font-medium text-white ${
+                  money ? 'money-fab' : ''
+                } bg-primary-600 hover:bg-primary-700 transition-colors`}
+              >
+                {t('health_coach.refresh_data')}
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {/* The audit. Seven columns of the twelve. */}
+        <div className="lg:col-span-7">
           <div className="wellness-card p-5 h-full">
             <div className="wellness-card__wash" style={{ background: WASHES.blush }} />
             <h2 className="font-semibold text-gray-900 dark:text-gray-100">
@@ -506,24 +552,9 @@ export default function CuteWellnessBento({
               </div>
             )}
           </div>
-        </BentoItem>
-      ) : null}
-
-      {/* The refresh. */}
-      {onRefresh ? (
-        <BentoItem span="normal" order={6}>
-          <button
-            type="button"
-            onClick={onRefresh}
-            className={`w-full py-3 rounded-2xl font-medium text-white ${
-              money ? 'money-fab' : ''
-            } bg-primary-600 hover:bg-primary-700 transition-colors`}
-          >
-            {t('health_coach.refresh_data')}
-          </button>
-        </BentoItem>
-      ) : null}
-    </BentoGrid>
+        </div>
+      </div>
+    </div>
   );
 }
 

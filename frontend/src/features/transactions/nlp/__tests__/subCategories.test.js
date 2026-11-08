@@ -31,9 +31,9 @@ function eq(actual, expected, what) {
 
 console.log('the sub-categories');
 
-check('coffee is coffee and tea', () => {
+check('coffee is coffee and cafe', () => {
   const sub = suggestSubCategory('Kopi Jago 10rb', 'food_drink');
-  eq(sub && sub.key, 'coffee_tea', 'the sub-category');
+  eq(sub && sub.key, 'coffee_cafe', 'the sub-category');
 });
 
 check('petrol is fuel', () => {
@@ -41,14 +41,19 @@ check('petrol is fuel', () => {
   eq(sub && sub.key, 'fuel', 'the sub-category');
 });
 
-check('a shirt is clothing', () => {
-  const sub = suggestSubCategory('baju kaos', 'shopping');
-  eq(sub && sub.key, 'clothing', 'the sub-category');
+check('a ride is a ride', () => {
+  const sub = suggestSubCategory('ojol ke kantor', 'transportation');
+  eq(sub && sub.key, 'ride_hailing', 'the sub-category');
 });
 
-check('a clinic is a clinic', () => {
+check('a shirt is fashion', () => {
+  const sub = suggestSubCategory('baju kaos', 'shopping');
+  eq(sub && sub.key, 'fashion', 'the sub-category');
+});
+
+check('a clinic is a doctor', () => {
   const sub = suggestSubCategory('k dokter', 'health');
-  eq(sub && sub.key, 'clinic', 'the sub-category');
+  eq(sub && sub.key, 'doctor', 'the sub-category');
 });
 
 check('the words that mean nothing point at nothing', () => {
@@ -58,12 +63,20 @@ check('the words that mean nothing point at nothing', () => {
   eq(sub, null, 'the sub-category');
 });
 
-check('the category with nothing under it has no sub-categories', () => {
-  eq(subCategoriesFor('other_income').length, 0, 'the number of sub-categories');
+check('the income categories have their own sub-categories', () => {
+  // Each kind of transaction has its own tree, and an income is not
+  // an expense.
+  const salary = subCategoriesFor('salary');
+  eq(salary.length > 0, true, 'the number of sub-categories');
+  eq(
+    salary.some((sub) => sub.key === 'monthly_salary'),
+    true,
+    'the monthly salary sub-category'
+  );
 });
 
 check('the name of a sub-category can be found', () => {
-  eq(subCategoryName('food_drink', 'coffee_tea'), 'Kopi & Teh', 'the name');
+  eq(subCategoryName('food_drink', 'coffee_cafe'), 'Kopi & Kafe', 'the name');
   eq(subCategoryName('food_drink', 'nope'), null, 'the name');
 });
 
@@ -73,6 +86,15 @@ check('every sub-category has words to find it by', () => {
     transportation: subCategoriesFor('transportation'),
     shopping: subCategoriesFor('shopping'),
     health: subCategoriesFor('health'),
+    bills_utilities: subCategoriesFor('bills_utilities'),
+    education: subCategoriesFor('education'),
+    entertainment: subCategoriesFor('entertainment'),
+    other_expense: subCategoriesFor('other_expense'),
+    salary: subCategoriesFor('salary'),
+    freelance: subCategoriesFor('freelance'),
+    investment_income: subCategoriesFor('investment_income'),
+    other_income: subCategoriesFor('other_income'),
+    transfer: subCategoriesFor('transfer'),
   })) {
     for (const sub of list) {
       if (!sub.words || !sub.words.length) {

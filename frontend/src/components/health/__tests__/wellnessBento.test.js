@@ -87,8 +87,10 @@ check(
 );
 
 check(
-  'the bento is a bento grid',
-  /BentoGrid/.test(bento) && /BentoItem/.test(bento)
+  'the bento is a two-row grid of twelve columns',
+  /lg:grid-cols-12/.test(bento) &&
+    (bento.match(/lg:col-span-5/g) || []).length === 2 &&
+    (bento.match(/lg:col-span-7/g) || []).length === 2
 );
 
 // ---------------------------------------------------------------------

@@ -15,6 +15,7 @@ import { useTranslation } from '../i18n';
 import { buildFlag } from '../utils/featureFlags';
 import { ADVISOR_PROMPT_ICONS } from '../utils/icons';
 import { batch3 } from '../i18n/keys_batch3';
+import MarkdownText from '../components/common/MarkdownText';
 import { 
   Send, Sparkles, RefreshCw, TrendingUp, TrendingDown, 
   Wallet, PiggyBank, Target, AlertTriangle, CheckCircle,
@@ -474,7 +475,11 @@ const AIAdvisor = () => {
                   }`}
                 >
                   <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                    {msg.content}
+                    {/* The agent's emphasis, read as emphasis.
+
+                        The agent writes "**Rp 5.965.000**" and the
+                        reader was seeing the asterisks. */}
+                    <MarkdownText text={msg.content} />
                   </div>
                   {msg.actions && msg.actions.length > 0 && (
                     <ul className="mt-2 pt-2 border-t border-black/5 dark:border-white/10 space-y-1">

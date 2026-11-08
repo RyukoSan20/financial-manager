@@ -937,9 +937,9 @@
    in a grid of two columns, and each one is given a fixed box so it
    cannot push its label out of the card. */
 .map-legend {
-  max-height: 260px;
+  max-height: 240px;
   overflow-y: auto;
-  width: 230px;
+  width: 235px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);

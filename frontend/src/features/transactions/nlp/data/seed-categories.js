@@ -8,8 +8,8 @@ export const SEED_CATEGORIES = {
   // =====================
   // FOOD & BEVERAGE
   // =====================
-  food: {
-    system_key: 'food',
+  food_drink: {
+    system_key: 'food_drink',
     name: 'Makanan & Minuman',
     brand: [
       // Fast Food
@@ -100,8 +100,8 @@ export const SEED_CATEGORIES = {
   // =====================
   // TRANSPORTATION
   // =====================
-  transport: {
-    system_key: 'transport',
+  transportation: {
+    system_key: 'transportation',
     name: 'Transportasi',
     brand: [
       // Ride Hailing
@@ -135,8 +135,8 @@ export const SEED_CATEGORIES = {
   // =====================
   // PULSA & DATA
   // =====================
-  pulsa: {
-    system_key: 'pulsa',
+  bills_utilities: {
+    system_key: 'bills_utilities',
     name: 'Pulsa & Data',
     brand: [
       // Providers
@@ -149,23 +149,6 @@ export const SEED_CATEGORIES = {
       'indihome', 'first media', 'my republic', 'wifi',
       'paket data', 'kuota', 'internet',
       'pulsa', 'token listrik',
-    ],
-    generic: [
-      'pulsa', 'data', 'kuota', 'internet', 'paket internet',
-      'wifi', 'langganan', 'subscription',
-      'topup', 'top up', 'isi ulang',
-      'token', 'e-wallet', 'e wallet',
-    ],
-    avoid: []
-  },
-
-  // =====================
-  // BILLS & UTILITIES
-  // =====================
-  bills: {
-    system_key: 'bills',
-    name: 'Tagihan',
-    brand: [
       // Utilities
       'pln', 'token pln', 'token listrik', 'listrik',
       'bpjs kesehatan', 'bpjs ketenagakerjaan', 'bpjs',
@@ -174,9 +157,12 @@ export const SEED_CATEGORIES = {
       'prudential', 'aia', 'allianz', 'manulife',
       // Subscriptions
       'langganan', 'subscription', 'membership',
-      'gym', 'fitness',
     ],
     generic: [
+      'pulsa', 'data', 'kuota', 'internet', 'paket internet',
+      'wifi', 'langganan', 'subscription',
+      'topup', 'top up', 'isi ulang',
+      'token', 'e-wallet', 'e wallet',
       'listrik', 'air', 'gas', 'telepon',
       'tagihan', 'bill', 'invoice',
       'cicilan', 'angsuran', 'kredit',
@@ -252,7 +238,7 @@ export const SEED_CATEGORIES = {
   // FASHION
   // =====================
   fashion: {
-    system_key: 'fashion',
+    system_key: 'shopping',
     name: 'Fashion',
     brand: [
       // International
@@ -282,7 +268,7 @@ export const SEED_CATEGORIES = {
   // GIFTS & DONATIONS
   // =====================
   gift: {
-    system_key: 'gift',
+    system_key: 'other_expense',
     name: 'Hadiah & Donasi',
     brand: [
       // E-Gifts
@@ -307,7 +293,7 @@ export const SEED_CATEGORIES = {
   // HOUSING
   // =====================
   housing: {
-    system_key: 'housing',
+    system_key: 'bills_utilities',
     name: 'Tempat Tinggal',
     brand: [
       // Rent
@@ -326,24 +312,73 @@ export const SEED_CATEGORIES = {
   // =====================
   // INCOME
   // =====================
-  income: {
-    system_key: 'income',
-    name: 'Pendapatan',
+  //
+  // The income is split the way the server splits it, so that "gaji"
+  // is not the same category as "dividen". The reader's own money
+  // has to be able to say where it came from.
+  salary: {
+    system_key: 'salary',
+    name: 'Gaji & Upah',
     brand: [],
     generic: [
       'gaji', 'salary', 'payroll', 'slip gaji',
       'thr', 'tunjangan', 'bonus', 'bonus akhir tahun',
-      'komisi', 'commission', 'fee',
-      'honor', 'honorarium',
-      'pendapatan', 'income', 'revenue',
-      'terima', 'masuk', 'dapat', 'receive',
-      'transfer masuk', 'dana masuk',
-      'refund', 'cashback', 'rebate',
-      'bunga', 'dividen',
-      'royalti', 'royalty',
-      'freelance', 'proyek', 'project',
+      'lembur', 'overtime', 'insentif',
     ],
     avoid: ['transfer']
+  },
+
+  freelance: {
+    system_key: 'freelance',
+    name: 'Bisnis & Toko',
+    brand: [],
+    generic: [
+      'freelance', 'proyek', 'project',
+      'komisi', 'commission', 'fee',
+      'honor', 'honorarium', 'jasa',
+      'penjualan', 'jualan', 'omzet',
+    ],
+    avoid: ['transfer']
+  },
+
+  investment_income: {
+    system_key: 'investment_income',
+    name: 'Investasi & Pasif',
+    brand: [],
+    generic: [
+      'dividen', 'bunga', 'deposito',
+      'royalti', 'royalty', 'capital gain', 'crypto',
+    ],
+    avoid: ['transfer']
+  },
+
+  other_income: {
+    system_key: 'other_income',
+    name: 'Pemasukan Lainnya',
+    brand: [],
+    generic: [
+      'pendapatan', 'income', 'revenue',
+      'terima', 'masuk', 'dapat', 'receive',
+      'refund', 'cashback', 'rebate',
+      'reimbursement', 'pengembalian',
+    ],
+    avoid: ['transfer']
+  },
+
+  // =====================
+  // EDUCATION
+  // =====================
+  education: {
+    system_key: 'education',
+    name: 'Pendidikan',
+    brand: [],
+    generic: [
+      'buku', 'book', 'alat tulis', 'pulpen', 'kertas',
+      'kursus', 'kelas', 'course', 'les', 'bimbel', 'tutor',
+      'spp', 'ukt', 'kuliah', 'kampus', 'university',
+      'sekolah', 'school',
+    ],
+    avoid: []
   },
 
   // =====================
@@ -378,10 +413,19 @@ export function buildLookupMap(categories) {
   const lookup = new Map();
   
   for (const [key, cat] of Object.entries(categories)) {
+    // The key the server knows the category by.
+    //
+    // The name of the entry in this file is not always the same as
+    // the key: "fashion" is a kind of "shopping", and "gift" is a
+    // kind of "other_expense". A suggestion that names a key the
+    // server has never heard of cannot be looked up, so the category
+    // carries its own key and that is the one that is used.
+    const systemKey = cat.system_key || key;
+
     // Add brand terms with high weight (0.9)
     for (const term of cat.brand || []) {
       lookup.set(term.toLowerCase(), {
-        system_key: key,
+        system_key: systemKey,
         weight: 0.9,
         type: 'brand'
       });
@@ -390,7 +434,7 @@ export function buildLookupMap(categories) {
     // Add generic terms with lower weight (0.6)
     for (const term of cat.generic || []) {
       lookup.set(term.toLowerCase(), {
-        system_key: key,
+        system_key: systemKey,
         weight: 0.6,
         type: 'generic'
       });

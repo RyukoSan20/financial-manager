@@ -149,8 +149,10 @@ check('the small money cards do not cut the money off', () => {
     !/text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums truncate/.test(bento),
     'the money is cut off with an ellipsis'
   );
+  // The amount is kept whole on one line. It is made a little smaller
+  // when it has to be, rather than being cut in the middle.
   assert.ok(
-    /break-words/.test(bento),
+    /whitespace-nowrap/.test(bento),
     'the money has nowhere to go when it is long'
   );
 });
@@ -178,8 +180,16 @@ check('the map legend holds its own pins', () => {
     'the pin grid is not two columns that cannot overflow'
   );
   assert.ok(
-    /\.map-legend\s*\{[\s\S]*?max-height:\s*260px/.test(css),
+    /\.map-legend\s*\{[\s\S]*?max-height:\s*240px/.test(css),
     'the legend has no maximum height'
+  );
+  assert.ok(
+    /\.map-legend\s*\{[\s\S]*?width:\s*235px/.test(css),
+    'the legend has no width of its own'
+  );
+  assert.ok(
+    /\.map-legend\s*\{[\s\S]*?padding:\s*12px/.test(css),
+    'the legend has no padding of its own'
   );
   assert.ok(
     /\.map-legend\s*\{[\s\S]*?overflow-y:\s*auto/.test(css),
@@ -231,26 +241,42 @@ console.log(`\nall ${passed} passing`);
 check('the health bento has no gap beside the ratios', () => {
   const bento = read('src/components/health/CuteWellnessBento.jsx');
 
-  // The score took three of the six columns and the ratios took two.
-  // The audit then took the whole row, so the four columns beside the
-  // ratios were left empty: a gap the size of half the screen.
+  // The bento is two rows of twelve columns: the score (five) beside
+  // the four amounts (seven), and the ratios (five) beside the audit
+  // (seven).
   //
-  // The findings card is now a third of a row and sits beside the
-  // ratios, so the row is filled.
-  const items = bento.match(/BentoItem span="[^"]+" order=\{\d+\}/g) || [];
+  // It used to be three columns, and it did not fit: the score took
+  // three of six columns and the ratios took two, so the audit was
+  // pushed down and half the screen beside the ratios was left
+  // empty.
   assert.ok(
-    items.some((i) => /span="third"/.test(i)),
-    'there is no third of a row beside the ratios'
+    /grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch/.test(bento),
+    'the top row is not twelve columns'
+  );
+  assert.ok(
+    /grid grid-cols-1 lg:grid-cols-12 gap-5 items-start/.test(bento),
+    'the bottom row is not twelve columns'
+  );
+
+  // The score takes five of the twelve, the amounts seven.
+  const scoreBlock = bento.slice(
+    bento.indexOf('lg:col-span-5'),
+    bento.indexOf('lg:col-span-7')
+  );
+  assert.ok(scoreBlock, 'there is no five-column cell beside the seven');
+  assert.ok(
+    (bento.match(/lg:col-span-5/g) || []).length === 2,
+    'the score and the ratios are not both five columns wide'
+  );
+  assert.ok(
+    (bento.match(/lg:col-span-7/g) || []).length === 2,
+    'the amounts and the audit are not both seven columns wide'
   );
 
   // The findings are their own card, not folded into the audit.
   assert.ok(
     /key_findings|finding_title/.test(bento),
     'there is no findings card of its own'
-  );
-  assert.ok(
-    !/span="full" order=\{5\}/.test(bento),
-    'the findings still take the whole row, which leaves the gap'
   );
 });
 
@@ -311,30 +337,45 @@ check('the health money amounts are never cut in half', () => {
   // ".000" on the next, which reads as two numbers.
   //
   // The amount has to be allowed to be a little smaller rather than
-  // be cut in two.
+  // be cut in two, and it has to stay on one line.
   assert.ok(
-    /text-(sm|base).*font-bold/.test(bento),
+    /text-lg xl:text-xl font-bold/.test(bento),
     'the amount is not sized so that it fits'
   );
   assert.ok(
     !/tabular-nums break-words/.test(bento),
     'the amount is still cut wherever it runs out of room'
   );
-  // The money card has to be wide enough for the amount at all.
   assert.ok(
-    /BentoItem span="third" order=\{2\}/.test(bento),
-    'the money card is only one column wide'
+    /tabular-nums whitespace-nowrap/.test(bento),
+    'the amount is allowed to wrap into two numbers'
+  );
+  // And the label is a word, not a number: it is not broken in the
+  // middle, so "PENGHASILAN BULANAN" never becomes "PENGHASILA / N".
+  assert.ok(
+    !/break-all/.test(bento),
+    'a label is broken in the middle of a word'
   );
 });
 
 check('the status labels on the ratios are not cut off', () => {
-  // The pills that say "Perlu diperbaiki" and "Perlu dipertahankan"
-  // were cut into "Per / dip" at the right edge, because the card was
-  // too narrow for them and the text was not allowed to wrap.
+  // The badges that say "Perlu diperbaiki" and "Sangat baik" were
+  // cut into "Per / dip" at the right edge, because the card was too
+  // narrow for them and the text was not allowed to wrap.
   const pills = read('src/components/health/FinancialRatioPills.jsx');
   assert.ok(
-    /break-words|leading-tight|flex-wrap/.test(pills),
+    /flex-wrap/.test(pills),
     'the status labels cannot wrap, so they are cut in half'
+  );
+  // The status is a compact pastel badge that holds its words whole.
+  assert.ok(
+    /px-2\.5 py-0\.5 rounded-full text-xs font-medium shrink-0/.test(pills),
+    'the status is not a compact badge that cannot be cut'
+  );
+  // And the row it sits in gives it room.
+  assert.ok(
+    /flex items-center justify-between gap-3 flex-wrap/.test(pills),
+    'the row does not give the badge room at the edge'
   );
 });
 
@@ -456,7 +497,7 @@ check('the dashboard assistant is a bar at the top, not a box over the page', ()
   // It is now a bar at the top of the page: it never covers a card,
   // and it does three things at once - it takes a quick transaction,
   // it answers a question, and it can take the reader to a page.
-  const bar = read('src/components/common/AICommandBar.jsx');
+  const bar = read('src/components/ai/TopAiCommandBar.jsx');
 
   assert.ok(bar, 'there is no command bar');
   assert.ok(
@@ -485,6 +526,20 @@ check('the dashboard assistant is a bar at the top, not a box over the page', ()
     /FinBuddyMascot/.test(bar),
     'the command bar has no mascot in its corner'
   );
+  // The four quick actions, as pills.
+  assert.ok(
+    /quick_analysis/.test(bar) &&
+      /quick_record/.test(bar) &&
+      /quick_split/.test(bar) &&
+      /quick_goal/.test(bar),
+    'the four quick actions are not on the bar'
+  );
+  // And they open a drawer that pushes the page down, rather than a
+  // window that covers it.
+  assert.ok(
+    /actionsOpen/.test(bar) && /aria-expanded/.test(bar),
+    'the quick actions cannot be opened, or the reader cannot tell whether they are'
+  );
 });
 
 check('the dashboard does not draw the floating assistant', () => {
@@ -494,7 +549,22 @@ check('the dashboard does not draw the floating assistant', () => {
     'the floating assistant is still drawn over the dashboard'
   );
   assert.ok(
-    /AICommandBar/.test(dashboard),
+    /TopAiCommandBar/.test(dashboard),
     'the command bar is not on the dashboard'
+  );
+});
+
+check('the command bar is mounted at the top of the dashboard', () => {
+  const dashboard = read('src/pages/Dashboard.jsx');
+
+  // The bar has to come before the cards, or it is not a bar at the
+  // top - it is a bar somewhere in the middle.
+  const barAt = dashboard.indexOf('<TopAiCommandBar');
+  const headerAt = dashboard.indexOf('dashboard.title');
+  assert.ok(barAt !== -1, 'the command bar is not on the dashboard');
+  assert.ok(headerAt !== -1, 'the dashboard header was not found');
+  assert.ok(
+    barAt < headerAt,
+    'the command bar is below the header, so it is not at the top'
   );
 });

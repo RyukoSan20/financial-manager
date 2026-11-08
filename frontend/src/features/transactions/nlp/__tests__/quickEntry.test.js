@@ -67,7 +67,7 @@ check('a date is not a sum', evalMath('2026-10-28'), null);
 // ---------------------------------------------------------------------------
 
 const CATEGORIES = [
-  { id: 1, name: 'Makanan & Minuman', system_key: 'food' },
+  { id: 1, name: 'Makanan & Minuman', system_key: 'food_drink' },
   { id: 2, name: 'Belanja', system_key: 'shopping' },
 ];
 
@@ -92,13 +92,13 @@ check('a sum keeps the words around it', parse('kopi 25000+15000').categorySugge
 
 const map = buildCategoryMap(CATEGORIES);
 const typo = suggestCategory(['kopii'], {}, map);
-check('a word with a typo is still the word', typo.cat, 'food');
+check('a word with a typo is still the word', typo.cat, 'food_drink');
 
 // A word is counted once. When the layers each found the same word,
 // the reader would be shown a confidence that is higher than the
 // evidence supports.
 const doubled = suggestCategory(['makaaan'], {}, buildCategoryMap([
-  { id: 1, name: 'Makanan & Minuman', system_key: 'food' },
+  { id: 1, name: 'Makanan & Minuman', system_key: 'food_drink' },
 ]));
 check('a word is only counted once', doubled.matches.length, 1);
 check('a word that is doubled is not more certain', doubled.score <= 0.7, true);

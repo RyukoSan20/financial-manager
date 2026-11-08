@@ -1613,6 +1613,15 @@ export default {
     command_bar_listening: '聞いています...',
     command_bar_recorded: '記録しました',
     command_bar_failed: '記録できませんでした。もう一度お試しください。',
+    // The quick actions on the bar, and what they say when they are
+    // pressed.
+    quick_actions: 'クイック操作',
+    quick_analysis: '✨ 家計分析',
+    quick_record: '⚡ すばやく記録',
+    quick_split: '🧾 レシート分割',
+    quick_goal: '🎯 目標を確認',
+    quick_analysis_prompt: '今月の家計を分析してください。孰が最も出金が多いか、そして最初に直すべき点は何か教えてください。',
+    quick_record_prompt: '買ったものを入力してください（例：「Kopi Jago 10rb」）。',
   },
   passport: {
     count: {

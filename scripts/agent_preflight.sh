@@ -115,6 +115,9 @@ for test_file in \
   src/pages/__tests__/transactionsFiltersAndItems.test.js \
   src/pages/__tests__/pageLayoutRepairs.test.js \
   src/features/transactions/nlp/__tests__/subCategories.test.js \
+  src/features/transactions/nlp/__tests__/subCategoryPills.test.js \
+  src/utils/__tests__/inlineMarkdown.test.js \
+  src/utils/__tests__/goalIcon.test.js \
   src/components/layout/__tests__/typedPlaceLookup.test.js \
   src/components/map/__tests__/mapPinSize.test.js \
   src/components/layout/__tests__/transactionLocation.test.js \

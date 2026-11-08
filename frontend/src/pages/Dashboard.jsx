@@ -22,7 +22,7 @@ import api, { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../config/url';
 import { useTranslation } from '../i18n';
 import { categoryName, categoryKey, transactionCategoryName } from '../utils/categoryName';
-import AICommandBar from '../components/common/AICommandBar';
+import TopAiCommandBar from '../components/ai/TopAiCommandBar';
 import ReadinessChecklist from '../components/ReadinessChecklist';
 import InsightsPanel from '../components/insights/InsightsPanel';
 import MonthTimeline from '../components/dashboard/MonthTimeline';
@@ -864,14 +864,28 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   
   return (
     <div
-      className={`space-y-6 animate-fadeIn p-4 min-h-screen relative ${
+      className={`space-y-6 animate-fadeIn p-4 pb-24 md:pb-8 min-h-screen relative ${
         // The light behind the page only shows if the page does not
         // paint over it. With the aurora layer on, the page is
         // transparent and the wash is what is behind it.
         auroraIsOn() ? 'bg-transparent' : bgPrimary
       }`}
     >
-      
+      {/* The assistant.
+
+          It used to be a window in the bottom left of the screen, and
+          it sat on top of the cards the reader came to read: the
+          review of the last transactions, the goals, the balance.
+
+          It is a bar at the top of the page now, so it never covers a
+          card. It records a quick transaction, answers a question,
+          and takes the reader to a page, all from the same line. */}
+      <TopAiCommandBar userData={{
+        totalBalance: summary?.total_balance || 0,
+        totalIncome: summary?.total_income || 0,
+        totalExpense: summary?.total_expense || 0,
+      }} />
+
       {/* ================================================================ */}
       {/* HEADER */}
       {/* ================================================================ */}
@@ -1620,7 +1634,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                       amount beside it. The goal on the goals page
                       already worked this way; this is the same card
                       and it now behaves the same way. */}
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-4 mb-2">
                     <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
                       style={{ backgroundColor: goal.color || '#3b82f6' }}
@@ -1657,21 +1671,6 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           </div>
         </Card>
       )}
-      
-      {/* The assistant.
-
-          It used to be a window in the bottom left of the screen, and
-          it sat on top of the cards the reader came to read: the
-          review of the last transactions, the goals, the balance.
-
-          It is a bar at the top of the page now, so it never covers a
-          card. It records a quick transaction, answers a question,
-          and takes the reader to a page, all from the same line. */}
-      <AICommandBar userData={{
-        totalBalance: summary?.total_balance || 0,
-        totalIncome: summary?.total_income || 0,
-        totalExpense: summary?.total_expense || 0,
-      }} />
       
     </div>
   );
