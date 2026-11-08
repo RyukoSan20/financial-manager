@@ -1064,7 +1064,7 @@ const AddTransactionPage = () => {
   if (loadError) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-6 shadow-sm text-center max-w-sm">
+        <div className="shape-card rounded-xl p-6 text-center max-w-sm">
           <div className="text-4xl mb-4">⚠️</div>
           <h2 className="font-semibold text-lg mb-2">{K.loadFailedTitle}</h2>
           <p className="text-gray-600 mb-4">{loadError}</p>
@@ -1235,7 +1235,7 @@ const AddTransactionPage = () => {
         )}
 
         {/* Amount Input */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="shape-card rounded-xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-2xl">{amountSymbol}</span>
             <input
@@ -1348,7 +1348,7 @@ const AddTransactionPage = () => {
         )}
 
         {/* Description */}
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="shape-card rounded-xl p-4">
           <input
             type="text"
             value={description}
@@ -1361,7 +1361,7 @@ const AddTransactionPage = () => {
         {/* Category Selector */}
         <button
           onClick={() => setShowCategorySheet(true)}
-          className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
+          className="w-full shape-card rounded-xl p-4 flex items-center justify-between"
         >
           <div className="flex items-center gap-3 min-w-0">
             <span className="text-2xl shrink-0">{getCategoryIcon(selectedCategory?.name)}</span>
@@ -1392,7 +1392,7 @@ const AddTransactionPage = () => {
             setAccountSheetSide('source');
             setShowAccountSheet(true);
           }}
-          className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
+          className="w-full shape-card rounded-xl p-4 flex items-center justify-between"
         >
           <div className="text-left">
             <p className="text-sm text-gray-500">{K.account}</p>
@@ -1413,7 +1413,7 @@ const AddTransactionPage = () => {
               setAccountSheetSide('destination');
               setShowAccountSheet(true);
             }}
-            className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
+            className="w-full shape-card rounded-xl p-4 flex items-center justify-between"
           >
             <div className="text-left">
               <p className="text-sm text-gray-500">{K.transferTo}</p>
@@ -1426,7 +1426,7 @@ const AddTransactionPage = () => {
         {/* Date Selector */}
         <button
           onClick={() => setShowDateSheet(true)}
-          className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
+          className="w-full shape-card rounded-xl p-4 flex items-center justify-between"
         >
           <div className="text-left">
             <p className="text-sm text-gray-500">{K.date}</p>
@@ -1466,7 +1466,7 @@ const AddTransactionPage = () => {
         {/* Location Selector */}
         <button
           onClick={() => setShowLocationSheet(true)}
-          className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center justify-between"
+          className="w-full shape-card rounded-xl p-4 flex items-center justify-between"
         >
           <div className="text-left">
             <p className="text-sm text-gray-500">{K.location}</p>

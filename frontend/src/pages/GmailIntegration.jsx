@@ -111,7 +111,7 @@ const GmailIntegration = () => {
       </p>
 
       {/* Gmail Connection Card */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
+      <div className="shape-card rounded-xl p-6 mb-4">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-2xl flex items-center justify-center">
             <span className="text-3xl">📧</span>
@@ -216,7 +216,7 @@ const GmailIntegration = () => {
       </div>
 
       {/* Security Info */}
-      <div className="bg-white rounded-xl p-4 shadow-sm">
+      <div className="shape-card rounded-xl p-4">
         <h3 className="font-semibold mb-2 flex items-center gap-2">
           {t('gmail_integration.security')}
         </h3>

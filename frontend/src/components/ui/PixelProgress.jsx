@@ -100,7 +100,7 @@ export const GoalProgress = ({
   }).format(amount);
 
   return (
-    <div className={`bg-white rounded-xl p-4 shadow-sm ${className}`}>
+    <div className={`shape-card rounded-xl p-4 ${className}`}>
       <div className="flex items-center gap-3 mb-3">
         {Icon && (
           <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary-600 flex items-center justify-center">

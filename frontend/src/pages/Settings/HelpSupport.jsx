@@ -113,7 +113,7 @@ const HelpSupport = () => {
 
       <div className="p-4 max-w-lg mx-auto space-y-4">
         {/* Quick Links */}
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="shape-card rounded-xl p-4">
           <h2 className="font-bold text-lg mb-4">{t('help_support.contact')}</h2>
 
           <div className="grid grid-cols-2 gap-3">
@@ -135,7 +135,7 @@ const HelpSupport = () => {
         </div>
 
         {/* FAQs */}
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="shape-card rounded-xl p-4">
           <h2 className="font-bold text-lg mb-4">{t('help_support.faq')}</h2>
 
           <div className="space-y-2">
@@ -163,7 +163,7 @@ const HelpSupport = () => {
         </div>
 
         {/* Contact Form */}
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="shape-card rounded-xl p-4">
           <h2 className="font-bold text-lg mb-4">{t('help_support.send')}</h2>
 
           {message && (
@@ -209,7 +209,7 @@ const HelpSupport = () => {
 
         {/* My Requests */}
         {!loading && requests.length > 0 && (
-          <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="shape-card rounded-xl p-4">
             <h2 className="font-bold text-lg mb-4">{t('help_support.history')}</h2>
             <div className="space-y-3">
               {requests.map(req => (

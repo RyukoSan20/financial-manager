@@ -118,7 +118,7 @@ const AppSettings = () => {
 
         <SwitchPanel />
 
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="shape-card rounded-xl p-4">
           <h2 className="font-bold text-lg mb-4">{t('app_settings.appearance')}</h2>
 
           <div className="space-y-4">
@@ -170,7 +170,7 @@ const AppSettings = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="shape-card rounded-xl p-4">
           <h2 className="font-bold text-lg mb-4">{t('app_settings.regional')}</h2>
 
           <div className="space-y-4">
@@ -227,7 +227,7 @@ const AppSettings = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="shape-card rounded-xl p-4">
           <h2 className="font-bold text-lg mb-4">{t('app_settings.security')}</h2>
 
           <div className="space-y-4">

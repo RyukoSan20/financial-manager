@@ -31,6 +31,7 @@ import {
 import { categoryName } from '../../utils/categoryName';
 import { subCategoriesFor, subCategoryName } from '../../features/transactions/nlp/subCategories.js';
 import { formatAmountInput, parseAmount } from '../../utils/amountInput';
+import { useTranslation } from '../../i18n';
 
 /**
  * One field of the form.
@@ -86,6 +87,7 @@ export default function TransactionEditForm({
   onSave,
   onCancel,
 }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState({});
   const [showLines, setShowLines] = useState(false);
   const [showCalc, setShowCalc] = useState(false);
@@ -167,7 +169,7 @@ export default function TransactionEditForm({
 
   return (
     <div className="space-y-3">
-      <Field label="Deskripsi">
+      <Field label={t('transaction_edit.description')}>
         <input
           type="text"
           value={form.description || ''}
@@ -177,7 +179,7 @@ export default function TransactionEditForm({
       </Field>
 
       <div className="grid grid-cols-2 gap-2">
-        <Field label="Jumlah">
+        <Field label={t('transaction_edit.amount')}>
           <input
             type="text"
             inputMode="decimal"
@@ -186,7 +188,7 @@ export default function TransactionEditForm({
             className={`${input} tabular-nums`}
           />
         </Field>
-        <Field label="Tanggal">
+        <Field label={t('transaction_edit.date')}>
           <input
             type="date"
             value={form.date || ''}
@@ -197,7 +199,7 @@ export default function TransactionEditForm({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Field label="Kategori">
+        <Field label={t('transaction_edit.category')}>
           <select
             value={form.category_id || ''}
             onChange={(e) => {
@@ -227,7 +229,7 @@ export default function TransactionEditForm({
         {/* The sub-category. It is only offered when the parent has
             some, and it says which one is chosen. */}
         {subs.length ? (
-          <Field label="Sub-kategori">
+          <Field label={t('transaction_edit.sub_category')}>
             <select
               value={(form.tags || '').split(',')[0] || ''}
               onChange={(e) => set('tags', e.target.value)}
@@ -243,7 +245,7 @@ export default function TransactionEditForm({
           </Field>
         ) : null}
 
-        <Field label="Akun">
+        <Field label={t('transaction_edit.account')}>
           <select
             value={form.account_id || ''}
             onChange={(e) => set('account_id', parseInt(e.target.value) || null)}
@@ -259,14 +261,14 @@ export default function TransactionEditForm({
         </Field>
 
         {/* The place. */}
-        <Field label="Lokasi">
+        <Field label={t('transaction_edit.location')}>
           <div className="flex items-center gap-2">
             <MapPin className="w-4 h-4 text-gray-400 shrink-0" aria-hidden="true" />
             <input
               type="text"
               value={form.merchant_address || ''}
               onChange={(e) => set('merchant_address', e.target.value)}
-              placeholder="Alamat toko"
+              placeholder={t('transaction_edit.address_placeholder')}
               className={input}
             />
           </div>
@@ -276,7 +278,7 @@ export default function TransactionEditForm({
       {/* The lines of the bill. */}
       <Panel
         icon={ReceiptText}
-        title="Rincian Barang"
+        title={t('transaction_edit.items_title')}
         count={(form.breakdown || []).length}
         open={showLines}
         onToggle={() => setShowLines(!showLines)}
@@ -295,7 +297,7 @@ export default function TransactionEditForm({
             ))
           ) : (
             <p className="text-xs text-gray-400 py-1">
-              Tidak ada rincian. Gunakan tombol rincian pada baris transaksi untuk menambahkannya.
+              {t('transaction_edit.no_items')}
             </p>
           )}
         </div>
@@ -304,12 +306,12 @@ export default function TransactionEditForm({
       {/* The calculation. */}
       <Panel
         icon={Store}
-        title="Pajak & Diskon"
+        title={t('transaction_edit.tax_title')}
         open={showCalc}
         onToggle={() => setShowCalc(!showCalc)}
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pl-2 border-l-2 border-gray-100 dark:border-white/10">
-          <Field label="Diskon">
+          <Field label={t('transaction_edit.discount')}>
             <input
               type="text"
               inputMode="decimal"
@@ -318,7 +320,7 @@ export default function TransactionEditForm({
               className={input}
             />
           </Field>
-          <Field label="Pajak">
+          <Field label={t('transaction_edit.tax')}>
             <input
               type="text"
               inputMode="decimal"
@@ -327,7 +329,7 @@ export default function TransactionEditForm({
               className={input}
             />
           </Field>
-          <Field label="Biaya Tambahan">
+          <Field label={t('transaction_edit.fee')}>
             <input
               type="text"
               inputMode="decimal"
@@ -342,12 +344,12 @@ export default function TransactionEditForm({
       {/* The sharing. */}
       <Panel
         icon={Users}
-        title="Bagi Tagihan"
+        title={t('transaction_edit.split_title')}
         open={showSplit}
         onToggle={() => setShowSplit(!showSplit)}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-2 border-l-2 border-gray-100 dark:border-white/10">
-          <Field label="ID Grup Split">
+          <Field label={t('transaction_edit.split_group')}>
             <input
               type="text"
               value={form.split_group_id ?? ''}
@@ -355,7 +357,7 @@ export default function TransactionEditForm({
               className={input}
             />
           </Field>
-          <Field label="Dibayar Oleh">
+          <Field label={t('transaction_edit.paid_by')}>
             <input
               type="text"
               value={form.split_paid_by ?? ''}
@@ -372,7 +374,7 @@ export default function TransactionEditForm({
           onClick={onCancel}
           className="flex-1 py-2 bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 rounded-lg text-sm"
         >
-          Batal
+          {t('transaction_edit.cancel')}
         </button>
         <button
           type="button"
@@ -380,7 +382,7 @@ export default function TransactionEditForm({
           disabled={saving}
           className="flex-1 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
         >
-          {saving ? 'Menyimpan...' : 'Simpan'}
+          {saving ? t('transaction_edit.saving') : t('transaction_edit.save')}
         </button>
       </div>
     </div>

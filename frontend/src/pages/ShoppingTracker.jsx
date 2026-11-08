@@ -392,7 +392,7 @@ const ShoppingTracker = () => {
       {/* Tab: AI Search */}
       {activeTab === "ai" && (
         <div className="px-4 pt-4 mt-2">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-primary-100">
+          <div className="shape-card rounded-xl p-4 border border-primary-100">
             <h3 className="font-bold text-lg mb-2"><IconText name="search" emoji="🔍" on={polished}>{t('shopping_tracker.ai_price_search')}</IconText></h3>
             <p className="text-sm text-gray-500 mb-4">
               {t('shopping_tracker.ai_price_search_desc')}

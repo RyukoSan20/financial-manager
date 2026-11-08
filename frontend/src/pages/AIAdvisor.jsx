@@ -291,28 +291,28 @@ const AIAdvisor = () => {
         <div className="space-y-6">
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-green-500">
+            <div className="shape-card rounded-xl p-4 border-l-4 border-green-500">
               <p className="text-sm text-gray-500 mb-1">{t('ai_advisor.total_balance')}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">
                 {formatCurrency(summary?.total_balance || 0)}
               </p>
             </div>
             
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-primary-500">
+            <div className="shape-card rounded-xl p-4 border-l-4 border-primary-500">
               <p className="text-sm text-gray-500 mb-1">{t('ai_advisor.savings_rate')}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">
                 {formatPercent(summary?.savings_rate || 0, 1)}
               </p>
             </div>
             
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-purple-500">
+            <div className="shape-card rounded-xl p-4 border-l-4 border-purple-500">
               <p className="text-sm text-gray-500 mb-1">{t('ai_advisor.active_goals')}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">
                 {summary?.active_goals || 0}
               </p>
             </div>
             
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-red-500">
+            <div className="shape-card rounded-xl p-4 border-l-4 border-red-500">
               <p className="text-sm text-gray-500 mb-1">{t('ai_advisor.total_debt')}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">
                 {formatCurrency(summary?.total_debt || 0)}
@@ -321,7 +321,7 @@ const AIAdvisor = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+          <div className="shape-card rounded-xl p-4">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-3">{t('ai_advisor.ask_ai')}</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {quickPrompts.map((prompt, i) => (
@@ -358,7 +358,7 @@ const AIAdvisor = () => {
                   return (
                     <div 
                       key={i}
-                      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border-l-4 ${config.border} overflow-hidden`}
+                      className={`shape-card rounded-xl border-l-4 ${config.border} overflow-hidden`}
                     >
                       <div 
                         className="p-4 cursor-pointer"
@@ -426,7 +426,7 @@ const AIAdvisor = () => {
                 })}
               </div>
             ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center">
+              <div className="shape-card rounded-xl p-8 text-center">
                 <Sparkles className="w-12 h-12 mx-auto text-gray-300 mb-3" />
                 <p className="text-gray-500">{t('ai_advisor.no_advice')}</p>
                 <p className="text-sm text-gray-400 mt-1">
@@ -449,7 +449,7 @@ const AIAdvisor = () => {
 
       {/* Chat Tab */}
       {activeTab === "chat" && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden flex flex-col h-[600px]">
+        <div className="shape-card rounded-xl overflow-hidden flex flex-col h-[600px]">
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 && (
@@ -533,18 +533,21 @@ const AIAdvisor = () => {
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                 placeholder={t('ai_advisor.placeholder')}
-                className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl 
-                           bg-white dark:bg-gray-900 text-gray-900 dark:text-white
-                           placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                className="flex-1 px-4 py-3 border border-slate-200/80 dark:border-white/10 rounded-xl
+                           bg-slate-50/70 dark:bg-gray-900 text-gray-900 dark:text-white
+                           placeholder-gray-400 outline-none focus:border-primary-400
+                           focus:shadow-[0_0_0_3px_rgb(var(--scheme-500-rgb,59_130_246)/0.16)]
+                           transition-[border-color,box-shadow,background-color] duration-150"
                 disabled={sending}
               />
               <button
                 onClick={() => sendMessage()}
                 disabled={sending || !message.trim()}
-                className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 
+                aria-label={t('ai_advisor.send', 'Kirim')}
+                className="px-5 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700
                            disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
           </div>

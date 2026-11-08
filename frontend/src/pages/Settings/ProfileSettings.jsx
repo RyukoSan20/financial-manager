@@ -94,7 +94,7 @@ const ProfileSettings = () => {
         )}
 
         <form onSubmit={handleSave} className="space-y-4">
-          <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="shape-card rounded-xl p-4">
             <h2 className="font-bold text-lg mb-4">{t('profile_settings.subtitle')}</h2>
 
             <div className="space-y-4">

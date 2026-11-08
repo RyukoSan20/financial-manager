@@ -7,6 +7,7 @@ import { api } from "../services/api";
 import { formatCurrency } from "../utils/format";
 import { useTranslation } from "../i18n";
 import { IconText } from "../components/ui/IconText";
+import { RefreshCw } from "lucide-react";
 import { buildFlag } from "../utils/featureFlags";
 import { placeIcon, PinSwatch, useMaxSpent } from "../components/map/MapPlacePin";
 import { PIN_KINDS } from "../utils/mapPins";
@@ -169,13 +170,33 @@ const MerchantMap = () => {
   }
 
   if (error) {
+    /* The map could not be loaded.
+
+       A red sentence in the middle of an empty page is a dead end.
+       This says what happened, says the data is still safe - it is
+       on the server, the map just could not be drawn - and offers
+       the one thing that is worth offering: another try. */
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center p-8">
-          <IconText name="warning" emoji="⚠️" on={polished} className="w-8 h-8" />
-          <p className="text-red-500 mb-4">{error}</p>
-          <button onClick={fetchData} className="px-4 py-2 bg-primary-600 text-white rounded-lg">
-            {t("merchant_map.retry")}
+      <div className="flex items-center justify-center min-h-[24rem] px-4">
+        <div className="shape-card rounded-2xl max-w-sm w-full p-6 text-center">
+          <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-500/15 mb-4">
+            <IconText name="warning" emoji="⚠️" on={polished} className="w-6 h-6" />
+          </span>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {error}
+          </h2>
+          <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+            {t(
+              'merchant_map.load_error_hint',
+              'Data Anda aman di server. Peta yang gagal dimuat saja.'
+            )}
+          </p>
+          <button
+            onClick={fetchData}
+            className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" aria-hidden="true" />
+            {t('merchant_map.retry')}
           </button>
         </div>
       </div>
@@ -187,19 +208,25 @@ const MerchantMap = () => {
       {/* Header Stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">{t("merchant_map.total_locations")}</p>
-            <p className="text-xl font-bold text-gray-900">{stats.total_locations}</p>
+          <div className="shape-card rounded-xl p-4">
+            <p className="shape-label">{t("merchant_map.total_locations")}</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+              {stats.total_locations}
+            </p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">{t("merchant_map.total_spent")}</p>
-            <p className="text-xl font-bold text-red-500">{formatCurrency(stats.total_spent)}</p>
+          <div className="shape-card rounded-xl p-4">
+            <p className="shape-label">{t("merchant_map.total_spent")}</p>
+            <p className="mt-1 text-xl font-bold tabular-nums whitespace-nowrap text-rose-600 dark:text-rose-400">
+              {formatCurrency(stats.total_spent)}
+            </p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">{t("merchant_map.total_visits")}</p>
-            <p className="text-xl font-bold text-blue-600">{stats.total_visits}x</p>
+          <div className="shape-card rounded-xl p-4">
+            <p className="shape-label">{t("merchant_map.total_visits")}</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-sky-600 dark:text-sky-400">
+              {stats.total_visits}x
+            </p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="shape-card rounded-xl p-4">
             <p className="text-xs text-gray-500">{t("merchant_map.gps_data")}</p>
             <p className="text-xl font-bold text-green-500">
               {(stats.sources?.gps || 0) + (stats.sources?.gps_tx || 0)}{t("merchant_map.locations_suffix")}
@@ -209,7 +236,7 @@ const MerchantMap = () => {
       )}
 
       {/* Search & Filters */}
-      <div className="bg-white rounded-xl p-4 shadow-sm space-y-3">
+      <div className="shape-card rounded-xl p-4 space-y-3">
         {/* Search */}
         <div className="relative">
           <input
@@ -484,7 +511,7 @@ const MerchantMap = () => {
 
       {/* Selected Location Detail Panel */}
       {selectedLocation && (
-        <div className="bg-white rounded-xl p-4 shadow-sm border-2 border-primary-500">
+        <div className="shape-card rounded-xl p-4 border-2 border-primary-500">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-lg">{t("merchant_map.detail_title")}</h3>
             <button onClick={clearSelection} className="text-gray-400 hover:text-gray-600">✕</button>

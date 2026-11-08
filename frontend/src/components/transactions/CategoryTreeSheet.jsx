@@ -28,6 +28,7 @@ import { ChevronRight, Plus, Check } from 'lucide-react';
 
 import { subCategoriesFor } from '../../features/transactions/nlp/subCategories.js';
 import { categoryName } from '../../utils/categoryName';
+import { useTranslation } from '../../i18n';
 
 /**
  * The sheet.
@@ -47,6 +48,7 @@ export default function CategoryTreeSheet({
   onCreateSub,
   onClose,
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState({});
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -122,10 +124,10 @@ export default function CategoryTreeSheet({
       <div className="relative w-full bg-white dark:bg-gray-800 rounded-t-3xl max-h-[85vh] flex flex-col">
         <div className="shrink-0 p-4 border-b border-gray-100 dark:border-white/10">
           <h2 className="font-semibold text-lg text-gray-900 dark:text-gray-100">
-            Pilih Kategori
+            {t('category_tree.title')}
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Pilih kategori induk, lalu sub-kategori yang lebih spesifik.
+            {t('category_tree.subtitle')}
           </p>
         </div>
 
@@ -250,7 +252,7 @@ export default function CategoryTreeSheet({
                               if (e.key === 'Enter') submitNewSub();
                               if (e.key === 'Escape') setNewSubParent(null);
                             }}
-                            placeholder="Nama sub-kategori baru"
+                            placeholder={t('category_tree.new_sub_placeholder')}
                             aria-label="Nama sub-kategori baru"
                             autoFocus
                             className="flex-1 min-w-0 px-3 py-2 border rounded-lg bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100"
@@ -260,7 +262,7 @@ export default function CategoryTreeSheet({
                             onClick={submitNewSub}
                             className="px-3 py-2 rounded-lg bg-primary-600 text-white text-xs font-medium shrink-0"
                           >
-                            Simpan
+                            {t('category_tree.save')}
                           </button>
                           <button
                             type="button"
@@ -270,7 +272,7 @@ export default function CategoryTreeSheet({
                             }}
                             className="px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium shrink-0"
                           >
-                            Batal
+                            {t('category_tree.cancel')}
                           </button>
                         </div>
                       ) : (
@@ -285,7 +287,7 @@ export default function CategoryTreeSheet({
                           className="w-full flex items-center justify-center gap-1.5 px-3 py-2 mt-1 rounded-lg border border-dashed border-gray-300 dark:border-white/20 text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 hover:border-primary-400 transition-colors"
                         >
                           <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                          Buat Sub-Kategori
+                          {t('category_tree.create_sub')}
                         </button>
                       )
                     ) : null}
@@ -299,7 +301,7 @@ export default function CategoryTreeSheet({
           {withoutSubs.length ? (
             <div className="pt-2 space-y-1">
               <p className="text-[11px] uppercase tracking-wide text-gray-400 px-1">
-                Lainnya
+                {t('category_tree.others')}
               </p>
               {withoutSubs.map((cat) => (
                 <button
@@ -341,7 +343,7 @@ export default function CategoryTreeSheet({
                     if (e.key === 'Enter') submitNew();
                     if (e.key === 'Escape') setCreating(false);
                   }}
-                  placeholder="Nama kategori baru"
+                  placeholder={t('category_tree.new_cat_placeholder')}
                   aria-label="Nama kategori baru"
                   autoFocus
                   className="flex-1 min-w-0 px-3 py-2 border rounded-lg bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100"
@@ -351,14 +353,14 @@ export default function CategoryTreeSheet({
                   onClick={submitNew}
                   className="px-3 py-2 rounded-lg bg-primary-600 text-white text-xs font-medium shrink-0"
                 >
-                  Simpan
+                  {t('category_tree.save')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setCreating(false)}
                   className="px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium shrink-0"
                 >
-                  Batal
+                  {t('category_tree.cancel')}
                 </button>
               </div>
             ) : (
@@ -372,7 +374,7 @@ export default function CategoryTreeSheet({
                 className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-gray-300 dark:border-white/20 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 hover:border-primary-400 transition-colors"
               >
                 <Plus className="w-4 h-4" aria-hidden="true" />
-                Buat Kategori Sendiri
+                {t('category_tree.create_own')}
               </button>
             )}
           </div>

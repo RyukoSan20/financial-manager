@@ -1,5 +1,38 @@
 // English translations
 export default {
+  category_tree: {
+      title: "Choose a Category",
+      subtitle: "Choose the parent category, then the more specific sub-category.",
+      save: "Save",
+      cancel: "Cancel",
+      create_sub: "Make a Sub-Category",
+      create_own: "Make a Category",
+      new_sub_placeholder: "Name of the new sub-category",
+      new_cat_placeholder: "Name of the new category",
+      others: "Others",
+  },
+  transaction_edit: {
+      description: "Description",
+      amount: "Amount",
+      date: "Date",
+      category: "Category",
+      sub_category: "Sub-category",
+      account: "Account",
+      location: "Location",
+      address_placeholder: "Shop address",
+      items_title: "Items",
+      tax_title: "Tax & Discount",
+      discount: "Discount",
+      tax: "Tax",
+      fee: "Extra Fee",
+      split_title: "Split the Bill",
+      split_group: "Split Group ID",
+      paid_by: "Paid By",
+      no_items: "No items yet. Use the items button on the transaction row to add them.",
+      cancel: "Cancel",
+      saving: "Saving...",
+      save: "Save",
+  },
   qty: {
     quantity: "Quantity",
     unitPrice: "Price each",
@@ -101,6 +134,7 @@ export default {
     from: "From",
     to: "To",
     currency: "$",
+    refresh: "Refresh",
   },
   
   // Navigation
@@ -247,6 +281,7 @@ export default {
     rejected: "Rejected",
     no_transactions: "No transactions yet",
     add_first: "Add your first transaction",
+    timeframe: "Period",
   },
   
   // Time filters
@@ -385,10 +420,6 @@ export default {
     category_breakdown: "Category Breakdown",
     daily_average: "Daily Average",
     largest_expense: "Largest Expense",
-    benchmark_savings: "Target ≥ 20%",
-    benchmark_emergency: "Target 3-6 months",
-    benchmark_dsr: "Target ≤ 30%",
-    strengths_empty: "Strengths appear once there is a transaction to measure. Record one to see them.",
     savings_ratio: "Savings Ratio",
     net_cash_flow: "Net Cash Flow",
   },
@@ -743,6 +774,7 @@ export default {
   merchant_map: {
     loading: "Loading map data...",
     load_error: "Failed to load map data",
+    load_error_hint: "Your data is safe on the server. Only the map failed to load.",
     retry: "🔄 Try Again",
     total_locations: "Total Locations",
     total_spent: "Total Spending",
@@ -1328,6 +1360,7 @@ export default {
     advice_spending_action2: "Set a monthly limit for this category",
     advice_spending_action3: "Look for a cheaper alternative",
     priority_low: "🟢 Normal priority",
+    send: "Send",
   },
 
   // market_page
@@ -1516,6 +1549,10 @@ export default {
     // What the companion says about the score.
     mascot_good: "Your score is good. Keep it up!",
     mascot_worried: "Your score needs work first. Let us fix it.",
+    benchmark_savings: "Target ≥ 20%",
+    benchmark_emergency: "Target 3-6 months",
+    benchmark_dsr: "Target ≤ 30%",
+    strengths_empty: "Strengths appear once there is a transaction to measure. Record one to see them.",
   },
 
   // catalog_page

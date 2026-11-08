@@ -527,8 +527,8 @@ export const Transactions = () => {
         </button>
         <button
           onClick={fetchData}
-          title={K.refresh || 'Muat ulang'}
-          aria-label={K.refresh || 'Muat ulang'}
+          title={t('common.refresh')}
+          aria-label={t('common.refresh')}
           className="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-gray-600 dark:text-gray-300 border border-slate-200/70 dark:border-white/10 hover:border-slate-300 transition-[border-color] duration-150"
         >
           <RefreshCw className="w-5 h-5" />

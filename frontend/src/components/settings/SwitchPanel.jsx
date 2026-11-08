@@ -67,7 +67,7 @@ export default function SwitchPanel() {
   }, [K]);
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm">
+    <div className="shape-card rounded-xl p-4">
       <h2 className="font-bold text-lg mb-1">{K.switches_title}</h2>
       <p className="text-sm text-gray-500 mb-4">{K.switches_intro}</p>
 

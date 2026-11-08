@@ -1,5 +1,38 @@
 // Indonesian translations
 export default {
+  category_tree: {
+      title: "Pilih Kategori",
+      subtitle: "Pilih kategori induk, lalu sub-kategori yang lebih spesifik.",
+      save: "Simpan",
+      cancel: "Batal",
+      create_sub: "Buat Sub-Kategori",
+      create_own: "Buat Kategori Sendiri",
+      new_sub_placeholder: "Nama sub-kategori baru",
+      new_cat_placeholder: "Nama kategori baru",
+      others: "Lainnya",
+  },
+  transaction_edit: {
+      description: "Deskripsi",
+      amount: "Jumlah",
+      date: "Tanggal",
+      category: "Kategori",
+      sub_category: "Sub-kategori",
+      account: "Akun",
+      location: "Lokasi",
+      address_placeholder: "Alamat toko",
+      items_title: "Rincian Barang",
+      tax_title: "Pajak & Diskon",
+      discount: "Diskon",
+      tax: "Pajak",
+      fee: "Biaya Tambahan",
+      split_title: "Bagi Tagihan",
+      split_group: "ID Grup Split",
+      paid_by: "Dibayar Oleh",
+      no_items: "Tidak ada rincian. Gunakan tombol rincian pada baris transaksi untuk menambahkannya.",
+      cancel: "Batal",
+      saving: "Menyimpan...",
+      save: "Simpan",
+  },
   qty: {
     quantity: "Jumlah",
     unitPrice: "Harga satuan",
@@ -101,6 +134,7 @@ export default {
     from: "Dari",
     to: "Sampai",
     currency: "Rp",
+    refresh: "Muat ulang",
   },
   
   // Navigation
@@ -247,6 +281,7 @@ export default {
     rejected: "Ditolak",
     no_transactions: "Belum ada transaksi",
     add_first: "Tambahkan transaksi pertama Anda",
+    timeframe: "Periode",
   },
   
   // Time filters
@@ -385,10 +420,6 @@ export default {
     category_breakdown: "Rincian per Kategori",
     daily_average: "Rata-rata Harian",
     largest_expense: "Pengeluaran Terbesar",
-    benchmark_savings: "Target ≥ 20%",
-    benchmark_emergency: "Target 3-6 bulan",
-    benchmark_dsr: "Target ≤ 30%",
-    strengths_empty: "Keunggulan muncul setelah ada transaksi yang bisa dihitung. Catat satu transaksi untuk melihatnya.",
     savings_ratio: "Rasio Menabung",
     net_cash_flow: "Arus Kas Bersih",
   },
@@ -743,6 +774,7 @@ export default {
   merchant_map: {
     loading: "Memuat data peta...",
     load_error: "Gagal memuat data peta",
+    load_error_hint: "Data Anda aman di server. Peta yang gagal dimuat saja.",
     retry: "🔄 Coba Lagi",
     total_locations: "Total Lokasi",
     total_spent: "Total Pengeluaran",
@@ -1328,6 +1360,7 @@ export default {
     advice_spending_action2: "Buat batas bulanan untuk kategori ini",
     advice_spending_action3: "Cari alternatif yang lebih hemat",
     priority_low: "🟢 Prioritas Normal",
+    send: "Kirim",
   },
 
   // market_page
@@ -1516,6 +1549,10 @@ export default {
     // What the companion says about the score.
     mascot_good: "Skor Anda bagus. Terus dijaga ya!",
     mascot_worried: "Skor Anda perlu dibenahi. Mari kita perbaiki.",
+    benchmark_savings: "Target ≥ 20%",
+    benchmark_emergency: "Target 3-6 bulan",
+    benchmark_dsr: "Target ≤ 30%",
+    strengths_empty: "Keunggulan muncul setelah ada transaksi yang bisa dihitung. Catat satu transaksi untuk melihatnya.",
   },
 
   // catalog_page

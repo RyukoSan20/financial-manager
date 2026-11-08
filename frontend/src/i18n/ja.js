@@ -1,5 +1,38 @@
 // Japanese translations
 export default {
+  category_tree: {
+      title: "カテゴリーを選ぶ",
+      subtitle: "親カテゴリーを選び、次により具体的なサブカテゴリーを選びます。",
+      save: "保存",
+      cancel: "キャンセル",
+      create_sub: "サブカテゴリーを作る",
+      create_own: "カテゴリーを作る",
+      new_sub_placeholder: "新しいサブカテゴリー名",
+      new_cat_placeholder: "新しいカテゴリー名",
+      others: "その他",
+  },
+  transaction_edit: {
+      description: "説明",
+      amount: "金額",
+      date: "日付",
+      category: "カテゴリー",
+      sub_category: "サブカテゴリー",
+      account: "口座",
+      location: "場所",
+      address_placeholder: "店の住所",
+      items_title: "明細",
+      tax_title: "税・割引",
+      discount: "割引",
+      tax: "税",
+      fee: "追加費用",
+      split_title: "割り勘",
+      split_group: "分割グループID",
+      paid_by: "支払者",
+      no_items: "明細はまだありません。取引行の明細ボタンから追加できます。",
+      cancel: "キャンセル",
+      saving: "保存中...",
+      save: "保存",
+  },
   qty: {
     quantity: "数量",
     unitPrice: "単価",
@@ -101,6 +134,7 @@ export default {
     from: "から",
     to: "まで",
     currency: "¥",
+    refresh: "更新",
   },
   
   // Navigation
@@ -247,6 +281,7 @@ export default {
     rejected: "拒否済み",
     no_transactions: "取引がありません",
     add_first: "最初の取引を追加してください",
+    timeframe: "期間",
   },
   
   // Time filters
@@ -385,10 +420,6 @@ export default {
     category_breakdown: "カテゴリー別内訳",
     daily_average: "日平均",
     largest_expense: "最大支出",
-    benchmark_savings: "目標 ≥ 20%",
-    benchmark_emergency: "目標 3-6 カ月",
-    benchmark_dsr: "目標 ≤ 30%",
-    strengths_empty: "取引を記録すると長手のドイトが表示されます。",
     savings_ratio: "貯蓄率",
     net_cash_flow: "純キャッシュフロー",
   },
@@ -743,6 +774,7 @@ export default {
   merchant_map: {
     loading: "地図データを読み込み中...",
     load_error: "地図データの読み込みに失敗しました",
+    load_error_hint: "データはサーバーに保存されています。地図の読み込みだけが失敗しました。",
     retry: "🔄 再試行",
     total_locations: "場所数",
     total_spent: "支出合計",
@@ -1328,6 +1360,7 @@ export default {
     advice_spending_action2: "このカテゴリに毎月の上限を決める",
     advice_spending_action3: "より安い代替品を探す",
     priority_low: "🟢 優先度 低",
+    send: "送信",
   },
 
   // market_page
@@ -1516,6 +1549,10 @@ export default {
     // What the companion says about the score.
     mascot_good: "スコアは良好です。この調子で維持しましょう。",
     mascot_worried: "スコアはまず改善が必要です。一緒に直しましょう。",
+    benchmark_savings: "目標 ≥ 20%",
+    benchmark_emergency: "目標 3-6 カ月",
+    benchmark_dsr: "目標 ≤ 30%",
+    strengths_empty: "取引を記録すると長手のドイトが表示されます。",
   },
 
   // catalog_page

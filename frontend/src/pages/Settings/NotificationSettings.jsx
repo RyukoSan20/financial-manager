@@ -86,7 +86,7 @@ const NotificationSettings = () => {
           <div className="p-3 bg-red-100 text-red-700 rounded-lg">{error}</div>
         )}
 
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="shape-card rounded-xl p-4">
           <h2 className="font-bold text-lg mb-4">{t('notification_settings.subtitle')}</h2>
 
           <div className="space-y-4">
@@ -106,7 +106,7 @@ const NotificationSettings = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="shape-card rounded-xl p-4">
           <h2 className="font-bold text-lg mb-4">{K.alerts_title}</h2>
 
           <div className="space-y-4">
@@ -157,7 +157,7 @@ const NotificationSettings = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="shape-card rounded-xl p-4">
           <h2 className="font-bold text-lg mb-4">{t('notification_settings.report')}</h2>
 
           <div className="space-y-4">
@@ -179,7 +179,7 @@ const NotificationSettings = () => {
 
         {/* The reminders. This is its own panel, because the reminders
             are opt-in and are shown by the browser on this device. */}
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="shape-card rounded-xl p-4">
           <ReminderSettings />
         </div>
 
