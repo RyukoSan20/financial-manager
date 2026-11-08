@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Spinner, EmptyState } from '../components/ui';
 import { 
   TrendingUp, TrendingDown, Wallet, PiggyBank, RefreshCw, Camera, 
@@ -27,6 +28,7 @@ import TopAiCommandBar from '../components/ai/TopAiCommandBar';
 import ReadinessChecklist from '../components/ReadinessChecklist';
 import InsightsPanel from '../components/insights/InsightsPanel';
 import MonthTimeline from '../components/dashboard/MonthTimeline';
+import FinancialProfileShowcase from '../components/dashboard/FinancialProfileShowcase';
 import Onboarding from '../components/dashboard/Onboarding';
 import { useTheme } from '../contexts/ThemeContext';
 import { IconText } from '../components/ui/IconText';
@@ -350,6 +352,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const [userSettings, setUserSettings] = useState(null);
   const [marketData, setMarketData] = useState(null);
   const [summary, setSummary] = useState(null);
+  // The nine chapters of the financial profile.
+  const [financialProfile, setFinancialProfile] = useState(null);
+  const navigate = useNavigate();
   const [cashFlowSeries, setCashFlowSeries] = useState([]);
   const [chartConfig, setChartConfig] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -491,6 +496,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         feedStatsData,
         debtsData,
         recurringData,
+        profileData,
       ] = await Promise.allSettled([
         api.dashboard.summary(null, null, displayCurrency, timeframe, selectedAccount),
         api.transactions.list({ limit: 10 }),
@@ -500,6 +506,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         api.get('/feed/stats').catch(() => null),
         api.get('/debts').catch(() => []),
         api.get('/recurring').catch(() => []),
+        // The financial profile is one request for all nine chapters,
+        // so it does not hold the card up while eight other requests
+        // are in the air.
+        api.dashboard.financialProfile(displayCurrency).catch(() => null),
       ]);
 
       if (summaryData.status === 'fulfilled') setSummary(summaryData.value);
@@ -513,6 +523,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       if (feedStatsData.status === 'fulfilled' && feedStatsData.value) setFeedStats(feedStatsData.value);
       if (debtsData.status === 'fulfilled') setDebts(Array.isArray(debtsData.value) ? debtsData.value : []);
       if (recurringData.status === 'fulfilled') setRecurringTransactions(Array.isArray(recurringData.value) ? recurringData.value : []);
+      if (profileData.status === 'fulfilled' && profileData.value) setFinancialProfile(profileData.value);
 
       // Calculate achievements
       calculateAchievements(
@@ -901,6 +912,27 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         totalIncome: summary?.total_income || 0,
         totalExpense: summary?.total_expense || 0,
       }} />
+
+      {/* The financial profile.
+
+          Nine chapters of the reader's own money in one card: this
+          month, the accounts, the investments, the net worth, the
+          credit cards, the debts, what other people owe, the income,
+          and the reader's own shop.
+
+          It sits at the top of the page, because it is the answer to
+          the question the reader came to ask. The bar above it can
+          record a transaction or answer a question; this is the
+          picture of where they stand.
+
+          The card is drawn only when the answer has arrived, so the
+          page does not show an empty shell while it is being fetched. */}
+      {financialProfile ? (
+        <FinancialProfileShowcase
+          profile={financialProfile}
+          onRecord={() => navigate('/add')}
+        />
+      ) : null}
 
       {/* ================================================================ */}
       {/* HEADER */}

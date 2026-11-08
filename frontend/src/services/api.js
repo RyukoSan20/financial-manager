@@ -386,6 +386,16 @@ export const api = {
     },
     cashFlow: (months = 6) => api.request(`/dashboard/cash-flow?months=${months}`),
     categoryBreakdown: (type) => api.request(`/dashboard/category-breakdown?type=${type}`),
+    // The nine chapters of the financial profile, in one request.
+    //
+    // Nine chapters could have been nine requests. That is nine round
+    // trips for one card, and nine chances for the card to show a
+    // half-filled picture.
+    financialProfile: (currency) => {
+      let url = '/dashboard/financial-profile';
+      if (currency) url += `?currency=${encodeURIComponent(currency)}`;
+      return api.request(url);
+    },
   },
 
   // Analytics

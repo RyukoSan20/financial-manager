@@ -505,6 +505,35 @@ def _agent_reply(plan, executed: bool) -> str:
     return reply.strip()
 
 
+async def _deterministic_reply(
+    db: Session,
+    user_id: int,
+    display_currency: str = "IDR",
+) -> str:
+    """
+    An answer built only from the reader's own numbers.
+
+    This is the floor under every analysis. It cannot fail, because
+    every part of it that could fail is caught where it fails, and a
+    part that cannot be read is left out rather than reported as
+    zero.
+    """
+    try:
+        from app.services.financial_analysis import (
+            deterministic_analysis,
+            render_analysis,
+        )
+
+        analysis = await deterministic_analysis(db, user_id, display_currency)
+        return render_analysis(analysis)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Deterministic analysis failed: {exc}")
+        return (
+            "Maaf, analisisnya belum bisa dihitung sekarang. "
+            "Coba lagi sebentar lagi."
+        )
+
+
 @router.post("/agent", response_model=AgentResponse)
 async def ai_agent(
     request: AgentRequest,
@@ -586,17 +615,30 @@ async def ai_agent(
             db.rollback()
             logger.warning(f"Agent read commit failed: {exc}")
 
-        reply = plan.actions[0].description if plan.actions else "Tidak ada data."
+        # The advisor is asked first, because it answers better. But
+        # the advisor is on someone else's computer, behind a key that
+        # runs out and a rate that is limited, and when it fails the
+        # reader still asked a question their own ledger can answer.
+        #
+        # So the ledger is the floor. A reader who asks "analisis
+        # keuangan saya" and gets a 500 has been told that their own
+        # money is too much trouble to look at, and that is not true.
+        reply = plan.actions[0].description if plan.actions else ""
+        if not reply:
+            reply = await _deterministic_reply(
+                db, current_user.id, display_currency
+            )
+
         return AgentResponse(
             success=True,
             intent=plan.intent,
             confidence=plan.confidence,
-            reply=reply,
+            reply=reply or "Tidak ada data.",
             plan=plan.to_dict(),
             actions=[a.to_dict() for a in plan.actions],
             needs_confirmation=False,
             data=(plan.actions[0].result if plan.actions else None),
-            message=reply,
+            message=reply or "Tidak ada data.",
         )
 
     # Nothing to do: fall back to the advisor for an informative answer.
@@ -614,11 +656,16 @@ async def ai_agent(
                 raise RuntimeError("advisor returned an empty reply")
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"Advisor fallback failed: {exc}")
-            reply = (
-                "Saya belum yakin maksud Anda. Coba jelaskan seperti: "
-                "'tambah 15000 kopi', 'set budget makan 500000 per bulan', "
-                "atau 'bagi saldo 50% belanja 30% tabungan'."
+            # The ledger is asked again. It is the floor.
+            reply = await _deterministic_reply(
+                db, current_user.id, display_currency
             )
+            if not reply:
+                reply = (
+                    "Saya belum yakin maksud Anda. Coba jelaskan seperti: "
+                    "'tambah 15000 kopi', 'set budget makan 500000 per bulan', "
+                    "atau 'bagi saldo 50% belanja 30% tabungan'."
+                )
         return AgentResponse(
             success=True,
             intent=plan.intent,

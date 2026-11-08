@@ -141,7 +141,9 @@ for test_file in \
   src/features/shopping/__tests__/boardColumns.test.js \
   src/utils/__tests__/dataSyncBus.test.js \
   src/utils/__tests__/avatarHelper.test.js \
-  src/utils/__tests__/transactionLabel.test.js
+  src/utils/__tests__/transactionLabel.test.js \
+  src/utils/__tests__/financialProfile.test.js \
+  src/components/ai/__tests__/topBarPosition.test.js
 do
   if [ ! -f "$test_file" ]; then
     echo "  SKIP $test_file (not present)"

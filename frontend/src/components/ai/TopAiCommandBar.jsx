@@ -361,8 +361,23 @@ export default function TopAiCommandBar({ userData = {} }) {
   };
 
   return (
+    /* The bar sits at the top of the page, in the flow of the page.
+
+       It used to be `sticky top-0`, so it stayed with the reader as
+       they scrolled and rode down over the cards below it. The
+       cards it was covering moved underneath it, and the reader saw
+       a bar sliding over their own finances.
+
+       It is now `relative`, in the ordinary flow, at the very top of
+       the dashboard. It does not move when the page scrolls, and it
+       cannot cover anything, because everything after it is below
+       it.
+
+       The panels that open out of the bar - the quick actions and
+       the answer - are positioned against this wrapper, so they open
+       from the bar and not from the top of the screen. */
     <div
-      className="sticky top-0 z-40 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-3 pb-2 bg-white/85 dark:bg-gray-900/85 backdrop-blur-md border-b border-slate-200/60 dark:border-white/10"
+      className="relative z-20 mb-6"
       aria-label={label}
     >
       <div className="flex items-center gap-2">
@@ -542,11 +557,27 @@ export default function TopAiCommandBar({ userData = {} }) {
 
       {/* The quick actions, as pills.
 
-          They sit under the bar, in the flow of the page, so the cards
-          below them are pushed down rather than covered. Nothing on
-          the page is hidden by them. */}
+          On a wide screen they sit under the bar, in the flow of the
+          page, so the cards below them are pushed down rather than
+          covered. Nothing on the page is hidden by them.
+
+          On a narrow screen there is no room for four of them on the
+          bar, so they open in a panel that hangs from the bar. It is
+          positioned against this wrapper - `absolute top-full` - so
+          it opens from the bar and not from the top of the screen,
+          and it is above the cards below it while it is open. */}
       <div
-        className={`mt-2 flex flex-wrap gap-2 ${actionsOpen ? '' : 'hidden md:flex'}`}
+        className={
+          actionsOpen
+            ? /* On a narrow screen the panel hangs from the bar:
+                 `absolute top-full`, so it opens from the bar and
+                 not from the top of the screen, and it is above the
+                 cards below it while it is open. On a wide screen
+                 it is in the ordinary flow, because there is room
+                 for the pills on the bar itself. */
+              'absolute top-full left-0 right-0 mt-2 z-30 flex flex-wrap gap-2 p-3 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-slate-900 shadow-lg md:static md:p-0 md:mt-2 md:border-0 md:bg-transparent md:shadow-none'
+            : 'hidden md:flex md:flex-wrap md:gap-2'
+        }
         aria-label={t('ai_assistant.quick_actions')}
       >
         {QUICK_ACTIONS.map((action) => {

@@ -10,6 +10,7 @@ from typing import Optional, Literal, Dict, List
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from calendar import month_abbr, monthrange
+import logging
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -19,6 +20,8 @@ from app.services.currency import converter, BASE
 from app.models.category import Category
 from app.models.user import User
 from app.services.transaction_filter import counted_transactions_filter
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -711,3 +714,43 @@ def get_accounts_for_filter(
         ],
         "total": len(accounts)
     }
+
+
+@router.get("/financial-profile")
+async def get_financial_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    currency: Optional[str] = Query(default=None, description="The currency to show the totals in"),
+):
+    """
+    The financial profile, in one answer.
+
+    The dashboard shows a card called "Profil Keuangan" with nine
+    chapters in it: this month, the accounts, the investments, the net
+    worth, the credit cards, the debts, what other people owe, the
+    income, and the reader's own shop.
+
+    Nine chapters could have been nine requests. That is nine round
+    trips for one card, and nine chances for the card to show a
+    half-filled picture - the first chapter arrived while the other
+    eight were still in the air.
+
+    So there is one request, and it answers all nine.
+    """
+    from app.services.financial_profile import build_financial_profile
+
+    display_currency = (currency or "IDR").upper()
+
+    try:
+        profile = await build_financial_profile(
+            db, current_user.id, display_currency
+        )
+    except Exception as exc:  # noqa: BLE001
+        # The card is a picture of the reader's money. If it cannot be
+        # drawn, the dashboard still works and the card says so.
+        logger.warning(f"Financial profile failed: {exc}")
+        raise HTTPException(
+            status_code=500, detail="Profil keuangan tidak dapat dihitung"
+        )
+
+    return profile
