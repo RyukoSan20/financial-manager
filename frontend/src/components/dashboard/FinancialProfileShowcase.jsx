@@ -22,8 +22,8 @@
  * it, so it can be checked by a script.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { clsx } from 'clsx';
 
 import AnimatedNumber from '../common/AnimatedNumber';
@@ -220,11 +220,10 @@ function shortDate(value) {
  */
 export default function FinancialProfileShowcase({ profile, onRecord }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
 
   const [chapter, setChapter] = useState(DEFAULT_CHAPTER);
 
-  const chapters = profile?.chapters || {};
+  const chapters = useMemo(() => profile?.chapters || {}, [profile]);
 
   const headline = useMemo(
     () => chapterHeadline(chapter, chapters),

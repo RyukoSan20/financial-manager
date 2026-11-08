@@ -93,6 +93,9 @@ for test_file in \
   src/components/merchant/__tests__/merchantCapture.test.js \
   src/utils/__tests__/receiptBill.test.js \
   src/utils/__tests__/recentCombos.test.js \
+  src/utils/__tests__/financialProfile.test.js \
+  src/components/ai/__tests__/topBarPosition.test.js \
+  src/data/__tests__/indonesiaPaymentRegistry.test.js \
   src/utils/__tests__/fintech.test.js \
   src/components/fintech/__tests__/trustBanners.test.js \
   src/components/fintech/__tests__/dashboardTrust.test.js \
