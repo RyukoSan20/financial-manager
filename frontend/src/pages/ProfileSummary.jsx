@@ -263,7 +263,7 @@ const ProfileSummary = () => {
                       disabled={savingAvatar}
                       aria-label={option.name}
                       aria-pressed={chosen}
-                      className={`w-12 h-12 rounded-full overflow-hidden ring-2 transition-all duration-150 disabled:opacity-50 ${
+                      className={`w-12 h-12 rounded-full overflow-hidden ring-2 transition-[box-shadow,border-color,opacity] duration-150 disabled:opacity-50 ${
                         chosen
                           ? 'ring-primary-500 ring-offset-2 dark:ring-offset-gray-800'
                           : 'ring-transparent hover:ring-primary-300'
