@@ -29,11 +29,18 @@ export const Card = ({
   const on = auroraIsOn();
 
   if (!on) {
+    // One shape for every card in the application.
+    //
+    // It used to be `bg-white rounded-xl shadow-sm border
+    // border-gray-100`, which is a white rectangle with a grey line
+    // around it. The hairline is now a touch softer and the shadow
+    // is deeper and softer at the same time, so the card sits on the
+    // page rather than being cut out of it.
     return (
       <div
         className={clsx(
-          'bg-white rounded-xl shadow-sm border border-gray-100',
-          hover && 'card-hover cursor-pointer',
+          'shape-card',
+          hover && 'shape-card--interactive',
           hover && 'settle-in',
           className
         )}
@@ -64,7 +71,7 @@ export const Card = ({
 };
 
 export const CardHeader = ({ children, className, ...props }) => (
-  <div className={clsx('px-5 py-4 border-b border-gray-100', className)} {...props}>
+  <div className={clsx('px-5 py-4 border-b border-gray-100/80 dark:border-white/10', className)} {...props}>
     {children}
   </div>
 );
@@ -76,7 +83,13 @@ export const CardBody = ({ children, className, ...props }) => (
 );
 
 export const CardFooter = ({ children, className, ...props }) => (
-  <div className={clsx('px-5 py-3 border-t border-gray-100 bg-gray-50 rounded-b-xl', className)} {...props}>
+  <div
+    className={clsx(
+      'px-5 py-3 border-t border-gray-100/80 dark:border-white/10 bg-gray-50/70 dark:bg-white/5 rounded-b-[inherit]',
+      className
+    )}
+    {...props}
+  >
     {children}
   </div>
 );

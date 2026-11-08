@@ -155,13 +155,24 @@ def _add(session, description, amount, category_id=1, account_id=1):
     return row
 
 
-def test_the_map_answers_200_for_transactions_with_no_coordinates(client, session):
+def test_the_map_answers_200_for_transactions_with_no_coordinates(
+    client, session, monkeypatch
+):
     """A hand-written transaction is still on the map.
 
     This is the exact shape of the failure that was in production:
     a transaction with a description and a figure, no latitude and no
     longitude. The page asked for the map and got a 500.
+
+    The place is not looked up: whether the geocoder is reachable is
+    not a thing a test about the map answering should depend on.
     """
+    import app.api.routes.analytics as analytics_module
+
+    monkeypatch.setattr(
+        analytics_module, "resolve_place", lambda *a, **k: None
+    )
+
     _add(session, "Kopi Jago", 10000.0)
     _add(session, None, 25000.0)
 
@@ -187,8 +198,16 @@ def test_the_map_answers_200_for_transactions_with_no_coordinates(client, sessio
         assert marker.get("total_spent") is not None
 
 
-def test_a_pin_that_could_not_be_placed_exactly_says_so(client, session):
+def test_a_pin_that_could_not_be_placed_exactly_says_so(
+    client, session, monkeypatch
+):
     """A pin that stands for an area is marked as an estimate."""
+    import app.api.routes.analytics as analytics_module
+
+    monkeypatch.setattr(
+        analytics_module, "resolve_place", lambda *a, **k: None
+    )
+
     _add(session, "Kopi Jago", 10000.0)
 
     response = client.get("/api/analytics/merchants/map")
@@ -265,8 +284,16 @@ def test_the_query_names_every_column_the_answer_names():
         )
 
 
-def test_the_route_is_mounted_under_the_path_the_page_asks_for(client, session):
+def test_the_route_is_mounted_under_the_path_the_page_asks_for(
+    client, session, monkeypatch
+):
     """The page asks for this exact path."""
+    import app.api.routes.analytics as analytics_module
+
+    monkeypatch.setattr(
+        analytics_module, "resolve_place", lambda *a, **k: None
+    )
+
     response = client.get("/api/analytics/merchants/map")
     assert response.status_code == 200
     assert "markers" in response.json()

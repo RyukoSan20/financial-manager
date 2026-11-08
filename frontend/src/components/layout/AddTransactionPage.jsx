@@ -12,6 +12,7 @@ import { createGroup, addMember, createExpense, assignItems } from "../../servic
 import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
 import { useTranslation } from "../../i18n";
 import { IconText } from "../ui/IconText";
+import { X } from "lucide-react";
 import { buildFlag } from "../../utils/featureFlags";
 import { batch1, fill } from "../../i18n/keys_batch1";
 import { categoryName } from '../../utils/categoryName';
@@ -1110,11 +1111,20 @@ const AddTransactionPage = () => {
           ))}
         </div>
 
-        {/* Quick Entry NLP Input */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <IconText name="zap" emoji="⚡" on={polished} className="w-5 h-5" />
-            <span className="text-sm font-medium text-gray-600">{K.quickType}</span>
+        {/* Quick Entry NLP Input.
+
+            The fastest thing on the page, so it is first and it is
+            the only thing here that is written like an invitation
+            rather than a form field: one line, the reader's own
+            words, and a hint of what to write. */}
+        <div className="shape-card rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/80 dark:bg-amber-500/15 shrink-0">
+              <IconText name="zap" emoji="⚡" on={polished} className="w-4 h-4" />
+            </span>
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              {K.quickType}
+            </span>
           </div>
 
           {/* The chips of the hour.
@@ -1143,13 +1153,33 @@ const AddTransactionPage = () => {
             </div>
           ) : null}
 
-          <input
-            type="text"
-            value={quickEntry}
-            onChange={(e) => setQuickEntry(e.target.value)}
-            placeholder={K.quickPlaceholder}
-            className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none text-base"
-          />
+          {/* The line the reader writes on.
+
+              It is a field the reader types into, so it has the
+              shape of one - but it is not dressed like a form in the
+              middle of a form. The border is the same hairline the
+              rest of the page uses, and the focus ring is the
+              accent, so the reader knows where they are. */}
+          <div className="relative">
+            <input
+              type="text"
+              value={quickEntry}
+              onChange={(e) => setQuickEntry(e.target.value)}
+              placeholder={K.quickPlaceholder}
+              aria-label={K.quickType}
+              className="w-full px-4 py-3 pr-11 bg-slate-50/70 dark:bg-white/5 rounded-xl outline-none text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 border border-transparent focus:border-primary-400 focus:bg-white dark:focus:bg-white/10 focus:shadow-[0_0_0_3px_rgb(var(--scheme-500-rgb,59_130_246)/0.16)] transition-[border-color,box-shadow,background-color] duration-150"
+            />
+            {quickEntry ? (
+              <button
+                type="button"
+                onClick={() => setQuickEntry('')}
+                aria-label={K.clear || 'Bersihkan'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-white/10 dark:hover:text-gray-200 transition-colors"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
           {nlpPreview && nlpPreview.suggestions.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {nlpPreview.suggestions.map((s, i) => (
@@ -1189,12 +1219,12 @@ const AddTransactionPage = () => {
                   <button
                     key={idx}
                     onClick={() => applyCombo(combo)}
-                    className="bg-white border rounded-full px-3 py-1.5 text-sm flex items-center gap-1 hover:bg-gray-50"
+                    className="inline-flex items-center gap-1.5 bg-white border border-slate-200/80 dark:border-white/10 rounded-full px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200 hover:border-emerald-400 hover:bg-emerald-50/70 dark:hover:bg-emerald-900/20 hover:text-emerald-900 dark:hover:text-emerald-100 hover:shadow-sm hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform] duration-150 cursor-pointer"
                   >
-                    <span>{getCategoryIcon(cat?.name)}</span>
-                    <span>{what}</span>
-                    <span className="text-gray-400">·</span>
-                    <span className="font-medium">
+                    <span aria-hidden="true">{getCategoryIcon(cat?.name)}</span>
+                    <span className="max-w-[14rem] truncate">{what}</span>
+                    <span className="text-slate-300 dark:text-slate-600">·</span>
+                    <span className="font-medium tabular-nums whitespace-nowrap">
                       {formatNative(combo.amount, accountCurrency)}
                     </span>
                   </button>

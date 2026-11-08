@@ -167,8 +167,24 @@ def _make_a_quick_entry(session, description="Makan siang", amount=25000.0):
     return tx
 
 
-def test_a_quick_entry_is_on_the_map(session):
-    """The money is accounted for, and the pin says it is a guess."""
+def test_a_quick_entry_is_on_the_map(session, monkeypatch):
+    """The money is accounted for, and the pin says it is a guess.
+
+    The place is not looked up here. The map asks the geocoder where
+    a shop is, and whether the answer comes back depends on whether
+    the geocoder is reachable - which is not a thing a test about
+    counting money should depend on.
+
+    So the lookup is told, here, that it found nothing. That is the
+    case this test is about: a transaction with no shop and no
+    coordinates is still spending, and it still belongs on the map.
+    """
+    import app.api.routes.analytics as analytics_module
+
+    monkeypatch.setattr(
+        analytics_module, "resolve_place", lambda *a, **k: None
+    )
+
     from app.api.routes.analytics import get_merchant_map_data
 
     _make_a_quick_entry(session)

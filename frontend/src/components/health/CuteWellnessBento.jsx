@@ -225,17 +225,26 @@ const MiniFace = ({ mood, size = 52, tint = '#f472b6' }) => {
  * shrinks.
  */
 const MiniStat = ({ label, value, tint, illustration }) => (
-  <div className="flex items-start gap-3 min-w-0">
-    <div className="wellness-drift shrink-0">{illustration}</div>
+  <div className="flex items-center gap-3 min-w-0">
+    {/* The drawing, in a small holder.
+
+        It used to be the drawing on its own, and it took up as much
+        room as the number it was meant to introduce. Now it sits in
+        a small tinted square, so the four of them read as a row of
+        siblings instead of four different objects. */}
+    <div
+      className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+      style={{ backgroundColor: `rgba(${tint.replace('#', '')}, 0.12)` }}
+    >
+      <div className="wellness-drift scale-[0.62]">{illustration}</div>
+    </div>
     <div className="min-w-0 flex-1">
       {/* The label.
 
           The words are not broken in the middle. The label is the
           name of the amount, and a name broken in half is two
           things. It wraps between the words instead. */}
-      <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 leading-tight">
-        {label}
-      </p>
+      <p className="shape-label">{label}</p>
       {/* The amount.
 
           One number, drawn on one line. The size steps down on
@@ -297,14 +306,26 @@ export default function CuteWellnessBento({
             <div className="wellness-card__wash" style={{ background: WASHES.mint }} />
             <div className="wellness-halo" />
 
+            {/* The score.
+
+                It is one thing, not four. It used to be a number,
+                a letter grade, a bar and a face, all at the same
+                weight, so the eye had four things to read and no way
+                of knowing which was the answer.
+
+                Now the number is the answer, the grade is a small
+                mark beside it, and the bar and the face support it. */}
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  {t('health_coach.score')}
-                </p>
-                <p className="text-5xl font-bold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">
-                  {numericScore}
-                </p>
+                <p className="shape-label">{t('health_coach.score')}</p>
+                <div className="flex items-baseline gap-2.5 mt-1">
+                  <p className="text-5xl font-bold text-gray-900 dark:text-gray-50 tabular-nums leading-none tracking-tight">
+                    {numericScore}
+                  </p>
+                  <span className="text-sm text-gray-400 dark:text-gray-500 font-medium tabular-nums">
+                    /100
+                  </span>
+                </div>
               </div>
 
               <div className="wellness-drift wellness-drift--slow shrink-0">
@@ -317,8 +338,22 @@ export default function CuteWellnessBento({
                 It used to be a line of text - "Grade: D" - and the
                 grade is the one-word answer the reader came for, so
                 it is given a badge of its own. */}
+            {/* The grade.
+
+                It is the one-word answer the reader came for, so it
+                gets a badge of its own - and the badge takes the
+                colour of the score, because a grade of D in green
+                is a lie. */}
             <div className="mt-3">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 shrink-0">
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ring-1"
+                style={{
+                  backgroundColor: `rgba(${ScoreColour(numericScore).replace('rgb(', '').replace(')', '')}, 0.12)`,
+                  color: ScoreColour(numericScore),
+                  // The ring is drawn with the same colour, faintly.
+                  boxShadow: `inset 0 0 0 1px rgba(${ScoreColour(numericScore).replace('rgb(', '').replace(')', '')}, 0.28)`,
+                }}
+              >
                 {t('health_coach.grade')}{' '}
                 <span className="font-bold">{grade}</span>
               </span>
@@ -361,27 +396,45 @@ export default function CuteWellnessBento({
         <div className="lg:col-span-7">
           <div className="wellness-card h-full p-5">
             <div className="wellness-card__wash" style={{ background: WASHES.sky }} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <MiniStat
-                label={t('health_coach.monthly_income')}
-                value={formatCurrency(monthlyIncome)}
-                illustration={<CoinStack tint="#10b981" />}
-              />
-              <MiniStat
-                label={t('health_coach.monthly_expense')}
-                value={formatCurrency(monthlyExpense)}
-                illustration={<Sprout tint="#f97316" />}
-              />
-              <MiniStat
-                label={t('health_coach.total_cash')}
-                value={formatCurrency(totalCash)}
-                illustration={<Wallet tint="#8b5cf6" />}
-              />
-              <MiniStat
-                label={t('health_coach.total_debt')}
-                value={formatCurrency(totalDebt)}
-                illustration={<Umbrella tint="#f43f5e" />}
-              />
+            {/* The four amounts.
+
+                They are one snapshot, so they are one grid of four
+                quiet panels with the same shape. They used to be
+                four drawings floating on the wash of the card, and
+                the eye could not tell they were a set. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10">
+                <MiniStat
+                  label={t('health_coach.monthly_income')}
+                  value={formatCurrency(monthlyIncome)}
+                  tint="#10b981"
+                  illustration={<CoinStack tint="#10b981" />}
+                />
+              </div>
+              <div className="rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10">
+                <MiniStat
+                  label={t('health_coach.monthly_expense')}
+                  value={formatCurrency(monthlyExpense)}
+                  tint="#f97316"
+                  illustration={<Sprout tint="#f97316" />}
+                />
+              </div>
+              <div className="rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10">
+                <MiniStat
+                  label={t('health_coach.total_cash')}
+                  value={formatCurrency(totalCash)}
+                  tint="#8b5cf6"
+                  illustration={<Wallet tint="#8b5cf6" />}
+                />
+              </div>
+              <div className="rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10">
+                <MiniStat
+                  label={t('health_coach.total_debt')}
+                  value={formatCurrency(totalDebt)}
+                  tint="#f43f5e"
+                  illustration={<Umbrella tint="#f43f5e" />}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -481,7 +534,15 @@ export default function CuteWellnessBento({
                   </section>
                 )}
 
-                {audit.highlights?.length > 0 && (
+                {/* What is already good.
+
+                    When there is nothing to say, the panel says why
+                    instead of sitting there empty. An empty panel
+                    reads as a bug, or worse, as the answer: "you have
+                    no strengths". It is neither - it is "there is
+                    not enough recorded yet to tell", which is a very
+                    different thing to read. */}
+                {audit.highlights?.length > 0 ? (
                   <section className="rounded-xl bg-emerald-50/70 dark:bg-emerald-900/15 p-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
                       {t('health_coach.strength_title')}
@@ -496,6 +557,15 @@ export default function CuteWellnessBento({
                         </li>
                       ))}
                     </ul>
+                  </section>
+                ) : (
+                  <section className="rounded-xl bg-emerald-50/40 dark:bg-emerald-900/10 p-3 border border-dashed border-emerald-200/70 dark:border-emerald-500/20">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-800/80 dark:text-emerald-200/80">
+                      {t('health_coach.strength_title')}
+                    </h3>
+                    <p className="mt-1.5 text-xs text-emerald-900/70 dark:text-emerald-100/70">
+                      {t('health_coach.strengths_empty')}
+                    </p>
                   </section>
                 )}
 

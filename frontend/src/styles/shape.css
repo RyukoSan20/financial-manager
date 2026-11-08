@@ -1,0 +1,283 @@
+/*
+ * The shape of a page.
+ *
+ * A finance app is mostly cards, numbers and lines, and when every
+ * card is the same size, with the same border and the same shadow,
+ * the page reads as a wall. The reader cannot tell the one number
+ * that matters from the four that are supporting it, so they read
+ * all of them and remember none.
+ *
+ * These are the pieces the pages are built from. They are not a new
+ * design system - the application already had a card, a badge and a
+ * button. They are one shape for each of them, so that a card on the
+ * dashboard and a card on the health coach are recognisably the same
+ * thing.
+ *
+ * The four rules:
+ *
+ *   1. One depth. A card has a hairline border and a shadow so soft
+ *      it is felt rather than seen. Nothing on the page has a heavy
+ *      shadow, so the shadow still means "this is a thing you can
+ *      pick up".
+ *   2. One radius. 16px for a card, 12px for a control, full for a
+ *      pill. The difference is small enough to read as a family.
+ *   3. One accent. The colour of the accent comes from the reader's
+ *      own scheme, so it follows them, but there is only ever one
+ *      of it on a page.
+ *   4. One rhythm. Every space on the page is a multiple of four.
+ *
+ * The tokens are written as CSS custom properties rather than as
+ * Tailwind classes, because a component that uses them does not have
+ * to know what they are, and a theme can change them in one place.
+ */
+
+:root {
+  /* The space between things.
+     Four is the base. Eight is a pair. Sixteen is a group.
+     Twenty-four is a section. Thirty-two is a page. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* The shape. */
+  --radius-pill: 9999px;
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+  --radius-panel: 1.25rem;
+
+  /* The depth.
+     One shadow for a card, one for something that is being pressed,
+     and nothing heavier. */
+  --depth-card: 0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px -12px rgba(15, 23, 42, 0.1);
+  --depth-raised: 0 2px 4px rgba(15, 23, 42, 0.05),
+    0 12px 32px -14px rgba(15, 23, 42, 0.16);
+  --depth-overlay: 0 20px 50px -12px rgba(15, 23, 42, 0.25),
+    0 4px 12px -4px rgba(15, 23, 42, 0.1);
+
+  /* The edge.
+     Grey with some transparency, because it is the one colour that
+     does not fight with whatever accent the reader has chosen. */
+  --edge: rgba(148, 163, 184, 0.22);
+  --edge-strong: rgba(148, 163, 184, 0.36);
+  --edge-soft: rgba(148, 163, 184, 0.12);
+
+  /* The surface. */
+  --surface: rgba(255, 255, 255, 0.86);
+  --surface-quiet: rgba(248, 250, 252, 0.72);
+  --surface-sunk: rgba(241, 245, 249, 0.6);
+
+  /* The ink. */
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --ink-quiet: #64748b;
+  --ink-faint: #94a3b8;
+
+  /* The pastel that says what is good, what is careful and what
+     needs attention. They are pale enough to be a background and
+     dark enough to be a word on top of one. */
+  --pastel-mint: 236 253 245;
+  --pastel-sky: 239 246 255;
+  --pastel-lilac: 245 243 255;
+  --pastel-peach: 255 247 237;
+  --pastel-blush: 255 241 242;
+}
+
+.dark {
+  --depth-card: 0 1px 2px rgba(0, 0, 0, 0.28),
+    0 8px 24px -12px rgba(0, 0, 0, 0.45);
+  --depth-raised: 0 2px 4px rgba(0, 0, 0, 0.32),
+    0 12px 32px -14px rgba(0, 0, 0, 0.55);
+  --depth-overlay: 0 20px 50px -12px rgba(0, 0, 0, 0.7),
+    0 4px 12px -4px rgba(0, 0, 0, 0.45);
+
+  --edge: rgba(148, 163, 184, 0.16);
+  --edge-strong: rgba(148, 163, 184, 0.3);
+  --edge-soft: rgba(148, 163, 184, 0.08);
+
+  --surface: rgba(30, 41, 59, 0.72);
+  --surface-quiet: rgba(30, 41, 59, 0.5);
+  --surface-sunk: rgba(15, 23, 42, 0.5);
+
+  --ink: #f1f5f9;
+  --ink-soft: #cbd5e1;
+  --ink-quiet: #94a3b8;
+  --ink-faint: #64748b;
+
+  --pastel-mint: 6 78 59;
+  --pastel-sky: 12 51 77;
+  --pastel-lilac: 49 46 90;
+  --pastel-peach: 67 42 11;
+  --pastel-blush: 76 22 34;
+}
+
+/* ---------------------------------------------------------------------------
+ * A card.
+ *
+ * The hairline edge and the soft shadow together make the card a
+ * surface. The shadow alone makes it float, and the edge alone makes
+ * it look like a table.
+ * ------------------------------------------------------------------------- */
+
+.shape-card {
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--depth-card);
+}
+
+/* A card the reader can pick up. It answers the pointer. */
+.shape-card--interactive {
+  cursor: pointer;
+  transition:
+    box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.shape-card--interactive:hover {
+  border-color: var(--edge-strong);
+  box-shadow: var(--depth-raised);
+  transform: translateY(-1px);
+}
+
+.shape-card--interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--depth-card);
+}
+
+/* ---------------------------------------------------------------------------
+ * A panel.
+ *
+ * A card with no edge and no shadow, sitting inside one. It is used
+ * for the groups of a card that would otherwise be a stack of cards
+ * inside a card.
+ * ------------------------------------------------------------------------- */
+
+.shape-panel {
+  border-radius: var(--radius-control);
+  background: var(--surface-sunk);
+}
+
+/* ---------------------------------------------------------------------------
+ * A label.
+ *
+ * The small grey name of a number. It is a name, not a sentence, so
+ * it is small and wide-tracked, and it never breaks in the middle of
+ * a word.
+ * ------------------------------------------------------------------------- */
+
+.shape-label {
+  font-size: 0.6875rem;
+  line-height: 1.1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-quiet);
+  font-weight: 500;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+
+/* ---------------------------------------------------------------------------
+ * A number.
+ *
+ * The one thing that is never allowed to break. Money that cannot be
+ * read is not money the reader can act on, so the amount is kept on
+ * one line and the size steps down when the screen is narrow.
+ * ------------------------------------------------------------------------- */
+
+.shape-amount {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  white-space: nowrap;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------------
+ * A pill.
+ *
+ * A compact mark that holds its words. It is never cut, and the row
+ * it sits in wraps rather than pushing it off the edge.
+ * ------------------------------------------------------------------------- */
+
+.shape-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * A control.
+ *
+ * A button or a field. The shape of a thing the reader presses.
+ * ------------------------------------------------------------------------- */
+
+.shape-control {
+  border-radius: var(--radius-control);
+  border: 1px solid var(--edge);
+  background: var(--surface);
+  transition:
+    border-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.shape-control:hover {
+  border-color: var(--edge-strong);
+}
+
+.shape-control:focus-visible {
+  outline: none;
+  border-color: rgb(var(--scheme-500-rgb, 59 130 246));
+  box-shadow: 0 0 0 3px rgb(var(--scheme-500-rgb, 59 130 246) / 0.18);
+}
+
+/* ---------------------------------------------------------------------------
+ * A section.
+ *
+ * The heading of a block of the page. The space above it is bigger
+ * than the space below it, so the eye knows where one section ends.
+ * ------------------------------------------------------------------------- */
+
+.shape-section {
+  margin-bottom: var(--space-6);
+}
+
+.shape-section__heading {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------------------
+ * The reader who asked for less movement.
+ *
+ * Everything that moves, stops.
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .shape-card--interactive,
+  .shape-control {
+    transition: none;
+  }
+
+  .shape-card--interactive:hover {
+    transform: none;
+  }
+}

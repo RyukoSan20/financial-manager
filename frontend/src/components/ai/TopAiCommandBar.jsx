@@ -337,17 +337,20 @@ export default function TopAiCommandBar({ userData = {} }) {
 
   return (
     <div
-      className="sticky top-0 z-40 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-3 pb-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-gray-100 dark:border-white/10"
+      className="sticky top-0 z-40 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-3 pb-2 bg-white/85 dark:bg-gray-900/85 backdrop-blur-md border-b border-slate-200/60 dark:border-white/10"
       aria-label={label}
     >
       <div className="flex items-center gap-2">
-        {/* The mascot, in the corner of the bar. */}
-        <span className="hidden sm:flex shrink-0 -ml-1">
-          <FinBuddyMascot mood={busy ? 'thinking' : 'idle'} size={32} />
+        {/* The mascot, in the corner of the bar.
+
+            It sits in a tinted holder, so it is a picture in the
+            bar rather than a picture floating beside it. */}
+        <span className="hidden sm:flex shrink-0 -ml-1 w-9 h-9 rounded-xl bg-gradient-to-br from-sky-100 to-violet-100 dark:from-sky-500/20 dark:to-violet-500/20 items-center justify-center">
+          <FinBuddyMascot mood={busy ? 'thinking' : 'idle'} size={28} />
         </span>
 
         <div className="flex-1 min-w-0 relative">
-          <div className="flex items-center gap-2 rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 focus-within:border-primary-400 dark:focus-within:border-primary-500 transition-colors">
+          <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 px-3.5 py-2 focus-within:border-primary-400 focus-within:bg-white dark:focus-within:bg-white/10 focus-within:shadow-[0_0_0_3px_rgb(var(--scheme-500-rgb,59_130_246)/0.14)] transition-[border-color,box-shadow,background-color] duration-150">
             <Sparkles className="w-4 h-4 text-primary-500 shrink-0" aria-hidden="true" />
             <input
               ref={inputRef}
@@ -484,7 +487,7 @@ export default function TopAiCommandBar({ userData = {} }) {
               type="button"
               onClick={() => runQuickAction(action)}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/80 dark:bg-white/10 text-gray-700 dark:text-gray-200 border border-primary-100 dark:border-white/10 hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/30 dark:hover:text-primary-200 transition-colors disabled:opacity-50 shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/80 dark:bg-white/5 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/10 hover:border-primary-300 hover:bg-primary-50/80 hover:text-primary-800 dark:hover:bg-primary-900/20 dark:hover:text-primary-200 hover:shadow-sm hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform] duration-150 disabled:opacity-50 shrink-0"
             >
               <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               {t(`ai_assistant.${action.key}`)}

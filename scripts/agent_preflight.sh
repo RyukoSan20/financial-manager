@@ -88,6 +88,7 @@ for test_file in \
   src/components/common/__tests__/honestEmptyState.test.js \
   src/components/common/__tests__/emptyStateKeys.test.js \
   src/styles/__tests__/interfaceFeel.test.js \
+  src/styles/__tests__/shape.test.js \
   src/styles/__tests__/openPoints.test.js \
   src/components/merchant/__tests__/merchantCapture.test.js \
   src/utils/__tests__/receiptBill.test.js \

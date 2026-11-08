@@ -456,35 +456,46 @@ export const Transactions = () => {
         />
       )}
 
-      {/* Smart Parser Buttons */}
-      <div className="flex gap-2">
+      {/* The four ways of bringing a transaction in.
+
+          They were four coloured buttons in a row, each with its
+          own saturated background, and the page was fighting itself:
+          blue, purple, green, orange, all the same weight, all
+          shouting.
+
+          Now they are four quiet panels of one shape. Each keeps
+          its own colour - the reader knows which is the receipt
+          scanner - but the colour is a small icon on a pale wash,
+          not a block of it. The row reads as one group of four
+          choices rather than four competing announcements. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <button
           onClick={() => setShowTextParser(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary-50 text-primary-600 rounded-xl border border-primary-200 active:bg-primary-100"
+          className="group flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl bg-sky-50/70 dark:bg-sky-500/10 border border-sky-200/70 dark:border-sky-500/20 text-sky-700 dark:text-sky-300 hover:border-sky-400 hover:bg-sky-50 dark:hover:bg-sky-500/20 hover:shadow-sm hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform] duration-150"
         >
           <MessageSquare className="w-5 h-5" />
-          <span className="font-medium">{K.smsShort}</span>
+          <span className="text-xs font-medium">{K.smsShort}</span>
         </button>
         <button
           onClick={() => setShowQRScanner(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-purple-50 text-purple-600 rounded-xl border border-purple-200 active:bg-purple-100"
+          className="group flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl bg-violet-50/70 dark:bg-violet-500/10 border border-violet-200/70 dark:border-violet-500/20 text-violet-700 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/20 hover:shadow-sm hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform] duration-150"
         >
           <ScanText className="w-5 h-5" />
-          <span className="font-medium">{K.qrCode}</span>
+          <span className="text-xs font-medium">{K.qrCode}</span>
         </button>
         <button
           onClick={() => setShowReceiptScanner(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-50 text-green-600 rounded-xl border border-green-200 active:bg-green-100"
+          className="group flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-500/10 border border-emerald-200/70 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 hover:shadow-sm hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform] duration-150"
         >
           <Camera className="w-5 h-5" />
-          <span className="font-medium">{K.receiptShort}</span>
+          <span className="text-xs font-medium">{K.receiptShort}</span>
         </button>
         <button
           onClick={() => setShowVoiceModal(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-50 text-orange-600 rounded-xl border border-orange-200 active:bg-orange-100"
+          className="group flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl bg-amber-50/70 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 text-amber-700 dark:text-amber-300 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/20 hover:shadow-sm hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform] duration-150"
         >
           <Mic className="w-5 h-5" />
-          <span className="font-medium">{K.voice}</span>
+          <span className="text-xs font-medium">{K.voice}</span>
         </button>
       </div>
 
@@ -495,15 +506,18 @@ export const Transactions = () => {
           <input
             type="text"
             placeholder={K.searchPlaceholder}
-            className="w-full pl-12 pr-4 py-3 bg-white border-0 rounded-2xl shadow-sm focus:ring-2 focus:ring-primary-500"
+            aria-label={K.searchPlaceholder}
+            className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-slate-200/70 dark:border-white/10 rounded-2xl shadow-sm outline-none focus:border-primary-400 focus:shadow-[0_0_0_3px_rgb(var(--scheme-500-rgb,59_130_246)/0.16)] transition-[border-color,box-shadow] duration-150"
             value={filters.search}
             onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
           />
         </div>
         <button
           onClick={() => setShowFilter(!showFilter)}
-          className={`p-3 rounded-2xl shadow-sm transition-colors ${
-            filters.category ? 'bg-primary-100 text-primary-600' : 'bg-white text-gray-600'
+          className={`p-3 rounded-2xl shadow-sm border transition-[color,background-color,border-color] duration-150 ${
+            filters.category
+              ? 'bg-primary-50 text-primary-600 border-primary-200 dark:bg-primary-900/30 dark:text-primary-300 dark:border-primary-500/30'
+              : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-slate-200/70 dark:border-white/10 hover:border-slate-300'
           }`}
           title={K.filterByCategory}
           aria-label={K.filterByCategory}
@@ -513,7 +527,9 @@ export const Transactions = () => {
         </button>
         <button
           onClick={fetchData}
-          className="p-3 bg-white rounded-2xl shadow-sm text-gray-600 active:bg-gray-50"
+          title={K.refresh || 'Muat ulang'}
+          aria-label={K.refresh || 'Muat ulang'}
+          className="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-gray-600 dark:text-gray-300 border border-slate-200/70 dark:border-white/10 hover:border-slate-300 transition-[border-color] duration-150"
         >
           <RefreshCw className="w-5 h-5" />
         </button>

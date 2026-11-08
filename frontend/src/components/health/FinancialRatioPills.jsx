@@ -68,7 +68,7 @@ const months = (value) => Number(value || 0).toFixed(1);
  * written differently: two of them are percentages and one of them is
  * a number of months. What the row adds is the name and the mark.
  */
-const Pill = ({ label, value, status, detail }) => {
+const Pill = ({ label, value, status, detail, benchmark }) => {
   const { t } = useTranslation();
   const safeStatus = STATUS_CLASS[status] ? status : '';
   const statusText = status ? t(STATUS_KEY[status], '') : '';
@@ -79,7 +79,7 @@ const Pill = ({ label, value, status, detail }) => {
       title={detail || label}
     >
       {/* The name of the ratio and the value, on one side. */}
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <span
           className={`wellness-pill__dot ${STATUS_CLASS[safeStatus] || ''}`}
           aria-hidden="true"
@@ -97,6 +97,23 @@ const Pill = ({ label, value, status, detail }) => {
           {value}
         </span>
       </div>
+
+      {/* The benchmark.
+
+          A ratio without a target is a number the reader has to
+          interpret on their own, and "0%" next to "Perlu
+          diperbaiki" does not say what would make it right. The
+          target is what the row is measured against, so it sits
+          beside the value and says so.
+
+          The reference does the same thing: "Kebutuhan Rp3 jt" and
+          "Rp500.0K/hari" are the number and its daily form, so the
+          reader never has to divide in their head. */}
+      {benchmark ? (
+        <span className="text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap tabular-nums shrink-0">
+          {benchmark}
+        </span>
+      ) : null}
 
       {/* The mark.
 
@@ -143,18 +160,21 @@ export default function FinancialRatioPills({
         value={percent(savingsValue)}
         status={savingsRatio?.status}
         detail={savingsRatio?.description || ''}
+        benchmark={t('health_coach.benchmark_savings', 'Target ≥ 20%')}
       />
       <Pill
         label={t('health_coach.emergency_fund')}
         value={t('health_coach.months').replace('%value%', months(emergencyValue))}
         status={emergencyFund?.status}
         detail={emergencyFund?.description || ''}
+        benchmark={t('health_coach.benchmark_emergency', 'Target 3-6 bulan')}
       />
       <Pill
         label={t('health_coach.dsr_ratio')}
         value={percent(dsrValue)}
         status={dsrRatio?.status}
         detail={dsrRatio?.description || ''}
+        benchmark={t('health_coach.benchmark_dsr', 'Target ≤ 30%')}
       />
     </div>
   );

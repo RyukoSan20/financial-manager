@@ -900,41 +900,75 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           </p>
         </div>
         
-        <div className="flex gap-3 items-center flex-wrap">
-          {/* Dark Mode Toggle */}
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${bgCard} border ${borderColor}`}>
-            <Sun className={`w-4 h-4 ${textSecondary}`} />
-            <DarkModeToggle isDark={isDarkMode} onToggle={toggleTheme} />
-            <Moon className={`w-4 h-4 ${textSecondary}`} />
-          </div>
-          
-          {/* Display Mode Toggle (Basic/Advanced) */}
-          <ModeToggle mode={displayMode} onToggle={setDisplayMode} isDark={isDarkMode} />
-          
-          {/* Timeframe Selector */}
-          <div className={`flex rounded-lg p-1 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
-            {TIMEFRAMES.map(tf => (
+        {/* The controls of the page.
+
+            They used to be one row of eleven things: a sun, a
+            switch, a moon, two modes, eight timeframes, a refresh
+            and a camera. Nothing said which of them chose what the
+            page was about, and which of them merely acted on it.
+
+            So they are three groups now, and the groups are put
+            apart: the timeframes, which say what period the page is
+            about, sit on their own; the display mode, which says how
+            much of it there is, sits next; and the two actions, which
+            do something, sit at the end. */}
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {/* What period the page is about. */}
+          <div
+            className={`flex items-center gap-0.5 p-1 rounded-xl ${
+              isDark ? 'bg-white/5 ring-1 ring-white/10' : 'bg-slate-100/80 ring-1 ring-slate-200/70'
+            }`}
+            role="group"
+            aria-label={t('dashboard.timeframe', 'Periode')}
+          >
+            {TIMEFRAMES.map((tf) => (
               <button
                 key={tf.key}
                 onClick={() => setTimeframe(tf.key)}
                 title={t(tf.descriptionKey)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                  timeframe === tf.key 
-                    ? 'bg-primary-600 text-white shadow-md' 
-                    : `${textSecondary} hover:bg-gray-200 dark:hover:bg-gray-600`
+                aria-pressed={timeframe === tf.key}
+                className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
+                  timeframe === tf.key
+                    ? 'bg-white text-slate-900 shadow-sm dark:bg-white/15 dark:text-white'
+                    : `${textSecondary} hover:text-gray-900 dark:hover:text-white`
                 }`}
               >
                 {tf.label}
               </button>
             ))}
           </div>
-          
-          <Button variant="outline" size="sm" onClick={() => { fetchData(); fetchMarketData(); fetchCashFlow(); }}>
+
+          {/* How much of it there is. */}
+          <ModeToggle mode={displayMode} onToggle={setDisplayMode} isDark={isDarkMode} />
+
+          {/* The theme. The switch says which it is; the sun and the
+              moon on either side of it said it twice. */}
+          <div
+            className={`flex items-center px-1 py-1 rounded-xl ${
+              isDark ? 'bg-white/5 ring-1 ring-white/10' : 'bg-slate-100/80 ring-1 ring-slate-200/70'
+            }`}
+          >
+            <DarkModeToggle isDark={isDarkMode} onToggle={toggleTheme} />
+          </div>
+
+          {/* What it does. */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              fetchData();
+              fetchMarketData();
+              fetchCashFlow();
+            }}
+            title={t('common.refresh', 'Muat ulang')}
+            aria-label={t('common.refresh', 'Muat ulang')}
+            className="rounded-xl"
+          >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-          
+
           {onScanReceipt && (
-            <Button variant="default" size="sm" onClick={onScanReceipt} className="gap-2">
+            <Button variant="default" size="sm" onClick={onScanReceipt} className="gap-2 rounded-xl">
               <Camera className="w-4 h-5" />
               {t('dashboard.scan', 'Scan')}
             </Button>
@@ -1210,32 +1244,81 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             </div>
           </Card>
 
-          {/* Safe-to-Spend */}
-          <Card className={`p-4 ${bgCard} border ${borderColor}`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-green-500" />
-                <h3 className={`font-semibold ${textPrimary}`}>{t('dashboard.safe_to_spend')}</h3>
+          {/* Safe-to-Spend.
+
+              This is the number the reader came for - the money they
+              may spend without thinking - so it is the one number on
+              the page that is drawn large and on its own.
+
+              The per-day figure is beside it rather than under it,
+              because "Rp 83.333 per hari" is the form the number
+              takes in a reader's head. A monthly total has to be
+              divided before it can be spent; a daily one does not. */}
+          <Card className="p-5 shape-card relative overflow-hidden">
+            {/* The wash behind the one number that matters. */}
+            <div
+              className="pointer-events-none absolute inset-0 -z-10"
+              style={{
+                background:
+                  'radial-gradient(120% 90% at 100% 0%, rgba(16,185,129,0.14) 0%, rgba(16,185,129,0) 62%)',
+              }}
+              aria-hidden="true"
+            />
+
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-100/80 dark:bg-emerald-500/15 shrink-0">
+                  <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                </span>
+                <h3 className={`font-semibold truncate ${textPrimary}`}>
+                  {t('dashboard.safe_to_spend')}
+                </h3>
               </div>
+              <Badge
+                variant={safeToSpend.status === 'safe' ? 'success' : safeToSpend.status === 'warning' ? 'warning' : 'danger'}
+                size="sm"
+              >
+                {safeToSpend.percent.toFixed(0)}% {t('dashboard.remaining_short', 'sisa')}
+              </Badge>
             </div>
-            <div className="text-center mb-4">
-              <p className={`text-4xl font-bold ${textPrimary}`}>
-                <AnimatedNumber value={safeToSpend.amount} format={(n) => formatCurrency(n)} />
-              </p>
-              <p className={`text-sm ${textSecondary}`}>{t('dashboard.safe_to_spend_caption')}</p>
-            </div>
-            <div className={`grid grid-cols-3 gap-2 text-center text-xs ${textSecondary}`}>
-              <div>
-                <p className="font-bold text-lg text-green-500">{formatCurrency((safeToSpend.amount / 30) || 0)}</p>
-                <p>{t('dashboard.per_day')}</p>
+
+            {/* The number. One line, never broken. */}
+            <p className="text-4xl xl:text-[2.75rem] font-bold tabular-nums whitespace-nowrap leading-none tracking-tight text-gray-900 dark:text-gray-50">
+              <AnimatedNumber value={safeToSpend.amount} format={(n) => formatCurrency(n)} />
+            </p>
+            <p className={`mt-1.5 text-sm ${textSecondary}`}>
+              {t('dashboard.safe_to_spend_caption')}
+            </p>
+
+            {/* The three ways of reading it.
+
+                The per-day one is the one that decides what the
+                reader does today, so it is the one that is given the
+                room and the weight. */}
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className="rounded-xl bg-emerald-50/80 dark:bg-emerald-500/10 px-2 py-2.5 text-center ring-1 ring-emerald-200/60 dark:ring-emerald-500/20">
+                <p className="text-base font-bold tabular-nums whitespace-nowrap text-emerald-700 dark:text-emerald-300 leading-tight">
+                  {formatCurrency((safeToSpend.amount / 30) || 0)}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-4 text-emerald-700/80 dark:text-emerald-300/70">
+                  {t('dashboard.per_day')}
+                </p>
               </div>
-              <div>
-                <p className="font-bold text-lg text-primary-500">{formatCurrency((safeToSpend.amount / 4) || 0)}</p>
-                <p>{t('dashboard.per_week')}</p>
+              <div className="rounded-xl bg-slate-50 dark:bg-white/5 px-2 py-2.5 text-center ring-1 ring-slate-200/70 dark:ring-white/10">
+                <p className="text-base font-bold tabular-nums whitespace-nowrap text-slate-800 dark:text-slate-100 leading-tight">
+                  {formatCurrency((safeToSpend.amount / 4) || 0)}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                  {t('dashboard.per_week')}
+                </p>
               </div>
-              <div>
-                <p className="font-bold text-lg text-purple-500">{formatCurrency(safeToSpend.amount)}</p>
-                <p>{t('common.total')}</p>
+              <div className="rounded-xl bg-slate-50 dark:bg-white/5 px-2 py-2.5 text-center ring-1 ring-slate-200/70 dark:ring-white/10">
+                <p className="text-base font-bold tabular-nums whitespace-nowrap text-slate-800 dark:text-slate-100 leading-tight">
+                  {formatCurrency(safeToSpend.amount)}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                  {t('common.total')}
+                </p>
               </div>
             </div>
           </Card>
