@@ -15,6 +15,8 @@ export { default as FluidProgressBar } from './FluidProgressBar';
 export { default as FloatingAction } from './FloatingAction';
 export { default as Sheet } from './Sheet';
 export { default as AnimatedNumber } from '../common/AnimatedNumber';
+export { default as CountUpNumber } from './CountUpNumber';
+export { default as AnimatedProgressBar, barColorState, BAR_STATE_CLASSES } from './AnimatedProgressBar';
 export { default as HonestEmptyState } from '../common/HonestEmptyState';
 export { default as FinBuddyMascot } from '../common/FinBuddyMascot';
 export { AuroraCard, AuroraCanvas, auroraNavClass, auroraIsOn } from './AuroraCard';

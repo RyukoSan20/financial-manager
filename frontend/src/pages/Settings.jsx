@@ -9,6 +9,7 @@ import api from '../services/api';
 import { useCurrency, CURRENCIES, CURRENCY_CODES } from '../utils/currency';
 import { getUserAvatarUrl } from '../utils/avatarHelper';
 import ReadinessChecklist from '../components/ReadinessChecklist';
+import DataExportStudio from '../components/settings/DataExportStudio';
 import PrivacyPage from './Settings/PrivacyPage';
 import { toast } from '../contexts/ToastContext';
 
@@ -104,18 +105,7 @@ export const Settings = () => {
           the fold. It is a welcome, not the page, so it now sits
           across the top and can be put away. */}
       {!checklistDismissed && (
-        <div className="relative">
-          <ReadinessChecklist onDismiss={() => setChecklistDismissed(true)} />
-          <button
-            type="button"
-            onClick={() => setChecklistDismissed(true)}
-            className="absolute top-2 right-2 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
-            aria-label={t('settings.checklist_dismiss')}
-            title={t('settings.checklist_dismiss')}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <ReadinessChecklist onDismiss={() => setChecklistDismissed(true)} />
       )}
 
       {/* The two columns: the navigation on the left, the settings
@@ -696,16 +686,31 @@ const DataTab = ({ logout }) => {
           <p className="text-sm text-gray-500 mb-3">
             {t('settings.data.export_description')}
           </p>
-          <div className="flex gap-3">
-            <Button onClick={handleExportJSON} disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
-              {t('settings.data.export_json')}
-            </Button>
-            <Button variant="secondary" onClick={handleExportCSV} disabled={loading}>
-              <Download className="w-4 h-4 mr-2" />
-              {t('settings.data.export_csv')}
-            </Button>
-          </div>
+
+          {/* The export studio.
+              Two bare buttons said nothing about what was in the
+              file. Now the reader chooses the dates, the kinds of
+              transaction, the account and the columns, and sees what
+              matches before anything is downloaded. */}
+          <DataExportStudio />
+
+          {/* The old way is still here, for the reader who wants
+              everything at once. */}
+          <details className="mt-4">
+            <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+              {t('export.export_everything')}
+            </summary>
+            <div className="flex gap-3 mt-3">
+              <Button onClick={handleExportJSON} disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
+                {t('settings.data.export_json')}
+              </Button>
+              <Button variant="secondary" onClick={handleExportCSV} disabled={loading}>
+                <Download className="w-4 h-4 mr-2" />
+                {t('settings.data.export_csv')}
+              </Button>
+            </div>
+          </details>
         </div>
 
         <div className="border-t pt-6">

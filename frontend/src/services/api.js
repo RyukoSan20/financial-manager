@@ -187,6 +187,32 @@ export const api = {
     }
   },
 
+  // A file that is fetched as itself.
+  //
+  // The export is a CSV, and a CSV is not JSON, so it cannot go
+  // through the request wrapper - that one reads the answer as JSON
+  // and would fail on a file. So the file is fetched here, with the
+  // token, and handed back as a blob for the browser to save.
+  download: async (url) => {
+    const token = getToken();
+    const headers = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      let detail = `The file could not be fetched (${response.status}).`;
+      try {
+        const body = await response.json();
+        if (body?.detail) detail = body.detail;
+      } catch {
+        // The answer was not JSON. The status is the whole of it.
+      }
+      throw new Error(detail);
+    }
+
+    return response.blob();
+  },
+
   // A file that is sent as itself.
   //
   // The photograph of a thing for sale is a file, not a piece of
@@ -416,7 +442,20 @@ export const api = {
     netWorthHistory: (months = 12) => api.request(`/analytics/net-worth-history?months=${months}`),
     snapshot: () => api.request('/analytics/net-worth-snapshot', { method: 'POST' }),
     monthlyComparison: (months = 3) => api.request(`/analytics/monthly-comparison?months=${months}`),
-    financialHealth: () => api.request('/analytics/financial-health'),
+    financialHealth: (params = {}) => {
+      const searchParams = new URLSearchParams(params).toString();
+      return api.request(`/analytics/financial-health${searchParams ? `?${searchParams}` : ''}`);
+    },
+    // The calendar of spending: what was spent on each day.
+    dailySpending: (params = {}) => {
+      const searchParams = new URLSearchParams(params).toString();
+      return api.request(`/analytics/spending/daily${searchParams ? `?${searchParams}` : ''}`);
+    },
+    // The cash flow over a range the reader chose.
+    cashFlowTrendForRange: (params = {}) => {
+      const searchParams = new URLSearchParams(params).toString();
+      return api.request(`/analytics/cash-flow-trend${searchParams ? `?${searchParams}` : ''}`);
+    },
   },
 
   // AI Advisor
@@ -457,6 +496,24 @@ export const api = {
   data: {
     export: () => api.request('/data/export'),
     exportCsv: () => api.request('/data/export/csv'),
+
+    // The export studio: what the export would be, and the export.
+    //
+    // The filters are sent as they are chosen, so the preview and the
+    // download are about the same range, the same kinds and the same
+    // columns.
+    exportStudioPreview: (params = {}) => {
+      const searchParams = new URLSearchParams(params).toString();
+      return api.request(`/data/export/studio${searchParams ? `?${searchParams}` : ''}`);
+    },
+    exportStudioCsvUrl: (params = {}) => {
+      const searchParams = new URLSearchParams(params).toString();
+      return `${API_BASE_URL}/data/export/studio/csv${searchParams ? `?${searchParams}` : ''}`;
+    },
+    exportStudioJson: (params = {}) => {
+      const searchParams = new URLSearchParams(params).toString();
+      return api.request(`/data/export/studio/json${searchParams ? `?${searchParams}` : ''}`);
+    },
     // The server checks the confirmation word too, so it has to be
     // sent along with the request. The word is the one the settings
     // screen asked the reader to type.

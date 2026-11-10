@@ -4,7 +4,7 @@ import { useTranslation } from '../i18n';
 import { api } from '../services/api';
 import {
   User as UserIcon, Wallet, Receipt, Target, Flag,
-  Coins, Bell, Check, ChevronRight, Repeat,
+  Coins, Bell, Check, ChevronRight, Repeat, X,
 } from 'lucide-react';
 
 const ICONS = {
@@ -64,11 +64,21 @@ export default function ReadinessChecklist({ onDismiss }) {
             </p>
           </div>
           {onDismiss && (
+            /* One button, not two.
+
+               The banner had a "Selesai" button here and the page
+               drew an X on top of it, so the two sat on top of each
+               other and the reader could not tell which one they were
+               pressing. There is one dismiss now: a pill that says
+               "Selesai" and carries the X inside it. */
             <button
+              type="button"
               onClick={onDismiss}
-              className="text-sm text-emerald-700 dark:text-emerald-300 hover:underline shrink-0"
+              data-testid="readiness-dismiss"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium shrink-0 transition-colors"
             >
-              {t('readiness.done')}
+              <span>{t('readiness.done')}</span>
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -93,10 +103,13 @@ export default function ReadinessChecklist({ onDismiss }) {
         </div>
         {onDismiss && (
           <button
+            type="button"
             onClick={onDismiss}
-            className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0"
+            data-testid="readiness-dismiss"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-xs font-medium text-gray-600 dark:text-gray-300 shrink-0 transition-colors"
           >
-            {t('readiness.done')}
+            <span>{t('readiness.done')}</span>
+            <X className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         )}
       </div>

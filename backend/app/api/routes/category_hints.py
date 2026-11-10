@@ -1,6 +1,9 @@
 """Category Hints API - User learning endpoints"""
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+from app.services.transaction_filter import counted_transactions_filter
 from typing import List, Dict, Any, Optional
 import json
 
@@ -24,8 +27,9 @@ class BootstrapResponse(BaseModel):
     hints: Dict[str, Any]
     categories: List[Dict[str, Any]]
     recent_combos: List[Dict[str, Any]]
-
-
+    # How often each category is used, by the category's id. The
+    # quick pills are made of these, in the order they appear here.
+    category_usage: Dict[str, int] = {}
 
 
 def _words_from(body_value, query_value):
@@ -171,6 +175,29 @@ def extract_tokens(description: str) -> List[str]:
 
 
 
+def _count_category_usage(db, user_id: int) -> Dict[str, int]:
+    """
+    How many times each category has been used.
+
+    The count is of the transactions that are approved, because a
+    pending one is not part of the reader's money yet.
+    """
+    from app.models.transaction import Transaction
+
+    rows = (
+        db.query(Transaction.category_id, func.count(Transaction.id))
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.category_id.isnot(None),
+            *counted_transactions_filter(),
+        )
+        .group_by(Transaction.category_id)
+        .all()
+    )
+
+    return {str(row[0]): int(row[1]) for row in rows if row[0] is not None}
+
+
 def build_recent_combos(db, user_id: int, limit: int = 4) -> List[Dict[str, Any]]:
     """
     The reader's own history, as chips they can press.
@@ -281,7 +308,22 @@ async def get_bootstrap(current_user: User = Depends(get_current_user)):
                     "id": cat.id,
                     "name": cat.name,
                     "system_key": getattr(cat, 'system_key', None),
-                    "icon": getattr(cat, 'icon', None)
+                    "icon": getattr(cat, 'icon', None),
+                    # The kind of category this is: an expense
+                    # category or an income category.
+                    #
+                    # This was missing, and the reader was shown both
+                    # kinds in one list - "Gaji" and "Makanan &
+                    # Minuman" together - because the screen could not
+                    # tell them apart. It was missing because the
+                    # screen filtered on it, and the filter said "if
+                    # the category does not say what it is, let it
+                    # through", which is right for a category that
+                    # says nothing and wrong for one whose kind was
+                    # simply never sent.
+                    "type": getattr(cat, 'type', None),
+                    "parent_id": getattr(cat, 'parent_id', None),
+                    "color": getattr(cat, 'color', None),
                 }
                 for cat in categories
             ],

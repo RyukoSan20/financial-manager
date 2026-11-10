@@ -106,12 +106,25 @@ def _display_currency(current_user, db) -> str:
 def get_cash_flow_trend(
     months: int = Query(default=6, ge=1, le=24),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    # Plain defaults, and last, so a direct call still works.
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
 ):
-    """Get monthly cash flow trend for N months."""
+    """
+    Get monthly cash flow trend for N months.
+
+    When the reader gives their own dates, the months are worked out
+    from those instead - so the river of money is about the range
+    they chose. Without dates, it is the last so many months, which
+    is what it always was.
+    """
     user_id = current_user.id if current_user else None
     today = date.today()
     monthly_data = []
+
+    if start_date and end_date:
+        months = _months_between(start_date, end_date)
     
     for i in range(months - 1, -1, -1):
         # Calculate month range
@@ -897,12 +910,26 @@ def get_monthly_comparison(
 @router.get("/financial-health")
 async def get_financial_health(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    # The dates come last and have plain defaults, so the function
+    # can still be called directly with the reader and the database,
+    # the way the consistency checks call it.
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
 ):
-    """Calculate overall financial health score."""
+    """
+    Calculate overall financial health score.
+
+    The reader's own dates win when they give them, so the score is
+    about the range they chose and not about this month. Without
+    dates, it is about this month, which is what it always was.
+    """
     user_id = current_user.id if current_user else None
     today = date.today()
-    start_date, end_date = get_month_range(today.year, today.month)
+    if not start_date:
+        start_date, _ = get_month_range(today.year, today.month)
+    if not end_date:
+        end_date = today
     
     # Get key metrics
     income = db.query(func.sum(Transaction.amount)).filter(
@@ -1719,6 +1746,97 @@ def get_top_merchants(
             for i, m in enumerate(merchants)
         ]
     }
+
+
+@router.get("/spending/daily")
+def get_daily_spending(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    months: int = 1,
+):
+    """
+    What was spent on each day, for a calendar of spending.
+
+    The calendar answers "which day was the worst one?", and a month
+    of totals cannot answer it - the whole point is that the money
+    came out on one day rather than spread across thirty.
+
+    The reader can ask for a range of dates, or for so many months.
+    When they give dates, the dates are what is used; the months are
+    only the fallback.
+
+    The answer is the days that have spending on them. The days with
+    nothing on them are not in it, because there is nothing to say
+    about a day with no spending.
+    """
+    from app.services.metrics import daily_spending
+
+    start, end = _resolve_date_range(start_date, end_date, max(1, min(24, int(months or 1))))
+
+    if start is None or end is None:
+        return {"days": [], "start": None, "end": None, "max_total": 0}
+
+    days = daily_spending(db, current_user.id, start, end)
+
+    return {
+        "days": days,
+        "start": start.isoformat(),
+        "end": end.isoformat(),
+        "max_total": max((day["total"] for day in days), default=0),
+    }
+
+
+def _months_between(start_date: date, end_date: date) -> int:
+    """
+    How many months a range of dates covers.
+
+    A range that is one day long is one month, because the reader
+    chose a range and a range is at least one month of the river. A
+    range that runs backwards is one month too.
+    """
+    if end_date < start_date:
+        return 1
+    months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
+    return max(1, months + 1)
+
+
+def _resolve_date_range(
+    start_date: Optional[str],
+    end_date: Optional[str],
+    months: int,
+) -> Tuple[Optional[date], Optional[date]]:
+    """
+    The dates a report is about.
+
+    The reader's own dates win when they give them. Otherwise the
+    range is so many months back from today.
+
+    A date that cannot be read is not a date, and a range that cannot
+    be read is not a range - so a bad date means "no range at all"
+    rather than a range that is silently something else.
+    """
+    if start_date or end_date:
+        try:
+            start = date.fromisoformat(start_date) if start_date else date.today()
+            end = date.fromisoformat(end_date) if end_date else date.today()
+        except (TypeError, ValueError):
+            return None, None
+        # A range that runs backwards is a range that runs backwards;
+        # the reader gets what they asked for rather than a surprise.
+        return start, end
+
+    today = date.today()
+    start, end = get_month_range(today.year, today.month)
+    if months > 1:
+        first = today.month - (months - 1)
+        year = today.year
+        while first <= 0:
+            first += 12
+            year -= 1
+        start, _ = get_month_range(year, first)
+    return start, end
 
 
 @router.get("/spending/heatmap")

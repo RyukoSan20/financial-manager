@@ -1,5 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, CardHeader, CardBody, Badge, Spinner, Select, Button, ProgressBar } from '../components/ui';
+
+import DateRangeFilterBar from '../components/analytics/DateRangeFilterBar';
+import SpendingHeatmapCalendar from '../components/analytics/SpendingHeatmapCalendar';
+import { rangeParams } from '../utils/dateRange';
+import { Card, CardHeader, CardBody, Badge, Spinner, Button } from '../components/ui';
 import api from '../services/api';
 import {
   TrendingUp, TrendingDown, PieChart, BarChart3, Wallet, Target,
@@ -241,6 +245,33 @@ export const Analytics = () => {
   const [recurring, setRecurring] = useState(null);
 
   const period = prefs.period;
+
+  // The range of dates the page is about.
+  //
+  // The reader chooses it, and every card on the page answers about
+  // it. It used to be three choices in a dropdown - three months, six
+  // months, twelve months - and no way to ask about one fortnight.
+  const [range, setRange] = useState(() => {
+    const saved = prefs.range;
+    if (saved && saved.preset) return saved;
+    return { preset: 'month' };
+  });
+
+  // The two dates, as the server wants them.
+  const dateParams = useMemo(() => rangeParams(range), [range]);
+
+  // The month the calendar shows: the month the range is in, and the
+  // current one when the range is not a custom one.
+  const calendarMonth = useMemo(() => {
+    if (range.preset !== 'custom') {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const start = range.start || '';
+    return start.slice(0, 7) || new Date().toISOString().slice(0, 7);
+  }, [range]);
+
+  const [dailySpending, setDailySpending] = useState(null);
   // The river of money. Behind the switch, so the page is
   // unchanged when it is off.
   const fintech = buildFlag('FINTECH_SYNTHESIS');
@@ -249,21 +280,31 @@ export const Analytics = () => {
     setLoading(true);
     setError(null);
     try {
+      // The queries carry the dates the reader chose, so every card
+      // on the page answers about the same range.
+      const withDates = (path) => {
+        const search = new URLSearchParams(dateParams).toString();
+        return api.request(`${path}${search ? `?${search}` : ''}`);
+      };
+
       const results = await Promise.allSettled([
-        api.request('/analytics/financial-health'),
+        withDates('/analytics/financial-health'),
         api.request(`/analytics/cash-flow-trend?months=${period}`),
-        api.request('/analytics/expense-breakdown?period=monthly'),
+        withDates('/analytics/expense-breakdown?period=monthly'),
         api.request('/analytics/budget-vs-actual'),
         api.request(`/analytics/monthly-comparison?months=${Math.min(6, Math.max(2, Number(period) || 3))}`),
-        api.request('/analytics/top-expenses?limit=8'),
+        withDates('/analytics/top-expenses?limit=8'),
         api.request('/analytics/spending-patterns'),
         api.request('/analytics/recurring-expenses'),
-        api.request('/analytics/income-breakdown'),
+        withDates('/analytics/income-breakdown'),
+        withDates('/analytics/spending/daily'),
       ]);
       const names = ['health', 'cashFlow', 'expenseBreakdown', 'budgetComparison',
-        'monthlyComparison', 'topExpenses', 'patterns', 'recurring', 'incomeBreakdown'];
+        'monthlyComparison', 'topExpenses', 'patterns', 'recurring', 'incomeBreakdown',
+        'dailySpending'];
       const setters = [setHealth, setCashFlow, setExpenseBreakdown, setBudgetComparison,
-        setMonthlyComparison, setTopExpenses, setPatterns, setRecurring, setIncomeBreakdown];
+        setMonthlyComparison, setTopExpenses, setPatterns, setRecurring, setIncomeBreakdown,
+        setDailySpending];
       results.forEach((r, i) => {
         if (r.status === 'fulfilled' && r.value) setters[i](r.value);
         else setters[i](null);
@@ -275,7 +316,7 @@ export const Analytics = () => {
     } finally {
       setLoading(false);
     }
-  }, [period, t]);
+  }, [period, t, dateParams]);
 
   useEffect(() => {
     fetchData();
@@ -797,16 +838,6 @@ export const Analytics = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select
-            options={[
-              { value: '3', label: t('analytics.month_option').replace('%s', '3') },
-              { value: '6', label: t('analytics.month_option').replace('%s', '6') },
-              { value: '12', label: t('analytics.month_option').replace('%s', '12') },
-            ]}
-            value={period}
-            onChange={(e) => updatePrefs({ ...prefs, period: e.target.value })}
-            className="w-36"
-          />
           <Button
             variant={customizing ? 'primary' : 'outline'}
             size="sm"
@@ -816,6 +847,20 @@ export const Analytics = () => {
             {t('analytics.customize')}
           </Button>
         </div>
+      </div>
+
+      {/* The dates.
+          A dropdown of three fixed windows could not answer "just
+          October", so the reader now chooses the range and every card
+          on the page answers about it. */}
+      <div className="mb-4">
+        <DateRangeFilterBar
+          value={range}
+          onChange={(next) => {
+            setRange(next);
+            updatePrefs({ ...prefs, range: next });
+          }}
+        />
       </div>
 
       {error && (
@@ -983,6 +1028,20 @@ export const Analytics = () => {
           </CardBody>
         </Card>
       )}
+
+      {/* The calendar of spending: which day was the worst one.
+          It is the question a monthly total cannot answer, so it
+          gets its own card, above the widgets. */}
+      {dailySpending?.days?.length ? (
+        <Card className="mb-5">
+          <CardBody>
+            <SpendingHeatmapCalendar
+              days={dailySpending.days}
+              month={calendarMonth}
+            />
+          </CardBody>
+        </Card>
+      ) : null}
 
       {/* Widgets */}
       <div className="grid lg:grid-cols-2 gap-5">

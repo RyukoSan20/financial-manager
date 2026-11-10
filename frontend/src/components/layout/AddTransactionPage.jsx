@@ -20,6 +20,8 @@ import { categoryName } from '../../utils/categoryName';
 import { combinedLabel } from '../../data/categoryDictionary';
 import { subCategoryName } from '../../features/transactions/nlp/subCategories.js';
 import CategoryTreeSheet from '../transactions/CategoryTreeSheet';
+import QuickPillRow from '../transactions/QuickPillRow';
+import { CountUpNumber } from '../ui/CountUpNumber';
 import {
   sanitizeAmount,
   formatAmountInput,
@@ -119,6 +121,10 @@ const AddTransactionPage = () => {
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [recentCombos, setRecentCombos] = useState([]);
+  // How often each category is used. The quick pills are made of
+  // these, in the order they appear, so the pill under the reader's
+  // thumb is the one they want.
+  const [categoryUsage, setCategoryUsage] = useState({});
   const [loadError, setLoadError] = useState(null);
   
   // UI state
@@ -210,6 +216,7 @@ const AddTransactionPage = () => {
         
         if (bootstrapData?.categories) {
           setCategories(bootstrapData.categories || []);
+          setCategoryUsage(bootstrapData.category_usage || {});
           setRecentCombos((bootstrapData.recent_combos || []).slice(0, 4));
           if (bootstrapData.hints) {
             localStorage.setItem('categoryHints', JSON.stringify(bootstrapData.hints));
@@ -1293,6 +1300,49 @@ const AddTransactionPage = () => {
             </p>
           )}
 
+          {/* What the amount is, counted.
+
+              The field itself is a field the reader types into, so it
+              cannot be animated - a number that moves while it is
+              being typed is a number the reader cannot correct.
+
+              So the number that rolls is the one below it: the same
+              amount, written out, counting to its new value when the
+              reader presses a quick amount or the breakdown changes
+              the total. It is the number they read, not the number
+              they write. */}
+          {amount && !isExpression(amount) ? (
+            <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3" data-testid="amount-rolling">
+              <CountUpNumber
+                value={Number(amount) || 0}
+                format={(n) => formatNative(Math.round(n), accountCurrency)}
+              />
+            </p>
+          ) : null}
+
+          {/* The pills.
+              One tap sets the category, one tap sets the account.
+              The list of categories is the reader's own, and it is
+              the list for the kind of transaction being recorded - a
+              reader adding an income is never offered "Makanan &
+              Minuman", and a reader adding an expense is never
+              offered "Gaji". */}
+          <div className="mb-3">
+            <QuickPillRow
+              categories={categories}
+              accounts={accounts}
+              usage={categoryUsage}
+              type={type}
+              categoryId={categoryId}
+              accountId={accountId}
+              onCategory={(id) => {
+                setCategoryId(id);
+                setSubCategoryKey(null);
+              }}
+              onAccount={(id) => setAccountId(id)}
+            />
+          </div>
+
           {/* The breakdown. When the reader wrote "2 indomie 3500",
               the count and the price of one are shown here and the
               total is worked out in front of them. */}
@@ -1300,6 +1350,7 @@ const AddTransactionPage = () => {
             <div className="mb-3">
               <QuantityMultiplierInput
                 rows={breakdown}
+                type={type}
                 onChange={(rows) => {
                   setBreakdown(rows);
                   // The total follows the rows, so the reader never

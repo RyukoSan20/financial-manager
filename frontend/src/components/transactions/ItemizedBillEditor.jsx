@@ -34,6 +34,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Users, ChevronDown, Wand2 } from 'lucide-react';
 
 import { formatCurrency } from '../../utils/format';
+import { CountUpNumber } from '../ui/CountUpNumber';
 import { useTranslation } from '../../i18n';
 import {
   TAX_RULES,
@@ -514,7 +515,7 @@ export default function ItemizedBillEditor({
             <span className="text-gray-600 text-sm">{t('bill.subtotalGoods')}</span>
             <div />
             <span className="text-right font-medium text-sm tabular-nums">
-              {formatCurrency(bill.subtotal)}
+              <CountUpNumber value={bill.subtotal} format={formatCurrency} />
             </span>
           </div>
 
@@ -540,7 +541,7 @@ export default function ItemizedBillEditor({
               </select>
             </div>
             <span className="text-right font-medium text-sm tabular-nums">
-              −{formatCurrency(bill.discount)}
+              −<CountUpNumber value={bill.discount} format={formatCurrency} />
             </span>
           </div>
 
@@ -570,7 +571,7 @@ export default function ItemizedBillEditor({
                 </button>
               </div>
               <span className="text-right font-medium text-sm tabular-nums">
-                +{formatCurrency(bill.taxAmount)}
+                +<CountUpNumber value={bill.taxAmount} format={formatCurrency} />
               </span>
             </div>
             {bill.taxAmount > 0 && (
@@ -598,7 +599,7 @@ export default function ItemizedBillEditor({
               />
             </div>
             <span className="text-right font-medium text-sm tabular-nums">
-              +{formatCurrency(bill.fee)}
+              +<CountUpNumber value={bill.fee} format={formatCurrency} />
             </span>
           </div>
 
@@ -609,7 +610,7 @@ export default function ItemizedBillEditor({
               className="text-right text-2xl font-bold text-gray-900 tabular-nums"
               data-testid="bill-total"
             >
-              {formatCurrency(bill.total)}
+              <CountUpNumber value={bill.total} format={formatCurrency} />
             </span>
           </div>
         </div>

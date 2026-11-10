@@ -60,13 +60,28 @@ export default function CategoryTreeSheet({
   // The categories of this kind of transaction.
   //
   // The sheet used to show every category whatever the reader was
-  // recording, so a reader adding an expense was offered "Gaji".
+  // recording, so a reader adding an expense was offered "Gaji" and
+  // a reader adding an income was offered "Makanan & Minuman".
+  //
+  // It happened because the kind of a category was missing from the
+  // answer the server sends. The filter said "if the category does not
+  // say what it is, let it through", which is right for a category
+  // that says nothing - and wrong for one whose kind was simply never
+  // sent. Every category now says what it is, so the filter can be
+  // strict: an expense never shows an income category, and an income
+  // never shows an expense category.
+  //
+  // A category that says nothing at all is still let through, because
+  // there is nothing to be strict about. But a category that says
+  // "income" is never shown on the expense tab, and one that says
+  // "expense" is never shown on the income tab.
   const forThisType = useMemo(
     () =>
       categories.filter((cat) => {
         if (!cat.type) return true;
-        if (type === 'expense') return cat.type !== 'income';
-        if (type === 'income') return cat.type !== 'expense';
+        if (type === 'expense') return cat.type === 'expense';
+        if (type === 'income') return cat.type === 'income';
+        if (type === 'transfer') return cat.type === 'transfer';
         return true;
       }),
     [categories, type]

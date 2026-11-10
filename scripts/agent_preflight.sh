@@ -96,6 +96,8 @@ for test_file in \
   src/utils/__tests__/financialProfile.test.js \
   src/components/ai/__tests__/topBarPosition.test.js \
   src/data/__tests__/indonesiaPaymentRegistry.test.js \
+  src/features/transactions/nlp/__tests__/categorySeparation.test.js \
+  src/components/__tests__/settingsExportStudio.test.js \
   src/utils/__tests__/fintech.test.js \
   src/components/fintech/__tests__/trustBanners.test.js \
   src/components/fintech/__tests__/dashboardTrust.test.js \

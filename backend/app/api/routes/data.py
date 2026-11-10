@@ -1,9 +1,9 @@
 """Data export routes."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import datetime
+from datetime import date, datetime
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
@@ -166,6 +166,169 @@ def export_transactions_csv(
         "filename": f"finmanager_transactions_{datetime.utcnow().strftime('%Y%m%d')}.csv",
         "content": csv_content,
     }
+
+
+@router.get("/export/studio")
+def export_studio_preview(
+    start_date: Optional[str] = Query(default=None, description="YYYY-MM-DD"),
+    end_date: Optional[str] = Query(default=None, description="YYYY-MM-DD"),
+    types: Optional[str] = Query(default=None, description="Comma separated"),
+    account_id: Optional[int] = Query(default=None),
+    category_id: Optional[int] = Query(default=None),
+    columns: Optional[str] = Query(default=None, description="Comma separated"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    What the export would be, before the reader downloads it.
+
+    The preview and the download are made by the same code, so the
+    reader sees the file they are about to get - not an idea of it.
+    The answer says how many transactions match and what they add up
+    to, and shows the first few rows.
+    """
+    from app.services.export_service import export_payload
+
+    start = _read_date(start_date)
+    end = _read_date(end_date)
+
+    payload = export_payload(
+        db,
+        current_user.id,
+        start_date=start,
+        end_date=end,
+        types=_read_list(types),
+        account_id=account_id,
+        category_id=category_id,
+        columns=_read_list(columns),
+    )
+
+    # The transactions themselves are not part of the answer - the
+    # rows are, and they are what the preview shows.
+    payload.pop("transactions", None)
+
+    return {
+        "count": payload["count"],
+        "total": payload["total"],
+        "total_income": payload["total_income"],
+        "columns": payload["columns"],
+        "column_labels": payload["column_labels"],
+        "preview": payload["rows"][:3],
+    }
+
+
+@router.get("/export/studio/csv")
+def export_studio_csv(
+    start_date: Optional[str] = Query(default=None, description="YYYY-MM-DD"),
+    end_date: Optional[str] = Query(default=None, description="YYYY-MM-DD"),
+    types: Optional[str] = Query(default=None, description="Comma separated"),
+    account_id: Optional[int] = Query(default=None),
+    category_id: Optional[int] = Query(default=None),
+    columns: Optional[str] = Query(default=None, description="Comma separated"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    The export, as a CSV file.
+
+    The bytes start with a byte order mark, so that Excel on Windows
+    reads the accented letters as letters and not as question marks.
+    """
+    from app.services.export_service import csv_with_bom, export_payload, filename_for
+
+    start = _read_date(start_date)
+    end = _read_date(end_date)
+
+    payload = export_payload(
+        db,
+        current_user.id,
+        start_date=start,
+        end_date=end,
+        types=_read_list(types),
+        account_id=account_id,
+        category_id=category_id,
+        columns=_read_list(columns),
+    )
+
+    content = csv_with_bom(payload["columns"], payload["rows"])
+
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{filename_for("transaksi", start, end)}"'
+            )
+        },
+    )
+
+
+@router.get("/export/studio/json")
+def export_studio_json(
+    start_date: Optional[str] = Query(default=None, description="YYYY-MM-DD"),
+    end_date: Optional[str] = Query(default=None, description="YYYY-MM-DD"),
+    types: Optional[str] = Query(default=None, description="Comma separated"),
+    account_id: Optional[int] = Query(default=None),
+    category_id: Optional[int] = Query(default=None),
+    columns: Optional[str] = Query(default=None, description="Comma separated"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    The export, as JSON.
+
+    The full backup of the reader's own transactions: every field they
+    chose, in the order they chose it, and nothing that belongs to
+    anybody else.
+    """
+    from app.services.export_service import export_payload
+
+    start = _read_date(start_date)
+    end = _read_date(end_date)
+
+    payload = export_payload(
+        db,
+        current_user.id,
+        start_date=start,
+        end_date=end,
+        types=_read_list(types),
+        account_id=account_id,
+        category_id=category_id,
+        columns=_read_list(columns),
+    )
+
+    payload.pop("transactions", None)
+
+    return {
+        "exported_at": datetime.utcnow().isoformat(),
+        "period": {
+            "start": start.isoformat() if start else None,
+            "end": end.isoformat() if end else None,
+        },
+        "count": payload["count"],
+        "total": payload["total"],
+        "total_income": payload["total_income"],
+        "columns": payload["columns"],
+        "transactions": payload["rows"],
+    }
+
+
+def _read_date(value: Optional[str]):
+    """A date the reader gave, if it is one."""
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _read_list(value: Optional[str]):
+    """A list the reader gave, if it is one."""
+    if not value:
+        return None
+    items = [part.strip() for part in str(value).split(",") if part.strip()]
+    return items or None
 
 
 @router.delete("/delete-all")

@@ -17,7 +17,7 @@ from here.
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -386,3 +386,103 @@ def month_range(today: Optional[date] = None) -> Tuple[date, date]:
     _, last = monthrange(today.year, today.month)
     return date(today.year, today.month, 1), date(today.year, today.month, last)
 
+
+def daily_spending(
+    db: Session,
+    user_id: int,
+    start_date: date,
+    end_date: date,
+) -> List[Dict[str, Any]]:
+    """
+    What was spent on each day of a date range.
+
+    The calendar of spending is the question "which day was the worst
+    one?", and the answer cannot be a monthly total - the whole point
+    is that the money came out on one day rather than spread across
+    thirty.
+
+    So this is one row per day that has spending on it, with the
+    amount and the number of transactions. The days with nothing on
+    them are not in the answer, because there is nothing to say about
+    a day with no spending, and the calendar that draws this makes the
+    empty days itself.
+
+    Only the money the reader spent is here. The money that moved
+    between their own accounts is not spending, and the money that
+    came in is not spending either, so neither is counted.
+    """
+    rows = (
+        db.query(
+            Transaction.date.label("day"),
+            func.coalesce(func.sum(Transaction.amount), 0).label("total"),
+            func.count(Transaction.id).label("count"),
+        )
+        .filter(
+            Transaction.type == "expense",
+            Transaction.user_id == user_id,
+            Transaction.date >= start_date,
+            Transaction.date <= end_date,
+            *personal_expense_filter(),
+        )
+        .group_by(Transaction.date)
+        .order_by(Transaction.date)
+        .all()
+    )
+
+    return [
+        {
+            "date": row.day.isoformat() if hasattr(row.day, "isoformat") else str(row.day),
+            "total": float(row.total or 0),
+            "count": int(row.count or 0),
+        }
+        for row in rows
+    ]
+
+
+def transactions_in_range(
+    db: Session,
+    user_id: int,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    types: Optional[List[str]] = None,
+    account_id: Optional[int] = None,
+    category_id: Optional[int] = None,
+) -> List[Any]:
+    """
+    The reader's transactions, narrowed by what the reader asked for.
+
+    The export screen lets a reader choose a date range, the kinds of
+    transaction, and the account. So the query has to be able to do
+    all three, and it has to do them together - a reader who asks for
+    "the last month, only the spending, from BCA" means all three at
+    once.
+
+    A filter that is not given is not applied. An empty list of types
+    means "every kind", because that is what a list of nothing says
+    when the reader has not chosen anything yet.
+
+    Only approved transactions are here. A pending one is not part of
+    the reader's money yet, so it is not part of their backup either.
+    """
+    query = db.query(Transaction).filter(
+        Transaction.user_id == user_id,
+        *counted_transactions_filter(),
+    )
+
+    if start_date is not None:
+        query = query.filter(Transaction.date >= start_date)
+    if end_date is not None:
+        query = query.filter(Transaction.date <= end_date)
+
+    if types:
+        wanted = [t for t in types if t]
+        if wanted:
+            query = query.filter(Transaction.type.in_(wanted))
+
+    if account_id is not None:
+        query = query.filter(Transaction.account_id == account_id)
+
+    if category_id is not None:
+        query = query.filter(Transaction.category_id == category_id)
+
+    return query.order_by(Transaction.date.desc(), Transaction.id.desc()).all()

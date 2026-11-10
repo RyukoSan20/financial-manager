@@ -99,9 +99,25 @@ function BreakdownRow({ name, quantity, unitPrice, onChange, onRemove }) {
  * @param {Function} props.onChange Called with the whole list of rows
  * @param {string} props.currency   The currency the total is shown in
  */
-export default function QuantityMultiplierInput({ rows = [], onChange, currency = 'IDR' }) {
+export default function QuantityMultiplierInput({
+  rows = [],
+  onChange,
+  currency = 'IDR',
+  type = 'expense',
+}) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(rows);
+
+  // The heading and the button say what the lines are.
+  //
+  // An expense is broken down into things that were bought. An income
+  // is broken down into things that were sold or rendered - "3 jam
+  // konsultan @ Rp500.000" is a line, and calling it "barang" is
+  // wrong in a way the reader notices. So the wording changes with
+  // the kind of transaction.
+  const isIncome = type === 'income';
+  const headingKey = isIncome ? 'qty.rows_income' : 'qty.rows';
+  const addKey = isIncome ? 'qty.add_income' : 'qty.add';
 
   // The rows the reader typed are the rows that are shown. When the
   // parent hands down a different set, the rows follow it.
@@ -149,7 +165,7 @@ export default function QuantityMultiplierInput({ rows = [], onChange, currency 
   return (
     <div className="qm" data-testid="quantity-multiplier">
       {draft.length > 0 && (
-        <p className="qm-heading">{t('qty.rows')}</p>
+        <p className="qm-heading">{t(headingKey)}</p>
       )}
 
       {draft.map((row, index) => (
@@ -165,7 +181,7 @@ export default function QuantityMultiplierInput({ rows = [], onChange, currency 
 
       <div className="qm-actions">
         <button type="button" className="qm-add" onClick={add}>
-          {t('qty.add')}
+          {t(addKey)}
         </button>
         {draft.length > 0 && (
           <p className="qm-grand">
