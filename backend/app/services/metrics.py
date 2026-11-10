@@ -486,3 +486,255 @@ def transactions_in_range(
         query = query.filter(Transaction.category_id == category_id)
 
     return query.order_by(Transaction.date.desc(), Transaction.id.desc()).all()
+
+
+# ---------------------------------------------------------------------------
+# Needs, wants and savings
+# ---------------------------------------------------------------------------
+
+# Which of the application's own categories is which.
+#
+# A need is what the month cannot go without. A want is what it can.
+# Savings is the money that was put aside rather than spent.
+#
+# The categories are named by their system key, which does not change
+# when the wording does. A category the reader made themselves has no
+# key, and nothing here can know what it is for, so it is counted as a
+# want: calling an unknown spending a need would make the month look
+# more disciplined than anybody can vouch for.
+NEEDS_KEYS = frozenset(
+    {"food_drink", "transportation", "health", "education", "bills_utilities"}
+)
+SAVINGS_KEYS = frozenset({"savings_investment"})
+
+# The rule of thumb for a month with no budgets: half for needs, three
+# tenths for wants, a fifth put aside.
+BUCKET_SHARES = {"needs": 0.5, "wants": 0.3, "savings": 0.2}
+
+BUCKETS = ("needs", "wants", "savings")
+
+
+def bucket_of_category(system_key: Optional[str]) -> str:
+    """Whether a category is a need, a want, or savings."""
+    if system_key in SAVINGS_KEYS:
+        return "savings"
+    if system_key in NEEDS_KEYS:
+        return "needs"
+    return "wants"
+
+
+def spending_by_category(
+    db: Session,
+    user_id: int,
+    start_date: date,
+    end_date: date,
+) -> Dict[Optional[int], float]:
+    """
+    What was spent in each category over a date range.
+
+    The key is the category's id, and ``None`` is the spending that
+    has no category. It is the reader's own spending, counted the way
+    ``period_totals`` counts it, so the parts add up to that total.
+    """
+    rows = (
+        db.query(
+            Transaction.category_id,
+            func.coalesce(func.sum(Transaction.amount), 0),
+        )
+        .filter(
+            Transaction.type == "expense",
+            Transaction.user_id == user_id,
+            Transaction.date >= start_date,
+            Transaction.date <= end_date,
+            *personal_expense_filter(),
+        )
+        .group_by(Transaction.category_id)
+        .all()
+    )
+    return {category_id: float(total or 0) for category_id, total in rows}
+
+
+def monthly_budget_amount(amount: Any, period: Optional[str]) -> float:
+    """
+    What a budget comes to in a month.
+
+    A weekly budget is fifty-two weeks spread over twelve months, and
+    a yearly one is a twelfth. Anything else is taken as monthly.
+    """
+    value = float(amount or 0)
+    if period == "weekly":
+        return value * 52 / 12
+    if period == "yearly":
+        return value / 12
+    return value
+
+
+def _category_buckets(db: Session) -> Dict[int, str]:
+    """
+    The bucket of every category, by id.
+
+    A sub-category belongs where its parent belongs, so "Kopi" under
+    "Makanan & Minuman" is a need because the food is.
+    """
+    from app.models.category import Category
+
+    rows = db.query(Category.id, Category.system_key, Category.parent_id).all()
+    keys = {row[0]: row[1] for row in rows}
+    parents = {row[0]: row[2] for row in rows}
+
+    buckets: Dict[int, str] = {}
+    for category_id in keys:
+        key = keys.get(category_id)
+        parent = parents.get(category_id)
+        # One step up is enough: the tree is two levels deep.
+        if not key and parent:
+            key = keys.get(parent)
+        buckets[category_id] = bucket_of_category(key)
+    return buckets
+
+
+def budget_pacing(
+    db: Session,
+    user_id: int,
+    today: Optional[date] = None,
+) -> Dict[str, Any]:
+    """
+    How the month is going, in three numbers.
+
+    For needs, wants and savings: what has gone there this month, and
+    what the limit is. With the day of the month beside them, a reader
+    can see whether they are ahead of the calendar or behind it.
+
+    The limit of a bucket is the reader's own budgets for the
+    categories in it, each brought to a month. A bucket with no
+    budget falls back to its share of this month's income. With
+    neither, the limit is zero and ``limit_source`` says ``none``, so
+    the page can say "no limit set" rather than draw a full bar
+    against nothing.
+
+    Savings counts the spending filed under the savings category and
+    the money put into goals this month. A contribution to a goal is
+    not a transaction, so the two do not overlap.
+    """
+    from calendar import monthrange
+
+    from app.models.budget import Budget
+    from app.models.goal import Goal, GoalContribution
+
+    if today is None:
+        today = date.today()
+    start, end = month_range(today)
+    days_in_month = monthrange(today.year, today.month)[1]
+
+    buckets = _category_buckets(db)
+
+    spent = {name: 0.0 for name in BUCKETS}
+    for category_id, total in spending_by_category(db, user_id, start, end).items():
+        spent[buckets.get(category_id, "wants")] += total
+
+    contributed = (
+        db.query(func.coalesce(func.sum(GoalContribution.amount), 0))
+        .join(Goal, Goal.id == GoalContribution.goal_id)
+        .filter(
+            Goal.user_id == user_id,
+            GoalContribution.date >= start,
+            GoalContribution.date <= end,
+        )
+        .scalar()
+    )
+    spent["savings"] += float(contributed or 0)
+
+    limits = {name: 0.0 for name in BUCKETS}
+    budgets = (
+        db.query(Budget)
+        .filter(
+            Budget.user_id == user_id,
+            Budget.is_active.is_(True),
+            Budget.category_id.isnot(None),
+            Budget.start_date <= today,
+        )
+        .all()
+    )
+    for budget in budgets:
+        if budget.end_date and budget.end_date < today:
+            continue
+        bucket = buckets.get(budget.category_id, "wants")
+        limits[bucket] += monthly_budget_amount(budget.amount, budget.period)
+
+    income, _ = period_totals(db, user_id, start, end)
+
+    rows: Dict[str, Any] = {}
+    for name in BUCKETS:
+        limit = limits[name]
+        source = "budgets"
+        if limit <= 0:
+            limit = income * BUCKET_SHARES[name]
+            source = "income_rule" if limit > 0 else "none"
+        rows[name] = {
+            "spent": round(spent[name], 2),
+            "limit": round(limit, 2),
+            "limit_source": source,
+        }
+
+    return {
+        "needs": rows["needs"],
+        "wants": rows["wants"],
+        "savings": rows["savings"],
+        "current_day": today.day,
+        "days_in_month": days_in_month,
+        "month": today.month,
+        "year": today.year,
+        "income": round(income, 2),
+    }
+
+
+def over_budget_categories(
+    db: Session,
+    user_id: int,
+    today: Optional[date] = None,
+) -> List[Dict[str, Any]]:
+    """
+    The budgets that this month's spending has gone past.
+
+    One row per budget that is over, with how far over it is. A
+    budget for a week or a year is compared as a month, the same way
+    the pacing compares it.
+    """
+    from app.models.budget import Budget
+    from app.models.category import Category
+
+    if today is None:
+        today = date.today()
+    start, end = month_range(today)
+    by_category = spending_by_category(db, user_id, start, end)
+
+    rows = (
+        db.query(Budget, Category.name)
+        .join(Category, Category.id == Budget.category_id)
+        .filter(
+            Budget.user_id == user_id,
+            Budget.is_active.is_(True),
+            Budget.start_date <= today,
+        )
+        .all()
+    )
+
+    over: List[Dict[str, Any]] = []
+    for budget, category_name in rows:
+        if budget.end_date and budget.end_date < today:
+            continue
+        limit = monthly_budget_amount(budget.amount, budget.period)
+        used = by_category.get(budget.category_id, 0.0)
+        if limit > 0 and used > limit:
+            over.append(
+                {
+                    "budget_id": budget.id,
+                    "name": budget.name or category_name,
+                    "category": category_name,
+                    "spent": round(used, 2),
+                    "limit": round(limit, 2),
+                    "over_by": round(used - limit, 2),
+                }
+            )
+    over.sort(key=lambda row: row["over_by"], reverse=True)
+    return over

@@ -304,6 +304,20 @@ def _run_schema_migrations():
             except Exception as e:
                 print(f"[MIGRATION] breakdown_items: {e}")
 
+            # The household's tables. They are made from the models'
+            # own definitions, one at a time and only when missing, so
+            # this and the migration cannot disagree about their shape.
+            try:
+                from app.models.household import HOUSEHOLD_MODELS
+
+                for _model in HOUSEHOLD_MODELS:
+                    if _model.__tablename__ not in existing_tables:
+                        _model.__table__.create(bind=conn, checkfirst=True)
+                        conn.commit()
+                        print(f"[MIGRATION] Created {_model.__tablename__} table")
+            except Exception as e:
+                print(f"[MIGRATION] household: {e}")
+
     except Exception as e:
         print(f"[MIGRATION] Warning: {e}")
 
@@ -440,6 +454,11 @@ except ImportError as e:
 
 # Category Hints - User Learning
 app.include_router(category_hints.router, tags=["Category Hints"])
+
+# The household: a prefix of its own, with no trailing slash needed.
+from app.api.routes import household as household_routes  # noqa: E402
+
+app.include_router(household_routes.router, prefix="/api/household", tags=["Household"])
 
 # User Settings - App prefs, notifications, support requests
 app.include_router(user_settings.router, tags=["Settings"])

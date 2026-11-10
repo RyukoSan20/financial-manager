@@ -384,7 +384,7 @@ export default function DataExportStudio({ onClose }) {
             t('export.preview_failed')
           ) : (
             <>
-              {t('export.found', { count: preview?.count ?? 0 })}{' '}
+              {t('export.found', '', { count: preview?.count ?? 0 })}{' '}
               {t('export.total_expense_label')}{' '}
               <strong className="tabular-nums">
                 <CountUpNumber

@@ -120,6 +120,24 @@ def main():
                 print(f"::error::the column {BREAKDOWN_TABLE}.{column} is missing")
                 missing.append(f"{BREAKDOWN_TABLE}.{column}")
 
+    # The household's tables, and every column their models declare.
+    # The list is read from the models, so a column added to a model
+    # and forgotten in the migration is caught here.
+    from app.models.household import HOUSEHOLD_MODELS
+
+    for model in HOUSEHOLD_MODELS:
+        table = model.__tablename__
+        have = _columns_for(engine, table)
+        if not have:
+            print(f"::error::the table {table} is missing")
+            missing.append(table)
+            continue
+        print(f"the table {table} is there")
+        for column in model.__table__.columns.keys():
+            if column not in have:
+                print(f"::error::the column {table}.{column} is missing")
+                missing.append(f"{table}.{column}")
+
     if missing:
         print(f"::error::missing: {', '.join(missing)}")
         return 1

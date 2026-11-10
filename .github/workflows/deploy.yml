@@ -486,6 +486,7 @@ jobs:
             "https://my-financial-manager.online/api/ai/insights" \
             "https://my-financial-manager.online/api/budgets" \
             "https://my-financial-manager.online/api/debts" \
+            "https://my-financial-manager.online/api/household" \
             "https://my-financial-manager.online/api/insights/subscriptions" \
             "https://my-financial-manager.online/api/insights/duplicates" ; do
             CODE=$(curl -sL -o /dev/null -w "%{http_code}" "$url")

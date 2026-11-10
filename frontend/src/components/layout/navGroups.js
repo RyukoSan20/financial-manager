@@ -24,7 +24,9 @@ export const NAV_GROUPS = [
   {
     key: 'money',
     label: 'sidebar_group_money',
-    items: ['dashboard', 'transactions', 'accounts', 'feed'],
+    // The household is third, so it is one of the three a group
+    // shows before its "more" - it is in sight without a click.
+    items: ['dashboard', 'transactions', 'household', 'accounts', 'feed'],
   },
   {
     key: 'plan',
@@ -69,6 +71,7 @@ export function buildNavMap(t) {
   return {
     dashboard: { name: t('nav.dashboard'), href: '/', icon: 'LayoutDashboard' },
     transactions: { name: t('nav.transactions'), href: '/transactions', icon: 'Receipt' },
+    household: { name: t('nav.household'), href: '/household', icon: 'Home' },
     feed: { name: t('nav.feed'), href: '/feed', icon: 'BellRing' },
     market: { name: t('nav.market'), href: '/market', icon: 'BarChart3' },
     accounts: { name: t('nav.accounts'), href: '/accounts', icon: 'Wallet' },

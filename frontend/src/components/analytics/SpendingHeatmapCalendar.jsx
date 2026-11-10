@@ -201,7 +201,7 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect }) 
           data-testid="worst-day-badge"
         >
           <Flame className="w-3.5 h-3.5" aria-hidden="true" />
-          {t('heatmap.worst_day', { date: worst.date })}
+          {t('heatmap.worst_day', '', { date: worst.date })}
         </p>
       ) : null}
 
@@ -234,7 +234,7 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect }) 
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {t('heatmap.transaction_count', { count: selectedEntry?.count || 0 })}
+            {t('heatmap.transaction_count', '', { count: selectedEntry?.count || 0 })}
           </p>
         </div>
       ) : null}

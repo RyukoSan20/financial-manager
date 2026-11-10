@@ -29,6 +29,7 @@ import {
   Settings,
   MerchantMap,
   HealthCoach,
+  HouseholdPage,
   ShoppingTracker,
   ShoppingBoard,
   GmailIntegration,
@@ -176,6 +177,7 @@ function App() {
               <Route path="map" element={<AdvancedPage><MerchantMap /></AdvancedPage>} />
               <Route path="advisor" element={<AIAdvisor />} />
               <Route path="health-coach" element={<HealthCoach />} />
+              <Route path="household" element={<HouseholdPage />} />
               <Route path="shopping" element={<ShoppingTracker />} />
               <Route path="shopping/board" element={<ShoppingBoard />} />
               <Route path="gmail" element={<GmailIntegration />} />

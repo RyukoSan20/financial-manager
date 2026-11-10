@@ -98,6 +98,7 @@ for test_file in \
   src/data/__tests__/indonesiaPaymentRegistry.test.js \
   src/features/transactions/nlp/__tests__/categorySeparation.test.js \
   src/components/__tests__/settingsExportStudio.test.js \
+  src/pages/__tests__/householdPage.test.js \
   src/utils/__tests__/fintech.test.js \
   src/components/fintech/__tests__/trustBanners.test.js \
   src/components/fintech/__tests__/dashboardTrust.test.js \

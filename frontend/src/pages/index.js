@@ -16,6 +16,7 @@ export { default as Register } from './Register';
 export { default as Settings } from './Settings';
 export { default as MerchantMap } from './MerchantMap';
 export { default as HealthCoach } from './HealthCoach';
+export { default as HouseholdPage } from './HouseholdPage';
 export { default as ShoppingTracker } from './ShoppingTracker';
 export { default as ShoppingBoard } from './ShoppingBoard';
 export { default as GmailIntegration } from './GmailIntegration';

@@ -663,6 +663,36 @@ export const api = {
   delete: (path, options = {}) =>
     api.request(path, { ...options, method: 'DELETE' }),
   
+  // The household: who is in it, and what they share.
+  household: {
+    get: () => api.request('/household'),
+    switchMode: (data) => api.request('/household/switch-mode', { method: 'POST', body: JSON.stringify(data) }),
+    join: (inviteCode) => api.request('/household/join', {
+      method: 'POST',
+      body: JSON.stringify({ invite_code: inviteCode }),
+    }),
+    invite: (data) => api.request('/household/invite', { method: 'POST', body: JSON.stringify(data) }),
+    addAgenda: (data) => api.request('/household/agendas', { method: 'POST', body: JSON.stringify(data) }),
+    toggleAgenda: (id) => api.request(`/household/agendas/${id}/toggle`, { method: 'PATCH' }),
+    removeAgenda: (id) => api.request(`/household/agendas/${id}`, { method: 'DELETE' }),
+    addTask: (data) => api.request('/household/tasks', { method: 'POST', body: JSON.stringify(data) }),
+    toggleTask: (id) => api.request(`/household/tasks/${id}/toggle`, { method: 'PATCH' }),
+    removeTask: (id) => api.request(`/household/tasks/${id}`, { method: 'DELETE' }),
+    addNeed: (data) => api.request('/household/needs', { method: 'POST', body: JSON.stringify(data) }),
+    importWishlist: () => api.request('/household/needs/import-wishlist', { method: 'POST' }),
+    purchaseNeed: (id, data) => api.request(`/household/needs/${id}/purchase`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    removeNeed: (id) => api.request(`/household/needs/${id}`, { method: 'DELETE' }),
+    addNote: (data) => api.request('/household/notes', { method: 'POST', body: JSON.stringify(data) }),
+    removeNote: (id) => api.request(`/household/notes/${id}`, { method: 'DELETE' }),
+    shareGoal: (goalId) => api.request('/household/goals/share', {
+      method: 'POST',
+      body: JSON.stringify({ goal_id: goalId }),
+    }),
+  },
+
   // Exchange rates
   exchange: {
     rates: (base = 'USD') => api.request(`/exchange/rates?base=${base}`),

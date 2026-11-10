@@ -32,6 +32,7 @@ import {
   Kanban,
   Mail, Package,
   Users,
+  Home,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -52,12 +53,13 @@ import { useReaderFlags } from '../../utils/useReaderFlags';
 const ICONS = {
   LayoutDashboard, Receipt, Wallet, PiggyBank, Repeat, Target, CreditCard,
   Calculator, BarChart3, Settings, Map, Sparkles, Heart, ShoppingCart,
-  Kanban, Mail, ShoppingBag, PieChart, BellRing, Users,
+  Kanban, Mail, ShoppingBag, PieChart, BellRing, Users, Home,
 };
 
 const navItems = (t) => [
   { name: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
   { name: t('nav.transactions'), href: '/transactions', icon: Receipt },
+  { name: t('nav.household'), href: '/household', icon: Home },
   { name: t('nav.feed'), href: '/feed', icon: BellRing },
   { name: t('nav.market'), href: '/market', icon: BarChart3 },
   { name: t('nav.accounts'), href: '/accounts', icon: Wallet },
@@ -479,6 +481,7 @@ const MorePage = () => {
   useReaderFlags();
 
   const menuItems = [
+    { icon: Home, label: t('nav.household'), href: '/household', color: 'bg-lime-100 text-lime-700', desc: t('household.subtitle') },
     { icon: ShoppingBag, label: t('nav.merchant'), href: '/merchant', color: 'bg-indigo-100 text-indigo-600', desc: 'POS & Kasir Cepat' },
     { icon: Package, label: 'Katalog', href: '/catalog', color: 'bg-teal-100 text-teal-600', desc: 'Toko & produk yang dipelajari' },
     { icon: PieChart, label: t('nav.categoryExpenses'), href: '/category-expenses', color: 'bg-teal-100 text-teal-600', desc: 'View spending by category' },

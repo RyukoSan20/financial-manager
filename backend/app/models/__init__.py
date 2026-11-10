@@ -34,6 +34,10 @@ from app.models.business_transaction_tax import BusinessTransactionTax
 from app.models.business_transaction_payment import BusinessTransactionPayment
 from app.models.merchant_business_profile import MerchantBusinessProfile
 from app.models.accounting_entry import AccountingEntry
+from app.models.household import (
+    Household, HouseholdMember, HouseholdAgenda, HouseholdTask,
+    HouseholdNeed, HouseholdNote, HouseholdGoalLink, HouseholdActivity,
+)
 
 __all__ = [
     "Account",
@@ -85,4 +89,12 @@ __all__ = [
     "BusinessTransactionPayment",
     "MerchantBusinessProfile",
     "AccountingEntry",
+    "Household",
+    "HouseholdMember",
+    "HouseholdAgenda",
+    "HouseholdTask",
+    "HouseholdNeed",
+    "HouseholdNote",
+    "HouseholdGoalLink",
+    "HouseholdActivity",
 ]

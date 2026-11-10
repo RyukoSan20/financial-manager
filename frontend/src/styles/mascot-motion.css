@@ -1,0 +1,579 @@
+/*
+ * The mascot's movement, and the household page's surfaces.
+ *
+ * The mascot is a grid of squares, and its drawing changes by
+ * swapping one layer for another. What is here is the other half:
+ * how the whole figure moves. It bobs when it is at rest, jumps when
+ * it is pleased, shakes when something is wrong, and throws sparks
+ * when the reader does something worth marking.
+ *
+ * Everything here animates a transform or an opacity, so nothing
+ * touches the layout. Every transition names the properties it
+ * animates. A reader who asked for less movement gets a still
+ * mascot and bars that are simply at their width.
+ */
+
+:root {
+  --tactile-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --tactile-press: 280ms;
+  --tactile-fill: 750ms;
+}
+
+/* --- the mascot -------------------------------------------------------- */
+
+.mascot-root {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mascot-button {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.mascot-button:focus-visible {
+  outline: 2px solid #A3E635;
+  outline-offset: 3px;
+}
+
+.mascot-figure {
+  display: block;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+.mascot-float {
+  animation: mascotBob 2.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.mascot-jump {
+  animation: mascotJump 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mascot-shake {
+  animation: mascotShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes mascotBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* Down before up, and flat on landing: the squash is what makes it a
+   jump and not a slide. */
+@keyframes mascotJump {
+  0% { transform: translateY(0) scale(1, 1); }
+  18% { transform: translateY(0) scale(1.08, 0.9); }
+  50% { transform: translateY(-14px) scale(0.96, 1.06); }
+  82% { transform: translateY(0) scale(1.06, 0.94); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+@keyframes mascotShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
+/* The sparks. Each one is told where to fly by two custom properties,
+   so one rule moves all eight. */
+.mascot-sparkles {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.mascot-sparkle {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  opacity: 0;
+  animation: mascotSparkle 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--spark-delay, 0ms);
+}
+
+@keyframes mascotSparkle {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4) rotate(0deg); }
+  20% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(var(--spark-dx, 0), var(--spark-dy, 0)) scale(1.1) rotate(90deg);
+  }
+}
+
+/* What it says. */
+.mascot-bubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  max-width: 220px;
+  width: max-content;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #0F291E;
+  color: #ECFDF5;
+  border: 1px solid #A3E635;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 600;
+  white-space: normal;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(15, 41, 30, 0.25);
+  animation: mascotBubble 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2;
+}
+
+.mascot-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 22px;
+  width: 8px;
+  height: 8px;
+  background: #0F291E;
+  border-right: 1px solid #A3E635;
+  border-bottom: 1px solid #A3E635;
+  transform: translateY(-4px) rotate(45deg);
+}
+
+.mascot-bubble-accent {
+  color: #A3E635;
+}
+
+@keyframes mascotBubble {
+  from { opacity: 0; transform: translateY(6px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* --- the pills --------------------------------------------------------- */
+
+.tactile-pills {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--hh-pill-track, rgba(17, 42, 32, 0.07));
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tactile-pills::-webkit-scrollbar {
+  display: none;
+}
+
+/* The lit pill that slides under the chosen word. */
+.tactile-pill-indicator {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: calc(100% - 8px);
+  border-radius: 999px;
+  background: #112A20;
+  box-shadow: 0 0 0 1px rgba(190, 242, 100, 0.5), 0 4px 14px rgba(163, 230, 53, 0.35);
+  transition:
+    transform var(--tactile-press) var(--tactile-ease),
+    width var(--tactile-press) var(--tactile-ease),
+    opacity var(--tactile-press) var(--tactile-ease);
+  pointer-events: none;
+}
+
+.tactile-pill {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--hh-muted, #5B6B62);
+  cursor: pointer;
+  transition:
+    color var(--tactile-press) var(--tactile-ease),
+    transform var(--tactile-press) var(--tactile-ease);
+}
+
+.tactile-pill:active {
+  transform: scale(0.95);
+}
+
+.tactile-pill[aria-selected="true"] {
+  color: #BEF264;
+}
+
+.tactile-pill:focus-visible {
+  outline: 2px solid #A3E635;
+  outline-offset: 2px;
+}
+
+/* --- the pacing bars --------------------------------------------------- */
+
+.pacing-track {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--hh-track, rgba(17, 42, 32, 0.08));
+}
+
+.pacing-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition:
+    width var(--tactile-fill) var(--tactile-ease),
+    background-color var(--tactile-press) var(--tactile-ease);
+}
+
+.pacing-fill-over {
+  animation: pacingPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pacingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Where today is. It stands a little taller than the bar. */
+.pacing-tick {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--hh-ink, #0F291E);
+  transition: left var(--tactile-fill) var(--tactile-ease);
+}
+
+/* --- the household page ------------------------------------------------ */
+
+.hh-canvas {
+  --hh-canvas: #F5F3EC;
+  --hh-card: #FFFFFF;
+  --hh-line: #E5E0D5;
+  --hh-ink: #0F291E;
+  --hh-muted: #5B6B62;
+  --hh-forest: #112A20;
+  --hh-lime: #BEF264;
+  --hh-track: rgba(17, 42, 32, 0.08);
+  --hh-pill-track: rgba(17, 42, 32, 0.07);
+  background: var(--hh-canvas);
+  color: var(--hh-ink);
+  border-radius: 28px;
+}
+
+.dark .hh-canvas {
+  --hh-canvas: #0B1512;
+  --hh-card: #12211B;
+  --hh-line: #1F3A2E;
+  --hh-ink: #ECFDF5;
+  --hh-muted: #9DB5A8;
+  --hh-track: rgba(236, 253, 245, 0.1);
+  --hh-pill-track: rgba(236, 253, 245, 0.08);
+}
+
+/* A white sheet on top of the page - a dialog - keeps the light
+   colours even when the page under it is dark. */
+.hh-light {
+  --hh-canvas: #F5F3EC;
+  --hh-card: #FFFFFF;
+  --hh-line: #E5E0D5;
+  --hh-ink: #0F291E;
+  --hh-muted: #5B6B62;
+  --hh-track: rgba(17, 42, 32, 0.08);
+  --hh-pill-track: rgba(17, 42, 32, 0.07);
+  color: var(--hh-ink);
+}
+
+.hh-light .hh-button {
+  border-color: #112A20;
+}
+
+.hh-card {
+  background: var(--hh-card);
+  border: 1px solid var(--hh-line);
+  border-radius: 24px;
+  box-shadow: 0 1px 0 rgba(17, 42, 32, 0.03), 0 10px 28px rgba(17, 42, 32, 0.05);
+}
+
+.hh-card-forest {
+  background: var(--hh-forest);
+  border: 1px solid #1F3A2E;
+  color: #ECFDF5;
+  border-radius: 24px;
+}
+
+.hh-muted {
+  color: var(--hh-muted);
+}
+
+.hh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--hh-lime);
+  color: #112A20;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.hh-field {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--hh-line);
+  background: var(--hh-card);
+  color: var(--hh-ink);
+  font-size: 14px;
+}
+
+.hh-field:focus-visible {
+  outline: 2px solid #A3E635;
+  outline-offset: 1px;
+}
+
+.hh-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid #112A20;
+  background: #112A20;
+  color: #BEF264;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform var(--tactile-press) var(--tactile-ease),
+    box-shadow var(--tactile-press) var(--tactile-ease),
+    opacity var(--tactile-press) var(--tactile-ease);
+}
+
+.hh-button:hover {
+  box-shadow: 0 6px 16px rgba(17, 42, 32, 0.22);
+}
+
+.hh-button:active {
+  transform: scale(0.96);
+}
+
+.hh-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hh-button-ghost {
+  background: transparent;
+  color: var(--hh-ink);
+  border-color: var(--hh-line);
+}
+
+.dark .hh-button {
+  border-color: #BEF264;
+}
+
+.dark .hh-button-ghost {
+  border-color: var(--hh-line);
+}
+
+/* The ticket. The dashed line is the perforation, and the two
+   half-circles are where it was torn from the roll. */
+.hh-ticket {
+  position: relative;
+  border: 2px dashed rgba(190, 242, 100, 0.55);
+  border-radius: 18px;
+}
+
+.hh-ticket::before,
+.hh-ticket::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: var(--hh-canvas, #F5F3EC);
+}
+
+.hh-ticket::before { left: -11px; }
+.hh-ticket::after { right: -11px; }
+
+.hh-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: #BEF264;
+}
+
+/* A task that has been done: the line is drawn through it, left to
+   right, and the words fade behind it. */
+.hh-task-title {
+  position: relative;
+  display: inline;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 55%;
+  background-size: 0% 2px;
+  transition:
+    background-size 420ms var(--tactile-ease),
+    opacity 420ms var(--tactile-ease);
+}
+
+.hh-task-done .hh-task-title {
+  background-size: 100% 2px;
+  opacity: 0.55;
+}
+
+.hh-check {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 2px solid var(--hh-line);
+  background: var(--hh-card);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background-color var(--tactile-press) var(--tactile-ease),
+    border-color var(--tactile-press) var(--tactile-ease),
+    transform var(--tactile-press) var(--tactile-ease);
+}
+
+.hh-check:active {
+  transform: scale(0.94);
+}
+
+.hh-check[aria-checked="true"] {
+  background: #A3E635;
+  border-color: #65A30D;
+}
+
+/* The notes. Each is turned a little, the way paper is when it is
+   stuck up by hand. */
+.hh-note {
+  border-radius: 6px 18px 18px 18px;
+  padding: 14px;
+  color: #1F2937;
+  box-shadow: 0 8px 18px rgba(17, 42, 32, 0.1);
+  transform: rotate(var(--note-tilt, 0deg));
+  transition: transform var(--tactile-press) var(--tactile-ease);
+}
+
+.hh-note:hover {
+  transform: rotate(0deg) translateY(-2px);
+}
+
+.hh-note-lemon { background: #FEF9C3; }
+.hh-note-mint { background: #D1FAE5; }
+.hh-note-sky { background: #DBEAFE; }
+.hh-note-rose { background: #FFE4E6; }
+.hh-note-lilac { background: #EDE9FE; }
+.hh-note-peach { background: #FFEDD5; }
+
+/* A target's bar: it fills, and the surface moves. */
+.hh-liquid {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--hh-track);
+}
+
+.hh-liquid-fill {
+  position: relative;
+  height: 100%;
+  border-radius: 999px;
+  background: #10B981;
+  overflow: hidden;
+  transition: width var(--tactile-fill) var(--tactile-ease);
+}
+
+.hh-liquid-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 200%;
+  background: repeating-linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0 14px,
+    rgba(255, 255, 255, 0.28) 14px 28px
+  );
+  animation: hhWave 2.6s linear infinite;
+}
+
+@keyframes hhWave {
+  from { transform: translateX(-28px); }
+  to { transform: translateX(0); }
+}
+
+.hh-enter {
+  animation: hhEnter 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes hhEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- less movement, for a reader who asked for it ---------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-float,
+  .mascot-jump,
+  .mascot-shake,
+  .mascot-bubble,
+  .pacing-fill-over,
+  .hh-liquid-fill::after,
+  .hh-enter {
+    animation: none;
+  }
+
+  .mascot-sparkle {
+    animation: none;
+    opacity: 0;
+  }
+
+  .tactile-pill-indicator,
+  .tactile-pill,
+  .pacing-fill,
+  .pacing-tick,
+  .hh-button,
+  .hh-check,
+  .hh-note,
+  .hh-task-title,
+  .hh-liquid-fill {
+    transition: none;
+  }
+
+  /* mascotBob mascotJump mascotShake mascotSparkle mascotBubble
+     pacingPulse hhWave hhEnter: all turned off above. */
+}
