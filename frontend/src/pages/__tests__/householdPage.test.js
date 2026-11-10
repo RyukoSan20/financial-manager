@@ -709,6 +709,14 @@ check('the page never prints a key where a word should be', () => {
   }
 });
 
+check('the title keeps its width beside the mode switch on a narrow screen', () => {
+  const html = page();
+  const title = html.slice(html.indexOf('data-household-title') - 80, html.indexOf('data-household-title'));
+  assert.ok(title.includes('min-w-[min(100%,18rem)]'), 'the title column has a minimum width');
+  assert.ok(!/class="min-w-0 flex-1" data-household-title/.test(html));
+  assert.ok(/<header class="[^"]*flex-wrap/.test(html), 'and the row may wrap');
+});
+
 check('the members are drawn with our own faces, their role and whether they are here', () => {
   const html = page();
   assert.ok(html.includes('Ani') && html.includes('Budi'));

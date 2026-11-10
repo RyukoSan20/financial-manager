@@ -252,8 +252,11 @@ export function HouseholdView({
       ) : null}
 
       {/* The header */}
+      {/* The title keeps a width of its own. Without one, the mode
+          switch beside it took the row on a phone and the title was
+          left a column one word wide. Now the switch drops below. */}
       <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[min(100%,18rem)] flex-1" data-household-title>
           <span className="hh-badge">🌿 {t('household.badge')}</span>
           {editingName ? (
             <input
