@@ -181,6 +181,21 @@ check('the studio asks the one api module, not the server itself', () => {
 });
 
 // ---------------------------------------------------------------------------
+// The query
+// ---------------------------------------------------------------------------
+
+check('the dates are added to a path that already has a query', () => {
+  // "top-expenses?limit=8" plus the dates was "limit=8?start_date=...",
+  // and the server answered 422 and the card showed nothing.
+  assert.ok(ANALYTICS.includes("path.includes('?') ? '&' : '?'"), 'the second separator is an ampersand');
+  assert.ok(
+    !/return api\.request\(`\$\{path\}\$\{search \? `\?\$\{search\}` : ''\}`\);/.test(ANALYTICS),
+    'the old form is gone'
+  );
+  assert.ok(ANALYTICS.includes("withDates('/analytics/top-expenses?limit=8')"), 'the path that carries a query is still used');
+});
+
+// ---------------------------------------------------------------------------
 // The words
 // ---------------------------------------------------------------------------
 

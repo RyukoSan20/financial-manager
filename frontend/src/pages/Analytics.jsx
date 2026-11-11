@@ -282,9 +282,13 @@ export const Analytics = () => {
     try {
       // The queries carry the dates the reader chose, so every card
       // on the page answers about the same range.
+      // The dates are added to a path that may already carry a
+      // query. Appending a second "?" makes the server answer 422 and
+      // the card quietly shows nothing.
       const withDates = (path) => {
         const search = new URLSearchParams(dateParams).toString();
-        return api.request(`${path}${search ? `?${search}` : ''}`);
+        if (!search) return api.request(path);
+        return api.request(`${path}${path.includes('?') ? '&' : '?'}${search}`);
       };
 
       const results = await Promise.allSettled([
