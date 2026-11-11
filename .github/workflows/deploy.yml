@@ -356,13 +356,36 @@ jobs:
             set -e
             cd /home/ubuntu/finmanager
             docker compose restart backend
-            for i in $(seq 1 12); do
+
+            # The backend has to be answering *through nginx* before
+            # the deploy carries on.
+            #
+            # The check used to be against the backend's own port on
+            # the host. The backend came up, the deploy moved on, and
+            # nginx was still sending the reader's requests to a
+            # container that was not ready yet: twenty-six answers of
+            # 502 in one deployment, all of them in the three seconds
+            # between the restart and the server being ready.
+            #
+            # So the wait is now against the address the reader uses,
+            # and the reader's own requests are the thing being
+            # waited for.
+            for i in $(seq 1 24); do
               if curl -sf http://localhost:8000/health > /dev/null; then
-                echo "Backend healthy"
+                echo "the backend is up on its own port"
+              else
+                echo "the backend is not up yet ($i)"
+                sleep 2
+                continue
+              fi
+
+              # Now the one that matters: the way the reader reaches it.
+              if curl -sf http://localhost/health > /dev/null; then
+                echo "Backend healthy through nginx"
                 exit 0
               fi
-              echo "waiting for backend... ($i)"
-              sleep 5
+              echo "nginx cannot reach the backend yet ($i)"
+              sleep 2
             done
             echo "::error::Backend did not become healthy"
             docker logs --tail 60 finmanager-backend-1

@@ -46,8 +46,15 @@ export const AuthProvider = ({ children }) => {
         headers: { 'Authorization': `Bearer ${backendToken}` }
       }).then(res => {
         if (res.ok) return res.json();
-        throw new Error('Invalid token');
+        // The server said the session is over. Anything else - it is
+        // restarting for a deployment, the network dropped - is not
+        // the end of the session, and the token is kept for it.
+        if (res.status === 401 || res.status === 403) {
+          throw new Error('Invalid token');
+        }
+        return null;
       }).then(userData => {
+        if (!userData) return;
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
       }).catch(() => {
@@ -122,10 +129,16 @@ export const AuthProvider = ({ children }) => {
         if (res.ok) {
           const userData = await res.json();
           setUser(userData);
-        } else {
+        } else if (res.status === 401 || res.status === 403) {
+          // The session really is over. The reader has to sign in
+          // again, and the token is not worth keeping.
           localStorage.removeItem('token');
           localStorage.removeItem('user');
         }
+        // Anything else - the server restarting for a deploy, a
+        // network that dropped - is not the end of the session. The
+        // token was thrown away once for a 502, and the reader was
+        // signed out in the middle of a deployment for no reason.
       } catch (err) {
         console.error('Backend auth check error:', err);
       }
