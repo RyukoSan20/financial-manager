@@ -102,10 +102,28 @@ check('the score bar is not judged as a limit', () => {
 
 check('a budget bar fills from nothing and carries the tick for today', () => {
   assert.ok(BUDGETS.includes('AnimatedProgressBar'), 'the bar is there');
-  assert.ok(BUDGETS.includes('day={currentDay}'), 'the day of the month is given');
-  assert.ok(BUDGETS.includes('totalDays={daysInMonth}'), 'and the length of the month');
   assert.ok(BUDGETS.includes('const currentDay = today.getDate();'), 'the day is worked out');
   assert.ok(BUDGETS.includes('const daysInMonth ='), 'and the length of the month');
+});
+
+check('both bars carry the tick, whichever the reader has chosen', () => {
+  // The money layer is on in the production build, so the branch the
+  // reader sees is the liquid one. A tick that only existed in the
+  // other branch would never be seen.
+  const liquid = BUDGETS.slice(BUDGETS.indexOf('moneyLayerOn() ? ('));
+  const plain = BUDGETS.slice(BUDGETS.indexOf('AnimatedProgressBar'));
+  assert.ok(liquid.includes('day={currentDay}'), 'the liquid bar has the day');
+  assert.ok(liquid.includes('totalDays={daysInMonth}'), 'and the length of the month');
+  assert.ok(plain.includes('day={currentDay}'), 'so does the plain bar');
+  assert.ok(plain.includes('totalDays={daysInMonth}'), 'and its length of the month');
+});
+
+check('the liquid bar draws the tick itself', () => {
+  const source = read('frontend/src/components/ui/FluidProgressBar.jsx');
+  assert.ok(source.includes('data-testid="pacing-marker"'), 'the tick is drawn');
+  assert.ok(source.includes('day,'), 'the day is taken');
+  assert.ok(source.includes('totalDays,'), 'and the length of the month');
+  assert.ok(source.includes('pacingPercent'), 'and the place is worked out');
 });
 
 check('the budget amounts count up', () => {

@@ -313,6 +313,13 @@ export const Budgets = () => {
                           : 'rgb(16 185 129)'
                       }
                       size="md"
+                      day={currentDay}
+                      totalDays={daysInMonth}
+                      label={
+                        utilization > 100
+                          ? t('budgets.over_limit', '', { amount: formatCurrency(Math.abs(remaining), budget.currency) })
+                          : undefined
+                      }
                     />
                   ) : (
                     /* The bar is filled from nothing to where it

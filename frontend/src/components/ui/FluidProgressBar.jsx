@@ -25,8 +25,21 @@ export default function FluidProgressBar({
   className = '',
   trackClassName = '',
   label,
+  // Which day of the period it is, and how many days the period has.
+  // When they are given, a tick is drawn where the reader should be.
+  day,
+  totalDays,
 }) {
   const percentage = Math.min(100, Math.max(0, (max ? (value / max) * 100 : 0)));
+
+  // Where the reader should be by now. The same rule the plain bar
+  // uses: a third of the money in the first third of the month is on
+  // plan, and half of it in the first third is not.
+  const pacingPercent =
+    Number.isFinite(day) && Number.isFinite(totalDays) && totalDays > 0
+      ? Math.min(100, (day / totalDays) * 100)
+      : null;
+  const showPacing = pacingPercent !== null && pacingPercent > 0 && pacingPercent < 100;
 
   const heights = {
     sm: 'h-1.5',
@@ -62,6 +75,16 @@ export default function FluidProgressBar({
             '--money-liquid-colour': colour,
           }}
         />
+
+        {/* Where the reader should be today. */}
+        {showPacing ? (
+          <div
+            className="absolute top-0 h-full w-0.5 bg-gray-500/70 dark:bg-gray-300/70 z-10"
+            style={{ left: `${pacingPercent}%` }}
+            aria-hidden="true"
+            data-testid="pacing-marker"
+          />
+        ) : null}
       </div>
     </div>
   );
