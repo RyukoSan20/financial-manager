@@ -994,6 +994,7 @@ export default {
     ai_cost_price_placeholder: "0",
   },
   budgets: {
+    over_limit: "Lebih {amount} dari batas",
     delete_error: "Gagal menghapus budget: %s",
     general_category: "Umum",
     title: "Budget",
@@ -1941,6 +1942,8 @@ export default {
     quick_wallet: "Dompet",
   },
   export: {
+    studio_title: "Studio Ekspor Data",
+    studio_open: "Ekspor data",
     range_title: "Rentang Tanggal Ekspor",
     preset_month: "Bulan Ini",
     preset_lastMonth: "Bulan Lalu",

@@ -33,9 +33,11 @@
 
 import { useTranslation } from '../../i18n';
 import FluidProgressBar from '../ui/FluidProgressBar';
+import AnimatedProgressBar from '../ui/AnimatedProgressBar';
+import CountUpNumber from '../ui/CountUpNumber';
+import { moneyLayerOn } from '../../utils/animation';
 import { MascotCompanion } from '../common/MascotCompanion';
 import { readerFlag } from '../../utils/featureFlags';
-import { moneyLayerOn } from '../../utils/animation';
 import FinancialRatioPills from './FinancialRatioPills';
 import './wellness.css';
 
@@ -319,8 +321,11 @@ export default function CuteWellnessBento({
               <div className="min-w-0">
                 <p className="shape-label">{t('health_coach.score')}</p>
                 <div className="flex items-baseline gap-2.5 mt-1">
+                  {/* The score rolls up to where it is. A score that
+                      appears all at once is a number; one that
+                      counts up is a reading being taken. */}
                   <p className="text-5xl font-bold text-gray-900 dark:text-gray-50 tabular-nums leading-none tracking-tight">
-                    {numericScore}
+                    <CountUpNumber value={numericScore} format={(n) => Math.round(n)} />
                   </p>
                   <span className="text-sm text-gray-400 dark:text-gray-500 font-medium tabular-nums">
                     /100
@@ -359,14 +364,22 @@ export default function CuteWellnessBento({
               </span>
             </div>
 
-            {/* The score as a liquid. */}
+            {/* The score as a liquid.
+
+                The liquid layer is what the reader asked for. When
+                it is off, the bar fills from nothing to where it
+                should be instead, so the line is seen to move. */}
             <div className="mt-4">
-              <FluidProgressBar
-                value={numericScore}
-                max={100}
-                size="lg"
-                colour={ScoreColour(numericScore)}
-              />
+              {moneyLayerOn() ? (
+                <FluidProgressBar
+                  value={numericScore}
+                  max={100}
+                  size="lg"
+                  colour={ScoreColour(numericScore)}
+                />
+              ) : (
+                <AnimatedProgressBar percent={numericScore} over={false} />
+              )}
             </div>
 
             {/* The face, and what it says.

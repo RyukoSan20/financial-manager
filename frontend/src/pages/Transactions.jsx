@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, Spinner, Badge } from '../components/ui';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing, Mic, ReceiptText, Users } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCw, Trash2, X, ChevronDown, ChevronUp, ScanText, MessageSquare, Edit2, Check, Camera, Clock, BellRing, Mic, ReceiptText, Users, Download } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/format';
 import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { TextParserModal } from '../components/parser/TextParserModal';
@@ -12,6 +12,7 @@ import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddBu
 import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import ItemizedReceiptEditorModal from '../components/transactions/ItemizedReceiptEditorModal';
+import DataExportStudio from '../components/settings/DataExportStudio';
 import TransactionEditForm from '../components/transactions/TransactionEditForm';
 import ReceiptReviewModal from '../components/transactions/ReceiptReviewModal';
 import { categoryName } from '../utils/categoryName';
@@ -85,6 +86,9 @@ export const Transactions = () => {
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
+  // The export. A reader on this page has the transactions in front
+  // of them, so the export is here and not two pages away.
+  const [showExport, setShowExport] = useState(false);
   // A receipt that was read, or a transaction that was spoken, waiting
   // for the reader to look at it before it is saved.
   const [reviewReading, setReviewReading] = useState(null);
@@ -450,14 +454,24 @@ export const Transactions = () => {
           </div>
           <p className="text-sm text-gray-500">{fill(K.count, { count: filteredTransactions.length })}</p>
         </div>
-        {!isSingleAddOn() && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => window.location.href = '/add'}
-            className="p-3 bg-primary-600 text-white rounded-xl shadow-lg active:bg-primary-600"
+            onClick={() => setShowExport(true)}
+            title={t('export.studio_open')}
+            aria-label={t('export.studio_open')}
+            className="p-3 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            <Plus className="w-5 h-5" />
+            <Download className="w-5 h-5" />
           </button>
-        )}
+          {!isSingleAddOn() && (
+            <button
+              onClick={() => window.location.href = '/add'}
+              className="p-3 bg-primary-600 text-white rounded-xl shadow-lg active:bg-primary-600"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* The one add button, in the same place on every page. */}
@@ -912,6 +926,31 @@ export const Transactions = () => {
           )}
         </div>
       )}
+
+      {/* The export studio.
+
+          The reader is looking at transactions, so the export is here
+          and not two pages away. It opens over the list and closes
+          again, and the list underneath is left as it was. */}
+      {showExport ? (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-start justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={() => setShowExport(false)} />
+            <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-4xl my-8 settle-in">
+              <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700">
+                <h3 className="text-lg font-semibold">{t('export.studio_title')}</h3>
+                <button onClick={() => setShowExport(false)} aria-label={t('export.close')}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 pressable">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                <DataExportStudio onClose={() => setShowExport(false)} />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Parser Modals */}
       <TextParserModal

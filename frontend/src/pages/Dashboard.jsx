@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Spinner, EmptyState } from '../components/ui';
+import AnimatedProgressBar from '../components/ui/AnimatedProgressBar';
+import CountUpNumber from '../components/ui/CountUpNumber';
 import { 
   TrendingUp, TrendingDown, Wallet, PiggyBank, RefreshCw, Camera, 
   CheckCircle, AlertTriangle, XCircle, Clock, Target, Sparkles,
@@ -28,6 +30,7 @@ import TopAiCommandBar from '../components/ai/TopAiCommandBar';
 import ReadinessChecklist from '../components/ReadinessChecklist';
 import InsightsPanel from '../components/insights/InsightsPanel';
 import MonthTimeline from '../components/dashboard/MonthTimeline';
+import SpendingHeatmapCalendar from '../components/analytics/SpendingHeatmapCalendar';
 import FinancialProfileShowcase from '../components/dashboard/FinancialProfileShowcase';
 import Onboarding from '../components/dashboard/Onboarding';
 import { useTheme } from '../contexts/ThemeContext';
@@ -366,6 +369,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const [achievements, setAchievements] = useState([]);
   const [debts, setDebts] = useState([]);
   const [recurringTransactions, setRecurringTransactions] = useState([]);
+  // Which day of this month was the worst one. It is asked for on its
+  // own, because a monthly total cannot say it.
+  const [dailySpending, setDailySpending] = useState(null);
   
   // NEW: Timeframe & Filter states
   const [timeframe, setTimeframe] = useState('3M');
@@ -497,6 +503,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         debtsData,
         recurringData,
         profileData,
+        dailySpendingData,
       ] = await Promise.allSettled([
         api.dashboard.summary(null, null, displayCurrency, timeframe, selectedAccount),
         api.transactions.list({ limit: 10 }),
@@ -506,6 +513,8 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         api.get('/feed/stats').catch(() => null),
         api.get('/debts').catch(() => []),
         api.get('/recurring').catch(() => []),
+        // The calendar of spending: which day was the worst one.
+        api.get('/analytics/spending/daily').catch(() => null),
         // The financial profile is one request for all nine chapters,
         // so it does not hold the card up while eight other requests
         // are in the air.
@@ -524,6 +533,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       if (debtsData.status === 'fulfilled') setDebts(Array.isArray(debtsData.value) ? debtsData.value : []);
       if (recurringData.status === 'fulfilled') setRecurringTransactions(Array.isArray(recurringData.value) ? recurringData.value : []);
       if (profileData.status === 'fulfilled' && profileData.value) setFinancialProfile(profileData.value);
+      if (dailySpendingData.status === 'fulfilled' && dailySpendingData.value) {
+        setDailySpending(dailySpendingData.value);
+      }
 
       // Calculate achievements
       calculateAchievements(
@@ -1737,6 +1749,16 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       </div>
 
       {/* ================================================================ */}
+      {/* The calendar of spending: which day of the month was the
+          worst one. A monthly total cannot say that - the money came
+          out on one day rather than spread across thirty - so it is
+          asked for on its own. */}
+      {dailySpending?.days?.length ? (
+        <Card className={`p-4 ${bgCard} border ${borderColor}`}>
+          <SpendingHeatmapCalendar days={dailySpending.days} month={dailySpending.month} />
+        </Card>
+      ) : null}
+
       {/* GOALS - DIPULIHKAN */}
       {/* ================================================================ */}
       {goals.length > 0 && (
@@ -1790,16 +1812,21 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                     </div>
                     {goal.is_completed && <Badge variant="success">✓</Badge>}
                   </div>
+                  {/* The bar fills from nothing to where it should
+                      be, so the reader sees the line move. A target
+                      that is a third of the way there should look
+                      like a third of the way there. */}
                   <div className="mb-2">
-                    <div className={`w-full rounded-full h-2 ${isDark ? 'bg-gray-600' : 'bg-gray-200'}`}>
-                      <div 
-                        className="h-2 rounded-full bg-primary-500 transition-[width]"
-                        style={{ width: `${Math.min(100, progress)}%` }}
-                      />
-                    </div>
+                    <AnimatedProgressBar
+                      percent={progress}
+                      over={false}
+                      className={isDark ? '[&>div]:bg-gray-600' : ''}
+                    />
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className={textSecondary}>{formatCurrency(goal.current_amount || 0, goal.currency)}</span>
+                    <span className={textSecondary}>
+                      <CountUpNumber value={Number(goal.current_amount) || 0} format={(n) => formatCurrency(n, goal.currency)} />
+                    </span>
                     <span className={`font-medium ${textPrimary}`}>{formatCurrency(goal.target_amount, goal.currency)}</span>
                   </div>
                   <p className={`text-xs text-center mt-1 ${textSecondary}`}>{progress.toFixed(0)}% tercapai</p>

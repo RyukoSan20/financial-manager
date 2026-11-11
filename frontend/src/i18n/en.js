@@ -994,6 +994,7 @@ export default {
     ai_cost_price_placeholder: "0",
   },
   budgets: {
+    over_limit: "{amount} over the limit",
     delete_error: "Failed to delete budget: %s",
     general_category: "General",
     title: "Budgets",
@@ -1941,6 +1942,8 @@ export default {
     quick_wallet: "Wallet",
   },
   export: {
+    studio_title: "Data Export Studio",
+    studio_open: "Export data",
     range_title: "Export Date Range",
     preset_month: "This Month",
     preset_lastMonth: "Last Month",

@@ -5,6 +5,8 @@ import { resolveBudgetMethod } from '../utils/decisionWidgets';
 import { useSyncedPreference } from '../hooks/useSyncedPreference';
 import { Card, Button, Input, Select, Modal, ProgressBar, Badge, Spinner } from '../components/ui';
 import FluidProgressBar from '../components/ui/FluidProgressBar';
+import AnimatedProgressBar from '../components/ui/AnimatedProgressBar';
+import CountUpNumber from '../components/ui/CountUpNumber';
 import { moneyLayerOn } from '../utils/animation';
 import { Plus, Target, RefreshCw, Trash2, Edit2, TrendingUp } from 'lucide-react';
 import SingleAddButton, { isSingleAddOn } from '../components/common/SingleAddButton';
@@ -50,6 +52,11 @@ export const Budgets = () => {
     {}
   );
   const [budgets, setBudgets] = useState([]);
+  // Which day of the month it is, and how long the month is. The
+  // bars carry a tick for where the reader should be by now.
+  const today = new Date();
+  const currentDay = today.getDate();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -308,17 +315,29 @@ export const Budgets = () => {
                       size="md"
                     />
                   ) : (
-                    <ProgressBar
-                      value={Math.min(utilization, 100)}
-                      color={utilization > 100 ? 'danger' : utilization > 80 ? 'warning' : 'primary'}
-                      size="md"
+                    /* The bar is filled from nothing to where it
+                       should be, so the reader sees the line move.
+                       The liquid layer stays as it was for the
+                       readers who asked for it; this is the plain
+                       one. */
+                    <AnimatedProgressBar
+                      percent={utilization}
+                      day={currentDay}
+                      totalDays={daysInMonth}
+                      overText={
+                        utilization > 100
+                          ? t('budgets.over_limit', '', { amount: formatCurrency(Math.abs(remaining), budget.currency) })
+                          : null
+                      }
                     />
                   )}
                   
                   <div className="flex items-center justify-between text-sm">
                     <div>
                       <span className="text-gray-500">{t('budgets.spent_label')}</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(budget.spent || 0, budget.currency)}</span>
+                      <span className="font-medium text-gray-900">
+                        <CountUpNumber value={Number(budget.spent) || 0} format={(n) => formatCurrency(n, budget.currency)} />
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-500">{t('budgets.budget_label')}</span>
@@ -327,7 +346,7 @@ export const Budgets = () => {
                     <div>
                       <span className="text-gray-500">{t('budgets.left_label')}</span>
                       <span className={`font-medium ${remaining >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-                        {formatCurrency(remaining, budget.currency)}
+                        <CountUpNumber value={remaining} format={(n) => formatCurrency(n, budget.currency)} />
                       </span>
                     </div>
                   </div>

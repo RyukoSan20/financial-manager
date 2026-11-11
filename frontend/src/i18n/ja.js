@@ -994,6 +994,7 @@ export default {
     ai_cost_price_placeholder: "0",
   },
   budgets: {
+    over_limit: "上限を {amount} 超過",
     delete_error: "予算の削除に失敗しました: %s",
     general_category: "一般",
     title: "予算",
@@ -1941,6 +1942,8 @@ export default {
     quick_wallet: "ウォレット",
   },
   export: {
+    studio_title: "データエクスポートスタジオ",
+    studio_open: "データをエクスポート",
     range_title: "エクスポート期間",
     preset_month: "今月",
     preset_lastMonth: "先月",

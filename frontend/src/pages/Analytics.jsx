@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import DateRangeFilterBar from '../components/analytics/DateRangeFilterBar';
 import SpendingHeatmapCalendar from '../components/analytics/SpendingHeatmapCalendar';
 import { rangeParams } from '../utils/dateRange';
-import { Card, CardHeader, CardBody, Badge, Spinner, Button } from '../components/ui';
+import { Card, CardHeader, CardBody, Badge, Spinner, Button, CountUpNumber, AnimatedProgressBar } from '../components/ui';
 import api from '../services/api';
 import {
   TrendingUp, TrendingDown, PieChart, BarChart3, Wallet, Target,
@@ -457,7 +457,15 @@ export const Analytics = () => {
                       nothing to judge. */}
                   {showHealthScore ? (
                     <>
-                      <p className="text-5xl font-bold text-gray-900 dark:text-gray-100 mt-2 tabular-nums">{healthScore}/100</p>
+                      {/* The score rolls up to its number rather than
+                          appearing all at once. The reader has been
+                          looking at this page for a moment already;
+                          the number that arrives is the one that was
+                          being calculated. */}
+                      <p className="text-5xl font-bold text-gray-900 dark:text-gray-100 mt-2 tabular-nums">
+                        <CountUpNumber value={healthScore} format={(n) => Math.round(n)} />
+                        <span className="text-3xl text-gray-400 dark:text-gray-500">/100</span>
+                      </p>
                       <Badge variant={getScoreLabel(healthScore).color} className="mt-2">
                         {getScoreLabel(healthScore).label}
                       </Badge>
@@ -516,9 +524,20 @@ export const Analytics = () => {
                         {t('analytics.health_not_measured')}
                       </p>
                     ) : (
-                      <p className={`text-lg font-bold mt-0.5 ${getScoreColor(value.score)}`}>
-                        {value.score}<span className="text-xs text-gray-400">/{value.max || 25}</span>
-                      </p>
+                      <>
+                        <p className={`text-lg font-bold mt-0.5 ${getScoreColor(value.score)}`}>
+                          <CountUpNumber value={value.score} format={(n) => Math.round(n)} />
+                          <span className="text-xs text-gray-400">/{value.max || 25}</span>
+                        </p>
+                        {/* Each part is a bar of its own. A number out
+                            of twenty-five does not say whether it is
+                            near the top; the bar does. */}
+                        <AnimatedProgressBar
+                          percent={(Number(value.score) || 0) / (Number(value.max) || 25) * 100}
+                          over={false}
+                          className="mt-1.5"
+                        />
+                      </>
                     )}
                     <p className="text-xs text-gray-400 mt-1 leading-snug">
                       {value.description_key

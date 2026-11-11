@@ -8,6 +8,7 @@ against a real database, with transactions inside and outside it.
 Nothing here touches the production server or a real database.
 """
 
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -192,6 +193,22 @@ def test_the_daily_spending_route_answers_for_the_range(client):
     body = response.json()
     assert [d["date"] for d in body["days"]] == ["2026-10-05", "2026-10-20"]
     assert body["max_total"] == 75000
+
+
+def test_the_daily_spending_route_says_which_month_it_is(client):
+    """The calendar draws the month the range begins in."""
+    response = client.get(
+        "/api/analytics/spending/daily",
+        params={"start_date": "2026-10-01", "end_date": "2026-10-31"},
+    )
+    assert response.status_code == 200, response.text[:300]
+    assert response.json()["month"] == "2026-10"
+
+
+def test_the_daily_spending_route_with_no_dates_still_says_a_month(client):
+    response = client.get("/api/analytics/spending/daily")
+    assert response.status_code == 200, response.text[:300]
+    assert re.fullmatch(r"\d{4}-\d{2}", response.json()["month"])
 
 
 def test_the_daily_spending_route_answers_with_no_dates(client):

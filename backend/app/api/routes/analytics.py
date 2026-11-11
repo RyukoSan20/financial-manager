@@ -1776,15 +1776,27 @@ def get_daily_spending(
     start, end = _resolve_date_range(start_date, end_date, max(1, min(24, int(months or 1))))
 
     if start is None or end is None:
-        return {"days": [], "start": None, "end": None, "max_total": 0}
+        return {
+            "days": [],
+            "start": None,
+            "end": None,
+            "max_total": 0,
+            "month": date.today().strftime("%Y-%m"),
+        }
 
     days = daily_spending(db, current_user.id, start, end)
+
+    # The month the calendar draws. It is the month the range begins
+    # in, so a range that crosses a month boundary still shows the
+    # first one, and the reader can see that from the answer itself.
+    month = start.strftime("%Y-%m")
 
     return {
         "days": days,
         "start": start.isoformat(),
         "end": end.isoformat(),
         "max_total": max((day["total"] for day in days), default=0),
+        "month": month,
     }
 
 
