@@ -25,6 +25,7 @@ import {
   chapterDetails,
   chapterLink,
   timelinePoints,
+  timelineTodayPosition,
   number,
 } from '../financialProfile.js';
 
@@ -225,16 +226,44 @@ check('a point that is further than thirty days is not on the line', () => {
   assert.equal(points.length, 0, points);
 });
 
-check('a point in the past is not on the line', () => {
+check('a point further back than the week behind is not on the line', () => {
   const today = new Date();
-  const past = new Date(today.getTime() - 5 * 86400000);
+  const past = new Date(today.getTime() - 12 * 86400000);
 
   const points = timelinePoints(
     [{ date: past.toISOString(), kind: 'bill', label: 'Tagihan', amount: 100 }],
     today
   );
 
-  assert.equal(points.length, 0, points);
+  assert.equal(points.length, 0, JSON.stringify(points));
+});
+
+check('a day in the week behind is on the line, to the left of today', () => {
+  // A reader who has only just begun has nothing ahead; the week
+  // behind is the part of the line that is always real.
+  const today = new Date();
+  const past = new Date(today.getTime() - 3 * 86400000);
+
+  const points = timelinePoints(
+    [{ date: past.toISOString(), kind: 'spent', label: 'Keluar', amount: 12000 }],
+    today
+  );
+
+  assert.equal(points.length, 1, JSON.stringify(points));
+  assert.equal(points[0].days, -3);
+  assert.ok(points[0].position < timelineTodayPosition(), 'behind today');
+  assert.ok(points[0].position >= 0, 'still on the line');
+});
+
+check('today sits where the week behind ends', () => {
+  const todayAt = timelineTodayPosition();
+  assert.ok(todayAt > 0 && todayAt < 0.5, String(todayAt));
+  const points = timelinePoints(
+    [{ date: new Date().toISOString(), kind: 'earned', label: 'Masuk', amount: 1 }],
+    new Date()
+  );
+  assert.equal(points[0].days, 0);
+  assert.ok(Math.abs(points[0].position - todayAt) < 1e-9);
 });
 
 check('an empty line is an empty line', () => {

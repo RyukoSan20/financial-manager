@@ -15,6 +15,7 @@ import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
 import { PageHeader } from '../components/ui/PageHeader';
+import { BotanicalPageHeader, ForestTicketCard, ForestButton, PerchedMascot } from '../components/ui/Botanical';
 import { buildFlag } from '../utils/featureFlags';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
@@ -25,6 +26,48 @@ import { ask } from '../contexts/ConfirmContext';
 // loaded, because the scheme is not known until the appearance has been
 // applied to the page.
 const COLORS = chartPalette;
+
+/**
+ * The pace of a goal, as a pill.
+ *
+ * The server says how the goal is going - `on_track`,
+ * `slightly_behind`, `behind_track`, `overdue`, `completed` - and
+ * each of those has words in every language. A pace the server has
+ * not named yet falls back to the plain on-track / behind pair rather
+ * than leaking a raw key like `Status_behind_track` onto the page.
+ */
+const PACE_TONE = {
+  completed: 'bg-[#BEF264] text-[#112A20]',
+  on_track: 'bg-[#BEF264] text-[#112A20]',
+  slightly_behind: 'bg-amber-100 text-amber-800',
+  behind_track: 'bg-amber-100 text-amber-800',
+  overdue: 'bg-rose-100 text-rose-800',
+  paused: 'bg-slate-200 text-slate-700',
+};
+
+export const GOAL_PACES = ['completed', 'on_track', 'slightly_behind', 'behind_track', 'overdue', 'paused'];
+
+export function goalPaceLabel(goal, t) {
+  const pace = goal?.is_completed ? 'completed' : goal?.status;
+  // Only a pace with words of its own is asked for by name. A pace
+  // the dictionary has not met would come back as the key dressed up
+  // as a word ("Pace_something"), which is the leak this replaces.
+  if (GOAL_PACES.includes(pace)) return t(`goals.pace_${pace}`);
+  return (goal?.on_track ?? true) ? t('goals.on_track') : t('goals.behind');
+}
+
+export function GoalPaceBadge({ goal, t }) {
+  const pace = goal?.is_completed ? 'completed' : goal?.status;
+  const tone = PACE_TONE[pace] || ((goal?.on_track ?? true) ? PACE_TONE.on_track : PACE_TONE.behind_track);
+  return (
+    <span
+      data-testid="goal-pace"
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${tone}`}
+    >
+      {goalPaceLabel(goal, t)}
+    </span>
+  );
+}
 
 export const Goals = () => {
   const { t } = useTranslation();
@@ -142,36 +185,27 @@ export const Goals = () => {
 
   const totalTarget = sumInDisplay(goals, 'target_amount');
   const totalCurrent = sumInDisplay(goals, 'current_amount');
-  const activeGoals = goals.filter(g => g.status === 'active').length;
+  // The server's `status` is the pace of the goal - on track, behind,
+  // overdue, completed - not whether it is live. A goal is active
+  // when it is still open and not yet reached. Counting `status ===
+  // 'active'` found nothing, and the page said "0 target aktif" above
+  // two goals.
+  const activeGoals = goals.filter((g) => g.is_active !== false && !g.is_completed).length;
 
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      {polished ? (
-        <PageHeader
-          title={t('goals.title')}
-          subtitle={t('goals.active_count').replace('%s', activeGoals)}
-          action={
-            <Button onClick={() => { setEditingGoal(null); setShowModal(true); }}>
-              <Plus className="w-4 h-4 mr-2" />
-              {t('goals.new_goal')}
-            </Button>
-          }
-        />
-      ) : (
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{t('goals.title')}</h1>
-            <p className="text-gray-500 mt-1">{t('goals.active_count').replace('%s', activeGoals)}</p>
-          </div>
-          {!isSingleAddOn() && (
-            <Button onClick={() => { setEditingGoal(null); setShowModal(true); }}>
-              <Plus className="w-4 h-4 mr-2" />
-              {t('goals.new_goal')}
-            </Button>
-          )}
-        </div>
-      )}
+      <BotanicalPageHeader
+        badge={t('goals.badge')}
+        title={t('goals.title')}
+        subtitle={t('goals.active_count').replace('%s', activeGoals)}
+        action={!isSingleAddOn() ? (
+          <ForestButton onClick={() => { setEditingGoal(null); setShowModal(true); }}>
+            <Plus className="w-4 h-4" />
+            {t('goals.new_goal')}
+          </ForestButton>
+        ) : null}
+      />
 
       {/* The one add button, in the same place on every page. */}
       <SingleAddButton
@@ -179,27 +213,43 @@ export const Goals = () => {
         onClick={() => { setEditingGoal(null); setShowModal(true); }}
       />
 
-      {/* Summary Cards */}
+      {/* Summary: the forest ticket, with the three tiles beside it. */}
       {goals.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card tier="tile" hue="violet" className="!p-4">
-            <p className="text-sm text-gray-500">{t('goals.total_target')}</p>
-            <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalTarget, displayCurrency)}</p>
-          </Card>
-          <Card tier="tile" hue="emerald" className="!p-4">
-            <p className="text-sm text-gray-500">{t('goals.total_saved')}</p>
-            <p className="text-xl font-bold text-success-600 mt-1">{formatCurrency(totalCurrent, displayCurrency)}</p>
-          </Card>
-          <Card tier="tile" hue="amber" className="!p-4">
-            <p className="text-sm text-gray-500">{t('goals.remaining')}</p>
-            <p className="text-xl font-bold text-warning-600 mt-1">{formatCurrency(totalTarget - totalCurrent, displayCurrency)}</p>
-          </Card>
-          <Card tier="tile" hue="sky" className="!p-4">
-            <p className="text-sm text-gray-500">{t('goals.overall_progress')}</p>
-            <p className="text-xl font-bold text-primary-600 mt-1">
-              {totalTarget > 0 ? formatPercent((totalCurrent / totalTarget) * 100) : '0%'}
-            </p>
-          </Card>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ForestTicketCard
+            data-testid="goals-summary-ticket"
+            eyebrow={t('goals.badge')}
+            title={t('goals.total_saved')}
+            value={formatCurrency(totalCurrent, displayCurrency)}
+            caption={t('goals.saved_of_target', '', {
+              target: formatCurrency(totalTarget, displayCurrency),
+              percent: totalTarget > 0 ? formatPercent((totalCurrent / totalTarget) * 100) : '0%',
+            })}
+          >
+            <div className="botanical-bar mt-4" aria-hidden="true">
+              <span style={{ width: `${totalTarget > 0 ? Math.min(100, (totalCurrent / totalTarget) * 100) : 0}%` }} />
+            </div>
+          </ForestTicketCard>
+          <div className="grid grid-cols-2 gap-4 content-start">
+            <Card tier="tile" hue="violet" className="!p-4">
+              <p className="text-sm text-gray-500">{t('goals.total_target')}</p>
+              <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalTarget, displayCurrency)}</p>
+            </Card>
+            <Card tier="tile" hue="amber" className="!p-4">
+              <p className="text-sm text-gray-500">{t('goals.remaining')}</p>
+              <p className="text-xl font-bold text-warning-600 mt-1">{formatCurrency(totalTarget - totalCurrent, displayCurrency)}</p>
+            </Card>
+            <Card tier="tile" hue="emerald" className="!p-4">
+              <p className="text-sm text-gray-500">{t('goals.total_saved')}</p>
+              <p className="text-xl font-bold text-success-600 mt-1">{formatCurrency(totalCurrent, displayCurrency)}</p>
+            </Card>
+            <Card tier="tile" hue="sky" className="!p-4">
+              <p className="text-sm text-gray-500">{t('goals.overall_progress')}</p>
+              <p className="text-xl font-bold text-primary-600 mt-1">
+                {totalTarget > 0 ? formatPercent((totalCurrent / totalTarget) * 100) : '0%'}
+              </p>
+            </Card>
+          </div>
         </div>
       )}
 
@@ -215,14 +265,24 @@ export const Goals = () => {
         />
       ) : (
         <div className="grid gap-4">
-          {goals.map((goal) => {
+          {goals.map((goal, goalIndex) => {
             const progress = (parseFloat(goal.current_amount) / parseFloat(goal.target_amount)) * 100;
             const remaining = parseFloat(goal.target_amount) - parseFloat(goal.current_amount);
             const isOnTrack = goal.on_track ?? true;
-            
+            // The mascot perches on the top goal, the way it does on
+            // the household's first card.
+            const perched = goalIndex === 0;
+
             return (
-              <TiltCard key={goal.id} className="rounded-2xl">
-              <Card className="!p-5 hover:shadow-md transition-shadow h-full">
+              <TiltCard key={goal.id} className={`rounded-2xl ${perched ? 'mt-8' : ''}`}>
+              <Card className="!p-5 hover:shadow-md transition-shadow h-full relative">
+                {perched ? (
+                  <PerchedMascot
+                    size={52}
+                    state={isOnTrack ? 'happy' : 'alert'}
+                    label={goal.name}
+                  />
+                ) : null}
                 <div className="flex items-start justify-between mb-4">
                   {/* The icon holds its place and the text is allowed
                       to shrink. Without this a long goal name pushed
@@ -242,22 +302,17 @@ export const Goals = () => {
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-gray-900 truncate">{goal.name}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge 
-                          size="sm" 
-                          variant={goal.status === 'active' ? 'success' : goal.status === 'completed' ? 'primary' : 'default'}
-                        >
-                          {t(`goals.status_${goal.status}`)}
-                        </Badge>
+                        <GoalPaceBadge goal={goal} t={t} />
                         {goal.priority && (
                           <Badge size="sm" variant="warning">{t(`goals.priority_${goal.priority}`)}</Badge>
                         )}
                         {isOnTrack ? (
-                          <span className="text-xs text-success-600 flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" /> {t('goals.on_track')}
+                          <span className="text-xs text-[#15803D] flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" />
                           </span>
                         ) : (
-                          <span className="text-xs text-danger-600 flex items-center gap-1">
-                            <TrendingDown className="w-3 h-3" /> {t('goals.behind')}
+                          <span className="text-xs text-[#B45309] flex items-center gap-1">
+                            <TrendingDown className="w-3 h-3" />
                           </span>
                         )}
                       </div>
@@ -324,9 +379,8 @@ export const Goals = () => {
                           <span className="font-medium text-gray-900">{formatDate(goal.target_date)}</span>
                         </div>
                       )}
-                      <Button 
-                        size="sm" 
-                        className="w-full mt-2"
+                      <ForestButton
+                        className="w-full mt-2 !rounded-xl"
                         onClick={() => {
                           const amount = prompt(t('goals.contribution_prompt'));
                           if (amount && !isNaN(amount)) {
@@ -334,8 +388,8 @@ export const Goals = () => {
                           }
                         }}
                       >
-                        <Plus className="w-4 h-4 mr-1" /> {t('goals.add_savings')}
-                      </Button>
+                        <Plus className="w-4 h-4" /> {t('goals.add_savings')}
+                      </ForestButton>
                     </div>
                   </div>
 

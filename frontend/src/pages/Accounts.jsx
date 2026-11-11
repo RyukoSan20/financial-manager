@@ -15,6 +15,7 @@ import { formatCurrency } from '../utils/format';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
 import { ReconciliationBar } from '../components/fintech/ReconciliationBar';
+import { BotanicalPageHeader, ForestTicketCard, ForestButton, PerchedMascot } from '../components/ui/Botanical';
 import { useAdjustmentWriter } from '../components/fintech/useAdjustmentWriter';
 import { buildFlag } from '../utils/featureFlags';
 
@@ -152,23 +153,17 @@ export const Accounts = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{K.title}</h1>
-          <p className="text-gray-500 mt-1">
-            {accounts.length} {t('accounts.count')} • {t('accounts.total')}:{' '}
-            {summary?.total_balance !== undefined && summary?.total_balance !== null
-              ? formatNative(summary.total_balance, summary.currency || displayCurrency)
-              : '-'}
-          </p>
-        </div>
-        {!isSingleAddOn() && (
-          <Button onClick={() => { setEditingAccount(null); setShowModal(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
+      <BotanicalPageHeader
+        badge={t('accounts.badge')}
+        title={K.title}
+        subtitle={`${accounts.length} ${t('accounts.count')}`}
+        action={!isSingleAddOn() ? (
+          <ForestButton onClick={() => { setEditingAccount(null); setShowModal(true); }}>
+            <Plus className="w-4 h-4" />
             {K.add_account}
-          </Button>
-        )}
-      </div>
+          </ForestButton>
+        ) : null}
+      />
 
       {/* The one add button, in the same place on every page. */}
       <SingleAddButton
@@ -176,25 +171,40 @@ export const Accounts = () => {
         onClick={() => { setEditingAccount(null); setShowModal(true); }}
       />
 
-      {/* The reconciliation bar: the reader types in what their bank
-          says, and the application says whether the figures agree.
-          Behind the switch. */}
-      {fintech && summary && (
-        <ReconciliationBar
-          recorded={summary?.total_balance || 0}
-          onCreateEntry={createAdjustment}
-        />
-      )}
-
-      {/* Account Summary Cards */}
+      {/* The hero row: the liquid total on the forest ticket, with the
+          quick reconciliation beside it. */}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card tier="hero" hue="emerald" className="!p-4 text-center">
-            <p className="text-sm text-gray-500">{t('accounts.total_balance')}</p>
-            <p className="text-xl font-bold text-gray-900 mt-1 tabular-nums">
-              {formatNative(summary.total_balance, summary.currency || displayCurrency)}
-            </p>
-          </Card>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ForestTicketCard
+            data-testid="accounts-total-ticket"
+            eyebrow={t('accounts.badge')}
+            title={t('accounts.total_balance')}
+            value={formatNative(summary.total_balance, summary.currency || displayCurrency)}
+            caption={t('accounts.liquid_caption', '', { count: accounts.length })}
+            mascot={{
+              size: 56,
+              state: (summary.total_balance || 0) < 0 ? 'alert' : 'idle',
+              label: t('accounts.total_balance'),
+            }}
+          />
+          {/* The quick reconciliation is a fintech widget, so it is
+              behind the switch. With the switch off the space holds a
+              quiet summary instead. */}
+          {fintech && (
+            <div className="hh-card p-5">
+              <ReconciliationBar
+                recorded={summary?.total_balance || 0}
+                onCreateEntry={createAdjustment}
+                compact
+              />
+            </div>
+          )}
+          {!fintech && (
+            <div className="hh-card flex flex-col justify-center p-5">
+              <p className="hh-badge uppercase">{t('accounts.badge')}</p>
+              <p className="mt-3 text-sm hh-muted">{t('accounts.liquid_caption', '', { count: accounts.length })}</p>
+            </div>
+          )}
         </div>
       )}
 

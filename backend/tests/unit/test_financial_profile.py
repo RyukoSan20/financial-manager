@@ -342,12 +342,49 @@ def test_the_timeline_holds_the_next_thirty_days(client, reader):
     dates = [point["date"] for point in timeline]
     assert dates == sorted(dates), timeline
 
-    # And nothing on it is further away than thirty days.
+    # And nothing on it is further away than thirty days ahead or a
+    # week behind. The days behind are the reader's own spending, and
+    # they are what the line shows a reader who has nothing ahead yet.
     today = date.today()
     for point in timeline:
         when = date.fromisoformat(point["date"])
         assert when <= today + timedelta(days=31), point
-        assert when >= today - timedelta(days=1), point
+        if point["kind"] in ("spent", "earned"):
+            assert when >= today - timedelta(days=7), point
+        else:
+            assert when >= today - timedelta(days=1), point
+
+
+def test_the_timeline_shows_the_week_behind(client, reader, session):
+    """A reader who spent this week sees it on the line.
+
+    Two expenses three days ago become one point of kind `spent`,
+    dated that day, carrying their sum; it sits behind today. This is
+    the part of the line a reader with nothing ahead yet still has.
+    """
+    from app.models.transaction import Transaction
+
+    three_days_ago = date.today() - timedelta(days=3)
+    session.add(Transaction(
+        user_id=1, account_id=1, type="expense", amount=12000.0,
+        description="Mie Instan", date=three_days_ago, category_id=6,
+    ))
+    session.add(Transaction(
+        user_id=1, account_id=1, type="expense", amount=25000.0,
+        description="Makan Siang", date=three_days_ago, category_id=6,
+    ))
+    session.commit()
+
+    response = client.get("/api/dashboard/financial-profile")
+    timeline = response.json()["chapters"]["timeline"]
+    spent = [p for p in timeline if p["kind"] == "spent" and p["date"] == three_days_ago.isoformat()]
+    assert len(spent) == 1, timeline
+    assert spent[0]["amount"] == 37000.0, spent
+    assert "2 transaksi" in spent[0]["label"], spent
+
+    # The month's figures still read the real totals.
+    month = response.json()["chapters"]["month"]
+    assert month["expense"] == 450000.0 + 37000.0, month
 
 
 # ---------------------------------------------------------------------------

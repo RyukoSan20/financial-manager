@@ -23,6 +23,7 @@ import { batch1, fill } from '../i18n/keys_batch1';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
 import { ReconciliationBar } from '../components/fintech/ReconciliationBar';
+import { BotanicalPageHeader, ForestButton } from '../components/ui/Botanical';
 import { useAdjustmentWriter } from '../components/fintech/useAdjustmentWriter';
 import { heldCash } from '../utils/decisionWidgets';
 import { buildFlag } from '../utils/featureFlags';
@@ -89,6 +90,9 @@ export const Transactions = () => {
   // The export. A reader on this page has the transactions in front
   // of them, so the export is here and not two pages away.
   const [showExport, setShowExport] = useState(false);
+  // The reconciliation bar is tucked into a pill so the list is the
+  // first thing the reader sees. It opens when they ask for it.
+  const [showReconcile, setShowReconcile] = useState(false);
   // A receipt that was read, or a transaction that was spoken, waiting
   // for the reader to look at it before it is saved.
   const [reviewReading, setReviewReading] = useState(null);
@@ -438,53 +442,68 @@ export const Transactions = () => {
   return (
     <div className="space-y-4 animate-fadeIn">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <BotanicalPageHeader
+        badge={t('transactions.badge')}
+        title={K.title}
+        subtitle={fill(K.count, { count: filteredTransactions.length })}
+        aside={pendingCount > 0 ? (
+          <button
+            onClick={() => window.location.href = '/feed'}
+            className="botanical-pill"
+          >
+            <BellRing className="w-4 h-4" />
+            <span>{fill(K.pendingReview, { count: pendingCount })}</span>
+          </button>
+        ) : null}
+        action={(
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900">{K.title}</h1>
-            {pendingCount > 0 && (
-              <button 
-                onClick={() => window.location.href = '/feed'}
-                className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium hover:bg-yellow-200 transition-colors"
-              >
-                <BellRing className="w-4 h-4" />
-                <span>{fill(K.pendingReview, { count: pendingCount })}</span>
-              </button>
+            <button
+              onClick={() => setShowExport(true)}
+              title={t('export.studio_open')}
+              aria-label={t('export.studio_open')}
+              className="botanical-pill !px-3"
+            >
+              <Download className="w-5 h-5" />
+            </button>
+            {!isSingleAddOn() && (
+              <ForestButton onClick={() => window.location.href = '/add'} aria-label={K.addTransaction}>
+                <Plus className="w-5 h-5" />
+              </ForestButton>
             )}
           </div>
-          <p className="text-sm text-gray-500">{fill(K.count, { count: filteredTransactions.length })}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowExport(true)}
-            title={t('export.studio_open')}
-            aria-label={t('export.studio_open')}
-            className="p-3 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            <Download className="w-5 h-5" />
-          </button>
-          {!isSingleAddOn() && (
-            <button
-              onClick={() => window.location.href = '/add'}
-              className="p-3 bg-primary-600 text-white rounded-xl shadow-lg active:bg-primary-600"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-      </div>
+        )}
+      />
 
       {/* The one add button, in the same place on every page. */}
       <SingleAddButton href="/add" label={K.addTransaction} />
 
-      {/* The reconciliation bar: the reader types in what their bank
-          says, and the application says whether the figures agree.
-          Behind the switch. */}
+      {/* The reconciliation bar, folded into one line. It opens when
+          the reader asks, so the list stays the first thing on the
+          page rather than being pushed down by a box they rarely
+          touch. */}
       {fintech && (
-        <ReconciliationBar
-          recorded={accountTotal}
-          onCreateEntry={createAdjustment}
-        />
+        <div className="hh-card overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowReconcile((open) => !open)}
+            aria-expanded={showReconcile}
+            className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-sm font-semibold"
+          >
+            <span className="flex items-center gap-2">
+              <span className="hh-badge !px-2 !py-0.5">⚖️ {t('transactions.reconcile_pill')}</span>
+            </span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${showReconcile ? 'rotate-180' : ''}`} />
+          </button>
+          {showReconcile && (
+            <div className="border-t border-[#E5E0D5] px-4 py-3">
+              <ReconciliationBar
+                recorded={accountTotal}
+                onCreateEntry={createAdjustment}
+                compact
+              />
+            </div>
+          )}
+        </div>
       )}
 
       {/* The four ways of bringing a transaction in.
@@ -499,35 +518,23 @@ export const Transactions = () => {
           scanner - but the colour is a small icon on a pale wash,
           not a block of it. The row reads as one group of four
           choices rather than four competing announcements. */}
+      {/* The four ways in, as one group of tactile pills. */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <button
-          onClick={() => setShowTextParser(true)}
-          className="group flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl bg-sky-50/70 dark:bg-sky-500/10 border border-sky-200/70 dark:border-sky-500/20 text-sky-700 dark:text-sky-300 hover:border-sky-400 hover:bg-sky-50 dark:hover:bg-sky-500/20 hover:shadow-sm hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform] duration-150"
-        >
-          <MessageSquare className="w-5 h-5" />
-          <span className="text-xs font-medium">{K.smsShort}</span>
-        </button>
-        <button
-          onClick={() => setShowQRScanner(true)}
-          className="group flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl bg-violet-50/70 dark:bg-violet-500/10 border border-violet-200/70 dark:border-violet-500/20 text-violet-700 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/20 hover:shadow-sm hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform] duration-150"
-        >
-          <ScanText className="w-5 h-5" />
-          <span className="text-xs font-medium">{K.qrCode}</span>
-        </button>
-        <button
-          onClick={() => setShowReceiptScanner(true)}
-          className="group flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-500/10 border border-emerald-200/70 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 hover:shadow-sm hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform] duration-150"
-        >
-          <Camera className="w-5 h-5" />
-          <span className="text-xs font-medium">{K.receiptShort}</span>
-        </button>
-        <button
-          onClick={() => setShowVoiceModal(true)}
-          className="group flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl bg-amber-50/70 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 text-amber-700 dark:text-amber-300 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/20 hover:shadow-sm hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform] duration-150"
-        >
-          <Mic className="w-5 h-5" />
-          <span className="text-xs font-medium">{K.voice}</span>
-        </button>
+        {[
+          { onClick: () => setShowTextParser(true), Icon: MessageSquare, label: K.smsShort },
+          { onClick: () => setShowQRScanner(true), Icon: ScanText, label: K.qrCode },
+          { onClick: () => setShowReceiptScanner(true), Icon: Camera, label: K.receiptShort },
+          { onClick: () => setShowVoiceModal(true), Icon: Mic, label: K.voice },
+        ].map(({ onClick, Icon, label }) => (
+          <button
+            key={label}
+            onClick={onClick}
+            className="botanical-pill !flex-col !gap-1.5 !rounded-xl !py-3"
+          >
+            <Icon className="w-5 h-5" />
+            <span className="text-xs font-semibold">{label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Search & Filter */}
@@ -578,11 +585,7 @@ export const Transactions = () => {
               setFilters(f => ({ ...f, type: f.type === opt.value ? '' : opt.value }))
             }
             aria-pressed={filters.type === opt.value}
-            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${
-              filters.type === opt.value
-                ? 'bg-primary-600 text-white shadow-sm'
-                : 'bg-white text-gray-600 shadow-sm'
-            }`}
+            className={`botanical-pill flex-1 !justify-center ${filters.type === opt.value ? 'is-active' : ''}`}
           >
             {opt.label}
           </button>

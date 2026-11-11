@@ -40,6 +40,27 @@ export const BACKGROUND_KEY = 'finmanager-background';
  * who wants their own.
  */
 export const COLOR_SCHEMES = {
+  // The forest. The scheme of the household page - deep forest ink
+  // with a crisp lime - and the one every page is measured against.
+  forest: {
+    id: 'forest',
+    labelKey: 'appearance.forest_label',
+    descriptionKey: 'appearance.forest_description',
+    shades: {
+      50: '#F5F3EC',
+      100: '#ECFDF5',
+      200: '#D9F99D',
+      300: '#BEF264',
+      400: '#4D7C5A',
+      500: '#2F5C45',
+      600: '#112A20',
+      700: '#1A3C2E',
+      800: '#0F291E',
+      900: '#0B1512',
+    },
+    accent: '#112A20',
+    onAccent: '#FFFFFF',
+  },
   emerald: {
     id: 'emerald',
     labelKey: 'appearance.emerald_label',
@@ -97,24 +118,27 @@ export const COLOR_SCHEMES = {
     accent: '#7c3aed',
     onAccent: '#ffffff',
   },
+  // Amber used to be a muddy brown (#b45309) on every button. It is
+  // now the forest with a warm lime, so a reader who chose it keeps
+  // the warmth and loses the mud.
   amber: {
     id: 'amber',
     labelKey: 'appearance.amber_label',
     descriptionKey: 'appearance.amber_description',
     shades: {
-      50: '#fffbeb',
-      100: '#fef3c7',
-      200: '#fde68a',
-      300: '#fcd34d',
-      400: '#fbbf24',
-      500: '#f59e0b',
-      600: '#b45309',
-      700: '#92400e',
-      800: '#78350f',
-      900: '#451a03',
+      50: '#F5F3EC',
+      100: '#FEF9C3',
+      200: '#E9F5A1',
+      300: '#BEF264',
+      400: '#5B7F4A',
+      500: '#365C3A',
+      600: '#112A20',
+      700: '#1A3C2E',
+      800: '#0F291E',
+      900: '#0B1512',
     },
-    accent: '#b45309',
-    onAccent: '#ffffff',
+    accent: '#112A20',
+    onAccent: '#FFFFFF',
   },
   rose: {
     id: 'rose',
@@ -159,7 +183,7 @@ export const COLOR_SCHEMES = {
 export const SCHEME_IDS = Object.keys(COLOR_SCHEMES);
 import { buildFlag } from './featureFlags';
 
-export const DEFAULT_SCHEME = 'emerald';
+export const DEFAULT_SCHEME = 'forest';
 
 /**
  * The fonts.

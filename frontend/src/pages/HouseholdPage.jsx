@@ -296,7 +296,10 @@ export function HouseholdView({
       </header>
 
       {/* The members, and the code */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* The mascot perches above the first card, so the grid starts
+          a little lower than the header to give it room. Without the
+          gap its ears sat on the subtitle. */}
+      <div className="mt-8 grid gap-4 pt-2 lg:grid-cols-2">
         <section className="hh-card relative p-5 pt-6">
           {/* The mascot sits on the top edge of the card. */}
           <div className="absolute -top-9 right-5">

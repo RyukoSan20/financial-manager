@@ -174,6 +174,8 @@ export default {
   
   // Dashboard
   dashboard: {
+    accounts_count: "{count} accounts counted",
+    balance_caption: "Liquid balance across all your accounts",
     due_date: "Due",
     range_1d: "24 Hours",
     range_1w: "1 Week",
@@ -744,6 +746,8 @@ export default {
     font: "Font",
     background: "Background",
     mode: "Mode",
+    forest_label: "Forest",
+    forest_description: "Deep forest green with a crisp lime accent — the app's house look",
     emerald_label: "Emerald (Money Green)",
     emerald_description: "Money green. Calm and easy to read.",
     blue_label: "Blue (Corporate)",
@@ -834,6 +838,7 @@ export default {
     showing_50: "Showing 50 of %s locations",
   },
   analytics: {
+    badge: "ANALYTICS · PATTERNS & TRENDS",
     health_message_excellent: "Your financial health is excellent!",
     health_message_good: "Your financial health is good, but there's room for improvement.",
     health_message_fair: "Your financial health needs attention.",
@@ -928,6 +933,8 @@ export default {
     preset_tabungan_description: "Savings progress. Goals and cash flow.",
   },
   goals: {
+    badge: "GOALS · YOUR DREAM PLAN",
+    saved_of_target: "Saved of {target} · {percent}",
     remaining: "Remaining",
     title: "Financial Goals",
     save_error: "Failed to save goal: %s",
@@ -950,7 +957,13 @@ export default {
     priority_medium: "Medium",
     priority_high: "High",
     on_track: "On Track",
-    behind: "Behind",
+    behind: "Needs a Push",
+    pace_on_track: "On Track",
+    pace_slightly_behind: "Slightly Behind",
+    pace_behind_track: "Needs a Push",
+    pace_overdue: "Past Due",
+    pace_completed: "Achieved",
+    pace_paused: "Paused",
     progress: "Progress",
     saved_amount: "%s saved",
     target_label: "%s target",
@@ -994,6 +1007,14 @@ export default {
     ai_cost_price_placeholder: "0",
   },
   budgets: {
+    badge: "BUDGET · THIS MONTH'S PACE",
+    pacing_title: "Budget {month}",
+    pacing_day: "Day {day} of {total}",
+    no_limit: "No limit",
+    today: "Today",
+    bucket_needs: "Needs",
+    bucket_wants: "Wants",
+    bucket_savings: "Savings",
     over_limit: "{amount} over the limit",
     delete_error: "Failed to delete budget: %s",
     general_category: "General",
@@ -1106,6 +1127,7 @@ export default {
   calculators: {
     title: "Financial Calculators",
     subtitle: "Quick calculations for everyday finances",
+    badge: "TOOLS · QUICK MATH",
     tab_discount: "Discount",
     tab_tax: "Tax & Tip",
     tab_loan: "Loan",
@@ -1170,6 +1192,7 @@ export default {
     budget_rule_note: "Based on the 50/30/20 budget rule: 50% needs, 30% wants, 20% savings",
   },
   debts: {
+    badge: "DEBT · ROAD TO PAID OFF",
     remaining: "Remaining",
     load_error: "Failed to load debt data: %s",
     save_error: "Failed to save the debt: %s",
@@ -1239,6 +1262,8 @@ export default {
 
 
   accounts: {
+    badge: "WALLET · ACCOUNTS & ASSETS",
+    liquid_caption: "Liquid balance across {count} accounts",
     count: "accounts",
     total: "Total",
     total_balance: "Total Balance",
@@ -1858,11 +1883,15 @@ export default {
     topi: "cap",
   },
   transactions: {
+    badge: "LEDGER · CASH FLOW",
+    reconcile_pill: "Quick Reconcile",
     loadFailed: "The transactions could not be loaded",
     loadFailedDesc: "The list could not be fetched from the server. Try again.",
     retry: "Try Again",
   },
   financial_profile: {
+    spent: "Spent",
+    earned: "Earned",
     title: "Financial Profile",
     hint: "Swipe / Click to change chapter",
     chapter: "Chapter",

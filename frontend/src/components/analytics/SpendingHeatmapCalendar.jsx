@@ -22,6 +22,24 @@
 import { useMemo, useState } from 'react';
 import { Flame, X } from 'lucide-react';
 
+/**
+ * A rupiah amount, shortened to fit inside a day cell.
+ *
+ * "Rp 35rb" for thirty-five thousand, "Rp 1,2jt" for over a million.
+ * The full amount is still on the cell's label for a reader who wants
+ * it exactly.
+ */
+function compactRupiah(value) {
+  const n = Math.round(Number(value) || 0);
+  if (n <= 0) return '';
+  if (n >= 1_000_000) {
+    const jt = n / 1_000_000;
+    return `Rp${jt >= 10 ? Math.round(jt) : jt.toFixed(1).replace('.', ',')}jt`;
+  }
+  if (n >= 1_000) return `Rp${Math.round(n / 1000)}rb`;
+  return `Rp${n}`;
+}
+
 import { useTranslation } from '../../i18n';
 import { CountUpNumber } from '../ui/CountUpNumber';
 import { HEAT_CLASSES, heatLevel } from '../../utils/progressColors';
@@ -181,13 +199,20 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect }) 
               data-testid={`heatmap-day-${day.day}`}
               data-level={level}
               aria-label={`${day.date}: ${rupiah.format(day.total)}`}
-              className={`relative aspect-square rounded-lg flex flex-col items-center justify-center transition-[transform,box-shadow] duration-150 hover:scale-105 hover:shadow-md ${HEAT_CLASSES[level]} ${
-                selected === day.date ? 'ring-2 ring-primary-500' : ''
+              className={`relative h-14 sm:h-16 rounded-xl p-1.5 flex flex-col justify-between transition-[transform,box-shadow] duration-150 hover:scale-[1.03] hover:shadow-md ${HEAT_CLASSES[level]} ${
+                selected === day.date ? 'ring-2 ring-[#112A20]' : ''
               }`}
             >
-              <span className="text-xs font-semibold leading-none">{day.day}</span>
-              {isWorst ? (
-                <Flame className="w-3 h-3 mt-0.5" aria-hidden="true" data-testid="worst-day-flame" />
+              <span className="flex items-center justify-between">
+                <span className="text-xs font-semibold leading-none">{day.day}</span>
+                {isWorst ? (
+                  <Flame className="w-3 h-3" aria-hidden="true" data-testid="worst-day-flame" />
+                ) : null}
+              </span>
+              {day.hasSpending && day.total > 0 ? (
+                <span className="text-[10px] font-semibold leading-none tabular-nums self-start" data-testid={`heatmap-amount-${day.day}`}>
+                  {compactRupiah(day.total)}
+                </span>
               ) : null}
             </button>
           );

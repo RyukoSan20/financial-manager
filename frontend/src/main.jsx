@@ -15,6 +15,8 @@ import './styles/login.css'
 import './styles/fintech.css'
 import './styles/shape.css'
 import './styles/mascot-motion.css'
+// The botanical studio has the last word on colour.
+import './styles/botanical.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

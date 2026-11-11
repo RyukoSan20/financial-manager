@@ -8,6 +8,7 @@ import { formatCurrency } from '../utils/format';
 import { useTranslation } from '../i18n';
 import { buildFlag } from '../utils/featureFlags';
 import { IndonesiaCalculators } from '../components/calculators/IndonesiaCalculators';
+import { BotanicalPageHeader, PerchedMascot } from '../components/ui/Botanical';
 
 export const Calculators = () => {
   const { t } = useTranslation();
@@ -36,24 +37,22 @@ export const Calculators = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{t('calculators.title')}</h1>
-        <p className="text-gray-500 mt-1">{t('calculators.subtitle')}</p>
-      </div>
+      <BotanicalPageHeader
+        badge={t('calculators.badge')}
+        title={t('calculators.title')}
+        subtitle={t('calculators.subtitle')}
+      />
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 p-1 bg-gray-100 rounded-xl">
+      <div className="flex flex-wrap gap-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              aria-pressed={activeTab === tab.id}
+              className={`botanical-pill ${activeTab === tab.id ? 'is-active' : ''}`}
             >
               <Icon className="w-4 h-4" />
               <span className="hidden sm:inline">{tab.label}</span>
@@ -78,7 +77,10 @@ export const Calculators = () => {
 // Discount Calculator
 const DiscountCalculator = () => {
   const { t } = useTranslation();
-  const [form, setForm] = useState({ price: '', discount: '' });
+  // The panel is alive on the first paint: a worked example is in the
+  // boxes, so the result on the right is a real number rather than a
+  // "fill this in" placeholder.
+  const [form, setForm] = useState({ price: '100000', discount: '20' });
   const [result, setResult] = useState(null);
 
   const calculate = () => {
@@ -116,24 +118,27 @@ const DiscountCalculator = () => {
         </div>
       </Card>
       
-      <Card className="flex flex-col justify-center">
-        {result ? (
-          <div className="space-y-4">
-            <div className="text-center p-6 bg-gray-50 rounded-xl">
-              <p className="text-sm text-gray-500">{t('calculators.discount_you_save')}</p>
-              <p className="text-3xl font-bold text-success-600">{formatCurrency(result.savings)}</p>
+      <div className="hh-card-forest forest-ticket relative mt-8 flex flex-col justify-center p-3">
+        <PerchedMascot size={54} state="happy" label={t('calculators.title')} />
+        <div className="hh-ticket rounded-[18px] px-6 py-6">
+          {result ? (
+            <div className="space-y-4">
+              <div className="text-center">
+                <p className="text-xs uppercase tracking-wide text-[#ECFDF5]/70">{t('calculators.discount_you_save')}</p>
+                <p className="hh-code mt-1 text-2xl text-[#BEF264]">{formatCurrency(result.savings)}</p>
+              </div>
+              <div className="text-center border-t border-dashed border-[#BEF264]/30 pt-4">
+                <p className="text-xs uppercase tracking-wide text-[#ECFDF5]/70">{t('calculators.discount_final_price')}</p>
+                <p className="hh-code mt-1 text-4xl text-[#ECFDF5]">{formatCurrency(result.final)}</p>
+              </div>
             </div>
-            <div className="text-center p-6 bg-primary-50 rounded-xl">
-              <p className="text-sm text-gray-500">{t('calculators.discount_final_price')}</p>
-              <p className="text-4xl font-bold text-primary-600">{formatCurrency(result.final)}</p>
+          ) : (
+            <div className="text-center text-[#ECFDF5]/60 py-10">
+              {t('calculators.enter_values')}
             </div>
-          </div>
-        ) : (
-          <div className="text-center text-gray-500 py-12">
-            {t('calculators.enter_values')}
-          </div>
-        )}
-      </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

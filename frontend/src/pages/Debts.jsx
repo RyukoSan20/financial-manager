@@ -8,6 +8,7 @@ import api from '../services/api';
 import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
 import { PageHeader } from '../components/ui/PageHeader';
+import { BotanicalPageHeader, ForestTicketCard, ForestButton } from '../components/ui/Botanical';
 import { buildFlag, readerFlag } from '../utils/featureFlags';
 import SplitMoneyMovements from '../components/split/SplitMoneyMovements';
 import { useCurrency, sumInDisplay } from '../utils/currency';
@@ -171,43 +172,24 @@ export const Debts = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      {polished ? (
-        <PageHeader
-          title={t('debts.title')}
-          subtitle={t('debts.subtitle')}
-          action={
-            <div className="flex gap-2">
-              <Button onClick={fetchData} variant="outline">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                {t('debts.refresh')}
-              </Button>
-              <Button onClick={() => { setEditingDebt(null); setShowModal(true); }}>
-                <Plus className="w-4 h-4 mr-2" />
-                {t('debts.add')}
-              </Button>
-            </div>
-          }
-        />
-      ) : (
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{t('debts.title')}</h1>
-            <p className="text-gray-500">{t('debts.subtitle')}</p>
-          </div>
+      <BotanicalPageHeader
+        badge={t('debts.badge')}
+        title={t('debts.title')}
+        subtitle={t('debts.subtitle')}
+        action={(
           <div className="flex gap-2">
-            <Button onClick={fetchData} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              {t('debts.refresh')}
-            </Button>
+            <button onClick={fetchData} className="botanical-pill !px-3" aria-label={t('debts.refresh')}>
+              <RefreshCw className="w-4 h-4" />
+            </button>
             {!isSingleAddOn() && (
-              <Button onClick={() => { setEditingDebt(null); setShowModal(true); }}>
-                <Plus className="w-4 h-4 mr-2" />
+              <ForestButton onClick={() => { setEditingDebt(null); setShowModal(true); }}>
+                <Plus className="w-4 h-4" />
                 {t('debts.add')}
-              </Button>
+              </ForestButton>
             )}
           </div>
-        </div>
-      )}
+        )}
+      />
 
       {/* The one add button, in the same place on every page. */}
       <SingleAddButton
@@ -224,6 +206,17 @@ export const Debts = () => {
           debts={debts}
           strategy={debtStrategy}
           onStrategyChange={setDebtStrategy}
+        />
+      )}
+
+      {debts.length > 0 && (
+        <ForestTicketCard
+          data-testid="debts-summary-ticket"
+          eyebrow={t('debts.badge')}
+          title={t('debts.total_remaining')}
+          value={formatCurrency(totalDebt, displayCurrency)}
+          caption={t('debts.monthly_payment') + ': ' + formatCurrency(totalMonthly, displayCurrency)}
+          mascot={{ size: 54, state: totalDebt > 0 ? 'alert' : 'happy', label: t('debts.title') }}
         />
       )}
 
@@ -295,7 +288,7 @@ export const Debts = () => {
           hintKey="debts.empty_hint"
           primaryActionKey="debts.add_first"
           onPrimary={() => { setEditingDebt(null); setShowModal(true); }}
-          mascotMood="idle"
+          mascotMood="happy"
         />
       ) : (
         <div className="space-y-4">

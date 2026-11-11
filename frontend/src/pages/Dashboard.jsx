@@ -32,6 +32,7 @@ import InsightsPanel from '../components/insights/InsightsPanel';
 import MonthTimeline from '../components/dashboard/MonthTimeline';
 import SpendingHeatmapCalendar from '../components/analytics/SpendingHeatmapCalendar';
 import FinancialProfileShowcase from '../components/dashboard/FinancialProfileShowcase';
+import { ForestTicketCard } from '../components/ui/Botanical';
 import Onboarding from '../components/dashboard/Onboarding';
 import { useTheme } from '../contexts/ThemeContext';
 import { IconText } from '../components/ui/IconText';
@@ -513,12 +514,17 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         api.get('/feed/stats').catch(() => null),
         api.get('/debts').catch(() => []),
         api.get('/recurring').catch(() => []),
-        // The calendar of spending: which day was the worst one.
-        api.get('/analytics/spending/daily').catch(() => null),
         // The financial profile is one request for all nine chapters,
         // so it does not hold the card up while eight other requests
         // are in the air.
+        //
+        // The order here is the order of the names above. When the
+        // two drifted apart the profile card was handed the calendar
+        // of spending and said "Belum ada data" to a reader with a
+        // month of transactions.
         api.dashboard.financialProfile(displayCurrency).catch(() => null),
+        // The calendar of spending: which day was the worst one.
+        api.get('/analytics/spending/daily').catch(() => null),
       ]);
 
       if (summaryData.status === 'fulfilled') setSummary(summaryData.value);
@@ -1185,6 +1191,34 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           // so they are tiles: smaller, and tinted with the hue that
           // says what the number means.
           const isHero = i === 0;
+          if (isHero) {
+            // The balance is the forest ticket, with the mascot on its
+            // edge - the same card the household page leads with.
+            return (
+              <BentoItem key={i} span="half" className="summary-amount-measure col-span-full">
+                <ForestTicketCard
+                  data-testid="balance-ticket"
+                  eyebrow={card.label}
+                  caption={accounts.length
+                    ? t('dashboard.accounts_count', '', { count: accounts.length })
+                    : t('dashboard.balance_caption')}
+                  mascot={{
+                    size: 60,
+                    state: (card.value || 0) < 0 ? 'alert' : 'idle',
+                    label: t('dashboard.total_balance'),
+                    lines: [t('dashboard.balance_caption')],
+                  }}
+                >
+                  <p className="hh-code mt-2 text-3xl sm:text-4xl break-words" data-forest-value>
+                    <AnimatedNumber
+                      value={card.value || 0}
+                      format={(n) => formatNative(n, card.currency)}
+                    />
+                  </p>
+                </ForestTicketCard>
+              </BentoItem>
+            );
+          }
           return (
             // The wrapper is what the container query measures. The
             // card cannot be the container itself: a card that is a

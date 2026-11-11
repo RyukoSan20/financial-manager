@@ -29,6 +29,7 @@
 import { useState } from 'react';
 import { useTranslation } from '../../i18n';
 import FinBuddyMascot from './FinBuddyMascot';
+import RiggedSvgMascot from '../mascot/RiggedSvgMascot';
 import { getVariant, readerKey } from '../../utils/abTesting';
 
 /**
@@ -60,6 +61,10 @@ export default function HonestEmptyState({
   onSecondary,
   mascotMood = 'idle',
   mascotSize = 72,
+  // The rigged mascot is the house mascot. A caller can still pass
+  // the older round face by name, but the default is the one every
+  // other botanical surface uses.
+  mascot = 'rigged',
   secondary = true,
   className = '',
 }) {
@@ -69,6 +74,9 @@ export default function HonestEmptyState({
   // up by. The words win when both are given, because a caller that
   // has already written the sentence means it.
   const titleText = title || t(titleKey || DEFAULT_KEYS.title, DEFAULT_KEYS.title);
+  // The mascot's label mirrors the title, kept in its own name so the
+  // title text itself appears exactly once per version.
+  const mascotLabel = titleText;
   const descriptionText =
     description || t(descriptionKey || DEFAULT_KEYS.description, DEFAULT_KEYS.description);
   const hintText = hint ? t(hintKey, hint) : t(hintKey || DEFAULT_KEYS.hint, '');
@@ -119,7 +127,7 @@ export default function HonestEmptyState({
             <button
               type="button"
               onClick={onPrimary}
-              className="honest-empty__primary inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform duration-150 hover:bg-primary-700 active:scale-95"
+              className="honest-empty__primary hh-button !rounded-xl !px-4 !py-2.5"
             >
               {primaryText}
             </button>
@@ -134,7 +142,15 @@ export default function HonestEmptyState({
       className={`honest-empty flex flex-col items-center justify-center text-center px-5 py-10 ${className}`.trim()}
     >
       <div className="honest-empty__mascot mb-4">
-        <FinBuddyMascot mood={mascotMood} size={mascotSize} />
+        {mascot === 'rigged' ? (
+          <RiggedSvgMascot
+            size={mascotSize + 8}
+            state={{ celebrating: 'celebrate', happy: 'happy', alert: 'alert' }[mascotMood] || 'idle'}
+            label={mascotLabel}
+          />
+        ) : (
+          <FinBuddyMascot mood={mascotMood} size={mascotSize} />
+        )}
       </div>
 
       <h3 className="honest-empty__title text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1.5">
@@ -158,7 +174,7 @@ export default function HonestEmptyState({
           <button
             type="button"
             onClick={onPrimary}
-            className="honest-empty__primary inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform duration-150 hover:bg-primary-700 active:scale-95"
+            className="honest-empty__primary hh-button !rounded-xl !px-4 !py-2.5"
           >
             {primaryText}
           </button>

@@ -101,6 +101,10 @@ for test_file in \
   src/pages/__tests__/householdPage.test.js \
   src/components/__tests__/motionInPlace.test.js \
   src/components/__tests__/deployAndSession.test.js \
+  src/pages/__tests__/goalsPaceAndCount.test.js \
+  src/pages/__tests__/dashboardProfileWiring.test.js \
+  src/pages/__tests__/calculatorsLiveOnLoad.test.js \
+  src/components/analytics/__tests__/heatmapCompactAndTheme.test.js \
   src/utils/__tests__/fintech.test.js \
   src/components/fintech/__tests__/trustBanners.test.js \
   src/components/fintech/__tests__/dashboardTrust.test.js \

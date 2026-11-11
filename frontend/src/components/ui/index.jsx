@@ -21,3 +21,4 @@ export { default as HonestEmptyState } from '../common/HonestEmptyState';
 export { default as FinBuddyMascot } from '../common/FinBuddyMascot';
 export { AuroraCard, AuroraCanvas, auroraNavClass, auroraIsOn } from './AuroraCard';
 export { AuroraBackground } from './AuroraBackground';
+export { BOTANICAL, BotanicalPageHeader, ForestTicketCard, PerchedMascot, BotanicalCard, ForestButton } from './Botanical';

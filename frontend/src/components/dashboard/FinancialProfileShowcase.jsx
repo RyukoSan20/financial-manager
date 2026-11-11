@@ -27,7 +27,7 @@ import { Link } from 'react-router-dom';
 import { clsx } from 'clsx';
 
 import AnimatedNumber from '../common/AnimatedNumber';
-import { FinBuddyMascot } from '../ui';
+import RiggedSvgMascot from '../mascot/RiggedSvgMascot';
 import { useTranslation } from '../../i18n';
 import { formatCurrency } from '../../utils/format';
 import {
@@ -37,6 +37,7 @@ import {
   chapterHeadline,
   chapterLink,
   timelinePoints,
+  timelineTodayPosition,
 } from '../../utils/financialProfile';
 
 /**
@@ -85,6 +86,8 @@ function TimelinePoint({ point, selected, onSelect, t }) {
     bill: 'bg-sky-400 ring-sky-200',
     installment: 'bg-amber-400 ring-amber-200',
     goal: 'bg-violet-400 ring-violet-200',
+    spent: 'bg-rose-400 ring-rose-200',
+    earned: 'bg-[#BEF264] ring-[#D9F99D]',
   }[point.kind] || 'bg-slate-300 ring-slate-200';
 
   const kindLabel = {
@@ -92,6 +95,8 @@ function TimelinePoint({ point, selected, onSelect, t }) {
     bill: t('financial_profile.bill'),
     installment: t('financial_profile.installment'),
     goal: t('financial_profile.target'),
+    spent: t('financial_profile.spent'),
+    earned: t('financial_profile.earned'),
   }[point.kind] || '';
 
   return (
@@ -138,7 +143,7 @@ function ThirtyDayRoad({ timeline, t, onRecord }) {
   );
 
   const today = new Date();
-  const todayPosition = 0;
+  const todayPosition = timelineTodayPosition();
 
   return (
     <div className="rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] p-3">
@@ -165,11 +170,11 @@ function ThirtyDayRoad({ timeline, t, onRecord }) {
             className="absolute -translate-x-1/2 flex flex-col items-center"
             style={{ left: `${todayPosition * 100}%` }}
           >
-            <div className="mb-0.5 -mt-6">
-              <FinBuddyMascot mood="happy" size={26} />
+            <div className="mb-0.5 -mt-7">
+              <RiggedSvgMascot state="happy" size={30} label={t('financial_profile.today')} />
             </div>
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 dark:ring-emerald-500/20" />
-            <span className="mt-1 text-[9px] font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#112A20] ring-4 ring-[#BEF264]" />
+            <span className="mt-1 text-[9px] font-bold text-[#112A20] dark:text-[#BEF264] whitespace-nowrap">
               {t('financial_profile.today')}
             </span>
           </div>
@@ -197,7 +202,7 @@ function ThirtyDayRoad({ timeline, t, onRecord }) {
         <button
           type="button"
           onClick={onRecord}
-          className="inline-flex items-center gap-1 rounded-full bg-primary-600 px-3 py-1 text-[11px] font-medium text-white shadow-sm transition-colors hover:bg-primary-700"
+          className="hh-button !rounded-full !px-3 !py-1 !text-[11px]"
         >
           {t('financial_profile.record')}
         </button>
@@ -289,7 +294,7 @@ export default function FinancialProfileShowcase({ profile, onRecord }) {
 
   return (
     <section
-      className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-slate-900/60 shadow-sm"
+      className="hh-card relative overflow-hidden"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       aria-label={t('financial_profile.title')}
@@ -330,12 +335,7 @@ export default function FinancialProfileShowcase({ profile, onRecord }) {
                   if (event.key === 'ArrowRight') { event.preventDefault(); move(1); }
                   if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1); }
                 }}
-                className={clsx(
-                  'shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap',
-                  active
-                    ? 'bg-primary-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10'
-                )}
+                className={clsx('botanical-pill shrink-0 whitespace-nowrap !py-1.5', active && 'is-active')}
               >
                 <span aria-hidden="true">{item.icon}</span>
                 {t(item.labelKey)}
@@ -349,7 +349,7 @@ export default function FinancialProfileShowcase({ profile, onRecord }) {
           {/* The big number, and the calendar beside it. */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              <p className="hh-badge uppercase">
                 {chapter === 'month'
                   ? `✨ ${monthLabel}`
                   : `${t('financial_profile.chapter')} ${CHAPTERS.findIndex((c) => c.key === chapter) + 1} · ${headlineLabel}`}
@@ -426,7 +426,7 @@ export default function FinancialProfileShowcase({ profile, onRecord }) {
             <div className="mt-4 flex items-center justify-end">
               <Link
                 to={link}
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary-700 dark:text-primary-300 hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#112A20] dark:text-[#BEF264] hover:underline"
               >
                 {t('financial_profile.see_all')}
                 <span aria-hidden="true">→</span>

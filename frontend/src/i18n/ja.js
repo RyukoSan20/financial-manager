@@ -174,6 +174,8 @@ export default {
   
   // Dashboard
   dashboard: {
+    accounts_count: "{count} 口座を集計",
+    balance_caption: "全口座の流動残高",
     due_date: "期限",
     range_1d: "24時間",
     range_1w: "1週間",
@@ -744,6 +746,8 @@ export default {
     font: "フォント",
     background: "背景",
     mode: "モード",
+    forest_label: "フォレスト",
+    forest_description: "深い森の緑にライムのアクセント — アプリの標準テーマ",
     emerald_label: "エメラルド（お金らしい緑）",
     emerald_description: "お金らしい緑。落ち着いて読みやすい。",
     blue_label: "ブルー（コーポレート）",
@@ -834,6 +838,7 @@ export default {
     showing_50: "50 / %s 件を表示",
   },
   analytics: {
+    badge: "分析 · パターンと傾向",
     health_message_excellent: "家計の健康状態はとても良好です！",
     health_message_good: "家計の健康状態は良好ですが、改善の余地があります。",
     health_message_fair: "家計の健康状態に注意が必要です。",
@@ -928,6 +933,8 @@ export default {
     preset_tabungan_description: "貯蓄の進捗。目標とキャッシュフロー。",
   },
   goals: {
+    badge: "目標 · 夢のプラン",
+    saved_of_target: "{target} 中 · {percent}",
     remaining: "残り",
     title: "金融目標",
     save_error: "目標の保存に失敗しました: %s",
@@ -950,7 +957,13 @@ export default {
     priority_medium: "中",
     priority_high: "高",
     on_track: "順調",
-    behind: "遅れ",
+    behind: "要追い上げ",
+    pace_on_track: "順調",
+    pace_slightly_behind: "やや遅れ",
+    pace_behind_track: "要追い上げ",
+    pace_overdue: "期限超過",
+    pace_completed: "達成",
+    pace_paused: "一時停止",
     progress: "進捗",
     saved_amount: "%s 達成",
     target_label: "目標 %s",
@@ -994,6 +1007,14 @@ export default {
     ai_cost_price_placeholder: "0",
   },
   budgets: {
+    badge: "予算 · 今月のペース",
+    pacing_title: "{month} の予算",
+    pacing_day: "{total}日中 {day}日目",
+    no_limit: "上限なし",
+    today: "今日",
+    bucket_needs: "必要",
+    bucket_wants: "欲しい",
+    bucket_savings: "貯蓄",
     over_limit: "上限を {amount} 超過",
     delete_error: "予算の削除に失敗しました: %s",
     general_category: "一般",
@@ -1106,6 +1127,7 @@ export default {
   calculators: {
     title: "金融計算ツール",
     subtitle: "日常の家計に関する簡単な計算",
+    badge: "ツール · クイック計算",
     tab_discount: "割引",
     tab_tax: "税とチップ",
     tab_loan: "ローン",
@@ -1170,6 +1192,7 @@ export default {
     budget_rule_note: "50/30/20の予算ルールに従います：50% 必要性、30% 欲しいもの、20% 貯蓄",
   },
   debts: {
+    badge: "負債 · 完済への道",
     remaining: "残り",
     load_error: "負債データの取得に失敗しました: %s",
     save_error: "負債の保存に失敗しました: %s",
@@ -1239,6 +1262,8 @@ export default {
 
 
   accounts: {
+    badge: "ウォレット · 口座と資産",
+    liquid_caption: "{count} 口座の流動残高",
     count: "件の口座",
     total: "合計",
     total_balance: "残高合計",
@@ -1858,11 +1883,15 @@ export default {
     topi: "個",
   },
   transactions: {
+    badge: "記録 · キャッシュフロー",
+    reconcile_pill: "クイック照合",
     loadFailed: "取引を読み込めませんでした",
     loadFailedDesc: "サーバーから一覧を取得できませんでした。もう一度お試しください。",
     retry: "もう一度試す",
   },
   financial_profile: {
+    spent: "支出",
+    earned: "収入",
     title: "財務プロファイル",
     hint: "スワイプ / クリックで章を移動",
     chapter: "章",

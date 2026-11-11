@@ -174,6 +174,8 @@ export default {
   
   // Dashboard
   dashboard: {
+    accounts_count: "{count} rekening dihitung",
+    balance_caption: "Saldo likuid di semua rekening Anda",
     due_date: "Jatuh tempo",
     range_1d: "24 Jam",
     range_1w: "1 Minggu",
@@ -744,6 +746,8 @@ export default {
     font: "Font",
     background: "Latar belakang",
     mode: "Mode",
+    forest_label: "Hutan",
+    forest_description: "Hijau hutan pekat dengan aksen lime — standar tampilan aplikasi",
     emerald_label: "Emerald (Uang Hijau)",
     emerald_description: "Hijau uang. Tenang dan terbaca.",
     blue_label: "Blue (Korporat)",
@@ -834,6 +838,7 @@ export default {
     showing_50: "Menampilkan 50 dari %s lokasi",
   },
   analytics: {
+    badge: "ANALISIS · POLA & TREN",
     health_message_excellent: "Kesehatan keuangan Anda sangat baik!",
     health_message_good: "Kesehatan keuangan Anda baik, tetapi masih bisa lebih baik.",
     health_message_fair: "Kesehatan keuangan Anda perlu perhatian.",
@@ -928,6 +933,8 @@ export default {
     preset_tabungan_description: "Progres menabung. Menuju target dan arus kas.",
   },
   goals: {
+    badge: "TARGET · RENCANA IMPIAN",
+    saved_of_target: "Terkumpul dari {target} · {percent}",
     remaining: "Sisa",
     title: "Target Keuangan",
     save_error: "Gagal menyimpan target: %s",
@@ -949,8 +956,14 @@ export default {
     priority_low: "Rendah",
     priority_medium: "Sedang",
     priority_high: "Tinggi",
-    on_track: "On Track",
-    behind: "Behind",
+    on_track: "Sesuai Rencana",
+    behind: "Perlu Dikejar",
+    pace_on_track: "Sesuai Rencana",
+    pace_slightly_behind: "Sedikit Tertinggal",
+    pace_behind_track: "Perlu Dikejar",
+    pace_overdue: "Lewat Tenggat",
+    pace_completed: "Tercapai",
+    pace_paused: "Dijeda",
     progress: "Progres",
     saved_amount: "%s tersimpan",
     target_label: "%s target",
@@ -994,6 +1007,14 @@ export default {
     ai_cost_price_placeholder: "0",
   },
   budgets: {
+    badge: "BUDGET · PACU BULAN INI",
+    pacing_title: "Budget {month}",
+    pacing_day: "Hari {day} dari {total}",
+    no_limit: "Tanpa batas",
+    today: "Hari ini",
+    bucket_needs: "Kebutuhan",
+    bucket_wants: "Keinginan",
+    bucket_savings: "Tabungan",
     over_limit: "Lebih {amount} dari batas",
     delete_error: "Gagal menghapus budget: %s",
     general_category: "Umum",
@@ -1104,8 +1125,9 @@ export default {
     edit_item: "Edit Item",
   },
   calculators: {
-    title: "Financial Calculators",
+    title: "Kalkulator Keuangan",
     subtitle: "Perhitungan cepat untuk keuangan sehari-hari",
+    badge: "ALAT · HITUNG CEPAT",
     tab_discount: "Discount",
     tab_tax: "Tax & Tip",
     tab_loan: "Loan",
@@ -1170,6 +1192,7 @@ export default {
     budget_rule_note: "Berdasarkan aturan budget 50/30/20: 50% kebutuhan, 30% keinginan, 20% tabungan",
   },
   debts: {
+    badge: "UTANG · JALAN KE LUNAS",
     remaining: "Sisa",
     load_error: "Gagal mengambil data utang: %s",
     save_error: "Gagal menyimpan utang: %s",
@@ -1239,6 +1262,8 @@ export default {
 
 
   accounts: {
+    badge: "DOMPET · REKENING & ASET",
+    liquid_caption: "Saldo likuid di {count} rekening",
     count: "akun",
     total: "Total",
     total_balance: "Total Saldo",
@@ -1858,11 +1883,15 @@ export default {
     topi: "topi",
   },
   transactions: {
+    badge: "CATATAN · ARUS KAS",
+    reconcile_pill: "Rekonsiliasi Cepat",
     loadFailed: "Transaksi gagal dimuat",
     loadFailedDesc: "Daftar transaksi tidak bisa diambil dari server. Coba lagi.",
     retry: "Coba Lagi",
   },
   financial_profile: {
+    spent: "Keluar",
+    earned: "Masuk",
     title: "Profil Keuangan",
     hint: "Geser / Klik pindah bab",
     chapter: "Bab",

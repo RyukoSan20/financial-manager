@@ -351,23 +351,27 @@ export function chapterLink(chapterKey) {
  * The points are put on the line by how many days away they are, so
  * the spacing on the line means something.
  */
-export function timelinePoints(timeline, today, horizonDays = 30) {
+export const TIMELINE_LOOKBACK_DAYS = 7;
+
+export function timelinePoints(timeline, today, horizonDays = 30, lookbackDays = TIMELINE_LOOKBACK_DAYS) {
   const points = [];
   const start = toDate(today);
+  const span = horizonDays + lookbackDays;
 
   for (const item of timeline || []) {
     const when = toDate(item.date);
     if (!when || !start) continue;
 
     const days = daysBetween(start, when);
-    if (days < 0 || days > horizonDays) continue;
+    if (days < -lookbackDays || days > horizonDays) continue;
 
     points.push({
       ...item,
       days,
-      // Where on the line the point sits, as a fraction from nothing
-      // to everything.
-      position: horizonDays > 0 ? days / horizonDays : 0,
+      // Where on the line the point sits, as a fraction from the
+      // first day behind to the last day ahead. Today is at
+      // `todayPosition`, not at the left edge.
+      position: span > 0 ? (days + lookbackDays) / span : 0,
     });
   }
 
@@ -381,6 +385,12 @@ export function timelinePoints(timeline, today, horizonDays = 30) {
  * Money that came in is a plus and money that went out is a minus.
  * Zero has no sign, because nothing did not go anywhere.
  */
+/** Where today sits on the line, as a fraction. */
+export function timelineTodayPosition(horizonDays = 30, lookbackDays = TIMELINE_LOOKBACK_DAYS) {
+  const span = horizonDays + lookbackDays;
+  return span > 0 ? lookbackDays / span : 0;
+}
+
 export function signedValue(value) {
   const number_ = number(value);
   if (number_ > 0) return number_;

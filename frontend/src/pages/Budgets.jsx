@@ -16,6 +16,8 @@ import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
 import { useOnDataMutated } from '../utils/dataSyncBus';
 import { PageHeader } from '../components/ui/PageHeader';
+import { BotanicalPageHeader, ForestButton } from '../components/ui/Botanical';
+import { BudggtPacingCard } from '../components/ui/BudggtTactileComponents';
 import { buildFlag } from '../utils/featureFlags';
 import { categoryName } from '../utils/categoryName';
 import HonestEmptyState from '../components/common/HonestEmptyState';
@@ -147,36 +149,67 @@ export const Budgets = () => {
     );
   }
 
+  // The three buckets of the month, for the pacing card. Each budget
+  // falls into needs, wants or savings by the kind of its category;
+  // whatever cannot be told apart is a need, because the need is the
+  // thing the reader most wants to not overspend.
+  const WANT_KEYS = new Set(['entertainment', 'shopping', 'dining', 'hobby', 'travel', 'subscription']);
+  const SAVING_KEYS = new Set(['savings', 'investment', 'emergency_fund']);
+  const bucketOf = (budget) => {
+    const category = categories.find((c) => c.id === budget.category_id);
+    const key = (category?.system_key || '').toLowerCase();
+    if (SAVING_KEYS.has(key)) return 'savings';
+    if (WANT_KEYS.has(key)) return 'wants';
+    return 'needs';
+  };
+  const buckets = { needs: { spent: 0, limit: 0 }, wants: { spent: 0, limit: 0 }, savings: { spent: 0, limit: 0 } };
+  for (const budget of budgets) {
+    const bucket = buckets[bucketOf(budget)];
+    bucket.limit += parseFloat(budget.amount) || 0;
+    bucket.spent += parseFloat(budget.spent || 0) || 0;
+  }
+  const pacingRows = [
+    { id: 'needs', label: t('budgets.bucket_needs'), spent: buckets.needs.spent, limit: buckets.needs.limit, color: '#7C3AED' },
+    { id: 'wants', label: t('budgets.bucket_wants'), spent: buckets.wants.spent, limit: buckets.wants.limit, color: '#F97316' },
+    { id: 'savings', label: t('budgets.bucket_savings'), spent: buckets.savings.spent, limit: buckets.savings.limit, color: '#10B981', goodWhenFull: true },
+  ].filter((row) => row.limit > 0 || row.spent > 0);
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      {polished ? (
-        <PageHeader
-          title={t('budgets.title')}
-          subtitle={t('budgets.active_count').replace('%s', budgets.length)}
-          action={
-            <Button onClick={() => { setEditingBudget(null); setShowModal(true); }}>
-              <Plus className="w-4 h-4 mr-2" />
-              {t('budgets.add')}
-            </Button>
-          }
-        />
-      ) : (
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{t('budgets.title')}</h1>
-            <p className="text-gray-500 mt-1">
-              {t('budgets.active_count').replace('%s', budgets.length)}
-            </p>
-          </div>
-          {!isSingleAddOn() && (
-            <Button onClick={() => { setEditingBudget(null); setShowModal(true); }}>
-              <Plus className="w-4 h-4 mr-2" />
-              {t('budgets.add')}
-            </Button>
-          )}
-        </div>
-      )}
+      <BotanicalPageHeader
+        badge={t('budgets.badge')}
+        title={t('budgets.title')}
+        subtitle={t('budgets.active_count').replace('%s', budgets.length)}
+        action={!isSingleAddOn() ? (
+          <ForestButton onClick={() => { setEditingBudget(null); setShowModal(true); }}>
+            <Plus className="w-4 h-4" />
+            {t('budgets.add')}
+          </ForestButton>
+        ) : null}
+      />
+
+      {/* The month, paced. The same card the household leads with:
+          the three buckets of the month, each a bar that fills to
+          where the spending is, with today marked on it. */}
+      {budgets.length > 0 && (() => {
+        const now = new Date();
+        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        return (
+          <BudggtPacingCard
+            monthLabel={t('budgets.pacing_title', '', {
+              month: now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+            })}
+            dayLabel={t('budgets.pacing_day', '', { day: now.getDate(), total: totalDays })}
+            currentDay={now.getDate()}
+            totalDays={totalDays}
+            rows={pacingRows}
+            formatAmount={(n) => formatCurrency(n)}
+            noLimitLabel={t('budgets.no_limit')}
+            todayLabel={t('budgets.today')}
+          />
+        );
+      })()}
 
       {/* The one add button, in the same place on every page. */}
       <SingleAddButton

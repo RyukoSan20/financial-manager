@@ -4,6 +4,7 @@ import DateRangeFilterBar from '../components/analytics/DateRangeFilterBar';
 import SpendingHeatmapCalendar from '../components/analytics/SpendingHeatmapCalendar';
 import { rangeParams } from '../utils/dateRange';
 import { Card, CardHeader, CardBody, Badge, Spinner, Button, CountUpNumber, AnimatedProgressBar } from '../components/ui';
+import { BotanicalPageHeader } from '../components/ui/Botanical';
 import api from '../services/api';
 import {
   TrendingUp, TrendingDown, PieChart, BarChart3, Wallet, Target,
@@ -853,24 +854,22 @@ export const Analytics = () => {
   return (
     <div className="space-y-5 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('nav.analytics')}</h1>
-          <p className="text-gray-500 mt-1 text-sm">
-            {t('analytics.subtitle')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={customizing ? 'primary' : 'outline'}
-            size="sm"
+      <BotanicalPageHeader
+        badge={t('analytics.badge')}
+        title={t('nav.analytics')}
+        subtitle={t('analytics.subtitle')}
+        action={(
+          <button
+            type="button"
             onClick={() => setCustomizing((c) => !c)}
+            aria-pressed={customizing}
+            className={`botanical-pill ${customizing ? 'is-active' : ''}`}
           >
-            <Settings2 size={14} className="mr-1.5" />
+            <Settings2 size={14} />
             {t('analytics.customize')}
-          </Button>
-        </div>
-      </div>
+          </button>
+        )}
+      />
 
       {/* The dates.
           A dropdown of three fixed windows could not answer "just

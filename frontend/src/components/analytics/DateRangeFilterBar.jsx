@@ -90,11 +90,7 @@ export default function DateRangeFilterBar({ value, onChange, onApply }) {
                 onClick={() => choosePreset(preset.key)}
                 aria-pressed={isActive}
                 data-testid={`date-preset-${preset.key}`}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-[background-color,color,border-color,box-shadow] duration-150 ${
-                  isActive
-                    ? 'bg-primary-600 text-white shadow-sm'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
+                className={`botanical-pill !py-1.5 !text-xs ${isActive ? 'is-active' : ''}`}
               >
                 {preset.key === 'custom' ? `📅 ${t(`date_range.preset_${preset.key}`)}` : t(`date_range.preset_${preset.key}`)}
               </button>
@@ -150,7 +146,7 @@ export default function DateRangeFilterBar({ value, onChange, onApply }) {
             onClick={applyCustom}
             disabled={!isCustomRangeComplete({ preset: 'custom', start: draftStart, end: draftEnd })}
             data-testid="date-range-apply"
-            className="px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary-700 transition-colors"
+            className="hh-button !rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {t('date_range.apply')}
           </button>

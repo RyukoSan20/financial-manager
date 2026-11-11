@@ -181,11 +181,12 @@ def _timeline_30_days(
     today: Optional[date] = None,
 ) -> List[Dict[str, Any]]:
     """
-    The next thirty days, as points on a line.
+    The week behind and the thirty days ahead, as points on a line.
 
-    Four kinds of thing land on the line: the payday, the bills that
-    recur, the instalments, and the dates the reader's own goals are
-    due.
+    Four kinds of thing land on the line ahead: the payday, the bills
+    that recur, the instalments, and the dates the reader's own goals
+    are due. Behind today, each day the reader spent or was paid is a
+    point too.
 
     Each point is a thing that is going to happen, so the reader can
     see what is coming rather than being surprised by it.
@@ -321,6 +322,47 @@ def _timeline_30_days(
             )
     except Exception as exc:  # noqa: BLE001
         logger.warning(f"Profile goals timeline failed: {exc}")
+
+    # --- the days just behind -----------------------------------------------
+    # A reader who has only just begun has nothing ahead yet - no
+    # bills, no instalments, no due goals - and the line was empty for
+    # them. The week behind is always real: each day they spent or
+    # were paid is a point, so the line shows where they have been
+    # before it shows where they are going.
+    try:
+        from app.models.transaction import Transaction
+
+        since = today - timedelta(days=7)
+        rows = (
+            db.query(
+                Transaction.date,
+                Transaction.type,
+                func.coalesce(func.sum(Transaction.amount), 0),
+                func.count(Transaction.id),
+            )
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.date >= since,
+                Transaction.date <= today,
+                Transaction.type.in_(["income", "expense"]),
+            )
+            .group_by(Transaction.date, Transaction.type)
+            .all()
+        )
+        for when, kind, total, count in rows:
+            if not when:
+                continue
+            points.append(
+                {
+                    "date": when.isoformat(),
+                    "kind": "earned" if kind == "income" else "spent",
+                    "label": ("Masuk" if kind == "income" else "Keluar")
+                    + (f" · {int(count)} transaksi" if count and int(count) > 1 else ""),
+                    "amount": _num(total),
+                }
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Profile recent days failed: {exc}")
 
     points.sort(key=lambda p: p.get("date") or "")
     return points
