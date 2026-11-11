@@ -199,6 +199,28 @@ check('the studio asks the one api module, not the server itself', () => {
 });
 
 // ---------------------------------------------------------------------------
+// The count
+// ---------------------------------------------------------------------------
+
+check('a number that appears for the first time counts up from nothing', () => {
+  // Without a starting point the count begins at the number itself,
+  // so it simply appears - and the reader sees nothing move.
+  const source = read('frontend/src/components/ui/CountUpNumber.jsx');
+  assert.ok(source.includes('from,'), 'the starting point can be given');
+  assert.ok(source.includes('const start = Number.isFinite(Number(from)) ? Number(from) : target;'), 'and it is read');
+  assert.ok(source.includes('useState(finite ? start : 0)'), 'the number starts there');
+  assert.ok(source.includes('from === target ||'), 'and a number that has not moved is not counted');
+
+  for (const [file, needle] of [
+    ['frontend/src/components/health/CuteWellnessBento.jsx', '<CountUpNumber value={numericScore} from={0}'],
+    ['frontend/src/pages/Analytics.jsx', '<CountUpNumber value={healthScore} from={0}'],
+    ['frontend/src/pages/Budgets.jsx', '<CountUpNumber value={Number(budget.spent) || 0} from={0}'],
+  ]) {
+    assert.ok(read(file).includes(needle), `${file} counts from nothing`);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // The query
 // ---------------------------------------------------------------------------
 

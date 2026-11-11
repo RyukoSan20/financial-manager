@@ -343,7 +343,7 @@ export const Budgets = () => {
                     <div>
                       <span className="text-gray-500">{t('budgets.spent_label')}</span>
                       <span className="font-medium text-gray-900">
-                        <CountUpNumber value={Number(budget.spent) || 0} format={(n) => formatCurrency(n, budget.currency)} />
+                        <CountUpNumber value={Number(budget.spent) || 0} from={0} format={(n) => formatCurrency(n, budget.currency)} />
                       </span>
                     </div>
                     <div>

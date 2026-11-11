@@ -1825,7 +1825,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className={textSecondary}>
-                      <CountUpNumber value={Number(goal.current_amount) || 0} format={(n) => formatCurrency(n, goal.currency)} />
+                      <CountUpNumber value={Number(goal.current_amount) || 0} from={0} format={(n) => formatCurrency(n, goal.currency)} />
                     </span>
                     <span className={`font-medium ${textPrimary}`}>{formatCurrency(goal.target_amount, goal.currency)}</span>
                   </div>

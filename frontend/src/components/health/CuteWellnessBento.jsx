@@ -325,7 +325,7 @@ export default function CuteWellnessBento({
                       appears all at once is a number; one that
                       counts up is a reading being taken. */}
                   <p className="text-5xl font-bold text-gray-900 dark:text-gray-50 tabular-nums leading-none tracking-tight">
-                    <CountUpNumber value={numericScore} format={(n) => Math.round(n)} />
+                    <CountUpNumber value={numericScore} from={0} format={(n) => Math.round(n)} />
                   </p>
                   <span className="text-sm text-gray-400 dark:text-gray-500 font-medium tabular-nums">
                     /100

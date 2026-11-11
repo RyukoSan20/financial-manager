@@ -63,6 +63,15 @@ export default function CountUpNumber({
   format = (n) => String(n),
   className = '',
   onDone,
+  // Where the count starts from, when it is not the old value.
+  //
+  // A number that changes from one value to another starts at the old
+  // one, because the old one is what was on the screen. A number that
+  // appears for the first time - a score, a total that was never
+  // there - has no old value, and starting at the new one means it
+  // simply appears. Saying where to start from lets it count up from
+  // nothing instead.
+  from,
 }) {
   const target = Number(value);
   const finite = Number.isFinite(target);
@@ -71,12 +80,16 @@ export default function CountUpNumber({
   // is worked out from the value itself.
   const places = decimals === undefined ? decimalsOf(target) : decimals;
 
+  // Where the count starts from, and whether it has been told to
+  // start from somewhere other than the number itself.
+  const start = Number.isFinite(Number(from)) ? Number(from) : target;
+
   // The number that is on the screen right now.
-  const [shown, setShown] = useState(finite ? target : 0);
+  const [shown, setShown] = useState(finite ? start : 0);
 
   // Where the count starts from, kept in a ref so that a rerender in
   // the middle of a count does not restart it.
-  const fromRef = useRef(finite ? target : 0);
+  const fromRef = useRef(finite ? start : 0);
   const frameRef = useRef(null);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
@@ -92,7 +105,7 @@ export default function CountUpNumber({
     // Nothing to count through: the number is the same, the
     // difference is too small to see, or the reader has asked for
     // less movement. The number is simply set.
-    if (!shouldAnimate(from, target, places) || prefersReducedMotion()) {
+    if (from === target || !shouldAnimate(from, target, places) || prefersReducedMotion()) {
       fromRef.current = target;
       setShown(target);
       doneRef.current?.();

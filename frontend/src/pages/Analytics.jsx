@@ -467,7 +467,7 @@ export const Analytics = () => {
                           the number that arrives is the one that was
                           being calculated. */}
                       <p className="text-5xl font-bold text-gray-900 dark:text-gray-100 mt-2 tabular-nums">
-                        <CountUpNumber value={healthScore} format={(n) => Math.round(n)} />
+                        <CountUpNumber value={healthScore} from={0} format={(n) => Math.round(n)} />
                         <span className="text-3xl text-gray-400 dark:text-gray-500">/100</span>
                       </p>
                       <Badge variant={getScoreLabel(healthScore).color} className="mt-2">
@@ -530,7 +530,7 @@ export const Analytics = () => {
                     ) : (
                       <>
                         <p className={`text-lg font-bold mt-0.5 ${getScoreColor(value.score)}`}>
-                          <CountUpNumber value={value.score} format={(n) => Math.round(n)} />
+                          <CountUpNumber value={value.score} from={0} format={(n) => Math.round(n)} />
                           <span className="text-xs text-gray-400">/{value.max || 25}</span>
                         </p>
                         {/* Each part is a bar of its own. A number out
