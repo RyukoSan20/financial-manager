@@ -54,22 +54,56 @@ CONTEXT = re.compile(
 )
 CALL = re.compile(r"^[\s]*[\w.]*\(")
 
+# After one of these characters (ignoring whitespace), a slash starts a
+# regular-expression literal rather than a division. A test often embeds
+# a snippet of source inside such a literal - `!/return api\.request/` -
+# and the name inside it must not be read as a real use of the helper.
+# `<` is deliberately excluded so a JSX closing tag `</div>` is never
+# mistaken for the start of a regex.
+_REGEX_PREV_CHARS = set("(,{[;:=!&|?")
+_REGEX_PREV_KEYWORDS = {
+    "return", "typeof", "instanceof", "new", "delete",
+    "void", "do", "else", "yield", "await", "case",
+}
+
 
 def strip_comments_and_strings(src):
     """
-    Blank out comments and string bodies.
+    Blank out comments, string bodies and regex literals.
 
     This walks the text once instead of running a pattern per quote
     kind. Separate patterns get out of step: an apostrophe inside a
     comment opens a "string" that runs on until the next apostrophe
     somewhere else, and everything between is swallowed.
 
-    The comments and the strings are blanked at the same time, so a
-    url inside a string is never mistaken for a comment.
+    The comments, the strings and the regular-expression literals are
+    blanked at the same time, so a url inside a string is never mistaken
+    for a comment, and a helper name written inside a regex pattern (as
+    tests often do) is never read as a real use of that helper.
     """
     out = []
+    # A short tail of what has been emitted, so a slash can be placed as
+    # either a regex literal (in a value position) or a division.
+    recent = ""
     i = 0
     n = len(src)
+
+    def emit(text):
+        nonlocal recent
+        out.append(text)
+        recent = (recent + text)[-24:]
+
+    def blank_body(body):
+        # Keep the delimiters and the line breaks; blank everything
+        # else, so line numbers and import statements survive.
+        if len(body) <= 1:
+            return body
+        return (
+            body[0]
+            + "".join(c if c == "\n" else " " for c in body[1:-1])
+            + body[-1]
+        )
+
     while i < n:
         ch = src[i]
         nxt = src[i + 1] if i + 1 < n else ""
@@ -80,14 +114,14 @@ def strip_comments_and_strings(src):
             body = src[i:end]
             # The whole comment is blanked, but the line breaks stay
             # so the line numbers of what follows are still right.
-            out.append("".join(c if c == "\n" else " " for c in body))
+            emit("".join(c if c == "\n" else " " for c in body))
             i = end
             continue
 
         if ch == "/" and nxt == "/":
             end = src.find("\n", i)
             end = n if end < 0 else end
-            out.append(" " * (end - i))
+            emit(" " * (end - i))
             i = end
             continue
 
@@ -108,15 +142,48 @@ def strip_comments_and_strings(src):
             # The quote marks are kept so that an import statement can
             # still be read. Only the body of the string is blanked,
             # and the line breaks stay so the line numbers are right.
-            out.append(
-                body[0]
-                + "".join(c if c == "\n" else " " for c in body[1:-1])
-                + (body[-1] if len(body) > 1 else "")
-            )
+            emit(blank_body(body))
             i = j
             continue
 
-        out.append(ch)
+        # A regular-expression literal, when the slash sits in a value
+        # position. Its body is blanked like a string, so a name written
+        # inside the pattern is not read as a use of a helper.
+        if ch == "/":
+            prefix = recent.rstrip()
+            prev = prefix[-1] if prefix else ""
+            value_pos = prev == "" or prev in _REGEX_PREV_CHARS
+            if not value_pos:
+                m = re.search(r"([A-Za-z_$][\w$]*)$", prefix)
+                if m and m.group(1) in _REGEX_PREV_KEYWORDS:
+                    value_pos = True
+            if value_pos:
+                j = i + 1
+                in_class = False
+                closed = False
+                while j < n:
+                    c = src[j]
+                    if c == "\\":
+                        j += 2
+                        continue
+                    if c == "\n":
+                        break
+                    if c == "[":
+                        in_class = True
+                    elif c == "]":
+                        in_class = False
+                    elif c == "/" and not in_class:
+                        j += 1
+                        closed = True
+                        break
+                    j += 1
+                if closed:
+                    emit(blank_body(src[i:j]))
+                    i = j
+                    continue
+            # Not a regex after all - an ordinary division slash.
+
+        emit(ch)
         i += 1
 
     return "".join(out)
