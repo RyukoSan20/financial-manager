@@ -1051,18 +1051,45 @@ export const Analytics = () => {
         </Card>
       )}
 
-      {/* The calendar of spending: which day was the worst one.
-          It is the question a monthly total cannot answer, so it
-          gets its own card, above the widgets. */}
+      {/* The calendar of spending (which day was the worst one) sits
+          side-by-side with a compact health-score summary in a
+          twelve-column Bento row. The calendar is the question a monthly
+          total cannot answer, so it takes the wider seven columns; the
+          score is the glance-able verdict in the remaining five. */}
       {dailySpending?.days?.length ? (
-        <Card className="mb-5">
-          <CardBody>
-            <SpendingHeatmapCalendar
-              days={dailySpending.days}
-              month={calendarMonth}
-            />
-          </CardBody>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-5 items-stretch">
+          <Card className="lg:col-span-7">
+            <CardBody>
+              <SpendingHeatmapCalendar
+                days={dailySpending.days}
+                month={calendarMonth}
+              />
+            </CardBody>
+          </Card>
+          <Card className="lg:col-span-5">
+            <CardBody className="h-full flex flex-col justify-center">
+              <p className="text-gray-500 text-sm font-medium">{t('analytics.widget_health_label')}</p>
+              {showHealthScore ? (
+                <>
+                  <p className="text-4xl font-bold text-gray-900 dark:text-gray-100 mt-2 tabular-nums">
+                    <CountUpNumber value={healthScore} from={0} format={(n) => Math.round(n)} />
+                    <span className="text-2xl text-gray-400 dark:text-gray-500">/100</span>
+                  </p>
+                  <Badge variant={getScoreLabel(healthScore).color} className="mt-2 self-start">
+                    {getScoreLabel(healthScore).label}
+                  </Badge>
+                </>
+              ) : (
+                <p className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-snug mt-2">
+                  {t('analytics.health_need_transactions')}
+                </p>
+              )}
+              <p className="text-xs text-gray-400 mt-3 leading-snug">
+                {t('analytics.metric_explanation')}
+              </p>
+            </CardBody>
+          </Card>
+        </div>
       ) : null}
 
       {/* Widgets */}

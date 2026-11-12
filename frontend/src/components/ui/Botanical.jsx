@@ -20,7 +20,18 @@
  */
 
 import { clsx } from 'clsx';
-import RiggedSvgMascot from '../mascot/RiggedSvgMascot';
+import KanaheiStationeryMascot from '../mascot/KanaheiStationeryMascot';
+
+// The perched companion is the Kanahei stationery mascot. The rigged
+// pixel mascot keeps its own states (idle/happy/celebrate/alert); the
+// Kanahei one has no "celebrate", so it maps to "happy".
+const KANAHEI_STATE = {
+  idle: 'idle',
+  happy: 'happy',
+  celebrate: 'happy',
+  thinking: 'thinking',
+  alert: 'alert',
+};
 
 export const BOTANICAL = Object.freeze({
   canvas: '#F5F3EC',
@@ -124,13 +135,13 @@ export function ForestTicketCard({
             {eyebrow}
           </p>
         ) : null}
-        {title ? <h2 className="mt-1 text-base font-bold text-[#ECFDF5]">{title}</h2> : null}
+        {title ? <h2 className="mt-1 text-base font-bold" style={{ color: '#FFF8E7' }}>{title}</h2> : null}
         {value !== undefined && value !== null ? (
-          <p className="hh-code mt-2 text-3xl sm:text-4xl break-words" data-forest-value>
+          <p className="hh-code mt-2 text-3xl sm:text-4xl break-words" data-forest-value style={{ color: '#FFF8E7' }}>
             {value}
           </p>
         ) : null}
-        {caption ? <p className="mt-2 text-xs text-[#ECFDF5]/80">{caption}</p> : null}
+        {caption ? <p className="mt-2 text-xs" data-forest-caption style={{ color: '#EDE6D6' }}>{caption}</p> : null}
         {children}
       </div>
     </section>
@@ -154,6 +165,11 @@ export function PerchedMascot({
   className = '',
   ...rest
 }) {
+  // `mode` and `lines` belonged to the rigged pixel mascot; they are
+  // accepted and ignored here so every existing call site keeps working.
+  void mode;
+  void lines;
+  const note = Array.isArray(lines) && lines.length ? lines[0] : undefined;
   return (
     <div
       data-perched-mascot
@@ -164,7 +180,14 @@ export function PerchedMascot({
       )}
       style={{ top: `-${Math.round(size * 0.55)}px` }}
     >
-      <RiggedSvgMascot size={size} state={state} mode={mode} label={label} lines={lines} {...rest} />
+      <KanaheiStationeryMascot
+        size={size}
+        state={KANAHEI_STATE[state] || 'idle'}
+        label={label}
+        note={note}
+        noteTitle={label}
+        {...rest}
+      />
     </div>
   );
 }

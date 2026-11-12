@@ -1209,7 +1209,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                     lines: [t('dashboard.balance_caption')],
                   }}
                 >
-                  <p className="hh-code mt-2 text-3xl sm:text-4xl break-words" data-forest-value>
+                  <p className="hh-code mt-2 text-3xl sm:text-4xl whitespace-nowrap tabular-nums" data-forest-value style={{ color: '#FFF8E7' }}>
                     <AnimatedNumber
                       value={card.value || 0}
                       format={(n) => formatNative(n, card.currency)}
@@ -1248,7 +1248,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   {/* The label is small and quiet so the amount is the
                       first thing read. */}
                   <p
-                    className={`text-xs font-semibold uppercase tracking-wider leading-none truncate ${card.labelClass}`}
+                    className={`text-xs font-semibold uppercase tracking-wider leading-none whitespace-nowrap ${card.labelClass}`}
                   >
                     {card.label}
                   </p>

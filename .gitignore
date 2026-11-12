@@ -69,3 +69,4 @@ frontend/node_modules
 
 # The design guardrail skill, installed locally by hand.
 .claude/
+fm-baseline/

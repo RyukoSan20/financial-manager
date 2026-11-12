@@ -577,3 +577,58 @@
   /* mascotBob mascotJump mascotShake mascotSparkle mascotBubble
      pacingPulse hhWave hhEnter: all turned off above. */
 }
+
+/* --- the kanahei stationery mascot ------------------------------------- */
+
+/* The flat 2D companion blinks and wiggles its ears on a slow loop.
+   Both animate a transform only, so the layout never moves. */
+.kanahei-mascot__svg .kanahei-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kanahei-blink 4.2s infinite;
+}
+
+.kanahei-mascot__svg .kanahei-ear {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.kanahei-mascot__svg .kanahei-ear--left {
+  animation: kanahei-wiggle-left 5s ease-in-out infinite;
+}
+
+.kanahei-mascot__svg .kanahei-ear--right {
+  animation: kanahei-wiggle-right 5s ease-in-out infinite;
+}
+
+.kanahei-mascot[data-state="happy"] .kanahei-mascot__svg {
+  animation: kanahei-hop 1.2s ease-in-out infinite;
+}
+
+@keyframes kanahei-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+@keyframes kanahei-wiggle-left {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-7deg); }
+}
+
+@keyframes kanahei-wiggle-right {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(7deg); }
+}
+
+@keyframes kanahei-hop {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kanahei-mascot__svg .kanahei-eyes,
+  .kanahei-mascot__svg .kanahei-ear,
+  .kanahei-mascot[data-state="happy"] .kanahei-mascot__svg {
+    animation: none;
+  }
+}

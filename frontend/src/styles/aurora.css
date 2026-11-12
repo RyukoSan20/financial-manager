@@ -570,6 +570,18 @@
   opacity: 0.55;
 }
 
+/* Light Mode keeps a clean, uniform Kakeibo warm off-white canvas:
+   the neon drifting blobs are a dark-mode flourish only. In the light
+   they washed the cream page with lime/sky/orange tints, so they are
+   switched off and the page stays #FAF9F6. */
+html:not(.dark)[data-ui-aurora="on"] .aurora-blob {
+  display: none !important;
+}
+
+html:not(.dark)[data-ui-aurora="on"] .aurora-canvas::before {
+  background: none !important;
+}
+
 @keyframes aurora-drift-one {
   0%,
   100% {

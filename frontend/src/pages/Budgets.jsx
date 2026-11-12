@@ -64,6 +64,9 @@ export const Budgets = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
+  // Which budget's breakdown is open. The full-width Rincian bar is
+  // gone from the default view; the lines open for one card at a time.
+  const [expandedBudgetId, setExpandedBudgetId] = useState(null);
 
   // Which version of the budget page this reader sees. It is decided
   // on this device, and the reader sees the same version every time.
@@ -289,25 +292,44 @@ export const Budgets = () => {
           )}
         </>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {budgets.map((budget) => {
-            const utilization = (parseFloat(budget.spent || 0) / parseFloat(budget.amount)) * 100;
-            const remaining = parseFloat(budget.amount) - parseFloat(budget.spent || 0);
+            const spent = parseFloat(budget.spent || 0);
+            const amount = parseFloat(budget.amount) || 0;
+            const utilization = amount > 0 ? (spent / amount) * 100 : 0;
+            const remaining = amount - spent;
             const category = categories.find(c => c.id === budget.category_id);
-            
+            const isOpen = expandedBudgetId === budget.id;
+            // Soft sage while there is room, terracotta once past 80%.
+            const barColour = utilization > 80 ? '#E07A5F' : '#52796F';
+
             return (
-              <Card key={budget.id} className="!p-5 hover:shadow-md transition-shadow">
+              <div
+                key={budget.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setExpandedBudgetId(isOpen ? null : budget.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setExpandedBudgetId(isOpen ? null : budget.id);
+                  }
+                }}
+                className="group text-left rounded-[24px] border border-[#EAE6DF] dark:border-white/10 bg-white dark:bg-gray-900 p-5 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#52796F]/40 cursor-pointer"
+              >
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      utilization > 100 ? 'bg-danger-100 text-danger-600' :
-                      utilization > 80 ? 'bg-warning-100 text-warning-600' :
-                      'bg-primary-100 text-primary-600'
-                    }`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+                      style={{
+                        backgroundColor: utilization > 80 ? '#F6E7E1' : '#E6EFEA',
+                        color: barColour,
+                      }}
+                    >
                       <Target className="w-5 h-5" />
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[#2D312E] dark:text-gray-100 truncate">
                         {category ? categoryName(category, language) : (budget.name || t('budgets.default_name'))}
                       </p>
                       <p className="text-sm text-gray-500">
@@ -315,16 +337,18 @@ export const Budgets = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1 shrink-0">
                     <button
-                      onClick={() => { setEditingBudget(budget); setShowModal(true); }}
+                      onClick={(e) => { e.stopPropagation(); setEditingBudget(budget); setShowModal(true); }}
                       className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                      aria-label={t('budgets.edit')}
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(budget.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(budget.id); }}
                       className="p-2 text-gray-400 hover:text-danger-600 hover:bg-danger-50 rounded-lg"
+                      aria-label={t('budgets.delete_confirm')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -332,19 +356,15 @@ export const Budgets = () => {
                 </div>
 
                 <div className="space-y-3">
-                  {/* The budget fills like a liquid rather than
-                      sliding like a block, so the reader can see the
-                      level of it. */}
+                  {/* A soft rounded bar: sage while there is room,
+                      terracotta once past 80%. It fills from nothing and
+                      carries the tick for where the reader should be by
+                      now. The liquid layer stays for the readers who
+                      asked for it; the other branch is the plain one. */}
                   {moneyLayerOn() ? (
                     <FluidProgressBar
                       value={Math.min(utilization, 100)}
-                      colour={
-                        utilization > 100
-                          ? 'rgb(244 63 94)'
-                          : utilization > 80
-                          ? 'rgb(245 158 11)'
-                          : 'rgb(16 185 129)'
-                      }
+                      colour={barColour}
                       size="md"
                       day={currentDay}
                       totalDays={daysInMonth}
@@ -355,11 +375,6 @@ export const Budgets = () => {
                       }
                     />
                   ) : (
-                    /* The bar is filled from nothing to where it
-                       should be, so the reader sees the line move.
-                       The liquid layer stays as it was for the
-                       readers who asked for it; this is the plain
-                       one. */
                     <AnimatedProgressBar
                       percent={utilization}
                       day={currentDay}
@@ -371,34 +386,38 @@ export const Budgets = () => {
                       }
                     />
                   )}
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <div>
+
+                  <div className="flex items-center justify-between text-sm gap-2">
+                    <div className="min-w-0">
                       <span className="text-gray-500">{t('budgets.spent_label')}</span>
-                      <span className="font-medium text-gray-900">
+                      <span className="font-medium text-[#2D312E] dark:text-gray-100 whitespace-nowrap">
                         <CountUpNumber value={Number(budget.spent) || 0} from={0} format={(n) => formatCurrency(n, budget.currency)} />
                       </span>
                     </div>
-                    <div>
+                    <div className="min-w-0 text-center">
                       <span className="text-gray-500">{t('budgets.budget_label')}</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(budget.amount, budget.currency)}</span>
+                      <span className="font-medium text-[#2D312E] dark:text-gray-100 whitespace-nowrap">{formatCurrency(amount, budget.currency)}</span>
                     </div>
-                    <div>
-                      <span className="text-gray-500">{t('budgets.left_label')}</span>
-                      <span className={`font-medium ${remaining >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
+                    <div className="min-w-0 text-right">
+                      <span className={`font-medium whitespace-nowrap ${remaining >= 0 ? 'text-[#2F6F4F]' : 'text-danger-600'}`}>
+                        <span className="text-gray-500">{t('budgets.left_label')}</span>
                         <CountUpNumber value={remaining} format={(n) => formatCurrency(n, budget.currency)} />
                       </span>
                     </div>
                   </div>
 
-                  <BreakdownViewer
-                    parentType="budget"
-                    parentId={budget.id}
-                    title={t('budgets.breakdown_title')}
-                    compact
-                  />
+                  {/* The lines open only for the card the reader tapped. */}
+                  {isOpen && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <BreakdownViewer
+                        parentType="budget"
+                        parentId={budget.id}
+                        title={t('budgets.breakdown_title')}
+                      />
+                    </div>
+                  )}
                 </div>
-              </Card>
+              </div>
             );
           })}
         </div>

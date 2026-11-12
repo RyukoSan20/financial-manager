@@ -1052,8 +1052,8 @@ html[data-theme='dark'] body {
    --------------------------------------------------------------------------- */
 
 :root {
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Plus Jakarta Sans', 'Inter', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /*
    * The size of the text, as the reader set it in the settings.

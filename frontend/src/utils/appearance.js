@@ -199,8 +199,8 @@ export const FONT_FAMILIES = {
     labelKey: 'appearance.sans_label',
     descriptionKey: 'appearance.sans_description',
     stack:
-      "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-    numeric: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
+      "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+    numeric: "'Plus Jakarta Sans', 'Inter', ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
   },
   serif: {
     id: 'serif',

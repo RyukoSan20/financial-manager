@@ -21,6 +21,7 @@
 
 import { useMemo, useState } from 'react';
 import { Flame, X } from 'lucide-react';
+import KakeiboHoverBoard from '../ui/KakeiboHoverBoard';
 
 /**
  * A rupiah amount, shortened to fit inside a day cell.
@@ -108,6 +109,7 @@ export function spendingByDate(days = []) {
 export default function SpendingHeatmapCalendar({ days = [], month, onSelect }) {
   const { t } = useTranslation();
   const [selected, setSelected] = useState(null);
+  const [hovered, setHovered] = useState(null);
 
   const [year, monthIndex] = useMemo(() => {
     if (!month) {
@@ -192,14 +194,21 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect }) 
           const isWorst = worst && day.date === worst.date && day.total > 0;
 
           return (
-            <button
+            <div
               key={day.key}
+              className="relative"
+              onMouseEnter={() => setHovered(day.date)}
+              onMouseLeave={() => setHovered((v) => (v === day.date ? null : v))}
+            >
+            <button
               type="button"
               onClick={() => pick(day)}
+              onFocus={() => setHovered(day.date)}
+              onBlur={() => setHovered((v) => (v === day.date ? null : v))}
               data-testid={`heatmap-day-${day.day}`}
               data-level={level}
               aria-label={`${day.date}: ${rupiah.format(day.total)}`}
-              className={`relative h-14 sm:h-16 rounded-xl p-1.5 flex flex-col justify-between transition-[transform,box-shadow] duration-150 hover:scale-[1.03] hover:shadow-md ${HEAT_CLASSES[level]} ${
+              className={`relative h-14 sm:h-16 w-full rounded-xl p-1.5 flex flex-col justify-between transition-[transform,box-shadow] duration-150 hover:scale-[1.03] hover:shadow-md ${HEAT_CLASSES[level]} ${
                 selected === day.date ? 'ring-2 ring-[#112A20]' : ''
               }`}
             >
@@ -215,6 +224,21 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect }) 
                 </span>
               ) : null}
             </button>
+
+            {/* The day's spending on a little stationery board, on hover
+                or focus. */}
+            {hovered === day.date && day.hasSpending && day.total > 0 ? (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30">
+                <KakeiboHoverBoard
+                  title={day.date}
+                  subtitle={t('heatmap.transaction_count', '', { count: day.count || 0 })}
+                  footerLabel={t('heatmap.title')}
+                  footerValue={rupiah.format(day.total)}
+                  side="bottom"
+                />
+              </div>
+            ) : null}
+            </div>
           );
         })}
       </div>

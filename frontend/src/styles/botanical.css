@@ -26,7 +26,7 @@
   --botanical-forest-hover: #1A3C2E;
   --botanical-lime: #BEF264;
   --botanical-mist: #ECFDF5;
-  --botanical-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, 'Times New Roman', serif;
+  --botanical-serif: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .dark {
@@ -166,6 +166,37 @@ button[style*="#a14a0a" i],
   box-shadow: 0 1px 0 rgba(17, 42, 32, 0.08), 0 14px 34px rgba(17, 42, 32, 0.18);
 }
 
+/* The hero ticket surface is pinned to OsidOri Deep Sage in BOTH light
+   and dark mode, so `Total Saldo` on /, /accounts, /goals and
+   /calculators always reads at >= 7:1 and never washes out on the
+   cream canvas. The amount and title are warm cream, the caption a
+   soft oat, the badge a mint chip - all high-contrast on the sage. */
+[data-forest-ticket] {
+  background: #2F4842 !important;
+  border: 1px solid #3D5A52 !important;
+  border-radius: 24px !important;
+  color: #FFF8E7 !important;
+}
+
+.dark [data-forest-ticket] {
+  background: #2F4842 !important;
+  border: 1px solid #3D5A52 !important;
+}
+
+[data-forest-ticket] [data-forest-value],
+[data-forest-ticket] h2 {
+  color: #FFF8E7 !important;
+}
+
+[data-forest-ticket] [data-forest-caption] {
+  color: #EDE6D6 !important;
+}
+
+[data-forest-ticket] [data-forest-badge] {
+  background: #D8F3DC;
+  color: #1B3B32;
+}
+
 .forest-ticket .hh-ticket {
   border: 1px dashed rgba(190, 242, 100, 0.35);
 }
@@ -248,5 +279,104 @@ button[style*="#a14a0a" i],
   .botanical-switch::after,
   .botanical-bar > span {
     transition: none;
+  }
+}
+
+/* --- the kakeibo hover board ------------------------------------------- */
+
+/* A Japanese-stationery postcard popover: a warm off-white card with a
+   warm-brown hairline outline, a soft rounded corner, and a gentle
+   spring as it appears. */
+.kakeibo-hoverboard {
+  background: #FFFDF9;
+  border: 1.5px solid #4A3F35;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(74, 63, 53, 0.18);
+  padding: 12px 14px;
+  min-width: 180px;
+  color: #3A2F25;
+  animation: kakeibo-pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dark .kakeibo-hoverboard {
+  background: #211C17;
+  border-color: #6B5B4A;
+  color: #F3ECE0;
+}
+
+.kakeibo-hoverboard__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.kakeibo-hoverboard__title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.kakeibo-hoverboard__subtitle {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.kakeibo-hoverboard__close {
+  line-height: 1;
+  font-size: 18px;
+  color: #9C8A76;
+  padding: 0 2px;
+}
+
+.kakeibo-hoverboard__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.kakeibo-hoverboard__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.kakeibo-hoverboard__line-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.kakeibo-hoverboard__line-value {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.kakeibo-hoverboard__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(74, 63, 53, 0.18);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@keyframes kakeibo-pop {
+  0% { opacity: 0; transform: translateY(6px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kakeibo-hoverboard {
+    animation: none;
   }
 }

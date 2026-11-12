@@ -245,23 +245,14 @@ export const Accounts = () => {
                     // is at most five degrees, and it does not happen
                     // at all for a reader who has asked for less
                     // movement.
-                    <TiltCard key={account.id} className="rounded-2xl">
-                    <Card
-                      tier="tile"
-                      hover
-                      hue={
-                        type === 'bank' ? 'sky' :
-                        type === 'cash' ? 'emerald' :
-                        type === 'e-wallet' ? 'violet' :
-                        type === 'credit_card' ? 'amber' :
-                        'slate'
-                      }
-                      className="!p-4 h-full"
+                    <TiltCard key={account.id} className="rounded-[24px]">
+                    <div
+                      className="rounded-[24px] border border-[#EAE6DF] dark:border-white/10 bg-white dark:bg-gray-900 !p-4 h-full transition-shadow hover:shadow-md"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                            type === 'bank' ? 'bg-blue-100 text-blue-600' :
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                            type === 'bank' ? 'bg-[#E6EFEA] text-[#52796F]' :
                             type === 'cash' ? 'bg-green-100 text-green-600' :
                             type === 'e-wallet' ? 'bg-purple-100 text-purple-600' :
                             type === 'credit_card' ? 'bg-orange-100 text-orange-600' :
@@ -270,7 +261,7 @@ export const Accounts = () => {
                             <Icon className="w-6 h-6" />
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-900">{account.name}</p>
+                            <p className="font-semibold text-[#2D312E] dark:text-gray-100">{account.name}</p>
                             <p className="text-sm text-gray-500">
                               {account.currency}
                               {account.bank_name ? ` · ${account.bank_name}` : ''}
@@ -280,7 +271,7 @@ export const Accounts = () => {
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <p className={`font-bold text-lg tabular-nums ${
-                              parseFloat(account.balance) >= 0 ? 'text-gray-900' : 'text-danger-600'
+                              parseFloat(account.balance) >= 0 ? 'text-[#2D312E] dark:text-gray-100' : 'text-danger-600'
                             }`}>
                               {formatNative(account.balance, account.currency)}
                             </p>
@@ -314,7 +305,7 @@ export const Accounts = () => {
                           </div>
                         </div>
                       </div>
-                    </Card>
+                    </div>
                     </TiltCard>
                   ))}
                 </div>

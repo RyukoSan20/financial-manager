@@ -98,13 +98,18 @@ export default function DateRangeFilterBar({ value, onChange, onApply }) {
           })}
         </div>
 
-        {/* What the numbers are about. */}
-        <span
-          className="ml-auto text-xs text-gray-500 dark:text-gray-400"
-          data-testid="date-range-label"
-        >
-          {label}
-        </span>
+        {/* What the numbers are about. When the custom range is chosen
+            but not yet applied, the label would just repeat the custom
+            pill's own words on the far right - so it is dropped until a
+            real range is in force. */}
+        {choice.preset === 'custom' && !isCustomRangeComplete(choice) ? null : (
+          <span
+            className="ml-auto text-xs text-gray-500 dark:text-gray-400"
+            data-testid="date-range-label"
+          >
+            {label}
+          </span>
+        )}
       </div>
 
       {/* The two dates. */}

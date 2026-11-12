@@ -16,6 +16,7 @@ import { BreakdownViewer } from '../components/common/BreakdownViewer';
 import { useTranslation } from '../i18n';
 import { PageHeader } from '../components/ui/PageHeader';
 import { BotanicalPageHeader, ForestTicketCard, ForestButton, PerchedMascot } from '../components/ui/Botanical';
+import KanaheiStampRallyCard from '../components/goals/KanaheiStampRallyCard';
 import { buildFlag } from '../utils/featureFlags';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
@@ -175,6 +176,32 @@ export const Goals = () => {
     }
   };
 
+  // The week's stamp rally. A day earns a stamp when a goal was moved
+  // on it - the server stamps `updated_at` when a contribution lands -
+  // so the card reflects real activity rather than a decoration. The
+  // week runs Monday-first, to match the day labels. It is worked out
+  // before the loading guard so the hook order never changes.
+  const stampDays = useMemo(() => {
+    const keys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    const now = new Date();
+    const monday = new Date(now);
+    const dow = (now.getDay() + 6) % 7; // 0 = Monday
+    monday.setDate(now.getDate() - dow);
+    monday.setHours(0, 0, 0, 0);
+
+    const touched = new Set();
+    for (const goal of goals) {
+      const stamp = goal.updated_at || goal.last_contribution_at || goal.created_at;
+      if (!stamp) continue;
+      const d = new Date(stamp);
+      if (Number.isNaN(d.getTime())) continue;
+      const diffDays = Math.floor((d - monday) / 86400000);
+      if (diffDays >= 0 && diffDays < 7) touched.add(diffDays);
+    }
+
+    return keys.map((key, i) => ({ key, stamped: touched.has(i), note: null }));
+  }, [goals]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -239,11 +266,7 @@ export const Goals = () => {
               <p className="text-sm text-gray-500">{t('goals.remaining')}</p>
               <p className="text-xl font-bold text-warning-600 mt-1">{formatCurrency(totalTarget - totalCurrent, displayCurrency)}</p>
             </Card>
-            <Card tier="tile" hue="emerald" className="!p-4">
-              <p className="text-sm text-gray-500">{t('goals.total_saved')}</p>
-              <p className="text-xl font-bold text-success-600 mt-1">{formatCurrency(totalCurrent, displayCurrency)}</p>
-            </Card>
-            <Card tier="tile" hue="sky" className="!p-4">
+            <Card tier="tile" hue="sky" className="!p-4 col-span-2">
               <p className="text-sm text-gray-500">{t('goals.overall_progress')}</p>
               <p className="text-xl font-bold text-primary-600 mt-1">
                 {totalTarget > 0 ? formatPercent((totalCurrent / totalTarget) * 100) : '0%'}
@@ -251,6 +274,13 @@ export const Goals = () => {
             </Card>
           </div>
         </div>
+      )}
+
+      {/* The daily stamp rally sits just below the summary row. */}
+      {goals.length > 0 && (
+        <KanaheiStampRallyCard
+          days={stampDays}
+        />
       )}
 
       {/* Goals List */}

@@ -667,7 +667,11 @@ export const Transactions = () => {
           {Object.entries(groupedTx).map(([date, txs]) => (
             <div key={date}>
               <p className="text-sm font-medium text-gray-500 mb-2 px-1">{formatDate(date, 'full')}</p>
-              <div className="space-y-2">
+              {/* One white Kakeibo Bento card per day; the rows are hair-
+                  lined apart inside it. The full-width Rincian box is
+                  gone from the default row - a row is one clean line, and
+                  its breakdown opens only when the row is tapped. */}
+              <div className="rounded-[24px] border border-[#EAE6DF] dark:border-white/10 bg-white dark:bg-gray-900 divide-y divide-[#F2EFE9] dark:divide-white/5 overflow-hidden">
                 {txs.map((tx, index) => {
                   const account = accounts.find(a => a.id === tx.account_id);
                   const category = categories.find(c => c.id === tx.category_id);
@@ -675,18 +679,8 @@ export const Transactions = () => {
 
                   // Edit mode
                   if (isEditing) {
-                    // The edit form.
-                    //
-                    // It was five fields: what it was, how much, which
-                    // day, which category, which account. A
-                    // transaction recorded with the place, the lines
-                    // of the bill, the discount, the tax and the
-                    // person it was shared with could not be
-                    // corrected with any of that.
-                    //
-                    // It carries what the add form carries now.
                     return (
-                      <div key={tx.id} className="bg-white rounded-2xl p-4 shadow-sm border-2 border-primary-500">
+                      <div key={tx.id} className="p-4 border-2 border-primary-500">
                         <TransactionEditForm
                           transaction={tx}
                           categories={categories}
@@ -701,48 +695,39 @@ export const Transactions = () => {
                     );
                   }
 
-                  // Normal display mode
+                  // Normal display mode - a compact one-line Kakeibo row.
                   const hasItems = tx.items && tx.items.length > 0;
                   const isExpanded = expandedTxId === tx.id;
                   const isHighlighted = highlightId === tx.id;
                   return (
-                    <div 
+                    <div
                       key={tx.id}
                       id={`transaction-${tx.id}`}
                       ref={isHighlighted ? highlightRef : undefined}
-                      className={`bg-white rounded-2xl p-4 shadow-sm active:bg-gray-50 cursor-pointer group ${
-                        isHighlighted
-                          ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900'
-                          : ''
-                      } aurora-row money-list-row`}
+                      className={`money-list-row ${isHighlighted ? 'ring-2 ring-inset ring-primary-500' : ''}`}
                       style={{ '--money-row-index': Math.min(index, 12) }}
-                      onClick={() => hasItems && setExpandedTxId(isExpanded ? null : tx.id)}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                      <div
+                        className="py-3.5 px-4 sm:px-5 hover:bg-[#FAF9F6] dark:hover:bg-white/5 transition-colors flex items-center justify-between gap-3 cursor-pointer"
+                        onClick={() => setExpandedTxId(isExpanded ? null : tx.id)}
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-3">
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
                             isIncoming(tx.type)
                               ? 'bg-success-100 text-success-600'
                               : isOutgoing(tx.type)
-                              ? 'bg-danger-100 text-danger-600'
+                              ? 'bg-[#F4F1EA] text-[#8A8275]'
                               : 'bg-blue-100 text-blue-600'
                           }`}>
                             {isIncoming(tx.type) ? (
-                              <ArrowUpRight className="w-6 h-6" />
+                              <ArrowUpRight className="w-5 h-5" />
                             ) : (
-                              <ArrowDownRight className="w-6 h-6" />
+                              <ArrowDownRight className="w-5 h-5" />
                             )}
                           </div>
-                          {/* The text column.
-
-                              It has to be allowed to shrink. Without
-                              `min-w-0` on the row inside it, the
-                              title kept the width of its own text
-                              and was drawn on top of the amount: a
-                              reader saw "Manu-Rp 25.000". */}
-                          <div className="flex-1 min-w-0 pr-3">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
-                              <p className="font-semibold text-gray-900 truncate min-w-0">
+                              <p className="font-semibold text-[#2D312E] dark:text-gray-100 truncate min-w-0">
                                 {tx.description || (category ? categoryName(category, language) : null) || (tx.type === 'income' ? K.income : K.expense)}
                               </p>
                               <SourceBadge type={tx.detection_type} K={K} />
@@ -752,22 +737,6 @@ export const Transactions = () => {
                                 </span>
                               )}
                             </div>
-                            {/* The line under the description.
-
-                                It is the category and the
-                                sub-category together: "Makanan &
-                                Minuman" alone does not say whether
-                                this was coffee or groceries, and
-                                this is exactly where the reader
-                                wants to tell them apart.
-
-                                The sub-category is only shown when
-                                it belongs to the category that is
-                                shown. A tag from another category
-                                is not the sub-label of this one -
-                                "Gaji" under "Makan Siang" was the
-                                reader being told their lunch was
-                                salary. */}
                             <p className="text-sm text-gray-500 truncate">
                               {transactionLabel({
                                 tx,
@@ -779,45 +748,23 @@ export const Transactions = () => {
                             </p>
                           </div>
                         </div>
-                        {/* The money and the actions.
-
-                            This part never shrinks and never wraps,
-                            so the amount is always whole and always
-                            in the same place. */}
-                        <div className="flex items-start gap-2 sm:gap-3 shrink-0">
-                          <div className="text-right shrink-0">
-                            <p className={`font-bold text-base sm:text-lg whitespace-nowrap ${
-                              isIncoming(tx.type) ? 'text-success-600' : 'text-gray-900'
-                            }`}>
-                              {amountSign(tx.type)}{formatCurrency(tx.amount, tx.currency)}
-                            </p>
-                          </div>
-                          {/* Chevron dropdown - always visible */}
-                          {hasItems && (
-                            <button 
-                              className="p-1 text-gray-400 hover:text-gray-600"
-                              onClick={(e) => { e.stopPropagation(); setExpandedTxId(isExpanded ? null : tx.id); }}
-                            >
-                              {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                            </button>
-                          )}
-                          {/* The actions on this row.
-                              They used to appear only when the pointer
-                              hovered over the row. A touch screen has
-                              no hover, so on a phone they were not
-                              there at all. They are always drawn
-                              now, and they are small and quiet so they
-                              do not shout over the money. */}
-                          <div className="flex gap-0.5 sm:gap-1">
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                          <p className={`font-bold text-base sm:text-lg whitespace-nowrap tabular-nums ${
+                            isIncoming(tx.type) ? 'text-success-600' : 'text-[#2D312E] dark:text-gray-100'
+                          }`}>
+                            {amountSign(tx.type)}{formatCurrency(tx.amount, tx.currency)}
+                          </p>
+                          {/* The row actions - always drawn (a touch screen
+                              has no hover), small and quiet so they do not
+                              crowd the money. */}
+                          <div className="flex items-center gap-0.5">
                             <button
                               onClick={(e) => { e.stopPropagation(); startEdit(tx); }}
                               className="p-2 text-gray-400 hover:text-primary-500 hover:bg-gray-100 rounded-lg"
+                              aria-label={K.edit || 'Edit'}
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            {/* Sharing this bill. The reader opens it
-                                with the lines already written down, so
-                                they only have to say who had what. */}
                             <button
                               onClick={(e) => { e.stopPropagation(); startSplit(tx); }}
                               className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg"
@@ -826,26 +773,36 @@ export const Transactions = () => {
                             >
                               <Users className="w-4 h-4" />
                             </button>
-                            {/* Editing the lines of the receipt itself. */}
                             <button
                               onClick={(e) => { e.stopPropagation(); setEditingReceipt(tx); }}
                               className="p-2 text-gray-400 hover:text-purple-500 hover:bg-purple-50 rounded-lg"
                               title={K.editReceipt}
+                              aria-label={K.editReceipt}
                             >
                               <ReceiptText className="w-4 h-4" />
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDelete(tx.id); }}
                               className="p-2 text-gray-400 hover:text-danger-500 hover:bg-red-50 rounded-lg"
+                              aria-label={K.deleteConfirm || 'Delete'}
                             >
                               <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setExpandedTxId(isExpanded ? null : tx.id); }}
+                              className="p-1 text-gray-300 hover:text-gray-500"
+                              aria-label={K.details}
+                              aria-expanded={isExpanded}
+                            >
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                             </button>
                           </div>
                         </div>
                       </div>
-                      {/* Receipt Items Dropdown (Accordion) */}
-                      {hasItems && isExpanded && tx.items && tx.items.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-100">
+                      {/* Progressive disclosure: the itemised receipt of
+                          this one active row. */}
+                      {isExpanded && hasItems && tx.items && tx.items.length > 0 && (
+                        <div className="px-4 sm:px-5 pb-4 -mt-1">
                           <p className="text-xs font-semibold text-gray-500 mb-2">
                             {fill(K.itemsTitle, { count: (tx.items || []).filter(i => !i.is_discount).length })}
                             {(tx.items || []).some(i => i.is_discount) && (
@@ -854,13 +811,13 @@ export const Transactions = () => {
                               </span>
                             )}
                           </p>
-                          <div className="space-y-1 bg-gray-50 rounded-lg p-2">
+                          <div className="space-y-1 bg-[#FAF9F6] dark:bg-white/5 rounded-xl p-3">
                             {(tx.items || []).map((item, idx) => {
                               const isDiscount = item.is_discount;
                               const price = Math.abs(item.total_price || 0);
                               return (
-                                <div 
-                                  key={idx} 
+                                <div
+                                  key={idx}
                                   className={`flex justify-between items-center text-sm ${isDiscount ? 'text-red-500 bg-red-50 -mx-2 px-2 rounded' : ''}`}
                                 >
                                   <span className={`truncate flex-1 ${isDiscount ? 'font-medium' : 'text-gray-700'}`}>
@@ -878,7 +835,6 @@ export const Transactions = () => {
                                 </div>
                               );
                             })}
-                            {/* Net Total */}
                             {(tx.items || []).some(i => i.is_discount) && (
                               <div className="flex justify-between items-center text-sm font-semibold border-t border-gray-200 pt-2 mt-2">
                                 <span className="text-gray-700">{K.netTotal}</span>
@@ -894,15 +850,15 @@ export const Transactions = () => {
                         </div>
                       )}
 
-                      {/* A transaction that did not come from a receipt
-                          can still carry its own lines. */}
-                      {!hasItems && (
-                        <div className="mt-3">
+                      {/* A transaction that did not come from a receipt can
+                          still carry its own lines - shown only when this
+                          row is the active one, not as a bar on every row. */}
+                      {isExpanded && !hasItems && (
+                        <div className="px-4 sm:px-5 pb-4 -mt-1">
                           <BreakdownViewer
                             parentType="transaction"
                             parentId={tx.id}
                             title={K.details}
-                            compact
                           />
                         </div>
                       )}
