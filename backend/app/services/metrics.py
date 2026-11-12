@@ -361,6 +361,84 @@ def health_score(
     )
 
 
+def budget_category_ids(db: Session, budget) -> Optional[set]:
+    """
+    The categories a budget's spending is measured against.
+
+    A budget bound to a category counts that category, and, when that
+    category is a parent, its sub-categories too. A budget that was
+    saved with no category is matched by name against the reader's own
+    categories - "Makanan & Minuman Budget" finds the "Makanan &
+    Minuman" category - so a card that names a category still measures
+    that category.
+
+    When nothing matches, this returns None. None is the whole point of
+    this function: a budget that matches no category must count *nothing*,
+    never the reader's total spending across every category. That was the
+    bug - every card showed the same figure, the sum of all expenses,
+    because a budget with no category filter summed every expense row.
+    """
+    from app.models.category import Category
+
+    cat_id = budget.category_id
+
+    if not cat_id and budget.name:
+        name = str(budget.name).strip().lower()
+        candidates = (
+            db.query(Category)
+            .filter(Category.user_id == budget.user_id)
+            .all()
+        )
+        for cat in candidates:
+            labels = {
+                str(getattr(cat, field, "") or "").strip().lower()
+                for field in ("name", "name_en", "name_ja", "system_key")
+            }
+            labels.discard("")
+            cat_name = str(cat.name or "").strip().lower()
+            # An exact hit on any label, or the category's own name sitting
+            # inside the budget's name ("... Budget"), is a match.
+            if name in labels or (cat_name and cat_name in name):
+                cat_id = cat.id
+                break
+
+    if not cat_id:
+        return None
+
+    ids = {cat_id}
+    children = (
+        db.query(Category.id).filter(Category.parent_id == cat_id).all()
+    )
+    ids.update(child_id for (child_id,) in children)
+    return ids
+
+
+def budget_spent(db: Session, budget) -> float:
+    """
+    How much has been spent against one budget, in its own period.
+
+    Only the transactions that fall in this budget's category (and its
+    sub-categories) are counted. A budget that matches no category spends
+    nothing - it never inherits the reader's whole monthly outgoings.
+    """
+    cat_ids = budget_category_ids(db, budget)
+    if not cat_ids:
+        return 0.0
+
+    query = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+        Transaction.type == "expense",
+        Transaction.user_id == budget.user_id,
+        Transaction.date >= budget.start_date,
+        Transaction.category_id.in_(cat_ids),
+    )
+    if budget.end_date:
+        query = query.filter(Transaction.date <= budget.end_date)
+    if budget.account_id:
+        query = query.filter(Transaction.account_id == budget.account_id)
+
+    return float(query.scalar() or 0)
+
+
 def transaction_count(db: Session, user_id: int) -> int:
     """
     How many transactions the reader has recorded.

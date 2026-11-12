@@ -18,6 +18,7 @@ from app.models.user import User
 from app.models.account import Account
 from app.schemas.budget import BudgetCreate, BudgetUpdate, BudgetResponse
 from app.services.calculation_service import calculation_service
+from app.services.metrics import budget_spent
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -101,22 +102,12 @@ def list_budgets(
     result = []
     
     for budget in budgets:
-        # Calculate actual spent in budget period
-        spent_query = db.query(Transaction).filter(
-            Transaction.type == "expense",
-            Transaction.date >= budget.start_date,
-        )
-        
-        if budget.user_id:
-            spent_query = spent_query.filter(Transaction.user_id == budget.user_id)
-        if budget.end_date:
-            spent_query = spent_query.filter(Transaction.date <= budget.end_date)
-        if budget.category_id:
-            spent_query = spent_query.filter(Transaction.category_id == budget.category_id)
-        if budget.account_id:
-            spent_query = spent_query.filter(Transaction.account_id == budget.account_id)
-        
-        actual_spent = sum(t.amount for t in spent_query.all())
+        # The spending against this budget, strictly from the transactions
+        # that fall in *this* budget's category (and its sub-categories).
+        # A budget that matches no category spends nothing - it must never
+        # fall back to the reader's total outgoings across every category,
+        # which made every card show the same figure.
+        actual_spent = budget_spent(db, budget)
         
         # Calculate remaining and utilization
         remaining = float(budget.amount) - float(actual_spent)
@@ -291,24 +282,11 @@ def get_budget_progress(
     if budget.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    # Calculate actual spending in budget period
-    query = db.query(Transaction).filter(
-        Transaction.type == "expense",
-        Transaction.date >= budget.start_date
-    )
-    
-    # Multi-tenancy filter
-    if current_user:
-        query = query.filter(Transaction.user_id == current_user.id)
-    
-    if budget.end_date:
-        query = query.filter(Transaction.date <= budget.end_date)
-    if budget.category_id:
-        query = query.filter(Transaction.category_id == budget.category_id)
-    if budget.account_id:
-        query = query.filter(Transaction.account_id == budget.account_id)
-    
-    actual_expense = sum(t.amount for t in query.all())
+    # The spending against this budget, measured only against its own
+    # category (and sub-categories). A budget with no matching category
+    # counts nothing rather than the reader's whole monthly spend. The
+    # calculation service works in Decimal, so the sum is given as one.
+    actual_expense = Decimal(str(budget_spent(db, budget)))
     
     # Calculate days elapsed
     today = date.today()
