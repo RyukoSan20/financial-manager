@@ -33,6 +33,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from '../../i18n';
+import { useTheme } from '../../contexts/ThemeContext';
 import FluidProgressBar from '../ui/FluidProgressBar';
 import AnimatedProgressBar from '../ui/AnimatedProgressBar';
 import CountUpNumber from '../ui/CountUpNumber';
@@ -212,6 +213,27 @@ const ScoreColour = (score) => {
 };
 
 /**
+ * The same verdict, but as a colour that can be READ.
+ *
+ * `ScoreColour` is the fill colour: it is chosen to look right as a
+ * ring and as a bar, where it is a block of colour rather than text.
+ * Used as the colour of small text on its own 12% wash it fails
+ * badly - the amber grade badge measured 2.11:1 on the live site,
+ * which is well under the 4.5:1 floor for body text.
+ *
+ * So the badge takes its text colour from here instead: the same hue,
+ * moved far enough into the colour to be read on a pale wash in the
+ * light mode, and lifted to a light step for the dark mode. One value
+ * per job, which is the rule the accent itself already follows.
+ */
+const ScoreTextColour = (score, isDark) => {
+  if (score >= 80) return isDark ? '#6EE7B7' : '#065F46';
+  if (score >= 60) return isDark ? '#7DD3FC' : '#075985';
+  if (score >= 40) return isDark ? '#FCD34D' : '#92400E';
+  return isDark ? '#FDA4AF' : '#9F1239';
+};
+
+/**
  * The small face.
  *
  * The companion is behind a switch of its own, so a reader who has not
@@ -355,6 +377,11 @@ export default function CuteWellnessBento({
   polished = false,
 }) {
   const { t } = useTranslation();
+  // The grade badge needs to know which half of the theme it is on,
+  // because its text colour differs between the two (see
+  // ScoreTextColour). The shared context is the one source of truth
+  // for that - a private matchMedia here would drift from the toggle.
+  const { isDarkMode } = useTheme();
 
   const numericScore = Number(score || 0);
   const mood = numericScore >= 60 ? 'happy' : 'worried';
@@ -427,9 +454,12 @@ export default function CuteWellnessBento({
               <span
                 className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ring-1"
                 style={{
-                  backgroundColor: `rgba(${ScoreColour(numericScore).replace('rgb(', '').replace(')', '')}, 0.12)`,
-                  color: ScoreColour(numericScore),
-                  // The ring is drawn with the same colour, faintly.
+                  // The wash and the ring are the fill colour; the
+                  // words are the readable one. Using the fill colour
+                  // as text on its own 12% wash is what measured
+                  // 2.11:1 on the live site.
+                  backgroundColor: `rgba(${ScoreColour(numericScore).replace('rgb(', '').replace(')', '')}, ${isDarkMode ? 0.22 : 0.12})`,
+                  color: ScoreTextColour(numericScore, isDarkMode),
                   boxShadow: `inset 0 0 0 1px rgba(${ScoreColour(numericScore).replace('rgb(', '').replace(')', '')}, 0.28)`,
                 }}
               >

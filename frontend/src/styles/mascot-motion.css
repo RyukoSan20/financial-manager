@@ -290,6 +290,43 @@
   --hh-muted: #9DB5A8;
   --hh-track: rgba(236, 253, 245, 0.1);
   --hh-pill-track: rgba(236, 253, 245, 0.08);
+  /* The lime wash and the forest ink were left out of this block, so
+     they kept their light values on a dark page. `.hh-badge` is lime
+     with #1B3B32 text, which on the dark canvas measured 1.35:1 - the
+     deep forest ink on what is effectively a dark surface.
+
+     The dark pair inverts the relationship instead of keeping it: the
+     wash becomes a deep sage and the ink the light mint, so the badge
+     still reads as "a lime badge" without being two dark colours. */
+  --hh-lime: #1E3A2F;
+  --hh-forest: #9BC8B5;
+}
+
+/* The badge in the dark mode.
+ *
+ * Its text colour is written as a literal #1B3B32 rather than a token,
+ * so the block above cannot reach it. On the dark wash that is a dark
+ * colour on a dark surface. */
+.dark .hh-badge {
+  background: var(--hh-lime, #1E3A2F);
+  color: #BFF0D4;
+}
+
+/* The tokens outside the household canvas.
+ *
+ * `.hh-badge` and friends are used on the dashboard and the
+ * transactions page too, where there is no `.hh-canvas` ancestor to
+ * define the tokens - so `var(--hh-lime)` resolved to nothing and the
+ * badge fell back to its literal colours. Defining them on the root
+ * gives every user of these classes a value in both modes. */
+:root {
+  --hh-lime: #D8F3DC;
+  --hh-forest: #2F4842;
+}
+
+.dark {
+  --hh-lime: #1E3A2F;
+  --hh-forest: #9BC8B5;
 }
 
 /* A white sheet on top of the page - a dialog - keeps the light

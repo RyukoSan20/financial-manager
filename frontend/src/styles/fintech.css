@@ -903,3 +903,72 @@
     font-size: 2rem;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * The dark half of this sheet
+ * -------------------------------------------------------------------------
+ *
+ * This sheet was written for a light page only: it had no dark rules at
+ * all, and the surfaces it paints came out of a contrast sweep as the
+ * worst failures in the app.
+ *
+ * Two separate faults, and they compounded:
+ *
+ * 1. The panels asked for `var(--bg-card, #ffffff)` and nothing ever
+ *    defined `--bg-card`, so they fell back to hard white on a dark
+ *    page. The dark theme's near-white text then sat on white:
+ *    "Arus kas" measured 1.16:1. (The token is now defined in
+ *    index.css for both modes, which fixes the surface.)
+ *
+ * 2. The accents are deep colours chosen to read on white - #047857
+ *    (emerald 700) and #AD4530 (terracotta). On a dark surface they are
+ *    a dark colour on a dark background: the trust label measured
+ *    2.94:1.
+ *
+ * Mapping them once here is the fix, rather than editing nineteen
+ * declarations: the accents come up to a light step, and the few
+ * surfaces written as literal white come down to the dark card.
+ *
+ * `:where()` keeps the weight at zero so a component that states its
+ * own dark colour still wins (see the theme-hardening rule about
+ * blanket rules outranking a component's own `dark:` variant).
+ */
+
+html.dark :where(.fintech-chip--ok),
+html.dark :where(.fintech-trust--ok),
+html.dark :where(.fintech-method.is-active),
+html.dark :where(.fintech-panel__tab.is-active),
+html.dark :where(.fintech-method__summary),
+html.dark :where(.safe-spend__label),
+html.dark :where(.fintech-trust__label),
+html.dark :where(.recon__title) {
+  /* emerald 300: light enough to read on the dark card. */
+  color: #6EE7B7;
+}
+
+html.dark :where(.fintech-chip--review),
+html.dark :where(.fintech-trust--review),
+html.dark :where(.fintech-alert__amount) {
+  /* A warm light terracotta, the dark-mode partner of #AD4530. */
+  color: #F2B8A2;
+}
+
+/* The tab that is on is drawn as white in the light mode. On a dark
+   page it has to be the raised dark surface instead, or it is a white
+   block in the middle of a dark panel. */
+html.dark :where(.fintech-panel__tab.is-active) {
+  background: #222D28;
+}
+
+/* The faint wash behind a row: a near-black tint on a dark page is
+   invisible, so it comes up rather than down. */
+html.dark :where(.fintech-panel__tabs) {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* The filled button keeps white text, so its surface stays deep enough
+   for that - it only needs to lift clear of the dark page. */
+html.dark :where(.recon__apply) {
+  background: #059669;
+  color: #06231A;
+}

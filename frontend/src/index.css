@@ -285,389 +285,20 @@ html {
   .no-print { display: none !important; }
 }
 
-/* AI Advisor Enhancements */
-.ai-advisor-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem;
-}
+/* The AI Advisor's own stylesheet used to be here, and it is gone.
+   `.topic-card`, `.chat-section`, `.advice-card`, `.tab-btn` and the
+   twenty-seven other classes in that block were rendered by nothing -
+   the page was rebuilt in Tailwind and the sheet was left behind.
 
-/* The rules that used to be here, `.summary-cards` and `.summary-card`,
-   are gone. Nothing used them, and `background` is a shorthand, so the
-   rule wiped out the `background-image` of any card that also carried a
-   gradient class. A style that is not used but still matches is a trap
-   for whoever uses the name next. */
-
-/* Topic Selection */
-.topic-selection {
-  margin-bottom: 1.5rem;
-}
-
-.topic-selection h3 {
-  margin-bottom: 0.5rem;
-  color: var(--text-primary, #333);
-}
-
-.topic-subtitle {
-  color: var(--text-muted, #666);
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-}
-
-.topic-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.75rem;
-}
-
-.topic-card {
-  background: var(--card-bg, #fff);
-  border: 2px solid var(--border-color, #e0e0e0);
-  border-radius: 12px;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  cursor: pointer;
-  transition:
-    border-color 0.2s,
-    background-color 0.2s,
-    transform 0.2s;
-}
-
-.topic-card:hover {
-  border-color: var(--primary-color, #007bff);
-  transform: translateY(-2px);
-}
-
-.topic-card.selected {
-  border-color: var(--primary-color, #007bff);
-  background: var(--primary-light, #e7f3ff);
-}
-
-.topic-icon {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.topic-title {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: var(--text-primary, #333);
-  margin-bottom: 0.25rem;
-}
-
-.topic-desc {
-  font-size: 0.7rem;
-  color: var(--text-muted, #666);
-}
-
-/* Chat Section */
-.chat-section {
-  background: var(--card-bg, #fff);
-  border-radius: 12px;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 280px);
-  min-height: 400px;
-  max-height: calc(100vh - 180px);
-  overflow: hidden;
-}
-
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem 0;
-}
-
-.chat-message {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.chat-message.user {
-  flex-direction: row-reverse;
-}
-
-.message-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--primary-light, #e7f3ff);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  flex-shrink: 0;
-}
-
-.chat-message.assistant .message-avatar {
-  background: #f0f0f0;
-}
-
-.message-content {
-  max-width: 80%;
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
-  line-height: 1.5;
-}
-
-.chat-message.user .message-content {
-  background: var(--primary-color, #007bff);
-  color: white;
-  border-bottom-right-radius: 4px;
-}
-
-.chat-message.assistant .message-content {
-  background: #f5f5f5;
-  color: var(--text-primary, #333);
-  border-bottom-left-radius: 4px;
-}
-
-.message-content p {
-  margin: 0 0 0.5rem 0;
-}
-
-.message-content p:last-child {
-  margin-bottom: 0;
-}
-
-.message-content li {
-  margin-left: 1rem;
-  margin-bottom: 0.25rem;
-}
-
-.typing-indicator {
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
-/* Chat Input */
-.chat-input-form {
-  display: flex;
-  gap: 0.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-color, #e0e0e0);
-}
-
-.chat-input-wrapper {
-  flex: 1;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.chat-input-wrapper input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 24px;
-  font-size: 0.95rem;
-}
-
-.chat-input-wrapper input:focus {
-  outline: none;
-  border-color: var(--primary-color, #007bff);
-}
-
-.clear-chat-btn {
-  padding: 0.5rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  opacity: 0.6;
-}
-
-.clear-chat-btn:hover {
-  opacity: 1;
-}
-
-.chat-input-form button[type="submit"] {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--primary-color, #007bff);
-  color: white;
-  border: none;
-  cursor: pointer;
-  font-size: 1.2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-
-.chat-input-form button[type="submit"]:hover:not(:disabled) {
-  background: var(--primary-dark, #0056b3);
-}
-
-.chat-input-form button[type="submit"]:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.selected-topic-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 1rem;
-  background: var(--primary-light, #e7f3ff);
-  border-radius: 8px;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.selected-topic-indicator button {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  color: var(--text-muted, #666);
-}
-
-/* Tab Navigation */
-.tab-nav {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  border-bottom: 2px solid var(--border-color, #e0e0e0);
-  padding-bottom: 0.5rem;
-}
-
-.tab-btn {
-  padding: 0.5rem 1rem;
-  background: none;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  color: var(--text-muted, #666);
-  transition:
-    background-color 0.2s,
-    color 0.2s;
-}
-
-.tab-btn:hover {
-  background: var(--primary-light, #e7f3ff);
-}
-
-.tab-btn.active {
-  background: var(--primary-color, #007bff);
-  color: white;
-}
-
-/* Advice Cards */
-.advice-card {
-  background: var(--card-bg, #fff);
-  border-radius: 12px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  border-left: 4px solid #ccc;
-}
-
-.advice-card.priority-high {
-  border-left-color: #e74c3c;
-}
-
-.advice-card.priority-medium {
-  border-left-color: #f39c12;
-}
-
-.advice-card.priority-low {
-  border-left-color: #27ae60;
-}
-
-.advice-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.advice-icon {
-  font-size: 1.25rem;
-}
-
-.advice-title {
-  flex: 1;
-  font-weight: 600;
-  font-size: 1.1rem;
-}
-
-.priority-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.priority-badge.high {
-  background: #fde8e8;
-  color: #c0392b;
-}
-
-.priority-badge.medium {
-  background: #fef3e2;
-  color: #d68910;
-}
-
-.priority-badge.low {
-  background: #e8f8f0;
-  color: #1e8449;
-}
-
-.advice-description {
-  color: var(--text-secondary, #555);
-  margin-bottom: 0.75rem;
-  line-height: 1.5;
-}
-
-.advice-steps {
-  background: #f9f9f9;
-  padding: 0.75rem;
-  border-radius: 8px;
-  margin-bottom: 0.75rem;
-  font-size: 0.9rem;
-}
-
-.advice-steps ol {
-  margin: 0.5rem 0 0 1.25rem;
-  padding-left: 0;
-}
-
-.advice-steps li {
-  margin-bottom: 0.25rem;
-}
-
-.advice-impact {
-  font-size: 0.9rem;
-  color: var(--text-secondary, #555);
-  font-style: italic;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: var(--text-muted, #666);
-}
-
-/* Error Banner */
-.error-banner {
-  background: #fff3cd;
-  color: #856404;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  cursor: pointer;
-}
+   It is deleted rather than kept, for the same reason `.summary-card`
+   was: an unused rule still applies to whatever takes the name later,
+   and this block was a particularly bad trap. Every surface in it was
+   painted `var(--card-bg, #fff)` and `--card-bg` was never defined
+   anywhere, so any element that picked up one of these names would
+   have been given a hard white card - unreadable on a dark page, and
+   with no rule in the dark half of the theme to correct it. That is
+   exactly the bug `--bg-card` caused in `fintech.css`, waiting for a
+   name collision to happen. */
 
 /* Loading Spinner */
 .loading-spinner {
@@ -681,8 +312,13 @@ html {
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid var(--primary-color, #007bff);
+  /* The track and the head of the spinner follow the theme. They used
+     to be a light grey and `var(--primary-color, #007bff)`, a token
+     nothing defined - so the head was always bootstrap blue, which is
+     neither the app's accent nor readable against the dark page. The
+     accent token is the one the scheme actually writes. */
+  border: 4px solid var(--border-subtle, #f3f3f3);
+  border-top: 4px solid var(--scheme-accent-fg, #52796F);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
@@ -788,6 +424,19 @@ html.dark {
   --text-primary: #ECEFEC;
   --text-secondary: #C2CCC6;
   --text-muted: #9DB5A8;
+  /* The card surface the hand-written sheets paint on.
+     `fintech.css` asks for `var(--bg-card, #ffffff)` in five places and
+     nothing ever defined it, so every one of those panels fell back to
+     hard white - on a dark page, with the dark theme's near-white text
+     on top. "Arus kas" came out at 1.16:1, which is text you cannot
+     read at all. The fallback is only reached when the token is
+     missing, so the fix is to stop it being missing. */
+  --bg-card: #19211D;
+  /* Same story: `fintech.css` draws six borders with
+     `var(--border-color, rgba(15, 23, 42, 0.08))`. That fallback is a
+     near-black hairline, which simply vanishes on a dark page, so the
+     panels lost their edges entirely. */
+  --border-color: rgba(236, 239, 236, 0.12);
 }
 
 /* The other half of the safety net.
@@ -808,6 +457,76 @@ html.dark {
 html.dark .text-gray-900,
 html.dark .text-gray-800 {
   color: var(--text-primary, #f3f4f6);
+}
+
+/* The Kakeibo palette, written straight into the markup.
+ *
+ * The overhaul put the palette into the markup as arbitrary values -
+ * `text-[#2D312E]`, `text-[#5C6460]`, `text-[#2F4842]` - and most of
+ * those were never given a `dark:` partner, because on the warm
+ * off-white canvas they read perfectly. On the dark canvas they are a
+ * dark colour on a dark surface, and a contrast sweep of the live site
+ * found them as the body text of the dashboard's own summary cards:
+ *
+ *   "Pemasukan" / "Pengeluaran" / "Arus Kas"  #5C6460  ->  2.70:1
+ *   "Rp 0" (the figure itself)                #2D312E  ->  1.25:1
+ *   "Rp 0" (the accent figure)                #2F4842  ->  1.67:1
+ *   "Konsisten 7 Hari"                        #2D312E  ->  1.25:1
+ *   the streak day labels                     #5C6460  ->  2.70:1
+ *
+ * There are thirty-one of these across nine files. Mapping them once
+ * here is the fix: the ink colours resolve to the dark theme's own ink
+ * tokens, and the sage accents come up to the light step of the scale
+ * so they stay recognisably the accent.
+ *
+ * `:where()` holds the weight at zero, so any component that already
+ * states its own `dark:` colour keeps that decision - the blanket rule
+ * is only there for the ones that never got one.
+ */
+html.dark :where(.text-\[\#2D312E\]),
+html.dark :where(.text-\[\#1F2421\]) {
+  color: var(--text-primary, #ECEFEC);
+}
+
+html.dark :where(.text-\[\#5C6460\]),
+html.dark :where(.text-\[\#8A8275\]),
+html.dark :where(.text-\[\#B3ABA0\]) {
+  color: var(--text-secondary, #C2CCC6);
+}
+
+/* The sage accents. #2F4842 and #1B3B32 are the deep steps, chosen to
+   read on cream; #52796F is the mid step. On a dark surface they all
+   have to come up to a light step to be read at all. */
+html.dark :where(.text-\[\#2F4842\]),
+html.dark :where(.text-\[\#1B3B32\]),
+html.dark :where(.text-\[\#52796F\]),
+html.dark :where(.text-\[\#2F6F4F\]) {
+  color: #9BC8B5;
+}
+
+/* The terracotta, and the amber warning: both are deep enough for
+   cream and too deep for a dark page. */
+html.dark :where(.text-\[\#AD4530\]) {
+  color: #F2B8A2;
+}
+
+/* The surfaces written as a literal light colour. A card painted
+   #FFFDF9 or #FAF9F6 on a dark page is a white block; it has to be the
+   dark card instead. The cream washes become the dark raised surface,
+   keeping the sense of "a panel slightly lifted off the page". */
+html.dark :where(.bg-\[\#FFFDF9\]),
+html.dark :where(.bg-\[\#FAF9F6\]),
+html.dark :where(.bg-\[\#F4F1EA\]) {
+  background-color: var(--surface-raised, #222D28);
+}
+
+html.dark :where(.bg-\[\#EAE6DF\]) {
+  background-color: #2A332E;
+}
+
+/* The light hairline becomes the dark hairline. */
+html.dark :where(.border-\[\#EAE6DF\]) {
+  border-color: var(--border-subtle, #2A332E);
 }
 
 /* The soft accent panels, in the dark mode.
@@ -953,6 +672,10 @@ html:not(.dark) {
   --text-primary: #2D312E;
   --text-secondary: #5C6460;
   --text-muted: #5C6460;
+  /* The same token in the light mode, so the two halves are defined in
+     the same place rather than one being a fallback in another sheet. */
+  --bg-card: #FFFFFF;
+  --border-color: rgba(15, 23, 42, 0.08);
 }
 
 /*
@@ -1481,6 +1204,25 @@ html:not(.dark) :where(.text-gray-300) {
 html:not(.dark) :where(.text-gray-400) {
   color: #6b7280;
 }
+
+/* The slate scale, which the dashboard's chart captions use.
+   `text-slate-400` (#94a3b8) on white is 2.56:1 - the same failure the
+   gray scale above was raised for, in a scale that was missed. These
+   are the "Belum ada data" / "Geser / Klik pindah bar" captions, which
+   are exactly the text a reader needs when the chart is empty. */
+html:not(.dark) :where(.text-slate-400) {
+  color: #64748b;
+}
+html:not(.dark) :where(.text-slate-300) {
+  color: #64748b;
+}
+
+/* The warm Kakeibo greys, used as arbitrary values for the streak
+   labels. #B3ABA0 on white is 2.27:1. */
+html:not(.dark) :where(.text-\[\#B3ABA0\]),
+html:not(.dark) :where(.text-\[\#B3AB9F\]) {
+  color: #6F675C;
+}
 html:not(.dark) :where(.text-green-300) {
   color: #15803d;
 }
@@ -1677,6 +1419,16 @@ html.dark :where(.text-fuchsia-900) {
 }
 html.dark :where(.text-gray-500) {
   color: #9ca3af;
+}
+
+/* The slate scale in the dark mode. `dark:text-slate-500` (#64748b) on
+   the dark card is 3.17:1 - the dark half of the same miss the light
+   floor above covers, and the same empty-chart captions. */
+html.dark :where(.text-slate-500) {
+  color: #a8b4c4;
+}
+html.dark :where(.text-slate-400) {
+  color: #a8b4c4;
 }
 html.dark :where(.text-gray-600) {
   color: #9ca3af;
