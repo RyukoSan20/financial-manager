@@ -200,9 +200,23 @@ check('the muted scales have a floor in both modes', () => {
   // failing colour IS the component's own variant and a zero-weight
   // rule would lose to it and change nothing on the page.
   assert.ok(/html:not\(\.dark\) :where\(\.text-slate-400\)/.test(INDEX), 'light floor for slate-400');
-  assert.ok(/html\.dark \.text-slate-400\s*\{/.test(INDEX), 'dark floor for slate-400 at matching weight');
-  assert.ok(/html\.dark \.text-slate-500\s*\{/.test(INDEX), 'dark floor for slate-500 at matching weight');
-  assert.ok(/html\.dark \.text-gray-500\s*\{/.test(INDEX), 'dark floor for gray-500 at matching weight');
+  // Both class names, because Tailwind compiles the `dark:` variant to
+  // a literally different class (`.dark\:text-slate-500`), and an
+  // element written as `text-slate-400 dark:text-slate-500` carries
+  // only that one in the dark - a rule against the bare name never
+  // matches it.
+  for (const name of ['slate-400', 'slate-500', 'gray-500']) {
+    assert.ok(
+      INDEX.includes(`html.dark .text-${name}`),
+      `dark floor for ${name} (bare class)`
+    );
+    // In the stylesheet this is written `html.dark .dark\:text-slate-400`;
+    // one backslash on disk, so two in a JS string literal.
+    assert.ok(
+      INDEX.includes(`html.dark .dark\\:text-${name}`),
+      `dark floor for ${name} (dark: variant class)`
+    );
+  }
 });
 
 check('a wash and its ink move together between the modes', () => {

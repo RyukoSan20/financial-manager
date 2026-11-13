@@ -1430,8 +1430,16 @@ html.dark :where(.text-fuchsia-900) {
 /* Same weight problem as the slate scale: components write
    `text-gray-400 dark:text-gray-500` explicitly, and #6b7280 on the
    dark card is 3.73:1. A zero-weight rule loses to that variant, so
-   this one matches its weight. */
-html.dark .text-gray-500 {
+   this one matches its weight.
+
+   Note the second selector. The element's class list contains
+   `dark:text-gray-500`, NOT `text-gray-500` - Tailwind compiles the
+   variant to `.dark\:text-gray-500:is(.dark *)`, a different class
+   name. A rule written only against `.text-gray-500` never matches
+   the element at all, which is why "/100" on the health page stayed
+   at 3.73:1 after the first attempt. Both names are needed. */
+html.dark .text-gray-500,
+html.dark .dark\:text-gray-500 {
   color: #9ca3af;
 }
 
@@ -1446,10 +1454,12 @@ html.dark .text-gray-500 {
    card is the 3.17:1 failure itself. A zero-weight rule loses to it and
    changes nothing. Matching Tailwind's own `:is(.dark *)` weight and
    coming later in the file is what makes the floor actually apply. */
-html.dark .text-slate-500 {
+html.dark .text-slate-500,
+html.dark .dark\:text-slate-500 {
   color: #a8b4c4;
 }
-html.dark .text-slate-400 {
+html.dark .text-slate-400,
+html.dark .dark\:text-slate-400 {
   color: #a8b4c4;
 }
 html.dark :where(.text-gray-600) {
