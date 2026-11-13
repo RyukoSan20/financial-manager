@@ -39,7 +39,7 @@
 }
 
 .mascot-button:focus-visible {
-  outline: 2px solid #A3E635;
+  outline: 2px solid #52796F;
   outline-offset: 3px;
 }
 
@@ -124,9 +124,9 @@
   width: max-content;
   padding: 6px 12px;
   border-radius: 999px;
-  background: #0F291E;
-  color: #ECFDF5;
-  border: 1px solid #A3E635;
+  background: #2F4842;
+  color: #FAF9F6;
+  border: 1px solid #3D5A52;
   font-size: 12px;
   line-height: 1.35;
   font-weight: 600;
@@ -144,14 +144,14 @@
   right: 22px;
   width: 8px;
   height: 8px;
-  background: #0F291E;
-  border-right: 1px solid #A3E635;
-  border-bottom: 1px solid #A3E635;
+  background: #2F4842;
+  border-right: 1px solid #3D5A52;
+  border-bottom: 1px solid #3D5A52;
   transform: translateY(-4px) rotate(45deg);
 }
 
 .mascot-bubble-accent {
-  color: #A3E635;
+  color: #D8F3DC;
 }
 
 @keyframes mascotBubble {
@@ -184,7 +184,7 @@
   left: 0;
   height: calc(100% - 8px);
   border-radius: 999px;
-  background: #112A20;
+  background: #2F4842;
   box-shadow: 0 0 0 1px rgba(190, 242, 100, 0.5), 0 4px 14px rgba(163, 230, 53, 0.35);
   transition:
     transform var(--tactile-press) var(--tactile-ease),
@@ -219,11 +219,11 @@
 }
 
 .tactile-pill[aria-selected="true"] {
-  color: #BEF264;
+  color: #D8F3DC;
 }
 
 .tactile-pill:focus-visible {
-  outline: 2px solid #A3E635;
+  outline: 2px solid #52796F;
   outline-offset: 2px;
 }
 
@@ -261,20 +261,20 @@
   width: 2px;
   margin-left: -1px;
   border-radius: 2px;
-  background: var(--hh-ink, #0F291E);
+  background: var(--hh-ink, #2D312E);
   transition: left var(--tactile-fill) var(--tactile-ease);
 }
 
 /* --- the household page ------------------------------------------------ */
 
 .hh-canvas {
-  --hh-canvas: #F5F3EC;
+  --hh-canvas: #FAF9F6;
   --hh-card: #FFFFFF;
-  --hh-line: #E5E0D5;
-  --hh-ink: #0F291E;
-  --hh-muted: #5B6B62;
-  --hh-forest: #112A20;
-  --hh-lime: #BEF264;
+  --hh-line: #EAE6DF;
+  --hh-ink: #2D312E;
+  --hh-muted: #5C6460;
+  --hh-forest: #2F4842;
+  --hh-lime: #D8F3DC;
   --hh-track: rgba(17, 42, 32, 0.08);
   --hh-pill-track: rgba(17, 42, 32, 0.07);
   background: var(--hh-canvas);
@@ -295,18 +295,18 @@
 /* A white sheet on top of the page - a dialog - keeps the light
    colours even when the page under it is dark. */
 .hh-light {
-  --hh-canvas: #F5F3EC;
+  --hh-canvas: #FAF9F6;
   --hh-card: #FFFFFF;
-  --hh-line: #E5E0D5;
-  --hh-ink: #0F291E;
-  --hh-muted: #5B6B62;
+  --hh-line: #EAE6DF;
+  --hh-ink: #2D312E;
+  --hh-muted: #5C6460;
   --hh-track: rgba(17, 42, 32, 0.08);
   --hh-pill-track: rgba(17, 42, 32, 0.07);
   color: var(--hh-ink);
 }
 
 .hh-light .hh-button {
-  border-color: #112A20;
+  border-color: #2F4842;
 }
 
 .hh-card {
@@ -334,7 +334,7 @@
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--hh-lime);
-  color: #112A20;
+  color: #1B3B32;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -352,7 +352,7 @@
 }
 
 .hh-field:focus-visible {
-  outline: 2px solid #A3E635;
+  outline: 2px solid #52796F;
   outline-offset: 1px;
 }
 
@@ -363,9 +363,12 @@
   gap: 6px;
   padding: 10px 16px;
   border-radius: 14px;
-  border: 1px solid #112A20;
-  background: #112A20;
-  color: #BEF264;
+  /* The deep forest with the soft sage-cream word. The old pair was
+     deep forest with a neon lime word; the lime is out of the whole
+     application, so the button follows the Kakeibo palette. */
+  border: 1px solid #2F4842;
+  background: #2F4842;
+  color: #D8F3DC;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -395,7 +398,7 @@
 }
 
 .dark .hh-button {
-  border-color: #BEF264;
+  border-color: #3D5A52;
 }
 
 .dark .hh-button-ghost {
@@ -406,7 +409,7 @@
    half-circles are where it was torn from the roll. */
 .hh-ticket {
   position: relative;
-  border: 2px dashed rgba(190, 242, 100, 0.55);
+  border: 2px dashed rgba(255, 248, 231, 0.30);
   border-radius: 18px;
 }
 
@@ -419,17 +422,21 @@
   height: 18px;
   margin-top: -9px;
   border-radius: 50%;
-  background: var(--hh-canvas, #F5F3EC);
+  background: var(--hh-canvas, #FAF9F6);
 }
 
 .hh-ticket::before { left: -11px; }
 .hh-ticket::after { right: -11px; }
 
+/* The invite code. It is a code, so the letters are spaced out, but
+   it is drawn in the one sans - a page never mixes a serif, a sans
+   and a coding mono. */
 .hh-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-sans);
   font-weight: 800;
   letter-spacing: 0.22em;
-  color: #BEF264;
+  font-variant-numeric: tabular-nums;
+  color: #D8F3DC;
 }
 
 /* A task that has been done: the line is drawn through it, left to
@@ -473,8 +480,8 @@
 }
 
 .hh-check[aria-checked="true"] {
-  background: #A3E635;
-  border-color: #65A30D;
+  background: #D8F3DC;
+  border-color: #52796F;
 }
 
 /* The notes. Each is turned a little, the way paper is when it is
@@ -578,57 +585,111 @@
      pacingPulse hhWave hhEnter: all turned off above. */
 }
 
-/* --- the kanahei stationery mascot ------------------------------------- */
 
-/* The flat 2D companion blinks and wiggles its ears on a slow loop.
-   Both animate a transform only, so the layout never moves. */
-.kanahei-mascot__svg .kanahei-eyes {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: kanahei-blink 4.2s infinite;
+/* --------------------------------------------------------------------------
+   The Kakeibo companion.
+
+   The flat stationery drawing is made of named parts, and each part
+   moves on its own: the ears wiggle, the stars drift, and the whole
+   thing hops when it is greeted. The rules are written here so the
+   drawing stays simple - it is only shapes.
+   -------------------------------------------------------------------------- */
+
+.kanahei-root {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
 }
 
-.kanahei-mascot__svg .kanahei-ear {
-  transform-box: fill-box;
+.kanahei-button {
+  display: block;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.kanahei-button:focus-visible {
+  outline: 2px solid #4A3F35;
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+.kanahei-figure {
+  display: block;
+  overflow: visible;
+}
+
+/* The ears. A small, slow wiggle - the ears move a few degrees and
+   come back, so the character reads as alive without being busy. */
+.kanahei-ears {
+  transform-origin: 60px 40px;
+  animation: kanaheiEarWiggle 4.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes kanaheiEarWiggle {
+  0%, 88%, 100% { transform: rotate(0deg); }
+  91% { transform: rotate(-2.5deg); }
+  94% { transform: rotate(2deg); }
+  97% { transform: rotate(-1deg); }
+}
+
+/* The stars around a happy character turn slowly. */
+.kanahei-stars {
+  transform-origin: 60px 60px;
+  animation: kanaheiStars 9s linear infinite;
+}
+
+@keyframes kanaheiStars {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* The shadow under it softens while it is in the air. */
+.kanahei-shadow {
+  animation: kanaheiShadow 2.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes kanaheiShadow {
+  0%, 100% { opacity: 1; transform: scaleX(1); }
+  50% { opacity: 0.7; transform: scaleX(0.92); }
+}
+
+/* The hover board opens with a spring. */
+@keyframes kanaheiBoardIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* The board's spring is overridden per alignment by the transform on
+   the element, so the keyframe only animates opacity and the small
+   lift. The alignment classes are kept out of the keyframe on
+   purpose. */
+.kanahei-board {
   transform-origin: center bottom;
 }
 
-.kanahei-mascot__svg .kanahei-ear--left {
-  animation: kanahei-wiggle-left 5s ease-in-out infinite;
-}
-
-.kanahei-mascot__svg .kanahei-ear--right {
-  animation: kanahei-wiggle-right 5s ease-in-out infinite;
-}
-
-.kanahei-mascot[data-state="happy"] .kanahei-mascot__svg {
-  animation: kanahei-hop 1.2s ease-in-out infinite;
-}
-
-@keyframes kanahei-blink {
-  0%, 92%, 100% { transform: scaleY(1); }
-  95% { transform: scaleY(0.1); }
-}
-
-@keyframes kanahei-wiggle-left {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(-7deg); }
-}
-
-@keyframes kanahei-wiggle-right {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(7deg); }
-}
-
-@keyframes kanahei-hop {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+/* The character hops when it is greeted. */
+.kanahei-button:hover {
+  transform: translateY(-2px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kanahei-mascot__svg .kanahei-eyes,
-  .kanahei-mascot__svg .kanahei-ear,
-  .kanahei-mascot[data-state="happy"] .kanahei-mascot__svg {
-    animation: none;
+  .kanahei-ears,
+  .kanahei-stars,
+  .kanahei-shadow {
+    animation: none !important;
+  }
+
+  .kanahei-board {
+    animation: none !important;
+    opacity: 1;
   }
 }

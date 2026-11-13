@@ -137,13 +137,17 @@ export function applyTheme(theme) {
   // Hard-set the base colors. A page with an explicit background and text
   // color is much harder for "force dark" heuristics to invert than one that
   // inherits them from the UA stylesheet.
-  root.style.backgroundColor = isDark ? '#111827' : '#f9fafb';
-  root.style.color = isDark ? '#f3f4f6' : '#111827';
+  //
+  // These are the Kakeibo palette. They are written as inline styles on
+  // the root element, which beat every stylesheet - so they have to be
+  // the right colours, or the warm off-white canvas never shows.
+  root.style.backgroundColor = isDark ? '#0F1512' : '#FAF9F6';
+  root.style.color = isDark ? '#ECEFEC' : '#2D312E';
 
   // Update the browser chrome color on mobile.
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    meta.setAttribute('content', isDark ? '#111827' : '#3b82f6');
+    meta.setAttribute('content', isDark ? '#0F1512' : '#FAF9F6');
   }
 }
 

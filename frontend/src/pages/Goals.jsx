@@ -38,8 +38,8 @@ const COLORS = chartPalette;
  * than leaking a raw key like `Status_behind_track` onto the page.
  */
 const PACE_TONE = {
-  completed: 'bg-[#BEF264] text-[#112A20]',
-  on_track: 'bg-[#BEF264] text-[#112A20]',
+  completed: 'bg-[#D8F3DC] text-[#1B3B32]',
+  on_track: 'bg-[#D8F3DC] text-[#1B3B32]',
   slightly_behind: 'bg-amber-100 text-amber-800',
   behind_track: 'bg-amber-100 text-amber-800',
   overdue: 'bg-rose-100 text-rose-800',
@@ -76,6 +76,10 @@ export const Goals = () => {
   const polished = buildFlag('UI_POLISH');
   const { currency: displayCurrency } = useCurrency();
   const [goals, setGoals] = useState([]);
+  // The days the reader wrote something down - the stamps on the
+  // rally card. It is the one figure on this page that is about the
+  // habit rather than about the money.
+  const [stampDays, setStampDays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
@@ -110,6 +114,18 @@ export const Goals = () => {
       setGoals([]);
     } finally {
       setLoading(false);
+    }
+
+    // The days that were written down. The list is asked for last, and
+    // it is only for the stamps, so a failure here leaves the page
+    // exactly as it was.
+    try {
+      const txs = await api.transactions.list({ limit: 100 });
+      const rows = Array.isArray(txs) ? txs : (txs?.transactions || []);
+      const days = Array.from(new Set(rows.map((tx) => tx.date).filter(Boolean))).sort();
+      setStampDays(days);
+    } catch (err) {
+      setStampDays([]);
     }
   };
 
@@ -176,31 +192,24 @@ export const Goals = () => {
     }
   };
 
-  // The week's stamp rally. A day earns a stamp when a goal was moved
-  // on it - the server stamps `updated_at` when a contribution lands -
-  // so the card reflects real activity rather than a decoration. The
-  // week runs Monday-first, to match the day labels. It is worked out
-  // before the loading guard so the hook order never changes.
-  const stampDays = useMemo(() => {
-    const keys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-    const now = new Date();
-    const monday = new Date(now);
-    const dow = (now.getDay() + 6) % 7; // 0 = Monday
-    monday.setDate(now.getDate() - dow);
-    monday.setHours(0, 0, 0, 0);
-
-    const touched = new Set();
-    for (const goal of goals) {
-      const stamp = goal.updated_at || goal.last_contribution_at || goal.created_at;
-      if (!stamp) continue;
-      const d = new Date(stamp);
-      if (Number.isNaN(d.getTime())) continue;
-      const diffDays = Math.floor((d - monday) / 86400000);
-      if (diffDays >= 0 && diffDays < 7) touched.add(diffDays);
+  // How many days in a row the reader has written something down,
+  // counting back from today. That is how many of the seven stamps
+  // are filled.
+  const stampFilled = useMemo(() => {
+    if (!stampDays.length) return 0;
+    const iso = (d) => d.toISOString().slice(0, 10);
+    const today = new Date();
+    let filled = 0;
+    // Today counts even if it has no transaction yet - the reader is
+    // still in the middle of the day.
+    for (let i = 0; i < 7; i += 1) {
+      const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+      if (stampDays.includes(iso(day))) filled += 1;
+      else if (i === 0) continue; // today may still be empty
+      else break;
     }
-
-    return keys.map((key, i) => ({ key, stamped: touched.has(i), note: null }));
-  }, [goals]);
+    return Math.min(filled, 7);
+  }, [stampDays]);
 
   if (loading) {
     return (
@@ -240,6 +249,12 @@ export const Goals = () => {
         onClick={() => { setEditingGoal(null); setShowModal(true); }}
       />
 
+      {/* The seven-day stamp card. */}
+      <KanaheiStampRallyCard
+        filled={stampFilled}
+        onAction={() => { window.location.href = '/add'; }}
+      />
+
       {/* Summary: the forest ticket, with the three tiles beside it. */}
       {goals.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -266,7 +281,11 @@ export const Goals = () => {
               <p className="text-sm text-gray-500">{t('goals.remaining')}</p>
               <p className="text-xl font-bold text-warning-600 mt-1">{formatCurrency(totalTarget - totalCurrent, displayCurrency)}</p>
             </Card>
-            <Card tier="tile" hue="sky" className="!p-4 col-span-2">
+            <Card tier="tile" hue="emerald" className="!p-4">
+              <p className="text-sm text-gray-500">{t('goals.total_saved')}</p>
+              <p className="text-xl font-bold text-success-600 mt-1">{formatCurrency(totalCurrent, displayCurrency)}</p>
+            </Card>
+            <Card tier="tile" hue="sky" className="!p-4">
               <p className="text-sm text-gray-500">{t('goals.overall_progress')}</p>
               <p className="text-xl font-bold text-primary-600 mt-1">
                 {totalTarget > 0 ? formatPercent((totalCurrent / totalTarget) * 100) : '0%'}
@@ -274,13 +293,6 @@ export const Goals = () => {
             </Card>
           </div>
         </div>
-      )}
-
-      {/* The daily stamp rally sits just below the summary row. */}
-      {goals.length > 0 && (
-        <KanaheiStampRallyCard
-          days={stampDays}
-        />
       )}
 
       {/* Goals List */}

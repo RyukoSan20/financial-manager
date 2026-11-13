@@ -711,8 +711,8 @@ html {
 html {
   /* Declares our palette. Overridden per-theme by applyTheme(). */
   color-scheme: light;
-  background-color: #f9fafb;
-  color: #111827;
+  background-color: #FAF9F6;
+  color: #2D312E;
   /* Stop the browser from auto-inverting our colors. */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -720,13 +720,13 @@ html {
 
 html.dark {
   color-scheme: dark;
-  background-color: #111827;
-  color: #f3f4f6;
+  background-color: #0F1512;
+  color: #ECEFEC;
 }
 
 body {
-  background-color: #f9fafb;
-  color: #111827;
+  background-color: #FAF9F6;
+  color: #2D312E;
   /* Opt out of forced-colors inversion for our own chrome. */
   forced-color-adjust: none;
   -webkit-font-smoothing: antialiased;
@@ -735,8 +735,8 @@ body {
 }
 
 html.dark body {
-  background-color: #111827;
-  color: #f3f4f6;
+  background-color: #0F1512;
+  color: #ECEFEC;
 }
 
 /*
@@ -782,12 +782,12 @@ button {
  * app, but a handful of hand-written surfaces use these variables.
  */
 html.dark {
-  --surface: #1f2937;
-  --surface-raised: #374151;
-  --border-subtle: #374151;
-  --text-primary: #f3f4f6;
-  --text-secondary: #d1d5db;
-  --text-muted: #9ca3af;
+  --surface: #19211D;
+  --surface-raised: #222D28;
+  --border-subtle: #2A332E;
+  --text-primary: #ECEFEC;
+  --text-secondary: #C2CCC6;
+  --text-muted: #9DB5A8;
 }
 
 /* The other half of the safety net.
@@ -947,12 +947,12 @@ html.dark .text-gray-600 {
 }
 
 html:not(.dark) {
-  --surface: #ffffff;
-  --surface-raised: #f9fafb;
-  --border-subtle: #e5e7eb;
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #6b7280;
+  --surface: #FFFFFF;
+  --surface-raised: #FAF9F6;
+  --border-subtle: #EAE6DF;
+  --text-primary: #2D312E;
+  --text-secondary: #5C6460;
+  --text-muted: #5C6460;
 }
 
 /*
@@ -1029,14 +1029,14 @@ html {
 */
 html[data-theme='light'],
 html[data-theme='light'] body {
-  background-color: #f9fafb !important;
-  color: #111827 !important;
+  background-color: #FAF9F6 !important;
+  color: #2D312E !important;
 }
 
 html[data-theme='dark'],
 html[data-theme='dark'] body {
-  background-color: #111827 !important;
-  color: #f3f4f6 !important;
+  background-color: #0F1512 !important;
+  color: #ECEFEC !important;
 }
 
 /* ---------------------------------------------------------------------------
@@ -1052,8 +1052,13 @@ html[data-theme='dark'] body {
    --------------------------------------------------------------------------- */
 
 :root {
-  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'Plus Jakarta Sans', 'Inter', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  /* One geometric sans for the whole app - headings, body, sidebar
+     and the Rupiah numbers - so a single page never mixes a serif, a
+     sans and a coding mono. The numeric variable points at the SAME
+     stack; `tabular-nums` (set on .font-numeric below) keeps the
+     digits aligned without a separate monospace face. */
+  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   /*
    * The size of the text, as the reader set it in the settings.
@@ -1201,26 +1206,28 @@ body {
   color: var(--scheme-300);
 }
 
-/* Serif and mono have to override the body font everywhere. */
+/* One font everywhere.
+
+   These rules used to swap the whole application for a serif, a
+   coding mono or a rounded face when the reader picked that theme,
+   which is how a single page ended up with a serif heading, a sans
+   label and a mono Rupiah number. The theme is still remembered and
+   still changes the scale and the spacing, but the face is now the
+   one geometric sans in every theme - so the three-font mix cannot
+   come back. */
 [data-font='serif'] body,
-[data-font='serif'] .font-sans {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-}
-
+[data-font='serif'] .font-sans,
 [data-font='mono'] body,
-[data-font='mono'] .font-sans {
-  font-family: var(--font-mono);
-}
-
+[data-font='mono'] .font-sans,
 [data-font='rounded'] body,
 [data-font='rounded'] .font-sans {
-  font-family: 'Nunito', 'Quicksand', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-sans);
 }
 
-/* The money, always in the mono face so the columns line up. */
+/* The money is the same face, with the digits lined up. */
 [data-font='serif'] .font-numeric,
 [data-font='serif'] .tabular-nums {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
 }
 
 /* The tiles in the appearance page that show what each background
@@ -1272,19 +1279,19 @@ body {
 --------------------------------------------------------------------------- */
 
 .dark body {
-  background-color: #111827;
-  color: #f3f4f6;
+  background-color: #0F1512;
+  color: #ECEFEC;
 }
 
 /* The page itself. */
 .dark .min-h-screen.bg-gray-50,
 .dark .bg-gray-50 {
-  background-color: #111827;
+  background-color: #0F1512;
 }
 
 /* A card or a panel. */
 .dark .bg-white {
-  background-color: #1f2937;
+  background-color: #19211D;
 }
 
 /* A recessed area: an input, a track, a quiet block. */
@@ -1321,11 +1328,12 @@ body {
   letter-spacing: -0.02em;
 }
 
-/* The serif theme keeps the serif's own figures. The serif has real
-   lining tabular figures, so the column still lines up and the money
-   does not look like it was pasted in from another app. */
+/* One face for the money too. The serif theme used to bring its own
+   figures with it, which is how a page could end up with a serif
+   heading, a sans label and a serif Rupiah number. The digits are
+   still lining and tabular, so the column lines up. */
 [data-font='serif'] .font-numeric {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  font-family: var(--font-sans);
   font-variant-numeric: lining-nums tabular-nums;
 }
 
@@ -1416,15 +1424,17 @@ body {
    components that have no variant of their own.
    --------------------------------------------------------------------------- */
 
-/* The light mode wants the deeper step of each colour. */
+/* The light mode wants the deeper step of each colour. The amber
+   steps were a muddy brown (#AD4530); they are now the Kakeibo
+   terracotta, which reads as a warm accent rather than as mud. */
 html:not(.dark) :where(.text-amber-300) {
-  color: #b45309;
+  color: #C2543A;
 }
 html:not(.dark) :where(.text-amber-400) {
-  color: #b45309;
+  color: #AD4530;
 }
 html:not(.dark) :where(.text-amber-500) {
-  color: #b45309;
+  color: #AD4530;
 }
 html:not(.dark) :where(.text-blue-300) {
   color: #2563eb;
@@ -1859,7 +1869,7 @@ html:not(.dark) :where(.text-green-600)   { color: #166534; }
 html:not(.dark) :where(.bg-green-50)       { background-color: #f0fdf4; }
 html:not(.dark) :where(.text-emerald-600) { color: #065f46; }
 html:not(.dark) :where(.bg-emerald-50)     { background-color: #ecfdf5; }
-html:not(.dark) :where(.text-amber-600)   { color: #92400e; }
+html:not(.dark) :where(.text-amber-600)   { color: #9A3E2B; }
 html:not(.dark) :where(.bg-amber-50)      { background-color: #fffbeb; }
 html:not(.dark) :where(.text-red-600)     { color: #991b1b; }
 html:not(.dark) :where(.bg-red-50)        { background-color: #fef2f2; }
@@ -1930,7 +1940,7 @@ html:not(.dark) :where(.text-success-600) { color: #166534; }
 html:not(.dark) :where(.bg-success-50)     { background-color: #f0fdf4; }
 html:not(.dark) :where(.text-danger-600)  { color: #991b1b; }
 html:not(.dark) :where(.bg-danger-50)      { background-color: #fef2f2; }
-html:not(.dark) :where(.text-warning-600) { color: #92400e; }
+html:not(.dark) :where(.text-warning-600) { color: #9A3E2B; }
 html:not(.dark) :where(.bg-warning-50)     { background-color: #fffbeb; }
 html.dark :where(.text-success-600) { color: #86efac; }
 html.dark :where(.bg-success-50)     { background-color: #052e16; }
@@ -1958,7 +1968,7 @@ html.dark :where(.text-primary-700)       { color: rgb(var(--scheme-200-rgb, 191
 html:not(.dark) :where(.text-yellow-800)  { color: #713f12; }
 html:not(.dark) :where(.text-green-800)   { color: #14532d; }
 html:not(.dark) :where(.text-red-800)     { color: #7f1d1d; }
-html:not(.dark) :where(.text-amber-800)   { color: #78350f; }
+html:not(.dark) :where(.text-amber-800)   { color: #8A3728; }
 html:not(.dark) :where(.text-blue-800)    { color: #1e3a8a; }
 html:not(.dark) :where(.text-emerald-800) { color: #064e3b; }
 html:not(.dark) :where(.text-orange-800)  { color: #7c2d12; }
@@ -1983,7 +1993,7 @@ html.dark :where(.bg-green-200)   { background-color: #14532d; }
 html.dark :where(.bg-red-100)     { background-color: #450a0a; }
 html.dark :where(.bg-red-200)     { background-color: #7f1d1d; }
 html.dark :where(.bg-amber-100)   { background-color: #451a03; }
-html.dark :where(.bg-amber-200)   { background-color: #78350f; }
+html.dark :where(.bg-amber-200)   { background-color: #8A3728; }
 html.dark :where(.bg-blue-100)    { background-color: #172554; }
 html.dark :where(.bg-blue-200)    { background-color: #1e3a8a; }
 html.dark :where(.bg-emerald-100) { background-color: #022c22; }

@@ -118,22 +118,23 @@ const DiscountCalculator = () => {
         </div>
       </Card>
       
-      <div data-forest-ticket className="hh-card-forest forest-ticket relative mt-8 flex flex-col justify-center p-3">
-        <PerchedMascot size={54} state="happy" label={t('calculators.title')} />
+      <div className="hh-card-forest forest-ticket relative mt-8 flex flex-col justify-center p-3">
+        {/* The shopkeeper's coin: the page counts money out. */}
+        <PerchedMascot size={54} state="happy" mode="business" label={t('calculators.title')} />
         <div className="hh-ticket rounded-[18px] px-6 py-6">
           {result ? (
             <div className="space-y-4">
               <div className="text-center">
-                <p className="text-xs uppercase tracking-wide" style={{ color: '#EDE6D6' }}>{t('calculators.discount_you_save')}</p>
-                <p className="hh-code mt-1 text-2xl tabular-nums" style={{ color: '#BEF264' }}>{formatCurrency(result.savings)}</p>
+                <p className="text-xs uppercase tracking-wide text-[#FFF8E7]/80">{t('calculators.discount_you_save')}</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-[#D8F3DC]">{formatCurrency(result.savings)}</p>
               </div>
-              <div className="text-center border-t border-dashed border-[#BEF264]/30 pt-4">
-                <p className="text-xs uppercase tracking-wide" style={{ color: '#EDE6D6' }}>{t('calculators.discount_final_price')}</p>
-                <p className="hh-code mt-1 text-4xl tabular-nums" data-forest-value style={{ color: '#FFF8E7' }}>{formatCurrency(result.final)}</p>
+              <div className="text-center border-t border-dashed border-[#D8F3DC]/30 pt-4">
+                <p className="text-xs uppercase tracking-wide text-[#FFF8E7]/80">{t('calculators.discount_final_price')}</p>
+                <p className="mt-1 text-4xl font-bold tabular-nums text-[#FFF8E7]">{formatCurrency(result.final)}</p>
               </div>
             </div>
           ) : (
-            <div className="text-center py-10" style={{ color: '#EDE6D6' }}>
+            <div className="text-center text-[#FFF8E7]/70 py-10">
               {t('calculators.enter_values')}
             </div>
           )}

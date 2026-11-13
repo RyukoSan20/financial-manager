@@ -105,6 +105,8 @@ for test_file in \
   src/pages/__tests__/dashboardProfileWiring.test.js \
   src/pages/__tests__/calculatorsLiveOnLoad.test.js \
   src/components/analytics/__tests__/heatmapCompactAndTheme.test.js \
+  src/components/mascot/__tests__/kanaheiCompanion.test.js \
+  src/styles/__tests__/kakeiboPalette.test.js \
   src/utils/__tests__/fintech.test.js \
   src/components/fintech/__tests__/trustBanners.test.js \
   src/components/fintech/__tests__/dashboardTrust.test.js \

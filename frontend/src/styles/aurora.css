@@ -619,3 +619,28 @@ html:not(.dark)[data-ui-aurora="on"] .aurora-canvas::before {
     animation: none !important;
   }
 }
+
+
+/* --------------------------------------------------------------------------
+   Phase 1 - Kakeibo / Zero-UI: no neon blobs in Light Mode.
+
+   The neon pink, cyan and yellow blobs bled through the bottom of
+   /transactions, /accounts and /recurring and read as "AI slop". In
+   Light Mode the canvas is now a calm, uniform Japanese stationery
+   off-white (#FAF9F6) with zero blobs. Dark Mode keeps its soft
+   aurora, where the blobs read as depth rather than noise.
+   -------------------------------------------------------------------------- */
+
+html:not(.dark)[data-ui-aurora="on"] .aurora-background {
+  background: #FAF9F6;
+}
+
+html:not(.dark)[data-ui-aurora="on"] .aurora-blob {
+  display: none !important;
+}
+
+/* The page sheet stays calm off-white too, so there is nothing for a
+   hidden blob to show through at the fold. */
+html:not(.dark)[data-ui-aurora="on"] .aurora-canvas {
+  background: transparent;
+}

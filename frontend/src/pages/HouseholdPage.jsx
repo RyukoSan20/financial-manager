@@ -355,7 +355,7 @@ export function HouseholdView({
 
         <section className="hh-card-forest p-5">
           <div className="hh-ticket px-6 py-5 text-center">
-            <p className="text-[11px] font-extrabold tracking-[0.2em]" style={{ color: '#BEF264' }}>
+            <p className="text-[11px] font-extrabold tracking-[0.2em]" style={{ color: '#D8F3DC' }}>
               {t('household.invite_code_label')}
             </p>
             <p className="hh-code mt-2 text-3xl sm:text-4xl" data-invite-code>{data.invite_code}</p>

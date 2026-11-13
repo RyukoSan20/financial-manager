@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#3b82f6" />
+    <meta name="theme-color" content="#FAF9F6" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="FinManager" />
@@ -26,12 +26,15 @@
     
     <title>FinManager - Personal Finance</title>
 
-    <!-- Plus Jakarta Sans: the unified Kakeibo sans across the app. -->
+    <!-- Kakeibo type: one geometric sans for the whole app (headings,
+         body, sidebar and Rupiah numbers). Falls back to the system
+         sans if the network is unavailable, so the app still works
+         offline. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
     />
     
     <!-- Theme bootstrap: applied BEFORE first paint so there is never a flash
@@ -67,15 +70,19 @@
             ? 'dark' : 'light';
         }
 
+        // The Kakeibo palette. These are written as inline styles on
+        // the root element, which beat every stylesheet - so they have
+        // to be the right colours, or the warm off-white canvas never
+        // shows at all.
         var root = document.documentElement;
         if (theme === 'dark') {
           root.classList.add('dark');
-          root.style.backgroundColor = '#111827';
-          root.style.color = '#f3f4f6';
+          root.style.backgroundColor = '#0F1512';
+          root.style.color = '#ECEFEC';
         } else {
           root.classList.remove('dark');
-          root.style.backgroundColor = '#f9fafb';
-          root.style.color = '#111827';
+          root.style.backgroundColor = '#FAF9F6';
+          root.style.color = '#2D312E';
         }
         root.setAttribute('data-theme', theme);
         root.setAttribute('data-theme-mode', mode);
@@ -84,22 +91,24 @@
 
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) {
-          meta.setAttribute('content', theme === 'dark' ? '#111827' : '#3b82f6');
+          meta.setAttribute('content', theme === 'dark' ? '#0F1512' : '#FAF9F6');
         }
       })();
     </script>
 
     <style>
-      /* Critical CSS for fast first paint */
+      /* Critical CSS for fast first paint. The same Kakeibo palette
+         as the application, so the first frame is the page the reader
+         arrives at - a warm off-white sheet, not a blue splash. */
       body {
         margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: #f9fafb;
-        color: #111827;
+        font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #FAF9F6;
+        color: #2D312E;
       }
       html.dark body {
-        background: #111827;
-        color: #f3f4f6;
+        background: #0F1512;
+        color: #ECEFEC;
       }
       .app-loading {
         display: flex;
@@ -107,15 +116,16 @@
         align-items: center;
         justify-content: center;
         height: 100vh;
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        background: #FAF9F6;
       }
       .app-loading svg {
         width: 64px;
         height: 64px;
         animation: pulse 2s infinite;
+        stroke: #2F4842;
       }
       .app-loading p {
-        color: white;
+        color: #5C6460;
         margin-top: 16px;
         font-size: 14px;
         opacity: 0.9;

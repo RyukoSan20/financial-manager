@@ -16,10 +16,7 @@ import { formatCurrency, formatNumber, formatPercent, formatNative } from '../ut
 import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { cleanNumber } from '../utils/idFormat';
 import AnimatedNumber from '../components/common/AnimatedNumber';
-import { AuroraCard, auroraIsOn } from '../components/ui/AuroraCard';
-import BentoGrid, { BentoItem } from '../components/dashboard/BentoGrid';
-import BalanceHero from '../components/dashboard/BalanceHero';
-import { moneyLayerOn } from '../utils/animation';
+import { auroraIsOn } from '../components/ui/AuroraCard';
 import { useCurrency } from '../utils/currency';
 import api, { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../config/url';
@@ -1125,180 +1122,105 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           on it. `auto-fit` fits as many cards as there is room for, each
           at least 240px wide, so the cards stay readable and the
           fourth one wraps to the next row when there is no room. */}
-      <BentoGrid>
-        {[
+      {/* A balanced 12-column Kakeibo bento row. TOTAL SALDO is the
+          deep-sage hero ticket on the left (5 of 12); the three
+          cashflow cards share the right (7 of 12) as equal white
+          cards, so their titles read in full - never "PEMASUK..." -
+          and there is no empty gap under them. */}
+      {(() => {
+        const balanceValue = summary?.total_balance || 0;
+        const balanceCurrency = summary?.total_balance_currency || summary?.currency;
+        const cashflowCards = [
           {
-            label: t('dashboard.total_balance'),
-            // The server already converted this into the currency it
-            // names, so it is shown as it is.
-            value: summary?.total_balance,
-            // The server sends this already in the currency it names,
-            // so it is shown as it is rather than converted again.
-            currency: summary?.total_balance_currency || summary?.currency,
-            alreadyConverted: true,
-            icon: Wallet,
-            hue: 'emerald',
-            gradient: 'from-green-50 to-green-100 dark:from-green-900/50 dark:to-green-800/40',
-            // The classes are written out in full. A class built at
-            // runtime, like `text-${color}-600`, is never seen by
-            // Tailwind when it scans the source, so it never reaches
-            // the stylesheet. In the dark mode the missing rule left
-            // the amount in the light colour on a dark background.
-            labelClass: 'text-green-700 dark:text-green-300',
-            valueClass: 'text-green-800 dark:text-green-100',
-            iconBg: 'bg-green-200 dark:bg-green-900',
-            iconClass: 'text-green-700 dark:text-green-300',
-          },
-          {
+            key: 'income',
             label: t('dashboard.total_income'),
             value: summary?.totalIncome || summary?.total_income,
             icon: TrendingUp,
-            hue: 'teal',
-            gradient: 'from-primary-50 to-primary-100 dark:from-primary-900/50 dark:to-primary-800/40',
-            labelClass: 'text-primary-700 dark:text-primary-300',
-            valueClass: 'text-primary-800 dark:text-primary-100',
-            iconBg: 'bg-primary-200 dark:bg-primary-900',
-            iconClass: 'text-primary-700 dark:text-primary-300',
+            iconBg: 'bg-[#E8F0ED]',
+            iconClass: 'text-[#2F4842]',
+            valueClass: 'text-[#2F4842]',
           },
           {
+            key: 'expense',
             label: t('dashboard.total_expense'),
             value: summary?.totalExpense || summary?.total_expense,
             icon: TrendingDown,
-            hue: 'rose',
-            gradient: 'from-red-50 to-red-100 dark:from-red-900/50 dark:to-red-800/40',
-            labelClass: 'text-red-700 dark:text-red-300',
-            valueClass: 'text-red-800 dark:text-red-100',
-            iconBg: 'bg-red-200 dark:bg-red-900',
-            iconClass: 'text-red-700 dark:text-red-300',
+            iconBg: 'bg-[#FBEDE8]',
+            iconClass: 'text-[#AD4530]',
+            valueClass: 'text-[#AD4530]',
           },
           {
+            key: 'cashflow',
             label: t('dashboard.cash_flow'),
             value: summary?.netSavings || summary?.net_cash_flow,
             icon: Activity,
-            hue: 'violet',
-            gradient: 'from-purple-50 to-purple-100 dark:from-purple-900/50 dark:to-purple-800/40',
-            labelClass: 'text-purple-700 dark:text-purple-300',
-            valueClass: 'text-purple-800 dark:text-purple-100',
-            iconBg: 'bg-purple-200 dark:bg-purple-900',
-            iconClass: 'text-purple-700 dark:text-purple-300',
+            iconBg: 'bg-[#EFEDE6]',
+            iconClass: 'text-[#52796F]',
+            valueClass: 'text-[#2D312E]',
           },
-        ].map((card, i) => {
-          const Icon = card.icon;
-          // The first card is the one the page is about - the balance.
-          // It is the hero: it takes the full width of the row, it is
-          // set larger than anything else, and it is deeper than the
-          // rest. The three that follow are metrics read at a glance,
-          // so they are tiles: smaller, and tinted with the hue that
-          // says what the number means.
-          const isHero = i === 0;
-          if (isHero) {
-            // The balance is the forest ticket, with the mascot on its
-            // edge - the same card the household page leads with.
-            return (
-              <BentoItem key={i} span="half" className="summary-amount-measure col-span-full">
-                <ForestTicketCard
-                  data-testid="balance-ticket"
-                  eyebrow={card.label}
-                  caption={accounts.length
-                    ? t('dashboard.accounts_count', '', { count: accounts.length })
-                    : t('dashboard.balance_caption')}
-                  mascot={{
-                    size: 60,
-                    state: (card.value || 0) < 0 ? 'alert' : 'idle',
-                    label: t('dashboard.total_balance'),
-                    lines: [t('dashboard.balance_caption')],
-                  }}
+        ];
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+            {/* TOTAL SALDO - deep sage ticket. */}
+            <div className="lg:col-span-5 summary-amount-measure">
+              <ForestTicketCard
+                data-testid="balance-ticket"
+                className="h-full"
+                eyebrow={t('dashboard.total_balance')}
+                caption={accounts.length
+                  ? t('dashboard.accounts_count', '', { count: accounts.length })
+                  : t('dashboard.balance_caption')}
+                mascot={{
+                  size: 60,
+                  state: balanceValue < 0 ? 'alert' : 'idle',
+                  label: t('dashboard.total_balance'),
+                  lines: [t('dashboard.balance_caption')],
+                }}
+              >
+                {/* The amount is one unbroken line: Rp and the digits
+                    never wrap onto two lines. */}
+                <p
+                  className="mt-2 whitespace-nowrap text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight tabular-nums"
+                  data-forest-value
+                  style={{ color: '#FFF8E7' }}
                 >
-                  <p className="hh-code mt-2 text-3xl sm:text-4xl whitespace-nowrap tabular-nums" data-forest-value style={{ color: '#FFF8E7' }}>
-                    <AnimatedNumber
-                      value={card.value || 0}
-                      format={(n) => formatNative(n, card.currency)}
-                    />
-                  </p>
-                </ForestTicketCard>
-              </BentoItem>
-            );
-          }
-          return (
-            // The wrapper is what the container query measures. The
-            // card cannot be the container itself: a card that is a
-            // container cannot paint its own background image, so the
-            // gradient would disappear.
-            <BentoItem
-              key={i}
-              span={isHero ? 'half' : 'normal'}
-              className={`summary-amount-measure ${isHero ? 'col-span-full' : ''}`}
-            >
-            <AuroraCard
-              tier={isHero ? 'hero' : 'tile'}
-              hue={isHero ? 'emerald' : card.hue}
-              className={`summary-amount p-4 ${
-                isHero && moneyLayerOn() ? 'money-balance money-glass' : ''
-              } ${
-                // The old gradient is a Tailwind background-image, and
-                // the aurora tile draws its own. Two background-images
-                // on one element do not stack - the later one wins -
-                // so the old gradient is dropped rather than left to
-                // fight with the hue that says what the number means.
-                auroraIsOn() ? '' : `bg-gradient-to-br ${card.gradient} border ${borderColor}`
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2 sm:gap-3">
-                <div className="min-w-0 flex-1">
-                  {/* The label is small and quiet so the amount is the
-                      first thing read. */}
-                  <p
-                    className={`text-xs font-semibold uppercase tracking-wider leading-none whitespace-nowrap ${card.labelClass}`}
-                  >
-                    {card.label}
-                  </p>
-                  {/* The amount is never cut off.
+                  <AnimatedNumber
+                    value={balanceValue}
+                    format={(n) => formatNative(n, balanceCurrency)}
+                  />
+                </p>
+              </ForestTicketCard>
+            </div>
 
-                      An amount that shows "Rp 14.610..." is worse than
-                      no amount at all, so the size of the text follows
-                      how much there is to show. The container query
-                      below measures the card itself, not the window,
-                      because the card is what the text has to fit in -
-                      and a card is narrower on a wide screen with a
-                      sidebar than on a narrow one without.
-
-                      The amount still uses tabular figures, so the digits
-                      do not move when the value changes. */}
-                  <p
-                    className={`mt-2 font-numeric font-bold leading-none ${
-                      isHero ? 'aurora-hero-amount' : 'text-summary-value'
-                    } ${card.valueClass}`}
-                  >
-                    {/* The amount counts to its new value when the
-                        reader changes the date filter or picks another
-                        account. Without the count, the old number is
-                        gone and the new one is there in the same
-                        frame, so the reader sees that the balance
-                        changed but not how much. */}
-                    {card.alreadyConverted ? (
-                      <AnimatedNumber
-                        value={card.value || 0}
-                        format={(n) => formatNative(n, card.currency)}
-                      />
-                    ) : (
-                      <AnimatedNumber
-                        value={card.value || 0}
-                        format={(n) => formatCurrency(n)}
-                      />
-                    )}
-                  </p>
-                </div>
-                <div
-                  className={`summary-icon w-8 h-8 sm:w-9 sm:h-9 lg:w-11 lg:h-11 rounded-full flex items-center justify-center shrink-0 ${card.iconBg}`}
-                >
-                  <Icon className={`w-4 h-4 sm:w-4 sm:h-4 lg:w-5 lg:h-5 ${card.iconClass}`} />
-                </div>
+            {/* Pemasukan · Pengeluaran · Arus Kas - three equal cards. */}
+            <div className="lg:col-span-7">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 h-full">
+                {cashflowCards.map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <div key={card.key} className="hh-card summary-amount-measure flex flex-col justify-between p-5">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-[#5C6460]">
+                          {card.label}
+                        </p>
+                        <span className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${card.iconBg}`}>
+                          <Icon className={`w-4 h-4 ${card.iconClass}`} />
+                        </span>
+                      </div>
+                      <p className={`mt-4 whitespace-nowrap text-xl lg:text-2xl font-bold tabular-nums tracking-tight ${card.valueClass}`}>
+                        <AnimatedNumber
+                          value={card.value || 0}
+                          format={(n) => formatCurrency(n)}
+                        />
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
-            </AuroraCard>
-            </BentoItem>
-          );
-        })}
-      </BentoGrid>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ================================================================ */}
       {/* ADVANCED: Budget & Safe-to-Spend */}

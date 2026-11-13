@@ -20,28 +20,29 @@
  */
 
 import { clsx } from 'clsx';
-import KanaheiStationeryMascot from '../mascot/KanaheiStationeryMascot';
-
-// The perched companion is the Kanahei stationery mascot. The rigged
-// pixel mascot keeps its own states (idle/happy/celebrate/alert); the
-// Kanahei one has no "celebrate", so it maps to "happy".
-const KANAHEI_STATE = {
-  idle: 'idle',
-  happy: 'happy',
-  celebrate: 'happy',
-  thinking: 'thinking',
-  alert: 'alert',
-};
+import RiggedSvgMascot from '../mascot/RiggedSvgMascot';
 
 export const BOTANICAL = Object.freeze({
-  canvas: '#F5F3EC',
-  forest: '#112A20',
-  forestHover: '#1A3C2E',
-  ink: '#0F291E',
-  lime: '#BEF264',
-  mist: '#ECFDF5',
-  line: '#E5E0D5',
-  muted: '#5B6B62',
+  canvas: '#FAF9F6',
+  card: '#FFFFFF',
+  line: '#EAE6DF',
+  ink: '#2D312E',
+  muted: '#5C6460',
+  sage: '#52796F',
+  sageDeep: '#2F4842',
+  sageHover: '#3D5A52',
+  cream: '#F4F1EA',
+  terracotta: '#E07A5F',
+  // The amount/label colours used inside the deep-sage ticket.
+  ticketAmount: '#FFF8E7',
+  ticketBadge: '#D8F3DC',
+  ticketBadgeInk: '#1B3B32',
+  // Legacy aliases, so older references resolve to the Kakeibo palette
+  // instead of the retired neon lime / deep forest.
+  forest: '#2F4842',
+  forestHover: '#3D5A52',
+  lime: '#D8F3DC',
+  mist: '#F4F1EA',
 });
 
 /**
@@ -131,17 +132,29 @@ export function ForestTicketCard({
         )}
       >
         {eyebrow ? (
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.2em]" style={{ color: BOTANICAL.lime }}>
+          <p
+            data-forest-eyebrow
+            className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em]"
+            style={{ background: BOTANICAL.ticketBadge, color: BOTANICAL.ticketBadgeInk }}
+          >
             {eyebrow}
           </p>
         ) : null}
-        {title ? <h2 className="mt-1 text-base font-bold" style={{ color: '#FFF8E7' }}>{title}</h2> : null}
+        {title ? <h2 className="mt-2 text-base font-bold" style={{ color: BOTANICAL.ticketAmount }}>{title}</h2> : null}
         {value !== undefined && value !== null ? (
-          <p className="hh-code mt-2 text-3xl sm:text-4xl break-words" data-forest-value style={{ color: '#FFF8E7' }}>
+          <p
+            className="mt-2 text-3xl sm:text-4xl font-bold tabular-nums whitespace-nowrap tracking-tight"
+            data-forest-value
+            style={{ color: BOTANICAL.ticketAmount }}
+          >
             {value}
           </p>
         ) : null}
-        {caption ? <p className="mt-2 text-xs" data-forest-caption style={{ color: '#EDE6D6' }}>{caption}</p> : null}
+        {caption ? (
+          <p className="forest-ticket-caption mt-2 text-xs" style={{ color: '#EDE6D6' }}>
+            {caption}
+          </p>
+        ) : null}
         {children}
       </div>
     </section>
@@ -154,6 +167,12 @@ export function ForestTicketCard({
  * The card that holds it is `relative`, and should leave room above
  * (`mt-8`) so the mascot is not standing on whatever is above the
  * card.
+ *
+ * It sits on the top-right border, clear of the card's title on the
+ * left and of anything above it. The offset used to be written twice
+ * - once as a class and once as an inline style - and the inline
+ * style won, so the mascot sat at a different height on every card.
+ * Now there is one rule for it.
  */
 export function PerchedMascot({
   side = 'right',
@@ -165,29 +184,20 @@ export function PerchedMascot({
   className = '',
   ...rest
 }) {
-  // `mode` and `lines` belonged to the rigged pixel mascot; they are
-  // accepted and ignored here so every existing call site keeps working.
-  void mode;
-  void lines;
-  const note = Array.isArray(lines) && lines.length ? lines[0] : undefined;
   return (
     <div
       data-perched-mascot
       className={clsx(
-        'pointer-events-auto absolute -top-8 z-[1]',
+        // The perch is absolute, so it has no height of its own; the
+        // board that opens below it would hang in the air. The
+        // padding gives it a body to sit on, and the high z-index
+        // keeps it above the card it is perched on.
+        'pointer-events-auto absolute -top-9 z-[2] pt-1',
         side === 'left' ? 'left-5' : 'right-5',
         className
       )}
-      style={{ top: `-${Math.round(size * 0.55)}px` }}
     >
-      <KanaheiStationeryMascot
-        size={size}
-        state={KANAHEI_STATE[state] || 'idle'}
-        label={label}
-        note={note}
-        noteTitle={label}
-        {...rest}
-      />
+      <RiggedSvgMascot size={size} state={state} mode={mode} label={label} lines={lines} {...rest} />
     </div>
   );
 }

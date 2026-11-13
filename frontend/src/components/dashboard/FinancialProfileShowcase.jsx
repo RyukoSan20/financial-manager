@@ -87,7 +87,7 @@ function TimelinePoint({ point, selected, onSelect, t }) {
     installment: 'bg-amber-400 ring-amber-200',
     goal: 'bg-violet-400 ring-violet-200',
     spent: 'bg-rose-400 ring-rose-200',
-    earned: 'bg-[#BEF264] ring-[#D9F99D]',
+    earned: 'bg-[#52796F] ring-[#D8F3DC]',
   }[point.kind] || 'bg-slate-300 ring-slate-200';
 
   const kindLabel = {
@@ -173,8 +173,8 @@ function ThirtyDayRoad({ timeline, t, onRecord }) {
             <div className="mb-0.5 -mt-7">
               <RiggedSvgMascot state="happy" size={30} label={t('financial_profile.today')} />
             </div>
-            <span className="h-2.5 w-2.5 rounded-full bg-[#112A20] ring-4 ring-[#BEF264]" />
-            <span className="mt-1 text-[9px] font-bold text-[#112A20] dark:text-[#BEF264] whitespace-nowrap">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#2F4842] ring-4 ring-[#D8F3DC]" />
+            <span className="mt-1 text-[9px] font-bold text-[#2F4842] dark:text-[#D8F3DC] whitespace-nowrap">
               {t('financial_profile.today')}
             </span>
           </div>
@@ -294,13 +294,16 @@ export default function FinancialProfileShowcase({ profile, onRecord }) {
 
   return (
     <section
-      className="hh-card relative overflow-hidden"
+      className="hh-card relative"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       aria-label={t('financial_profile.title')}
     >
-      {/* The wave, at the top, behind the header. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 text-emerald-50 dark:text-emerald-500/5">
+      {/* The wave, at the top, behind the header. It is in a layer of
+          its own with its own clip, so the card itself does not have
+          to clip - and a card that clips would cut the mascot's
+          hover board off. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 overflow-hidden rounded-3xl text-emerald-50 dark:text-emerald-500/5">
         <PastelWave />
       </div>
 
@@ -426,7 +429,7 @@ export default function FinancialProfileShowcase({ profile, onRecord }) {
             <div className="mt-4 flex items-center justify-end">
               <Link
                 to={link}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#112A20] dark:text-[#BEF264] hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#2F4842] dark:text-[#D8F3DC] hover:underline"
               >
                 {t('financial_profile.see_all')}
                 <span aria-hidden="true">→</span>

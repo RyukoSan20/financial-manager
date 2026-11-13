@@ -232,8 +232,21 @@ check('the mascot draws in every state, outfit and frame', () => {
   assert.equal(seen.size, 16, 'all sixteen drawings are different');
 });
 
-check('the mascot is drawn on the pixel grid, with crisp edges', () => {
+check('the mascot is drawn as a flat stationery figure, not a pixel grid', () => {
+  // Phase 2: the sixteen-by-sixteen grid was harsh next to a rounded
+  // card, so the mascot is now a clean vector with one warm-brown
+  // outline. The pixel grid is still available as variant="pixel".
   const html = drawn.mascot({});
+  assert.ok(html.includes('viewBox="0 0 120 120"'), 'the vector viewBox');
+  assert.ok(html.includes('data-variant="kanahei"'), 'the flat drawing is the default');
+  assert.ok(!html.includes('shape-rendering="crispEdges"'), 'no pixel-grid edges');
+  for (const layer of ['kanahei-shadow', 'kanahei-ears', 'kanahei-body', 'kanahei-face', 'kanahei-prop']) {
+    assert.ok(html.includes(`class="${layer}"`), layer);
+  }
+});
+
+check('the old pixel grid is still there, for anyone who asks for it', () => {
+  const html = drawn.mascot({ variant: 'pixel' });
   assert.ok(html.includes('shape-rendering="crispEdges"'));
   assert.ok(html.includes('viewBox="0 0 16 16"'));
   for (const layer of ['body', 'ears', 'face', 'outfit']) {
@@ -241,10 +254,12 @@ check('the mascot is drawn on the pixel grid, with crisp edges', () => {
   }
 });
 
-check('the mascot is rectangles and never a freehand path', () => {
+check('the mascot is a warm-brown outlined drawing, not rectangles', () => {
   const html = drawn.mascot({ state: 'celebrate', mode: 'business' });
-  assert.ok(count(html, '<rect') > 30);
-  assert.equal(count(html, '<path'), 0);
+  assert.equal(count(html, '<rect'), 0, 'no pixel rectangles');
+  assert.ok(count(html, '<path') > 0, 'it is drawn with paths');
+  // The outline is one warm brown, used everywhere.
+  assert.ok(html.includes('#4A3F35'), 'the warm stationery brown outline');
 });
 
 check('the mascot bobs at rest and can be pressed', () => {
@@ -254,11 +269,12 @@ check('the mascot bobs at rest and can be pressed', () => {
   assert.ok(html.includes('aria-label="Maskot"'));
 });
 
-check('the family wears the sprout and the business wears the visor', () => {
+check('the family wears the sprout and the business wears the coin', () => {
   const family = drawn.mascot({ mode: 'family' });
   const business = drawn.mascot({ mode: 'business' });
-  assert.ok(family.includes(PALETTE.l) && !family.includes(PALETTE.v));
-  assert.ok(business.includes(PALETTE.v) && !business.includes(PALETTE.g));
+  // The sprout is sage green; the business coin is butter gold.
+  assert.ok(family.includes('#52796F'));
+  assert.ok(business.includes('#F4E285'));
 });
 
 // ---------------------------------------------------------------------------
@@ -280,11 +296,15 @@ check('the bob and the jump are the animations that were asked for', () => {
   assert.ok(css.includes('.mascot-sparkle'));
 });
 
-check('the speech bubble is the dark pill with the lime edge', () => {
+check('the speech bubble is the dark pill with the soft sage edge', () => {
+  // Phase 1/2: the retired neon lime (#A3E635) is out of the whole
+  // application, so the bubble is deep sage with a sage-cream word
+  // and a soft sage edge.
   const bubble = css.slice(css.indexOf('.mascot-bubble {'), css.indexOf('.mascot-bubble::after'));
-  assert.ok(bubble.includes('#0F291E'));
-  assert.ok(bubble.includes('#ECFDF5'));
-  assert.ok(bubble.includes('#A3E635'));
+  assert.ok(bubble.includes('#2F4842'));
+  assert.ok(bubble.includes('#FAF9F6'));
+  assert.ok(bubble.includes('#3D5A52'));
+  assert.ok(!bubble.includes('#A3E635'), 'the retired neon lime is gone');
 });
 
 check('the pills move for 280ms on the asked curve, and shrink when pressed', () => {
@@ -314,11 +334,15 @@ check('a reader who asked for less movement gets less', () => {
 });
 
 check('the page has its light and its dark palette', () => {
-  assert.ok(css.includes('--hh-canvas: #F5F3EC'));
+  // The Kakeibo palette, like the rest of the application: a warm
+  // off-white canvas, the deep sage forest, the soft sage-cream in
+  // place of the retired neon lime, and the soft border.
+  assert.ok(css.includes('--hh-canvas: #FAF9F6'));
   assert.ok(css.includes('--hh-canvas: #0B1512'));
-  assert.ok(css.includes('--hh-forest: #112A20'));
-  assert.ok(css.includes('--hh-lime: #BEF264'));
-  assert.ok(css.includes('--hh-line: #E5E0D5'));
+  assert.ok(css.includes('--hh-forest: #2F4842'));
+  assert.ok(css.includes('--hh-lime: #D8F3DC'));
+  assert.ok(css.includes('--hh-line: #EAE6DF'));
+  assert.ok(!css.includes('#BEF264'), 'the retired neon lime is gone');
 });
 
 // ---------------------------------------------------------------------------

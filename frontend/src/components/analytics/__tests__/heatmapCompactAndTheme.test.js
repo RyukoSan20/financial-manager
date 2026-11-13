@@ -44,10 +44,21 @@ check('the shortener reads the way the spec asked', () => {
 
 const BOT = read('styles/botanical.css');
 
-check('the botanical sheet carries the household colours', () => {
-  for (const hex of ['#F5F3EC', '#112A20', '#BEF264']) {
+check('the botanical sheet carries the Kakeibo palette', () => {
+  // Phase 1 Kakeibo overhaul: the warm off-white canvas, the muted
+  // deep-sage ticket surface, and the soft sage-cream badge. The old
+  // neon lime (#BEF264) on cream is gone - that was the washout bug.
+  for (const hex of ['#FAF9F6', '#2F4842', '#D8F3DC']) {
     assert.ok(BOT.includes(hex), `${hex} is in the botanical sheet`);
   }
+  assert.ok(!BOT.includes('#BEF264'), 'the retired neon lime is gone from the botanical sheet');
+});
+
+check('the forest ticket has a readable non-washed-out surface', () => {
+  // The ticket surface and its cream amount must both be pinned, so a
+  // light-mode override can never leave white/lime text on cream.
+  assert.ok(BOT.includes('background: #2F4842 !important'), 'the ticket surface is deep sage');
+  assert.ok(BOT.includes('#FFF8E7'), 'the ticket amount is warm cream');
 });
 
 check('the forest is the default colour scheme', () => {

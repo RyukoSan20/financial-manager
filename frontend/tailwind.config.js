@@ -21,16 +21,19 @@ export default {
          * appearance has been applied still looks right.
          */
         primary: {
-          50: 'rgb(var(--scheme-50-rgb, 239 246 255) / <alpha-value>)',
-          100: 'rgb(var(--scheme-100-rgb, 219 234 254) / <alpha-value>)',
-          200: 'rgb(var(--scheme-200-rgb, 191 219 254) / <alpha-value>)',
-          300: 'rgb(var(--scheme-300-rgb, 147 197 253) / <alpha-value>)',
-          400: 'rgb(var(--scheme-400-rgb, 96 165 250) / <alpha-value>)',
-          500: 'rgb(var(--scheme-500-rgb, 59 130 246) / <alpha-value>)',
-          600: 'rgb(var(--scheme-600-rgb, 37 99 235) / <alpha-value>)',
-          700: 'rgb(var(--scheme-700-rgb, 29 78 216) / <alpha-value>)',
-          800: 'rgb(var(--scheme-800-rgb, 30 64 175) / <alpha-value>)',
-          900: 'rgb(var(--scheme-900-rgb, 30 58 138) / <alpha-value>)',
+          // The fallbacks are the Kakeibo palette, so the first paint
+          // - before the appearance layer has run - is already the
+          // colour the reader arrives at, and never a blue flash.
+          50: 'rgb(var(--scheme-50-rgb, 250 249 246) / <alpha-value>)',
+          100: 'rgb(var(--scheme-100-rgb, 244 241 234) / <alpha-value>)',
+          200: 'rgb(var(--scheme-200-rgb, 216 243 220) / <alpha-value>)',
+          300: 'rgb(var(--scheme-300-rgb, 168 207 192) / <alpha-value>)',
+          400: 'rgb(var(--scheme-400-rgb, 82 121 111) / <alpha-value>)',
+          500: 'rgb(var(--scheme-500-rgb, 61 90 82) / <alpha-value>)',
+          600: 'rgb(var(--scheme-600-rgb, 47 72 66) / <alpha-value>)',
+          700: 'rgb(var(--scheme-700-rgb, 38 59 53) / <alpha-value>)',
+          800: 'rgb(var(--scheme-800-rgb, 30 43 39) / <alpha-value>)',
+          900: 'rgb(var(--scheme-900-rgb, 22 33 30) / <alpha-value>)',
         },
         success: {
           50: '#f0fdf4',
@@ -56,17 +59,19 @@ export default {
           800: '#991b1b',
           900: '#7f1d1d',
         },
+        // The warning family was a muddy brown; it is now the Kakeibo
+        // terracotta, which reads as a warm warning rather than mud.
         warning: {
-          50: '#fffbeb',
-          100: '#fef3c7',
-          200: '#fde68d',
-          300: '#fcd34d',
-          400: '#fbbf24',
-          500: '#f59e0b',
-          600: '#d97706',
-          700: '#b45309',
-          800: '#92400e',
-          900: '#78350f',
+          50: '#FDF3EF',
+          100: '#FBE7DF',
+          200: '#F6CDBD',
+          300: '#F0B09A',
+          400: '#E79378',
+          500: '#DC7455',
+          600: '#C2543A',
+          700: '#AD4530',
+          800: '#9A3E2B',
+          900: '#8A3728',
         },
       },
       fontFamily: {

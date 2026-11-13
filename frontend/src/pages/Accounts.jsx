@@ -184,6 +184,9 @@ export const Accounts = () => {
             mascot={{
               size: 56,
               state: (summary.total_balance || 0) < 0 ? 'alert' : 'idle',
+              // The shopkeeper's coin: this is the page about money
+              // that is counted, not money that is spent.
+              mode: 'business',
               label: t('accounts.total_balance'),
             }}
           />

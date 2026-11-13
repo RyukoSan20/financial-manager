@@ -256,7 +256,7 @@
   padding: 0.5rem 0.625rem;
   border-radius: 0.5rem;
   background: var(--warning-bg, #fffbeb);
-  color: var(--warning-text, #92400e);
+  color: var(--warning-text, #9A3E2B);
   margin: 0 0 0.75rem;
 }
 
@@ -740,7 +740,7 @@
 
 .split-invite-qr__link {
   margin: 0;
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-sans);
   font-size: 0.75rem;
   word-break: break-all;
   text-align: center;
@@ -796,7 +796,7 @@
 .split-add-receipt textarea {
   width: 100%;
   resize: vertical;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-sans);
   font-size: 0.875rem;
   padding: 0.625rem;
   border-radius: 0.5rem;

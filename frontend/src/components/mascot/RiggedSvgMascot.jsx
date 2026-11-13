@@ -1,24 +1,25 @@
 /**
  * The mascot.
  *
- * It is a grid of sixteen squares by sixteen, drawn in layers: the
- * body, the ears, the face, and what it wears. The grids are in
- * `mascotFrames.js`; this component is what moves them.
+ * There are two drawings of the companion.
  *
- * Two things move. The drawing flickers between two frames - eyes
- * open and eyes shut, ears up and one ear twitched - on a timer. And
- * the whole figure bobs, jumps or shakes, which is done by the
- * stylesheet.
+ * The one that shows by default is the Kakeibo one: a chubby little
+ * animal drawn the way a Japanese stationery character is drawn - flat
+ * pastel fills, one thick warm-brown outline, round shapes. It is in
+ * `KanaheiStationeryMascot.jsx`, and it is what every page now
+ * shows. The old sixteen-by-sixteen pixel grid looked harsh next to a
+ * rounded card, so it is kept as `variant="pixel"` rather than
+ * thrown away.
  *
- * It has four states: at rest, happy, celebrating and alarmed. The
- * page that holds it says which. Happy, celebrating and alarmed pass
- * on their own: after a moment it is at rest again.
+ * The behaviour is the same for both drawings:
  *
- * A page can also tell it to cheer, through the ref:
+ * - it blinks, and it bobs;
+ * - it has four states: at rest, happy, celebrating and alarmed;
+ * - it says the words the page gives it, one after the other, when
+ *   it is clicked;
+ * - and a page can make it cheer through the ref:
  *
  *     mascot.current.cheer('Kode disalin!')
- *
- * which makes it jump, throw its sparks and say the words.
  */
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -33,6 +34,7 @@ import {
   gridToRects,
   mascotLayers,
 } from './mascotFrames.js';
+import KanaheiStationeryMascot from './KanaheiStationeryMascot.jsx';
 
 // How long a mood lasts before the mascot is at rest again.
 const MOOD_MS = 2200;
@@ -82,6 +84,8 @@ const Spark = ({ spark }) => (
 const RiggedSvgMascot = forwardRef(function RiggedSvgMascot(
   {
     state = 'idle',
+    // `mood` is the older name for the same thing; both are accepted.
+    mood,
     mode = 'family',
     size = 72,
     message = '',
@@ -91,19 +95,23 @@ const RiggedSvgMascot = forwardRef(function RiggedSvgMascot(
     className = '',
     // The first frame to draw. The timer takes over from there.
     initialFrame = 0,
+    // `kanahei` is the flat stationery drawing; `pixel` is the old
+    // sixteen-by-sixteen grid.
+    variant = 'kanahei',
+    onClick,
   },
   ref
 ) {
   const [frame, setFrame] = useState(initialFrame === 1 ? 1 : 0);
-  const [mood, setMood] = useState(null);
+  const [activeMood, setActiveMood] = useState(null);
   const [jumping, setJumping] = useState(false);
   const [burst, setBurst] = useState(0);
   const [said, setSaid] = useState('');
   const lineIndex = useRef(0);
   const timers = useRef({});
 
-  const wanted = STATES.includes(state) ? state : 'idle';
-  const current = mood || wanted;
+  const wanted = STATES.includes(state) ? state : STATES.includes(mood) ? mood : 'idle';
+  const current = activeMood || wanted;
 
   const later = useCallback((name, fn, ms) => {
     clearTimeout(timers.current[name]);
@@ -135,8 +143,8 @@ const RiggedSvgMascot = forwardRef(function RiggedSvgMascot(
 
   const react = useCallback(
     (nextMood, text, { sparks = false } = {}) => {
-      setMood(nextMood);
-      later('mood', () => setMood(null), MOOD_MS);
+      setActiveMood(nextMood);
+      later('mood', () => setActiveMood(null), MOOD_MS);
       setJumping(true);
       later('jump', () => setJumping(false), JUMP_MS);
       if (sparks) {
@@ -164,10 +172,11 @@ const RiggedSvgMascot = forwardRef(function RiggedSvgMascot(
     if (message) say(message);
   }, [message, say]);
 
-  const onClick = () => {
+  const onMascotClick = () => {
     const text = lines.length ? lines[lineIndex.current % lines.length] : '';
     lineIndex.current += 1;
     react('happy', text, { sparks: true });
+    if (onClick) onClick();
   };
 
   const motion = jumping
@@ -176,12 +185,48 @@ const RiggedSvgMascot = forwardRef(function RiggedSvgMascot(
       : 'mascot-jump'
     : 'mascot-float';
 
+  // The flat stationery drawing.
+  if (variant !== 'pixel') {
+    return (
+      <span
+        className={`mascot-root ${className}`}
+        data-state={current}
+        data-mode={mode}
+        data-frame={frame}
+        data-variant="kanahei"
+      >
+        {/* The flat companion says what it has to say inside the hover
+            board, so there is one card above it rather than two. */}
+        <span className={`mascot-figure ${motion}`}>
+          <KanaheiStationeryMascot
+            mood={current}
+            mode={mode}
+            size={size}
+            label={label}
+            said={said}
+            onClick={onMascotClick}
+          />
+        </span>
+
+        {burst ? (
+          <span className="mascot-sparkles" key={burst} aria-hidden="true">
+            {SPARKS.map((spark) => (
+              <Spark key={spark.id} spark={spark} />
+            ))}
+          </span>
+        ) : null}
+      </span>
+    );
+  }
+
+  // The old pixel grid, kept for anyone who asks for it.
   return (
     <span
       className={`mascot-root ${className}`}
       data-state={current}
       data-mode={mode}
       data-frame={frame}
+      data-variant="pixel"
     >
       {said ? (
         <span className="mascot-bubble" role="status" aria-live="polite">
@@ -189,7 +234,7 @@ const RiggedSvgMascot = forwardRef(function RiggedSvgMascot(
         </span>
       ) : null}
 
-      <button type="button" className="mascot-button" onClick={onClick} aria-label={label}>
+      <button type="button" className="mascot-button" onClick={onMascotClick} aria-label={label}>
         <svg
           className={`mascot-figure ${motion}`}
           width={size}

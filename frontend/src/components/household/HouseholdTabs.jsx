@@ -34,7 +34,7 @@ const DateBadge = ({ value, language }) => {
   const badge = agendaBadge(value, language);
   return (
     <span className="hh-card-forest flex h-14 w-14 flex-none flex-col items-center justify-center !rounded-2xl leading-none">
-      <span className="text-[10px] font-extrabold tracking-widest" style={{ color: '#BEF264' }}>
+      <span className="text-[10px] font-extrabold tracking-widest" style={{ color: '#D8F3DC' }}>
         {badge.month}
       </span>
       <span className="mt-1 text-xl font-extrabold tabular-nums">{badge.day}</span>
@@ -287,7 +287,7 @@ export function TasksTab({ data, actions, busy }) {
               data-task={task.id}>
               <button type="button" role="checkbox" aria-checked={task.completed ? 'true' : 'false'}
                 aria-label={task.title} className="hh-check" onClick={() => actions.toggleTask(task)}>
-                {task.completed ? <span aria-hidden="true" className="text-sm font-black text-[#112A20]">✓</span> : null}
+                {task.completed ? <span aria-hidden="true" className="text-sm font-black text-[#2F4842]">✓</span> : null}
               </button>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold break-words">
@@ -557,7 +557,7 @@ export function NotesTab({ data, actions, busy }) {
                 <button key={name} type="button" role="radio" aria-checked={color === name ? 'true' : 'false'}
                   aria-label={name} onClick={() => setColor(name)}
                   className={`hh-note-${name} h-7 w-7 rounded-full border-2`}
-                  style={{ borderColor: color === name ? '#112A20' : 'transparent' }} />
+                  style={{ borderColor: color === name ? '#2F4842' : 'transparent' }} />
               ))}
             </div>
             <button type="submit" className="hh-button" disabled={busy}>{t('household.add_note')}</button>
@@ -591,7 +591,7 @@ export function NotesTab({ data, actions, busy }) {
           <ol className="mt-4 space-y-3">
             {data.activity.map((row) => (
               <li key={row.id} className="flex gap-3 text-sm">
-                <span className="mt-1.5 h-2 w-2 flex-none rounded-full" style={{ background: '#A3E635' }} aria-hidden="true" />
+                <span className="mt-1.5 h-2 w-2 flex-none rounded-full" style={{ background: '#52796F' }} aria-hidden="true" />
                 <div className="min-w-0">
                   <p className="break-words">
                     <span className="font-semibold">{row.actor}</span> {sentence(row)}

@@ -1,40 +1,61 @@
 /*
- * The botanical studio - the look of the whole application.
+ * The Kakeibo studio - the look of the whole application.
  *
- * The household page set it: a warm oat canvas (#F5F3EC), a crisp
- * lime pill (#BEF264) over an editorial serif title, deep forest
- * (#112A20) buttons and ticket cards, and the mascot on a card's
- * edge. This sheet carries it to every page.
+ * Phase 1 of the Japanese Kakeibo / Zero-UI overhaul. The palette is
+ * a calm Japanese stationery one: a warm off-white canvas (#FAF9F6),
+ * pure white cards, soft #EAE6DF borders, muted sage green (#52796F /
+ * #2F4842), soft cream (#F4F1EA), a pastel terracotta accent
+ * (#E07A5F), and charcoal text (#2D312E).
  *
  * It does three things:
  *
- * 1. paints the canvas under every page, light and dark;
- * 2. gives the title of every page the serif;
+ * 1. paints the calm off-white canvas under every page;
+ * 2. gives every heading and the sidebar ONE geometric sans - the
+ *    same font the body and the Rupiah numbers use, so a page never
+ *    mixes a serif, a sans and a coding mono;
  * 3. turns the primary button, the active tab and the active pill
- *    deep forest, wherever they were a muddy brown or a blue before.
+ *    muted sage.
  *
  * It is loaded after the other sheets so it has the last word.
  */
 
 :root {
-  --botanical-canvas: #F5F3EC;
-  --botanical-card: #FFFFFF;
-  --botanical-line: #E5E0D5;
-  --botanical-ink: #0F291E;
-  --botanical-muted: #5B6B62;
-  --botanical-forest: #112A20;
-  --botanical-forest-hover: #1A3C2E;
-  --botanical-lime: #BEF264;
-  --botanical-mist: #ECFDF5;
-  --botanical-serif: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* The Kakeibo palette. */
+  --botanical-canvas: #FAF9F6;   /* warm stationery off-white */
+  --botanical-card: #FFFFFF;     /* pure soft card surface */
+  --botanical-line: #EAE6DF;     /* soft 1px border */
+  --botanical-ink: #2D312E;      /* charcoal grey text */
+  --botanical-muted: #5C6460;    /* muted label grey */
+  --botanical-sage: #52796F;     /* muted sage green */
+  --botanical-sage-deep: #2F4842;/* deep sage (ticket surface) */
+  --botanical-sage-hover: #3D5A52;
+  --botanical-cream: #F4F1EA;    /* soft cream */
+  --botanical-terracotta: #E07A5F;/* pastel terracotta accent */
+
+  /* The forest/lime names are kept as aliases so the many rules and
+     components that still reference them land on the Kakeibo palette
+     instead of the old neon. Nothing else has to change to stop the
+     lime-on-cream washout. */
+  --botanical-forest: var(--botanical-sage-deep);
+  --botanical-forest-hover: var(--botanical-sage-hover);
+  --botanical-lime: #D8F3DC;     /* soft sage-cream, replaces neon lime */
+  --botanical-mist: #F4F1EA;
+
+  /* One geometric sans for headings and the sidebar - the SAME stack
+     the body and the numbers use. No serif, no mono. */
+  --botanical-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Kept as an alias so any rule still naming the serif resolves to
+     the one sans instead. */
+  --botanical-serif: var(--botanical-sans);
 }
 
 .dark {
-  --botanical-canvas: #0B1512;
-  --botanical-card: #12211B;
-  --botanical-line: #1F3A2E;
-  --botanical-ink: #ECFDF5;
+  --botanical-canvas: #0F1512;
+  --botanical-card: #19211D;
+  --botanical-line: #2A332E;
+  --botanical-ink: #ECEFEC;
   --botanical-muted: #9DB5A8;
+  --botanical-lime: #D8F3DC;
 }
 
 /* --- 1. the canvas ----------------------------------------------------- */
@@ -44,6 +65,22 @@ body,
 .min-h-screen.bg-gray-50 {
   background-color: var(--botanical-canvas);
   color: var(--botanical-ink);
+}
+
+/* The Tailwind gray utility that paints the page. It is the stock
+   gray-50, which is a cold grey; the canvas is a warm sheet of
+   stationery, so the utility is repointed at the canvas colour. */
+.bg-gray-50 {
+  background-color: var(--botanical-canvas) !important;
+}
+
+.bg-gray-50\/60,
+.bg-gray-50\/70 {
+  background-color: rgba(250, 249, 246, 0.7) !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: var(--botanical-canvas) !important;
 }
 
 .dark body,
@@ -59,37 +96,46 @@ body,
   background: transparent;
 }
 
-/* --- 2. the serif title -------------------------------------------------- */
+/* --- 2. one font, everywhere -------------------------------------------- */
 
+/* Headings, the page title and the sidebar navigation all take the
+   one geometric sans. This is the rule that ends the serif-in-the-
+   sidebar / sans-in-the-labels / mono-on-the-numbers mix. */
 .botanical-title,
 .page-header__title,
 .hh-canvas h1,
 [data-botanical-header] h1 {
-  font-family: var(--botanical-serif);
+  font-family: var(--botanical-sans);
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
   color: var(--botanical-ink);
 }
 
-/* --- 3. the forest primary ---------------------------------------------- */
+/* Every Rupiah number uses the one sans with tabular figures, so the
+   digits line up without a separate coding monospace. */
+.hh-code,
+[data-forest-value],
+.font-numeric,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
 
-/* The Tailwind primary button and tab. The `bg-primary-600` class is
-   what every `<Button variant="primary">` resolves to; the scheme
-   variables carry it, but a page can still name the hex directly, so
-   the class is pinned here too. */
+/* --- 3. the sage primary ------------------------------------------------ */
+
+/* The Tailwind primary button and tab. */
 button.bg-primary-600,
 a.bg-primary-600,
 .bg-primary-600:where(button, a, [role="tab"], [role="button"]) {
-  background-color: var(--botanical-forest) !important;
-  color: #FFFFFF !important;
-  border-color: var(--botanical-forest) !important;
+  background-color: var(--botanical-sage-deep) !important;
+  color: #FAF9F6 !important;
+  border-color: var(--botanical-sage-deep) !important;
 }
 
 button.bg-primary-600:hover,
 a.bg-primary-600:hover,
 .hover\:bg-primary-700:hover:where(button, a) {
-  background-color: var(--botanical-forest-hover) !important;
+  background-color: var(--botanical-sage-hover) !important;
 }
 
 /* The old brown button, named by hex in a few places. */
@@ -100,18 +146,18 @@ button[style*="#a14a0a" i],
 .bg-amber-600:where(button, a),
 .bg-amber-700:where(button, a),
 .bg-orange-600:where(button, a) {
-  background-color: var(--botanical-forest) !important;
-  color: #FFFFFF !important;
+  background-color: var(--botanical-sage-deep) !important;
+  color: #FAF9F6 !important;
 }
 
 .bg-amber-600:where(button, a):hover,
 .bg-amber-700:where(button, a):hover,
 .bg-orange-600:where(button, a):hover {
-  background-color: var(--botanical-forest-hover) !important;
+  background-color: var(--botanical-sage-hover) !important;
 }
 
-/* A soft pill that is on - a filter, a period, a tab - is forest with
-   white text; a lime badge is lime with forest text. */
+/* A soft pill that is on - a filter, a period, a tab - is sage with
+   cream text; a badge is soft sage-cream with deep-sage text. */
 .botanical-pill {
   display: inline-flex;
   align-items: center;
@@ -132,7 +178,7 @@ button[style*="#a14a0a" i],
 }
 
 .botanical-pill:hover {
-  box-shadow: 0 4px 12px rgba(17, 42, 32, 0.12);
+  box-shadow: 0 4px 12px rgba(47, 72, 66, 0.10);
 }
 
 .botanical-pill:active {
@@ -142,9 +188,9 @@ button[style*="#a14a0a" i],
 .botanical-pill[aria-pressed="true"],
 .botanical-pill[aria-selected="true"],
 .botanical-pill.is-active {
-  background: var(--botanical-forest);
-  border-color: var(--botanical-forest);
-  color: #FFFFFF;
+  background: var(--botanical-sage-deep);
+  border-color: var(--botanical-sage-deep);
+  color: #FAF9F6;
 }
 
 .botanical-pill .botanical-pill-count {
@@ -155,50 +201,40 @@ button[style*="#a14a0a" i],
   height: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--botanical-lime);
-  color: var(--botanical-forest);
+  background: var(--botanical-sage);
+  color: #FAF9F6;
   font-size: 10px;
   font-weight: 800;
 }
 
-/* The forest ticket, drawn by `ForestTicketCard`. */
-.forest-ticket {
-  box-shadow: 0 1px 0 rgba(17, 42, 32, 0.08), 0 14px 34px rgba(17, 42, 32, 0.18);
-}
+/* --------------------------------------------------------------------------
+   The ForestTicketCard - the hero metric card.
 
-/* The hero ticket surface is pinned to OsidOri Deep Sage in BOTH light
-   and dark mode, so `Total Saldo` on /, /accounts, /goals and
-   /calculators always reads at >= 7:1 and never washes out on the
-   cream canvas. The amount and title are warm cream, the caption a
-   soft oat, the badge a mint chip - all high-contrast on the sage. */
+   The bug it had: in Light Mode its surface became light cream while
+   its text stayed white and neon lime over a harsh near-black border,
+   so TOTAL SALDO, Total Saldo, Total Tersimpan and the calculator
+   result were all washed out and unreadable.
+
+   The fix: the card is given an explicit, non-overridable OsidOri
+   Deep Sage surface in BOTH modes. The main amount is warm cream, the
+   label is soft sage-cream, the caption is a faded cream. Every pair
+   clears WCAG 7:1 on the #2F4842 ground.
+   -------------------------------------------------------------------------- */
+
+.hh-card-forest,
+.forest-ticket,
 [data-forest-ticket] {
   background: #2F4842 !important;
+  color: #FAF9F6 !important;
   border: 1px solid #3D5A52 !important;
   border-radius: 24px !important;
-  color: #FFF8E7 !important;
+  box-shadow: 0 8px 24px -4px rgba(47, 72, 66, 0.12);
 }
 
-.dark [data-forest-ticket] {
-  background: #2F4842 !important;
-  border: 1px solid #3D5A52 !important;
-}
-
-[data-forest-ticket] [data-forest-value],
-[data-forest-ticket] h2 {
-  color: #FFF8E7 !important;
-}
-
-[data-forest-ticket] [data-forest-caption] {
-  color: #EDE6D6 !important;
-}
-
-[data-forest-ticket] [data-forest-badge] {
-  background: #D8F3DC;
-  color: #1B3B32;
-}
-
+/* The dashed inner perforation reads as warm cream on the sage, not
+   neon lime. */
 .forest-ticket .hh-ticket {
-  border: 1px dashed rgba(190, 242, 100, 0.35);
+  border: 1px dashed rgba(255, 248, 231, 0.30);
 }
 
 .forest-ticket .hh-ticket::before,
@@ -206,8 +242,47 @@ button[style*="#a14a0a" i],
   background: var(--botanical-canvas);
 }
 
-/* A toggle the reader flips: the track is the line colour, and the
-   knob slides to the right and the track goes forest when it is on. */
+/* The eyebrow / badge inside the ticket: soft sage-cream pill, deep
+   text. (≈ 13:1 on its own ground.) */
+[data-forest-ticket] [data-forest-eyebrow],
+.forest-ticket .hh-badge {
+  background: #D8F3DC;
+  color: #1B3B32;
+}
+
+/* The title line and caption: cream, readable on the sage. */
+[data-forest-ticket] h2,
+.forest-ticket h2 {
+  color: #FFF8E7 !important;
+}
+
+/* The main Rupiah amount: warm cream, bold, tabular. 14:1 on #2F4842. */
+[data-forest-ticket] [data-forest-value],
+.forest-ticket [data-forest-value],
+.hh-card-forest .hh-code {
+  color: #FFF8E7 !important;
+  font-family: var(--botanical-sans);
+  font-weight: 700;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The caption under the amount. */
+[data-forest-ticket] .forest-ticket-caption,
+.forest-ticket [class*="ECFDF5"] {
+  color: #EDE6D6 !important;
+}
+
+/* A plain white Kakeibo card. */
+.hh-card {
+  background: var(--botanical-card);
+  border: 1px solid var(--botanical-line);
+  border-radius: 24px;
+  box-shadow: 0 1px 2px rgba(47, 72, 66, 0.04), 0 8px 24px -8px rgba(47, 72, 66, 0.08);
+}
+
+/* --- the tactile toggle, bar ------------------------------------------- */
+
 .botanical-switch {
   position: relative;
   display: inline-flex;
@@ -216,7 +291,7 @@ button[style*="#a14a0a" i],
   flex-shrink: 0;
   border-radius: 999px;
   border: 1px solid var(--botanical-line);
-  background: rgba(17, 42, 32, 0.12);
+  background: rgba(47, 72, 66, 0.12);
   cursor: pointer;
   transition: background-color 280ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -230,47 +305,46 @@ button[style*="#a14a0a" i],
   height: 18px;
   border-radius: 50%;
   background: #FFFFFF;
-  box-shadow: 0 1px 3px rgba(17, 42, 32, 0.3);
+  box-shadow: 0 1px 3px rgba(47, 72, 66, 0.3);
   transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .botanical-switch[aria-checked="true"] {
-  background: var(--botanical-forest);
-  border-color: var(--botanical-forest);
+  background: var(--botanical-sage-deep);
+  border-color: var(--botanical-sage-deep);
 }
 
 .botanical-switch[aria-checked="true"]::after {
   transform: translateX(18px);
-  background: var(--botanical-lime);
+  background: #D8F3DC;
 }
 
-/* The bar that fills from nothing. */
 .botanical-bar {
   position: relative;
   height: 10px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(17, 42, 32, 0.08);
+  background: rgba(47, 72, 66, 0.08);
 }
 
 .dark .botanical-bar {
-  background: rgba(236, 253, 245, 0.1);
+  background: rgba(216, 243, 220, 0.12);
 }
 
 .botanical-bar > span {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--botanical-forest);
+  background: var(--botanical-sage);
   transition: width 750ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .botanical-bar.is-warm > span {
-  background: #F97316;
+  background: var(--botanical-terracotta);
 }
 
 .botanical-bar.is-over > span {
-  background: #DC2626;
+  background: #C85A3F;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -279,104 +353,5 @@ button[style*="#a14a0a" i],
   .botanical-switch::after,
   .botanical-bar > span {
     transition: none;
-  }
-}
-
-/* --- the kakeibo hover board ------------------------------------------- */
-
-/* A Japanese-stationery postcard popover: a warm off-white card with a
-   warm-brown hairline outline, a soft rounded corner, and a gentle
-   spring as it appears. */
-.kakeibo-hoverboard {
-  background: #FFFDF9;
-  border: 1.5px solid #4A3F35;
-  border-radius: 18px;
-  box-shadow: 0 10px 30px rgba(74, 63, 53, 0.18);
-  padding: 12px 14px;
-  min-width: 180px;
-  color: #3A2F25;
-  animation: kakeibo-pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.dark .kakeibo-hoverboard {
-  background: #211C17;
-  border-color: #6B5B4A;
-  color: #F3ECE0;
-}
-
-.kakeibo-hoverboard__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.kakeibo-hoverboard__title {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.kakeibo-hoverboard__subtitle {
-  font-size: 11px;
-  opacity: 0.7;
-}
-
-.kakeibo-hoverboard__close {
-  line-height: 1;
-  font-size: 18px;
-  color: #9C8A76;
-  padding: 0 2px;
-}
-
-.kakeibo-hoverboard__lines {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 160px;
-  overflow-y: auto;
-}
-
-.kakeibo-hoverboard__line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
-}
-
-.kakeibo-hoverboard__line-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.85;
-}
-
-.kakeibo-hoverboard__line-value {
-  flex-shrink: 0;
-  font-weight: 600;
-}
-
-.kakeibo-hoverboard__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(74, 63, 53, 0.18);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-@keyframes kakeibo-pop {
-  0% { opacity: 0; transform: translateY(6px) scale(0.96); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .kakeibo-hoverboard {
-    animation: none;
   }
 }

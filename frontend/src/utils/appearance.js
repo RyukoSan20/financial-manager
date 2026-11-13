@@ -46,20 +46,23 @@ export const COLOR_SCHEMES = {
     id: 'forest',
     labelKey: 'appearance.forest_label',
     descriptionKey: 'appearance.forest_description',
+    // The Kakeibo palette. Step 300 was the retired neon lime; it is
+    // now the soft sage-cream, so `text-primary-300` on a light
+    // card is readable and nothing shouts.
     shades: {
-      50: '#F5F3EC',
-      100: '#ECFDF5',
-      200: '#D9F99D',
-      300: '#BEF264',
-      400: '#4D7C5A',
-      500: '#2F5C45',
-      600: '#112A20',
-      700: '#1A3C2E',
-      800: '#0F291E',
-      900: '#0B1512',
+      50: '#FAF9F6',
+      100: '#F4F1EA',
+      200: '#D8F3DC',
+      300: '#A8CFC0',
+      400: '#52796F',
+      500: '#3D5A52',
+      600: '#2F4842',
+      700: '#263B35',
+      800: '#1E2B27',
+      900: '#16211E',
     },
-    accent: '#112A20',
-    onAccent: '#FFFFFF',
+    accent: '#2F4842',
+    onAccent: '#FAF9F6',
   },
   emerald: {
     id: 'emerald',
@@ -126,19 +129,19 @@ export const COLOR_SCHEMES = {
     labelKey: 'appearance.amber_label',
     descriptionKey: 'appearance.amber_description',
     shades: {
-      50: '#F5F3EC',
-      100: '#FEF9C3',
-      200: '#E9F5A1',
-      300: '#BEF264',
-      400: '#5B7F4A',
-      500: '#365C3A',
-      600: '#112A20',
-      700: '#1A3C2E',
-      800: '#0F291E',
-      900: '#0B1512',
+      50: '#FAF9F6',
+      100: '#F4F1EA',
+      200: '#D8F3DC',
+      300: '#A8CFC0',
+      400: '#52796F',
+      500: '#3D5A52',
+      600: '#2F4842',
+      700: '#263B35',
+      800: '#1E2B27',
+      900: '#16211E',
     },
-    accent: '#112A20',
-    onAccent: '#FFFFFF',
+    accent: '#2F4842',
+    onAccent: '#FAF9F6',
   },
   rose: {
     id: 'rose',
@@ -198,30 +201,45 @@ export const FONT_FAMILIES = {
     id: 'sans',
     labelKey: 'appearance.sans_label',
     descriptionKey: 'appearance.sans_description',
+    // One geometric sans for everything - headings, body, sidebar and
+    // the Rupiah numbers. The numbers use the same stack as the text
+    // (not a separate monospace) so a page never mixes three fonts;
+    // tabular figures keep the digits aligned without a mono face.
     stack:
-      "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-    numeric: "'Plus Jakarta Sans', 'Inter', ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
+      "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    numeric:
+      "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
+  // The other three themes remember the reader's choice, and they
+  // still change the scale and the spacing, but they all draw in the
+  // one geometric sans. A page that mixed a serif heading, a sans
+  // label and a coding mono number was the bug; this is the fix.
   serif: {
     id: 'serif',
     labelKey: 'appearance.serif_label',
     descriptionKey: 'appearance.serif_description',
-    stack: "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif",
-    numeric: "'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace",
+    stack:
+      "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    numeric:
+      "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
   mono: {
     id: 'mono',
     labelKey: 'appearance.mono_label',
     descriptionKey: 'appearance.mono_description',
-    stack: "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace",
-    numeric: "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace",
+    stack:
+      "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    numeric:
+      "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
   rounded: {
     id: 'rounded',
     labelKey: 'appearance.rounded_label',
     descriptionKey: 'appearance.rounded_description',
-    stack: "'Nunito', 'Quicksand', system-ui, -apple-system, 'Segoe UI', sans-serif",
-    numeric: "ui-rounded, 'SF Pro Rounded', 'Nunito', Menlo, monospace",
+    stack:
+      "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    numeric:
+      "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
 };
 
