@@ -111,7 +111,7 @@ const HealthCoach = () => {
 
   return (
     <div className="p-4 max-w-6xl mx-auto pb-20">
-      <h1 className="text-2xl font-bold mb-4">{t('nav.healthCoach')}</h1>
+      <h1 className="text-2xl font-bold font-sans mb-4 text-[#1F2421] dark:text-[#FAF9F6]">{t('nav.healthCoach')}</h1>
 
       {/* The bento.
 

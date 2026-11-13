@@ -1006,7 +1006,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                 onClick={() => setTimeframe(tf.key)}
                 title={t(tf.descriptionKey)}
                 aria-pressed={timeframe === tf.key}
-                className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
+                className={`motion-x-spring px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
                   timeframe === tf.key
                     ? 'bg-white text-slate-900 shadow-sm dark:bg-white/15 dark:text-white'
                     : `${textSecondary} hover:text-gray-900 dark:hover:text-white`
@@ -1233,10 +1233,14 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
             {/* Pemasukan · Pengeluaran · Arus Kas - three equal cards. */}
             <div className="lg:col-span-7">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 h-full">
-                {cashflowCards.map((card) => {
+                {cashflowCards.map((card, index) => {
                   const Icon = card.icon;
                   return (
-                    <div key={card.key} className="hh-card summary-amount-measure flex flex-col justify-between p-5">
+                    <div
+                      key={card.key}
+                      className="bento-cascade hh-card summary-amount-measure flex flex-col justify-between p-5 transition-shadow hover:shadow-md hover:-translate-y-0.5 duration-200"
+                      style={{ '--stagger-index': index }}
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-[#5C6460]">
                           {card.label}

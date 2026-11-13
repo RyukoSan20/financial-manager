@@ -826,11 +826,20 @@ async def create_net_worth_snapshot(
 def get_monthly_comparison(
     months: int = Query(default=3, ge=2, le=6),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    # When the reader has chosen their own range, the table is about
+    # the months that range spans, counted back from its own end
+    # date - not from today, which would show the wrong months for a
+    # range in the past.
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
 ):
     """Compare current month with previous N months."""
     user_id = current_user.id if current_user else None
-    today = date.today()
+    reference = end_date or date.today()
+    today = reference
+    if start_date and end_date:
+        months = max(2, min(6, _months_between(start_date, end_date)))
     current_month = (today.year, today.month)
     
     comparisons = []

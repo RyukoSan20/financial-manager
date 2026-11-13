@@ -146,9 +146,29 @@ export default function CountUpNumber({
     };
   }, [target, places, duration, finite]);
 
+  // The vertical slide that goes with the roll.
+  //
+  // The count alone changes the digits in place. When the whole set
+  // of numbers on a page is replaced at once - a new date range on
+  // the analytics page, a new chapter on the financial profile - the
+  // reader needs to see that these are *new* numbers, not the old
+  // ones twitching. So the number also slides up into place as it
+  // rolls, and the slide replays every time the target changes.
+  //
+  // The replay works by changing the key on the element: React
+  // remounts it, and a remounted element runs its entrance animation
+  // again. A class toggled on the same element would not re-run.
+  const rollRef = useRef(0);
+  const lastTargetRef = useRef(target);
+  if (lastTargetRef.current !== target) {
+    lastTargetRef.current = target;
+    rollRef.current += 1;
+  }
+
   return (
     <span
-      className={`count-up-number tabular-nums ${className}`.trim()}
+      key={rollRef.current}
+      className={`count-up-number motion-roll-in tabular-nums ${className}`.trim()}
       data-testid="count-up-number"
       data-value={finite ? target : 0}
     >

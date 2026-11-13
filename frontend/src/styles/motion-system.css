@@ -1,0 +1,201 @@
+/*
+ * The reference-grade motion system.
+ *
+ * Four patterns, each borrowed from a product whose motion people
+ * already trust, and each applied to a specific kind of element so
+ * the page feels alive without ever feeling slow or cluttered:
+ *
+ * 1. X (Twitter) spring micro-interactions - `.motion-x-spring`.
+ *    A pill or a button answers a tap with a quick, slightly
+ *    overshooting spring: pressed small, settled back a touch past
+ *    its own size, then home. Applied to filter pills, quick
+ *    category pills, and action buttons.
+ *
+ * 2. YouTube interactive scrubbing bars - `.motion-scrub-bar`.
+ *    A progress bar (a budget, a health ratio, a goal) grows taller
+ *    and glows softly on hover or touch, the way a video's scrubber
+ *    thickens under the pointer.
+ *
+ * 3. Apple / Stripe rolling digit counters.
+ *    The vertical slide-in that `CountUpNumber` and `AnimatedNumber`
+ *    use when a number lands on a new value. The arithmetic for the
+ *    roll itself lives in `utils/countUp.js`; this is the entrance
+ *    the number's container gets.
+ *
+ * 4. Linear staggered Bento cascade - `.bento-cascade`.
+ *    A card that fades up into place with a small delay per card, so
+ *    a grid of them cascades in rather than appearing all at once.
+ *
+ * Nothing here moves on its own: every rule answers an interaction
+ * (hover, press, a value changing, a page mounting) and every
+ * animation respects `prefers-reduced-motion`.
+ */
+
+/* ---------------------------------------------------------------------------
+ * 1. X (Twitter) spring micro-interactions
+ * ------------------------------------------------------------------------- */
+
+.motion-x-spring {
+  transition:
+    transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.motion-x-spring:active {
+  transform: scale(0.93);
+}
+
+/*
+ * The snappy bounce for a selection: pressed small, past its own
+ * size, then home. Added via JS as a one-shot class (`motion-x-pop`)
+ * on the element that was just selected, and removed after it runs,
+ * so it never loops.
+ */
+.motion-x-pop {
+  animation: motion-x-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+}
+
+@keyframes motion-x-pop {
+  0% {
+    transform: scale(0.93);
+  }
+  55% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 2. YouTube-style interactive scrubbing bars
+ * ------------------------------------------------------------------------- */
+
+.motion-scrub-bar {
+  height: 0.625rem; /* h-2.5 */
+  transition: height 200ms ease, box-shadow 200ms ease;
+}
+
+.motion-scrub-bar:hover,
+.motion-scrub-bar:focus-within,
+.motion-scrub-bar.is-scrubbing {
+  height: 0.875rem; /* h-3.5 */
+  box-shadow: 0 0 14px rgba(82, 121, 111, 0.35);
+}
+
+.motion-scrub-bar__fill {
+  transition: width 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/*
+ * The floating tooltip/board that appears above a scrubbing bar on
+ * hover, with the exact breakdown. It is positioned by its caller;
+ * this only gives it its entrance.
+ */
+.motion-scrub-tooltip {
+  opacity: 0;
+  transform: translateY(4px) scale(0.98);
+  transition: opacity 160ms ease, transform 160ms ease;
+  pointer-events: none;
+}
+
+.motion-scrub-bar:hover + .motion-scrub-tooltip,
+.motion-scrub-bar:focus-within + .motion-scrub-tooltip,
+.motion-scrub-bar.is-scrubbing + .motion-scrub-tooltip {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ---------------------------------------------------------------------------
+ * 3. Apple / Stripe rolling digit counters
+ * ------------------------------------------------------------------------- */
+
+/*
+ * The container a counting number sits in. When the number's value
+ * changes, its caller toggles `motion-roll-in` (e.g. on a date-range
+ * or chapter switch) to replay the vertical slide.
+ */
+.motion-roll-in {
+  animation: motion-roll-in 650ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes motion-roll-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 4. Linear-style staggered Bento cascade
+ * ------------------------------------------------------------------------- */
+
+.bento-cascade {
+  --stagger-index: 0;
+  animation: bentoFadeUp 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--stagger-index) * 40ms);
+}
+
+@keyframes bentoFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * The Custom Date Range Studio panel
+ * ------------------------------------------------------------------------- */
+
+/*
+ * The studio expands below the filter pills. It animates the opacity
+ * and the offset it actually moves, named one by one - `transition:
+ * all` would animate the layout too, which is what made the panel
+ * shudder as the date inputs resized inside it.
+ */
+.motion-studio-panel {
+  animation: motion-studio-open 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: border-color 300ms ease, background-color 300ms ease, box-shadow 300ms ease;
+}
+
+@keyframes motion-studio-open {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Respecting the reader
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-x-spring,
+  .motion-x-pop,
+  .motion-scrub-bar,
+  .motion-scrub-bar__fill,
+  .motion-scrub-tooltip,
+  .motion-roll-in,
+  .motion-studio-panel,
+  .bento-cascade {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .motion-x-spring:active {
+    transform: none !important;
+  }
+}

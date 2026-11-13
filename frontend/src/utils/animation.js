@@ -121,6 +121,51 @@ export function staggerDelay(index, step = 24, cap = 12) {
 }
 
 /**
+ * The style prop for a Linear-style Bento cascade card.
+ *
+ * `.bento-cascade` (in `styles/motion-system.css`) reads the custom
+ * property `--stagger-index` to delay each card by 40ms per index,
+ * so a grid of cards fades up one after another rather than all at
+ * once. This is the one place that number is set, so every page
+ * using the cascade agrees on the same per-card delay.
+ */
+export function bentoCascadeStyle(index, cap = 12) {
+  return { '--stagger-index': Math.min(index, cap) };
+}
+
+/**
+ * The snappy bounce an element gives when it is selected.
+ *
+ * `.motion-x-pop` (in `styles/motion-system.css`) runs the X-style
+ * spring once: pressed small, past its own size, then home. It has
+ * to be a one-shot - left on the element it would replay on every
+ * rerender - so this adds the class, waits for the animation to end,
+ * and takes it off again.
+ *
+ * Call it from the click handler with the event's own target:
+ *
+ *   onClick={(e) => { popOnSelect(e.currentTarget); choose(key); }}
+ *
+ * A reader who has asked for less movement gets nothing, because the
+ * class is guarded in the sheet as well - this just avoids the
+ * pointless add/remove.
+ */
+export function popOnSelect(element) {
+  if (!element || typeof element.classList === 'undefined') return;
+  if (prefersReducedMotion()) return;
+
+  // Already popping: restart it rather than stacking two runs.
+  element.classList.remove('motion-x-pop');
+
+  const done = () => {
+    element.classList.remove('motion-x-pop');
+    element.removeEventListener('animationend', done);
+  };
+  element.addEventListener('animationend', done);
+  element.classList.add('motion-x-pop');
+}
+
+/**
  * The lean of a card, from where the pointer is.
  *
  * The numbers are the maximum lean in degrees and the fraction of
