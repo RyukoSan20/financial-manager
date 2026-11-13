@@ -15,6 +15,7 @@ import './styles/login.css'
 import './styles/fintech.css'
 import './styles/shape.css'
 import './styles/mascot-motion.css'
+import './styles/motion-system.css'
 // The botanical studio has the last word on colour.
 import './styles/botanical.css'
 

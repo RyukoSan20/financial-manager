@@ -186,7 +186,12 @@ jobs:
             src/components/common/__tests__/honestEmptyState.test.js \
             src/contexts/__tests__/confirmState.test.js \
             src/data/__tests__/privacyManifest.test.js \
-            src/pages/__tests__/marketPage.test.js
+            src/pages/__tests__/marketPage.test.js \
+            src/styles/__tests__/interfaceFeel.test.js \
+            src/styles/__tests__/motionSystem.test.js \
+            src/components/health/__tests__/wellnessBento.test.js \
+            src/components/health/__tests__/financialRatioPills.test.js \
+            src/components/analytics/__tests__/dateRangeCustomPanel.test.js
           do
             if [ -f "$t" ]; then
               node "$t" || exit 1

@@ -294,10 +294,10 @@ export const Analytics = () => {
 
       const results = await Promise.allSettled([
         withDates('/analytics/financial-health'),
-        api.request(`/analytics/cash-flow-trend?months=${period}`),
-        withDates('/analytics/expense-breakdown?period=monthly'),
-        api.request('/analytics/budget-vs-actual'),
-        api.request(`/analytics/monthly-comparison?months=${Math.min(6, Math.max(2, Number(period) || 3))}`),
+        withDates(`/analytics/cash-flow-trend?months=${period}`),
+        withDates('/analytics/expense-breakdown'),
+        withDates('/analytics/budget-vs-actual'),
+        withDates(`/analytics/monthly-comparison?months=${Math.min(6, Math.max(2, Number(period) || 3))}`),
         withDates('/analytics/top-expenses?limit=8'),
         api.request('/analytics/spending-patterns'),
         api.request('/analytics/recurring-expenses'),
@@ -411,12 +411,15 @@ export const Analytics = () => {
   // be made, so the page says what is missing instead.
   const showHealthScore = canShowHealthScore(health, healthTxCount);
 
-  const Widget = ({ id, children, className = '' }) => {
+  const Widget = ({ id, children, className = '', cascadeIndex }) => {
     const meta = WIDGETS[id];
     const Icon = meta.icon;
     const isOpen = explain[id];
     return (
-      <Card className={`overflow-hidden ${meta.minWidth === 'full' ? 'lg:col-span-2' : ''} ${className}`}>
+      <Card
+        className={`bento-cascade overflow-hidden ${meta.minWidth === 'full' ? 'lg:col-span-2' : ''} ${className}`}
+        style={cascadeIndex != null ? { '--stagger-index': cascadeIndex } : undefined}
+      >
         <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -441,12 +444,12 @@ export const Analytics = () => {
     );
   };
 
-  const renderWidget = (id) => {
+  const renderWidget = (id, cascadeIndex) => {
     switch (id) {
       case 'health':
         if (!health) return null;
         return (
-          <Widget id="health">
+          <Widget id="health" cascadeIndex={cascadeIndex}>
             {/* The header is a quiet surface rather than a block of
                 bright colour. A large block of colour says "look at
                 me" whether or not it has anything worth showing, and
@@ -581,7 +584,7 @@ export const Analytics = () => {
       case 'cashflow':
         if (!cashFlow?.monthly?.length) return null;
         return (
-          <Widget id="cashflow">
+          <Widget id="cashflow" cascadeIndex={cascadeIndex}>
             <CardBody>
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={cashFlow.monthly.map((m) => ({
@@ -621,7 +624,7 @@ export const Analytics = () => {
       case 'categories':
         if (!expenseBreakdown?.breakdown?.length) return null;
         return (
-          <Widget id="categories">
+          <Widget id="categories" cascadeIndex={cascadeIndex}>
             <CardBody>
               <div className="flex flex-col lg:flex-row gap-4 items-center">
                 <div className="w-full lg:w-1/2">
@@ -676,7 +679,7 @@ export const Analytics = () => {
       case 'budget':
         if (!budgetComparison?.comparisons?.length) return null;
         return (
-          <Widget id="budget">
+          <Widget id="budget" cascadeIndex={cascadeIndex}>
             <CardBody>
               <ResponsiveContainer width="100%" height={230}>
                 <BarChart data={budgetComparison.comparisons.map((c) => ({
@@ -718,7 +721,7 @@ export const Analytics = () => {
       case 'topexpenses':
         if (!topExpenses?.expenses?.length) return null;
         return (
-          <Widget id="topexpenses">
+          <Widget id="topexpenses" cascadeIndex={cascadeIndex}>
             <CardBody className="p-0">
               <ul className="divide-y divide-gray-100">
                 {topExpenses.expenses.map((tx) => (
@@ -743,7 +746,7 @@ export const Analytics = () => {
       case 'patterns':
         if (!patterns?.by_weekday?.length) return null;
         return (
-          <Widget id="patterns">
+          <Widget id="patterns" cascadeIndex={cascadeIndex}>
             <CardBody>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={patterns.by_weekday.map((d) => ({
@@ -774,7 +777,7 @@ export const Analytics = () => {
       case 'recurring':
         if (!recurring?.items?.length) return null;
         return (
-          <Widget id="recurring">
+          <Widget id="recurring" cascadeIndex={cascadeIndex}>
             <CardBody>
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <Metric label={t('analytics.per_month')} value={formatCurrency(recurring.total_monthly_recurring)} />
@@ -797,7 +800,7 @@ export const Analytics = () => {
       case 'monthly':
         if (!monthlyComparison?.comparisons?.length) return null;
         return (
-          <Widget id="monthly">
+          <Widget id="monthly" cascadeIndex={cascadeIndex}>
             <CardBody className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -1094,9 +1097,9 @@ export const Analytics = () => {
 
       {/* Widgets */}
       <div className="grid lg:grid-cols-2 gap-5">
-        {visible.map((id) => (
+        {visible.map((id, index) => (
           <div key={id} className="contents">
-            {renderWidget(id)}
+            {renderWidget(id, index)}
           </div>
         ))}
       </div>

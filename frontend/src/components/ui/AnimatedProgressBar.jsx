@@ -20,6 +20,12 @@
  * third of the money in the first third of the month is on plan;
  * spending half of it in the first third is not, even though half is
  * under the limit.
+ *
+ * On hover or touch the bar grows a little taller and glows, the way
+ * a video's scrubber thickens under the pointer, and a floating pill
+ * above it spells out the exact breakdown - what was used, what is
+ * left, and which day of the period it is - so the reader does not
+ * have to go hunting for those numbers elsewhere on the page.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -42,6 +48,9 @@ export { BAR_STATE_CLASSES, barColorState };
  * @param {boolean} [props.over]        Whether the bar measures a limit
  * @param {number} [props.day]          Which day of the period it is
  * @param {number} [props.totalDays]    How many days the period has
+ * @param {string} [props.breakdown]    The exact Rupiah breakdown shown
+ *   in the floating board on hover, e.g. "Terpakai Rp X · Sisa Rp Y ·
+ *   Hari ke-13". Left out, the board does not appear.
  * @param {string} [props.className]
  */
 export default function AnimatedProgressBar({
@@ -51,9 +60,11 @@ export default function AnimatedProgressBar({
   over = true,
   day,
   totalDays,
+  breakdown,
   className = '',
 }) {
   const [width, setWidth] = useState(0);
+  const [hovered, setHovered] = useState(false);
   const mounted = useRef(false);
 
   const target = useMemo(() => {
@@ -107,31 +118,52 @@ export default function AnimatedProgressBar({
         </div>
       )}
 
-      <div
-        className="relative w-full h-2.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden"
-        role="progressbar"
-        aria-valuenow={Math.round(Number(percent) || 0)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={label || undefined}
-        data-state={state}
-      >
-        <div
-          className={`h-full rounded-full transition-[width] duration-700 ease-out ${fillClass}`}
-          style={{ width: `${width}%` }}
-          data-testid="animated-progress-fill"
-          data-percent={Math.round(Number(percent) || 0)}
-        />
-
-        {/* Where the reader should be today. */}
-        {showPacing ? (
+      <div className="relative">
+        {/* The floating board with the exact breakdown. It sits above
+            the bar and only shows itself while the bar is hovered or
+            focused - see `.motion-scrub-tooltip` for the fade. */}
+        {breakdown ? (
           <div
-            className="absolute top-0 h-full w-0.5 bg-gray-500/70 dark:bg-gray-300/70"
-            style={{ left: `${pacingPercent}%` }}
-            aria-hidden="true"
-            data-testid="pacing-marker"
-          />
+            className={`motion-scrub-tooltip absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-1 rounded-lg bg-[#2F4842] text-[#FAF9F6] text-[11px] font-medium shadow-lg z-10 ${hovered ? 'opacity-100 !translate-y-0' : ''}`}
+            data-testid="scrub-tooltip"
+          >
+            {breakdown}
+          </div>
         ) : null}
+
+        <div
+          className="motion-scrub-bar relative w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden"
+          role="progressbar"
+          aria-valuenow={Math.round(Number(percent) || 0)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={label || undefined}
+          data-state={state}
+          tabIndex={breakdown ? 0 : undefined}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          onFocus={() => setHovered(true)}
+          onBlur={() => setHovered(false)}
+          onTouchStart={() => setHovered(true)}
+          onTouchEnd={() => setHovered(false)}
+        >
+          <div
+            className={`motion-scrub-bar__fill h-full rounded-full transition-[width] duration-700 ease-out ${fillClass}`}
+            style={{ width: `${width}%` }}
+            data-testid="animated-progress-fill"
+            data-percent={Math.round(Number(percent) || 0)}
+          />
+
+          {/* Where the reader should be today. */}
+          {showPacing ? (
+            <div
+              className="absolute top-0 h-full w-0.5 bg-gray-500/70 dark:bg-gray-300/70"
+              style={{ left: `${pacingPercent}%` }}
+              aria-hidden="true"
+              data-testid="pacing-marker"
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );

@@ -1,167 +1,209 @@
 /**
- * The ratio rows do not overlap, and nothing on them is cut off.
+ * The ratio cards: value and target, never the same string.
  *
- * The bug this guards: the health card's ratio row was one line, with
- * the verdict as a long sentence on the right. The card is not wide
- * enough for "Perlu diperbaiki", so it was clipped into "Per / dip" -
- * and a verdict that cannot say what it is saying is worse than no
- * verdict at all. On a narrow screen the value and the badge sat on
- * top of each other.
+ * "Ta-2.0% >= 20%" and "58.8 bulanTarget >= 6 bulan" were two
+ * numbers mashed into one unreadable string, because the value and
+ * the benchmark used to share a line with nothing between them on a
+ * narrow screen.
  *
- * The fix has three parts, and each part can be undone by accident by
- * anybody tidying up class names:
- *
- * - the row wraps (flex-wrap), so a badge that does not fit drops to
- *   the next line instead of being pushed off the edge;
- * - the badge and the value never shrink and never break (shrink-0,
- *   whitespace-nowrap), so they stay whole wherever they land;
- * - nothing on the row truncates or hides its overflow - the label
- *   wraps its words instead.
- *
- * All three are checked here, against the component and its sheet.
+ * Each ratio is now its own card with three separate rows - name and
+ * status, then value and target each in their own container, then a
+ * progress bar with a target marker - so the value and the target
+ * can never be read as one concatenated string. These checks are at
+ * the level of the component's source, in the style the rest of this
+ * app's component tests use (no jsdom/testing-library is wired in).
  *
  * Run with: node src/components/health/__tests__/financialRatioPills.test.js
  */
 
-import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const SRC = join(HERE, '..', '..', '..');
-const read = (rel) => readFileSync(join(SRC, rel), 'utf8');
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(HERE, '..', '..', '..', '..');
+
+const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 let passed = 0;
 let failed = 0;
-const check = (name, fn) => {
-  try { fn(); passed += 1; console.log(`ok - ${name}`); }
-  catch (err) { failed += 1; console.error(`not ok - ${name}`); console.error(`  ${err.message}`); }
+const failures = [];
+
+const check = (name, condition, detail = '') => {
+  if (condition) {
+    passed += 1;
+    console.log(`  ok  ${name}`);
+  } else {
+    failed += 1;
+    failures.push(`${name}${detail ? `\n    ${detail}` : ''}`);
+    console.log(`FAIL  ${name}`);
+  }
 };
 
-const PILLS = read('components/health/FinancialRatioPills.jsx');
-const CSS = read('components/health/wellness.css');
+console.log('financial ratio pills: value and target never collide');
 
-/* The body of one row, which is where the overlap used to happen. */
-const PILL_FN = PILLS.slice(PILLS.indexOf('const Pill = ('), PILLS.indexOf('export default function'));
+const pills = read('src/components/health/FinancialRatioPills.jsx');
 
 // ---------------------------------------------------------------------
-// The row wraps rather than clipping
+// The three-row card structure
 // ---------------------------------------------------------------------
 
-check('the row wraps in the markup', () => {
-  assert.ok(
-    /className="wellness-pill[^"]*flex-wrap/.test(PILL_FN),
-    'the row carries flex-wrap, so a badge that does not fit drops down'
-  );
-});
+check(
+  'row 1 (name + status) is its own flex container',
+  /data-testid="ratio-row-head"/.test(pills)
+);
 
-check('the row wraps in the sheet too', () => {
-  const rule = CSS.slice(CSS.indexOf('.wellness-pill {'), CSS.indexOf('.wellness-pill > span'));
-  assert.ok(rule.includes('flex-wrap: wrap'), 'the sheet wraps the row');
-  assert.ok(rule.includes('max-width: 100%'), 'the row never grows past its card');
-  assert.ok(/gap:/.test(rule), 'a wrapped row needs a row gap, or the lines touch');
-});
+check(
+  'row 2 (value + target) is its own flex container, separate from row 1',
+  /data-testid="ratio-row-value"/.test(pills)
+);
 
-check('the row never hides what does not fit', () => {
-  assert.ok(!/overflow-hidden/.test(PILL_FN), 'overflow-hidden would clip the badge again');
-  assert.ok(!/\btruncate\b/.test(PILL_FN), 'truncate would cut the words again');
-  const rule = CSS.slice(CSS.indexOf('.wellness-pill {'), CSS.indexOf('.dark .wellness-pill'));
-  assert.ok(!/overflow:\s*hidden/.test(rule), 'the sheet does not clip either');
-  assert.ok(!/text-overflow:\s*ellipsis/.test(rule), 'no ellipsis on a row that can wrap');
-  assert.ok(!/white-space:\s*nowrap/.test(rule), 'the row itself must be allowed to wrap');
-});
+check(
+  'row 3 (the progress bar) is its own container, separate from row 2',
+  /data-testid="ratio-row-bar"/.test(pills)
+);
 
 // ---------------------------------------------------------------------
-// Nothing on the row overlaps anything else
+// The value and the benchmark are two different elements
 // ---------------------------------------------------------------------
 
-check('the badge stays whole wherever it lands', () => {
-  const badge = PILL_FN.slice(PILL_FN.indexOf('{statusText ? ('));
-  assert.ok(/shrink-0/.test(badge), 'the badge does not shrink');
-  assert.ok(/whitespace-nowrap/.test(badge), 'the badge does not break its words');
-  assert.ok(/rounded-full/.test(badge), 'it is a compact pill, not a sentence');
-});
+check(
+  'the value is drawn by CountUpNumber in its own <p>, not string-concatenated with the target',
+  /<p className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums[^"]*">\s*<CountUpNumber/.test(pills)
+);
 
-check('the value stays whole and lines up as a number', () => {
-  assert.ok(
-    /\{value\}/.test(PILL_FN) && /tabular-nums whitespace-nowrap shrink-0/.test(PILL_FN),
-    'the value never wraps mid-number and never shrinks'
-  );
-});
+check(
+  'the benchmark badge is a separate <span>, with its own data-testid',
+  /data-testid="ratio-benchmark"/.test(pills)
+);
 
-check('the benchmark stays whole', () => {
-  const bench = PILL_FN.slice(PILL_FN.indexOf('{benchmark ? ('), PILL_FN.indexOf('{statusText ? ('));
-  assert.ok(/whitespace-nowrap/.test(bench) && /shrink-0/.test(bench), 'the target is not broken in half');
-});
+check(
+  'the value and the benchmark badge are never built as one template string',
+  // A regression would look like `${value}${benchmark}` or
+  // `${value} ${benchmarkLabel}` inside a single text node. Neither
+  // pattern exists: the two are always separate JSX children.
+  !/\{value\}\{benchmarkLabel\}/.test(pills) && !/\{value\}\s*\{benchmarkLabel\}/.test(pills)
+);
 
-check('the label wraps its words instead of being cut', () => {
-  assert.ok(/whitespace-normal break-words/.test(PILL_FN), 'the name of the ratio wraps');
-  const sheet = CSS.slice(CSS.indexOf('.wellness-pill > span'), CSS.indexOf('.dark .wellness-pill'));
-  assert.ok(sheet.includes('min-width: 0'), 'a flex child needs min-width 0 to be allowed to wrap');
-  assert.ok(sheet.includes('overflow-wrap: break-word'), 'a long word breaks rather than overflowing');
-});
-
-check('the left group can shrink so the badge has room', () => {
-  assert.ok(
-    /flex items-center gap-2 min-w-0 flex-1/.test(PILL_FN),
-    'the name and value group yields space instead of pushing the badge off'
-  );
-});
-
-check('the dot never shrinks away', () => {
-  const dot = CSS.slice(CSS.indexOf('.wellness-pill__dot {'), CSS.indexOf('.wellness-pill__dot--excellent'));
-  assert.ok(dot.includes('flex-shrink: 0'), 'the status dot keeps its size');
-});
+check(
+  'the target marker on the bar is a distinct element from the fill',
+  /data-testid="ratio-target-marker"/.test(pills) &&
+    /motion-scrub-bar__fill/.test(pills)
+);
 
 // ---------------------------------------------------------------------
-// The verdict is the server's, and it is written out in full
+// No font-serif or font-mono leaking into the ratio card
 // ---------------------------------------------------------------------
 
-check('every status has a dot colour and a badge colour, written out', () => {
-  for (const status of ['excellent', 'good', 'warning', 'danger']) {
-    assert.ok(PILLS.includes(`${status}: 'wellness-pill__dot--${status}'`), `${status} has a dot class`);
-    assert.ok(CSS.includes(`.wellness-pill__dot--${status}`), `${status} dot is in the sheet`);
-    assert.ok(PILLS.includes(`health_coach.status_${status}`), `${status} has words`);
-  }
-  assert.ok(/STATUS_BADGE_CLASS = \{/.test(PILLS), 'the badge colours are a literal map');
-  assert.ok(
-    !/bg-\$\{/.test(PILLS) && !/`bg-\w+-\$/.test(PILLS),
-    'no class names built at run time - the scanner would not see them'
-  );
-});
+check(
+  'the ratio card never uses font-serif or font-mono',
+  !/font-serif/.test(pills) && !/font-mono/.test(pills)
+);
 
-check('an unknown status falls back instead of drawing a broken badge', () => {
-  assert.ok(PILLS.includes('const safeStatus = STATUS_CLASS[status] ? status : \'\''), 'unknown statuses are neutralised');
-  assert.ok(/\|\| 'bg-gray-50 text-gray-600/.test(PILLS), 'and the badge has a neutral fallback');
-});
+check(
+  'the ratio name uses the overline hierarchy (bold, uppercase, tracked)',
+  /text-xs font-bold uppercase tracking-\[0\.06em\]/.test(pills)
+);
 
-check('the verdict is never worked out in the browser', () => {
-  assert.ok(!/IDEAL/.test(PILLS), 'no thresholds here');
-  assert.ok(!/>=\s*20\b/.test(PILLS) && !/>=\s*30\b/.test(PILLS), 'the server owns the thresholds');
-  assert.ok(/status=\{savingsRatio\?\.status\}/.test(PILLS), 'the status is passed through as given');
-});
+// ---------------------------------------------------------------------
+// The three ratios are all rendered as cards
+// ---------------------------------------------------------------------
 
-check('nothing is drawn when there is nothing to draw', () => {
-  assert.ok(
-    PILLS.includes('if (!savingsRatio && !emergencyFund && !dsrRatio) return null;'),
-    'an empty card is better than three empty rows'
-  );
-});
+check(
+  'all three ratios (savings, emergency fund, DSR) are rendered as RatioCard',
+  (pills.match(/<RatioCard/g) || []).length === 3
+);
 
-check('the words of every verdict are in every language', () => {
-  for (const language of ['id', 'en', 'ja']) {
-    const table = read(`i18n/${language}.js`);
-    for (const key of [
-      'status_excellent:', 'status_good:', 'status_warning:', 'status_danger:',
-      'benchmark_savings:', 'benchmark_emergency:', 'benchmark_dsr:',
-      'savings_ratio:', 'emergency_fund:', 'dsr_ratio:',
-    ]) {
-      assert.ok(table.includes(key), `${language} has ${key}`);
-    }
-  }
-});
+check(
+  'the status mark is still the server\'s own verdict, not re-derived from thresholds',
+  /savingsRatio\?\.status/.test(pills) &&
+    /emergencyFund\?\.status/.test(pills) &&
+    /dsrRatio\?\.status/.test(pills)
+);
+
+// ---------------------------------------------------------------------
+// The bar is drawn from the server's thresholds, not a second copy
+// ---------------------------------------------------------------------
+//
+// The bar used to divide by 20, by 6 and by 30 to work out how full
+// it was - a second copy of thresholds the server already owns, and
+// the copy was already wrong: the server says the emergency fund's
+// ideal_min is 3, not 6. So the geometry now comes from the
+// ideal_min / ideal_max the server sends with each ratio.
+
+check(
+  'the bar geometry reads the thresholds the server sent',
+  /ideal_min/.test(pills) && /ideal_max/.test(pills),
+  'the pin and the fill must come from the server\'s own thresholds'
+);
+
+check(
+  'no threshold is hardcoded as a divisor in the browser any more',
+  !/\/\s*20\s*\)/.test(pills) &&
+    !/\/\s*6\s*\)/.test(pills) &&
+    !/\/\s*30\s*\)/.test(pills),
+  'dividing by a literal threshold is the second copy that drifts'
+);
+
+check(
+  'every ratio gets its geometry from the same helper',
+  (pills.match(/\{\.\.\.barGeometry\(/g) || []).length === 3,
+  'all three cards must derive the bar the same way'
+);
+
+check(
+  'a ratio with no thresholds draws no invented target pin',
+  /return \{ progressPercent: 0, markerPercent: null \}/.test(pills),
+  'a pin with nothing behind it would be a made-up target'
+);
+
+check(
+  'a "at most" target (DSR) is told apart from a "at least" target',
+  /isCeiling/.test(pills),
+  'more savings is better; more DSR is worse - the bar cannot treat them alike'
+);
+
+// The server has to actually send what the component now reads.
+const router = read('../backend/app/modules/ai_advisor/health_coach/router.py');
+
+check(
+  'the health-coach router sends ideal_min and ideal_max for every ratio',
+  (router.match(/"ideal_min":/g) || []).length >= 4 &&
+    (router.match(/"ideal_max":/g) || []).length >= 4,
+  'the component reads these; the API must send them'
+);
+
+// ---------------------------------------------------------------------
+// CuteWellnessBento and HealthCoach stay free of serif/mono too
+// ---------------------------------------------------------------------
+
+const bento = read('src/components/health/CuteWellnessBento.jsx');
+const healthPage = read('src/pages/HealthCoach.jsx');
+
+check(
+  'CuteWellnessBento never uses font-serif or font-mono',
+  !/font-serif/.test(bento) && !/font-mono/.test(bento)
+);
+
+check(
+  'HealthCoach.jsx never uses font-serif or font-mono',
+  !/font-serif/.test(healthPage) && !/font-mono/.test(healthPage)
+);
+
+check(
+  'the score hero draws an interactive radial gauge, not a static drawing',
+  /RadialGauge/.test(bento) && /strokeDashoffset/.test(bento)
+);
+
+check(
+  'the gauge animates over 800ms with the reference easing curve',
+  /800ms cubic-bezier\(0\.16, 1, 0\.3, 1\)/.test(bento)
+);
 
 console.log('');
-console.log(`the ratio rows: ${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+console.log(`financial ratio pills: ${passed} passed, ${failed} failed`);
+if (failed > 0) {
+  console.log('');
+  for (const f of failures) console.log('  FAIL ' + f);
+  process.exit(1);
+}

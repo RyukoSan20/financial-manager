@@ -85,7 +85,13 @@ async def get_health_score(
                 "description": health.liquidity_ratio.description,
                 "name_key": health.liquidity_ratio.name_key,
                 "description_key": health.liquidity_ratio.description_key,
-                "description_values": health.liquidity_ratio.description_values or {}
+                "description_values": health.liquidity_ratio.description_values or {},
+                # The thresholds the verdict above was worked out
+                # against. They travel with the ratio so the frontend
+                # can draw the target marker without keeping a second
+                # copy of the numbers that would drift from this one.
+                "ideal_min": health.liquidity_ratio.ideal_min,
+                "ideal_max": health.liquidity_ratio.ideal_max,
             },
             "savings_ratio": {
                 "value": health.savings_ratio.value,
@@ -93,7 +99,13 @@ async def get_health_score(
                 "description": health.savings_ratio.description,
                 "name_key": health.savings_ratio.name_key,
                 "description_key": health.savings_ratio.description_key,
-                "description_values": health.savings_ratio.description_values or {}
+                "description_values": health.savings_ratio.description_values or {},
+                # The thresholds the verdict above was worked out
+                # against. They travel with the ratio so the frontend
+                # can draw the target marker without keeping a second
+                # copy of the numbers that would drift from this one.
+                "ideal_min": health.savings_ratio.ideal_min,
+                "ideal_max": health.savings_ratio.ideal_max,
             },
             "dsr_ratio": {
                 "value": health.dsr_ratio.value,
@@ -101,7 +113,13 @@ async def get_health_score(
                 "description": health.dsr_ratio.description,
                 "name_key": health.dsr_ratio.name_key,
                 "description_key": health.dsr_ratio.description_key,
-                "description_values": health.dsr_ratio.description_values or {}
+                "description_values": health.dsr_ratio.description_values or {},
+                # The thresholds the verdict above was worked out
+                # against. They travel with the ratio so the frontend
+                # can draw the target marker without keeping a second
+                # copy of the numbers that would drift from this one.
+                "ideal_min": health.dsr_ratio.ideal_min,
+                "ideal_max": health.dsr_ratio.ideal_max,
             },
             "emergency_fund_months": {
                 "value": health.emergency_fund_months.value,
@@ -109,7 +127,13 @@ async def get_health_score(
                 "description": health.emergency_fund_months.description,
                 "name_key": health.emergency_fund_months.name_key,
                 "description_key": health.emergency_fund_months.description_key,
-                "description_values": health.emergency_fund_months.description_values or {}
+                "description_values": health.emergency_fund_months.description_values or {},
+                # The thresholds the verdict above was worked out
+                # against. They travel with the ratio so the frontend
+                # can draw the target marker without keeping a second
+                # copy of the numbers that would drift from this one.
+                "ideal_min": health.emergency_fund_months.ideal_min,
+                "ideal_max": health.emergency_fund_months.ideal_max,
             },
             "summary": {
                 "monthly_income": health.monthly_income,

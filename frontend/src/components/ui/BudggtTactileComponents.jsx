@@ -135,6 +135,10 @@ export function BudggtPacingCard({
           const color = pacingColor(row, tone);
           const width = grown ? pacingWidth(row.spent, row.limit) : 0;
           const percent = Math.round(pacingPercent(row.spent, row.limit));
+          const remaining = Math.max(0, (row.limit || 0) - (row.spent || 0));
+          const breakdown = tone === 'empty'
+            ? null
+            : `${formatAmount(row.spent || 0)} · ${formatAmount(remaining)} · ${dayLabel}`;
 
           return (
             <div key={row.id} data-pacing-row={row.id} data-tone={tone}>
@@ -156,26 +160,37 @@ export function BudggtPacingCard({
                 </span>
               </div>
 
-              <div
-                className="pacing-track mt-2"
-                role="progressbar"
-                aria-label={row.label}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.min(100, percent)}
-              >
-                <div
-                  className={`pacing-fill ${tone === 'over' ? 'pacing-fill-over' : ''}`}
-                  style={{ width: `${width}%`, background: color }}
-                />
-                {totalDays > 0 ? (
-                  <span
-                    className="pacing-tick"
-                    style={{ left: `${tick}%` }}
-                    title={todayLabel}
-                    aria-hidden="true"
-                  />
+              <div className="relative">
+                {breakdown ? (
+                  <div
+                    className="motion-scrub-tooltip absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-1 rounded-lg bg-[#2F4842] text-[#FAF9F6] text-[11px] font-medium shadow-lg z-10"
+                    data-testid="pacing-scrub-tooltip"
+                  >
+                    {breakdown}
+                  </div>
                 ) : null}
+                <div
+                  className="pacing-track motion-scrub-bar mt-2"
+                  role="progressbar"
+                  aria-label={row.label}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.min(100, percent)}
+                  tabIndex={breakdown ? 0 : undefined}
+                >
+                  <div
+                    className={`pacing-fill motion-scrub-bar__fill ${tone === 'over' ? 'pacing-fill-over' : ''}`}
+                    style={{ width: `${width}%`, background: color }}
+                  />
+                  {totalDays > 0 ? (
+                    <span
+                      className="pacing-tick"
+                      style={{ left: `${tick}%` }}
+                      title={todayLabel}
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                </div>
               </div>
 
               {row.note ? <p className="mt-1.5 text-xs hh-muted">{row.note}</p> : null}

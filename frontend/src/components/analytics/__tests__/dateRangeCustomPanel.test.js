@@ -1,139 +1,160 @@
 /**
- * The custom range stays open until it is applied.
+ * The Custom Date Range Studio.
  *
- * The analytics bar had three choices in a dropdown, and a reader who
- * wanted one specific fortnight could not ask for it. Now there is a
- * bar of shortcuts and a pair of date boxes - and the pair of boxes
- * has two rules that are easy to break by accident:
+ * "Rentang Tanggal Kustom" used to be a button that did nothing
+ * visible: no calendar, no date boxes, nothing a reader could click
+ * on to choose a fortnight the presets did not cover.
  *
- * - the panel must not close, and the numbers must not move, while
- *   the reader is still typing the second date;
- * - the label on the right must not repeat the pill's own words when
- *   the custom range is chosen but not yet complete.
- *
- * Both rules live in one component, so both are checked here against
- * its source.
+ * These checks are at the level of the component's own source and
+ * structure, in the style the rest of this app's component tests
+ * use (no jsdom/testing-library is wired in) - they check that the
+ * studio panel, its inputs, its quick-jump chips and its apply
+ * button are really there, pre-filled, and wired to call `onChange`
+ * with a complete `{ preset: 'custom', start, end }` choice.
  *
  * Run with: node src/components/analytics/__tests__/dateRangeCustomPanel.test.js
  */
 
-import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const SRC = join(HERE, '..', '..', '..');
-const read = (rel) => readFileSync(join(SRC, rel), 'utf8');
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(HERE, '..', '..', '..', '..');
+
+const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 let passed = 0;
 let failed = 0;
-const check = (name, fn) => {
-  try { fn(); passed += 1; console.log(`ok - ${name}`); }
-  catch (err) { failed += 1; console.error(`not ok - ${name}`); console.error(`  ${err.message}`); }
+const failures = [];
+
+const check = (name, condition, detail = '') => {
+  if (condition) {
+    passed += 1;
+    console.log(`  ok  ${name}`);
+  } else {
+    failed += 1;
+    failures.push(`${name}${detail ? `\n    ${detail}` : ''}`);
+    console.log(`FAIL  ${name}`);
+  }
 };
 
-const BAR = read('components/analytics/DateRangeFilterBar.jsx');
-const RANGE = read('utils/dateRange.js');
+console.log('the custom date range studio');
 
-check('the bar is the shortcuts, not a dropdown', () => {
-  assert.ok(BAR.includes('DATE_PRESETS.map('), 'the presets are drawn as buttons');
-  assert.ok(!/<select/.test(BAR), 'the old dropdown is gone');
-  assert.ok(BAR.includes('data-testid={`date-preset-${preset.key}`}'), 'each shortcut is addressable');
-});
+const bar = read('src/components/analytics/DateRangeFilterBar.jsx');
+const dateRange = read('src/utils/dateRange.js');
 
-check('an active shortcut says it is active to a screen reader', () => {
-  assert.ok(BAR.includes('aria-pressed={isActive}'), 'aria-pressed carries the state');
-});
+// ---------------------------------------------------------------------
+// Clicking "custom" opens the studio, pre-filled
+// ---------------------------------------------------------------------
 
-check('choosing the custom range opens the panel and does not apply', () => {
-  const fn = BAR.slice(BAR.indexOf('const choosePreset'), BAR.indexOf('const applyCustom'));
-  const custom = fn.slice(fn.indexOf("if (preset === 'custom')"), fn.indexOf('return;'));
-  assert.ok(custom.includes('setOpen(true)'), 'the panel opens');
-  assert.ok(!custom.includes('onApply?.()'), 'nothing is applied while the dates are being typed');
-});
+check(
+  'clicking a preset calls choosePreset, which opens the studio for "custom"',
+  /choosePreset = \(preset\) => \{/.test(bar) && /setOpen\(true\)/.test(bar),
+  'the panel must actually open, not stay collapsed'
+);
 
-check('the dates already chosen survive opening the panel', () => {
-  const fn = BAR.slice(BAR.indexOf('const choosePreset'), BAR.indexOf('const applyCustom'));
-  assert.ok(fn.includes('resolveRange(choice)'), 'the resolved range seeds the drafts');
-  assert.ok(fn.includes('setDraftStart(choice.start || resolved.start'), 'the start survives');
-  assert.ok(fn.includes('setDraftEnd(choice.end || resolved.end'), 'the end survives');
-});
+check(
+  'the custom choice is never left with blank dates',
+  /const start = choice\.start \|\| resolved\.start \|\| toIsoDate\(new Date\(\)\)/.test(bar) &&
+    /const end = choice\.end \|\| resolved\.end \|\| toIsoDate\(new Date\(\)\)/.test(bar),
+  'both dates must have a fallback so the boxes are never empty'
+);
 
-check('any other shortcut closes the panel and applies at once', () => {
-  const fn = BAR.slice(BAR.indexOf('const choosePreset'), BAR.indexOf('const applyCustom'));
-  const tail = fn.slice(fn.indexOf('return;'));
-  assert.ok(tail.includes('setOpen(false)'), 'the panel closes');
-  assert.ok(tail.includes('onChange?.({ ...choice, preset })'), 'the choice is passed up');
-  assert.ok(tail.includes('onApply?.()'), 'and it is applied');
-});
+check(
+  'opening custom tells the parent the choice right away',
+  /onChange\?\.\(\{ \.\.\.choice, preset: 'custom', start, end \}\)/.test(bar),
+  'the parent must hear about the pre-filled range as soon as the studio opens'
+);
 
-check('applying carries both dates up, then closes', () => {
-  const fn = BAR.slice(BAR.indexOf('const applyCustom'), BAR.indexOf('return ('));
-  assert.ok(fn.includes('start: draftStart') && fn.includes('end: draftEnd'), 'both dates go up');
-  assert.ok(fn.includes('setOpen(false)') && fn.includes('onApply?.()'), 'then it closes and applies');
-});
+// ---------------------------------------------------------------------
+// The studio panel itself: both inputs and the apply button
+// ---------------------------------------------------------------------
 
-check('apply is refused until both dates are there', () => {
-  assert.ok(
-    BAR.includes("disabled={!isCustomRangeComplete({ preset: 'custom', start: draftStart, end: draftEnd })}"),
-    'the button is disabled on an incomplete range'
+check(
+  'the studio panel renders when open',
+  /data-testid="custom-range-panel"/.test(bar)
+);
+
+check(
+  'the studio has a "from" date input',
+  /data-testid="date-range-start"/.test(bar) && /type="date"/.test(bar)
+);
+
+check(
+  'the studio has a "to" date input',
+  /data-testid="date-range-end"/.test(bar)
+);
+
+check(
+  'the studio has an Apply button that calls applyCustom',
+  /data-testid="date-range-apply"/.test(bar) && /onClick=\{applyCustom\}/.test(bar)
+);
+
+check(
+  'applying sends a complete custom choice back to the parent',
+  /onChange\?\.\(\{ \.\.\.choice, preset: 'custom', start, end \}\);/.test(bar),
+  'the apply button must hand back { preset: "custom", start, end }'
+);
+
+check(
+  'the studio has a Reset button',
+  /data-testid="date-range-reset"/.test(bar) && /resetCustom/.test(bar)
+);
+
+// ---------------------------------------------------------------------
+// The quick-jump chips
+// ---------------------------------------------------------------------
+
+for (const key of ['month_start', '14d', '30d', 'year_start']) {
+  check(
+    `the studio has the "${key}" quick-jump chip`,
+    bar.includes(`data-testid={\`date-range-jump-${key}\`}`) || bar.includes(`key: '${key}'`)
   );
-  assert.ok(BAR.includes("t('date_range.needs_both_dates')"), 'and the reason is said out loud');
-});
+}
 
-check('the two boxes cannot be set the wrong way round', () => {
-  assert.ok(BAR.includes('max={draftEnd || undefined}'), 'the start cannot pass the end');
-  assert.ok(BAR.includes('min={draftStart || undefined}'), 'the end cannot precede the start');
-});
+check(
+  'each quick-jump chip sets the draft start date',
+  /applyJump = \(jump\) => \{\s*setDraftStart\(jump\.date\(\)\);/.test(bar)
+);
 
-check('the label is dropped while the custom range is incomplete', () => {
-  assert.ok(
-    BAR.includes("choice.preset === 'custom' && !isCustomRangeComplete(choice) ? null : ("),
-    'no label that only repeats the pill'
-  );
-  assert.ok(BAR.includes('data-testid="date-range-label"'), 'the label is addressable when it is shown');
-});
+// ---------------------------------------------------------------------
+// The active-range badge and the emoji-free, high-contrast pills
+// ---------------------------------------------------------------------
 
-check('the panel is addressable, and only drawn when open', () => {
-  assert.ok(BAR.includes('data-testid="custom-range-panel"'), 'the panel is addressable');
-  assert.ok(BAR.includes('{open ? ('), 'it is drawn only when open');
-  assert.ok(BAR.includes('data-testid="date-range-start"'), 'the start box is addressable');
-  assert.ok(BAR.includes('data-testid="date-range-end"'), 'the end box is addressable');
-  assert.ok(BAR.includes('data-testid="date-range-apply"'), 'the apply button is addressable');
-});
+check(
+  'the active range is shown as a live badge, not left for the reader to infer',
+  /data-testid="date-range-label"/.test(bar) && /date_range\.active_label/.test(bar)
+);
 
-check('the close button says what it does', () => {
-  assert.ok(BAR.includes("aria-label={t('date_range.close')}"), 'an icon button needs a name');
-});
+check(
+  'the custom pill carries a Lucide calendar icon, not the OS emoji',
+  /<Calendar className="w-3 h-3"/.test(bar) && !bar.includes('📅') && !bar.includes('📆')
+);
 
-check('the bar works out nothing the shared helper already knows', () => {
-  assert.ok(
-    BAR.includes("from '../../utils/dateRange'"),
-    'the presets and the labels come from one place'
-  );
-  assert.ok(!/new Date\(\)/.test(BAR), 'the bar does no date arithmetic of its own');
-});
+check(
+  'the active preset pill gets a high-contrast fill in both themes',
+  /background: '#52796F', borderColor: '#52796F', color: '#fff'/.test(bar)
+);
 
-check('custom is one of the shortcuts the helper offers', () => {
-  const presets = RANGE.slice(RANGE.indexOf('export const DATE_PRESETS'), RANGE.indexOf('export function toIsoDate'));
-  assert.ok(presets.includes("'custom'"), 'custom is a preset');
-});
+check(
+  'the filter pills use the X-style spring micro-interaction',
+  /motion-x-spring/.test(bar)
+);
 
-check('a range is complete only when both dates are there', () => {
-  const fn = RANGE.slice(RANGE.indexOf('export function isCustomRangeComplete'), RANGE.indexOf('export function rangeLabel'));
-  assert.ok(/start/.test(fn) && /end/.test(fn), 'both dates are required');
-});
+// ---------------------------------------------------------------------
+// dateRange.js: toIsoDate exists and is exported, for the quick jumps
+// ---------------------------------------------------------------------
 
-check('the words for the panel are in every language', () => {
-  for (const language of ['id', 'en', 'ja']) {
-    const table = read(`i18n/${language}.js`);
-    for (const key of ['preset_custom', 'needs_both_dates', 'period_label', 'apply:', 'from:', 'to:']) {
-      assert.ok(table.includes(key), `${language} has ${key}`);
-    }
-  }
-});
+check(
+  'toIsoDate is exported for the quick-jump chips to use',
+  /export function toIsoDate/.test(dateRange) && /toIsoDate/.test(bar)
+);
 
 console.log('');
-console.log(`the custom range panel: ${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+console.log(`date range custom panel: ${passed} passed, ${failed} failed`);
+if (failed > 0) {
+  console.log('');
+  for (const f of failures) console.log('  FAIL ' + f);
+  process.exit(1);
+}

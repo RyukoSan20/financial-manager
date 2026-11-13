@@ -31,6 +31,7 @@
  * worked out.
  */
 
+import { useState, useEffect } from 'react';
 import { useTranslation } from '../../i18n';
 import FluidProgressBar from '../ui/FluidProgressBar';
 import AnimatedProgressBar from '../ui/AnimatedProgressBar';
@@ -109,6 +110,79 @@ const Sun = ({ tint = '#f59e0b' }) => (
     </g>
   </svg>
 );
+
+/**
+ * The radial gauge.
+ *
+ * The score used to be a flat number beside a static sun drawing.
+ * This draws it as a ring instead: the ring fills smoothly from zero
+ * to the score over 800ms, and the colour and the soft glow behind
+ * it both answer the grade - emerald for a strong score, amber for a
+ * middling one, coral for one that needs work - so the colour tells
+ * the same story as the number before it is even read.
+ */
+const RadialGauge = ({ score = 0, size = 72 }) => {
+  const clamped = Math.max(0, Math.min(100, Number(score) || 0));
+  const radius = (size - 10) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const [dash, setDash] = useState(circumference);
+
+  const colour = clamped >= 80
+    ? '#10B981'
+    : clamped >= 60
+      ? '#10B981'
+      : clamped >= 40
+        ? '#F59E0B'
+        : '#E07A5F';
+
+  useEffect(() => {
+    // The ring starts fully empty and animates to the score's share
+    // of the circle over 800ms, via the CSS transition on the
+    // stroke-dashoffset below rather than a frame loop.
+    const frame = requestAnimationFrame(() => {
+      setDash(circumference - (clamped / 100) * circumference);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [clamped, circumference]);
+
+  return (
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      {/* The ambient glow, tinted to match the grade. */}
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          boxShadow: `0 0 22px 4px ${colour}55`,
+          opacity: 0.8,
+        }}
+        aria-hidden="true"
+      />
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="relative">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          className="text-gray-200/70 dark:text-white/10"
+          strokeWidth="6"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={colour}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dash}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          style={{ transition: 'stroke-dashoffset 800ms cubic-bezier(0.16, 1, 0.3, 1)' }}
+        />
+      </svg>
+    </div>
+  );
+};
 
 /**
  * The wash of a card: a pastel gradient behind the glass.
@@ -319,22 +393,22 @@ export default function CuteWellnessBento({
                 mark beside it, and the bar and the face support it. */}
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="shape-label">{t('health_coach.score')}</p>
+                <p className="shape-label font-sans">{t('health_coach.score')}</p>
                 <div className="flex items-baseline gap-2.5 mt-1">
                   {/* The score rolls up to where it is. A score that
                       appears all at once is a number; one that
                       counts up is a reading being taken. */}
-                  <p className="text-5xl font-bold text-gray-900 dark:text-gray-50 tabular-nums leading-none tracking-tight">
+                  <p className="text-5xl font-extrabold font-sans text-gray-900 dark:text-gray-50 tabular-nums leading-none tracking-tight">
                     <CountUpNumber value={numericScore} from={0} format={(n) => Math.round(n)} />
                   </p>
-                  <span className="text-sm text-gray-400 dark:text-gray-500 font-medium tabular-nums">
+                  <span className="text-sm text-gray-400 dark:text-gray-500 font-medium font-sans tabular-nums">
                     /100
                   </span>
                 </div>
               </div>
 
               <div className="wellness-drift wellness-drift--slow shrink-0">
-                <Sun tint={ScoreColour(numericScore)} />
+                <RadialGauge score={numericScore} />
               </div>
             </div>
 
@@ -416,7 +490,7 @@ export default function CuteWellnessBento({
                 four drawings floating on the wash of the card, and
                 the eye could not tell they were a set. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10">
+              <div className="bento-cascade rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10 transition-shadow hover:shadow-md hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 0 }}>
                 <MiniStat
                   label={t('health_coach.monthly_income')}
                   value={formatCurrency(monthlyIncome)}
@@ -424,7 +498,7 @@ export default function CuteWellnessBento({
                   illustration={<CoinStack tint="#10b981" />}
                 />
               </div>
-              <div className="rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10">
+              <div className="bento-cascade rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10 transition-shadow hover:shadow-md hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 1 }}>
                 <MiniStat
                   label={t('health_coach.monthly_expense')}
                   value={formatCurrency(monthlyExpense)}
@@ -432,7 +506,7 @@ export default function CuteWellnessBento({
                   illustration={<Sprout tint="#f97316" />}
                 />
               </div>
-              <div className="rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10">
+              <div className="bento-cascade rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10 transition-shadow hover:shadow-md hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 2 }}>
                 <MiniStat
                   label={t('health_coach.total_cash')}
                   value={formatCurrency(totalCash)}
@@ -440,7 +514,7 @@ export default function CuteWellnessBento({
                   illustration={<Wallet tint="#8b5cf6" />}
                 />
               </div>
-              <div className="rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10">
+              <div className="bento-cascade rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10 transition-shadow hover:shadow-md hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 3 }}>
                 <MiniStat
                   label={t('health_coach.total_debt')}
                   value={formatCurrency(totalDebt)}
@@ -464,7 +538,7 @@ export default function CuteWellnessBento({
                 <Umbrella tint="#0ea5e9" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#52796F] dark:text-emerald-300 font-sans">
                   {t('health_coach.financial_ratios')}
                 </p>
               </div>
@@ -510,7 +584,7 @@ export default function CuteWellnessBento({
         <div className="lg:col-span-7">
           <div className="wellness-card p-5 h-full">
             <div className="wellness-card__wash" style={{ background: WASHES.blush }} />
-            <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+            <h2 className="text-lg font-bold font-sans text-[#1F2421] dark:text-[#FAF9F6]">
               {t('health_coach.ai_audit')}
             </h2>
 
