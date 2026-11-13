@@ -1747,68 +1747,59 @@ html:not(.dark) :where(.text-primary-700) { color: rgb(var(--scheme-800-rgb, 30 
 html.dark :where(.bg-primary-100)         { background-color: rgb(var(--scheme-800-rgb, 30 64 175) / 0.5); }
 html.dark :where(.text-primary-700)       { color: rgb(var(--scheme-200-rgb, 191 219 254)); }
 
-/* The primary scale in the dark mode, for the `dark:` VARIANT classes.
+/* The primary scale in the dark mode.
  *
- * This is the second half of a trap the first half already showed.
- * A component writes `dark:text-primary-400`, and Tailwind compiles
- * that to a class named `dark\:text-primary-400` - so a rule written
- * against the bare `text-primary-400` never matches the element at
- * all. Thirty usages across the app were affected.
+ * Two faults, stacked.
  *
- * The values are wrong on top of that. The primary scale IS the
- * scheme's scale, and step 400 is a mid step: fine on a light card,
- * too dark on a dark one. For the forest scheme the mid step is
- * #52796F, which on the dark card is 3.02:1 - and the "0" of the
- * analytics summary strip was drawn in exactly that colour. A scheme
- * sweep found it, because the default scheme passed and forest did
- * not.
+ * The primary scale IS the scheme's scale, so step 400 is a mid step:
+ * fine on a light card, too dark on a dark one. Forest's mid step is
+ * the darkest of the schemes, so it failed where emerald passed - the
+ * "0" of the analytics summary strip was drawn in #52796F on the dark
+ * card, 3.02:1.
  *
- * So in the dark mode the primary steps move UP the scale: what was a
- * mid step becomes a light one. Both names are listed, because a
- * component may carry either.
+ * And the rule has to name the `dark:` VARIANT class, because that is
+ * a different class name. A component writes `dark:text-primary-400`;
+ * Tailwind compiles it to `dark\:text-primary-400`. Thirty usages
+ * across the app were affected.
+ *
+ * These rules are NOT wrapped in :where(), and that is deliberate.
+ * `:where()` holds the weight at zero, which is right for a blanket
+ * rule that must not outrank a component's own choice - but here the
+ * component's choice IS the unreadable colour, and it is written as a
+ * Tailwind variant with a `:is(.dark *)` on the end. The specificity
+ * works out like this:
+ *
+ *   html.dark :where(.dark\:text-primary-400)   0,1,1   loses
+ *   .dark\:text-primary-400:is(.dark *)          0,2,0   Tailwind
+ *   html.dark .dark\:text-primary-400            0,2,1   wins
+ *
+ * The bare classes come first and the variant classes after, so that
+ * when an element carries both - `text-primary-600 dark:text-primary-400`
+ * - the explicit dark choice is the one honoured, which is what the
+ * component asked for.
  */
-html.dark :where(.text-primary-400),
-html.dark :where(.dark\:text-primary-400) {
-  color: rgb(var(--scheme-200-rgb, 191 219 254));
-}
+html.dark .text-primary-200 { color: rgb(var(--scheme-200-rgb, 191 219 254)); }
+html.dark .text-primary-300 { color: rgb(var(--scheme-300-rgb, 147 197 253)); }
+html.dark .text-primary-400 { color: rgb(var(--scheme-200-rgb, 191 219 254)); }
+html.dark .text-primary-500 { color: rgb(var(--scheme-200-rgb, 191 219 254)); }
+html.dark .text-primary-600 { color: rgb(var(--scheme-300-rgb, 147 197 253)); }
+html.dark .text-primary-700 { color: rgb(var(--scheme-200-rgb, 191 219 254)); }
 
-html.dark :where(.text-primary-500),
-html.dark :where(.dark\:text-primary-500) {
-  color: rgb(var(--scheme-200-rgb, 191 219 254));
-}
-
-html.dark :where(.text-primary-600),
-html.dark :where(.dark\:text-primary-600) {
-  color: rgb(var(--scheme-300-rgb, 147 197 253));
-}
-
-html.dark :where(.text-primary-700),
-html.dark :where(.dark\:text-primary-700) {
-  color: rgb(var(--scheme-200-rgb, 191 219 254));
-}
-
-/* Step 200 is already the light end of the scale, so it stays where it
-   is - but it needs the dark rule to exist, or a component that writes
-   `dark:text-primary-200` keeps the light-mode step. */
-html.dark :where(.text-primary-200),
-html.dark :where(.dark\:text-primary-200) {
-  color: rgb(var(--scheme-200-rgb, 191 219 254));
-}
-
-/* Step 300 is the step the accent foreground uses, so it matches. */
-html.dark :where(.text-primary-300),
-html.dark :where(.dark\:text-primary-300) {
-  color: rgb(var(--scheme-300-rgb, 147 197 253));
-}
+html.dark .dark\:text-primary-200 { color: rgb(var(--scheme-200-rgb, 191 219 254)); }
+html.dark .dark\:text-primary-300 { color: rgb(var(--scheme-300-rgb, 147 197 253)); }
+html.dark .dark\:text-primary-400 { color: rgb(var(--scheme-200-rgb, 191 219 254)); }
+html.dark .dark\:text-primary-500 { color: rgb(var(--scheme-200-rgb, 191 219 254)); }
+html.dark .dark\:text-primary-600 { color: rgb(var(--scheme-300-rgb, 147 197 253)); }
+html.dark .dark\:text-primary-700 { color: rgb(var(--scheme-200-rgb, 191 219 254)); }
 
 /* The soft primary washes, for the same reason: `bg-primary-900/30` is
    a dark wash of a dark step, which on a dark page is the same
    darkness twice and disappears. In the dark mode it becomes a wash
    of the accent instead. */
-html.dark :where(.bg-primary-900\/30),
-html.dark :where(.bg-primary-900\/40),
-html.dark :where(.dark\:bg-primary-900\/30),
-html.dark :where(.dark\:bg-primary-900\/40) {
+html.dark .bg-primary-900\/30,
+html.dark .bg-primary-900\/40,
+html.dark .dark\:bg-primary-900\/30,
+html.dark .dark\:bg-primary-900\/40 {
   background-color: rgb(var(--scheme-500-rgb, 59 130 246) / 0.18);
 }
 

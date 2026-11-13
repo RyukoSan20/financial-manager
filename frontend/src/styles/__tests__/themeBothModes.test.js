@@ -227,12 +227,12 @@ check('the primary scale moves up in the dark mode', () => {
   // scale instead.
   for (const step of ['400', '500', '600', '700']) {
     assert.ok(
-      INDEX.includes(`html.dark :where(.text-primary-${step})`),
+      INDEX.includes(`html.dark .text-primary-${step}`),
       `primary-${step} has a dark-mode value`
     );
   }
   assert.ok(
-    INDEX.includes('html.dark :where(.text-primary-400)'),
+    INDEX.includes('html.dark .text-primary-400'),
     'and the mid step is remapped, not left as the scheme mid step'
   );
 });
@@ -257,14 +257,23 @@ check('every primary step the app uses has a dark rule for BOTH class names', ()
 
   for (const step of used) {
     assert.ok(
-      INDEX.includes(`html.dark :where(.text-primary-${step})`),
+      INDEX.includes(`html.dark .text-primary-${step}`),
       `primary-${step} has a rule for the bare class`
     );
     assert.ok(
-      INDEX.includes(`html.dark :where(.dark\\:text-primary-${step})`),
+      INDEX.includes(`html.dark .dark\\:text-primary-${step}`),
       `primary-${step} has a rule for the dark: variant class`
     );
   }
+
+  // The rule has to outrank Tailwind's own variant, which carries an
+  // `:is(.dark *)` on the end. A `:where()`-wrapped rule is 0,1,1 and
+  // loses to it at 0,2,0 - so the fix has to be written at full
+  // weight, and the test has to insist on that.
+  assert.ok(
+    !/html\.dark :where\(\.text-primary-\d\)/.test(INDEX),
+    'the primary floor is written at full weight, not zero'
+  );
 });
 
 check('a wash and its ink move together between the modes', () => {
