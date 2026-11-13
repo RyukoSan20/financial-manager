@@ -934,6 +934,7 @@
  * blanket rules outranking a component's own `dark:` variant).
  */
 
+html.dark :where(.fintech-method__current),
 html.dark :where(.fintech-chip--ok),
 html.dark :where(.fintech-trust--ok),
 html.dark :where(.fintech-method.is-active),

@@ -194,10 +194,31 @@ check('the dark mappings are wrapped in :where()', () => {
 });
 
 check('the muted scales have a floor in both modes', () => {
-  // The slate scale was missed when the gray scale was raised.
+  // The light floors are :where()-wrapped, because nothing competes
+  // with them. The dark ones are NOT, deliberately: the components
+  // write `text-slate-400 dark:text-slate-500` themselves, so the
+  // failing colour IS the component's own variant and a zero-weight
+  // rule would lose to it and change nothing on the page.
   assert.ok(/html:not\(\.dark\) :where\(\.text-slate-400\)/.test(INDEX), 'light floor for slate-400');
-  assert.ok(/html\.dark :where\(\.text-slate-400\)/.test(INDEX), 'dark floor for slate-400');
-  assert.ok(/html\.dark :where\(\.text-slate-500\)/.test(INDEX), 'dark floor for slate-500');
+  assert.ok(/html\.dark \.text-slate-400\s*\{/.test(INDEX), 'dark floor for slate-400 at matching weight');
+  assert.ok(/html\.dark \.text-slate-500\s*\{/.test(INDEX), 'dark floor for slate-500 at matching weight');
+  assert.ok(/html\.dark \.text-gray-500\s*\{/.test(INDEX), 'dark floor for gray-500 at matching weight');
+});
+
+check('a wash and its ink move together between the modes', () => {
+  // Lifting the ink of a pale badge without darkening the wash turns
+  // a dark-on-light badge into light-on-light. The "0/7" chip went
+  // from 1.35:1 to 1.57:1 that way - worse than before the fix.
+  const inkLifted = /html\.dark :where\(\.text-\[#1B3B32\]\)/.test(
+    INDEX.replace(/\\/g, '')
+  );
+  const washDarkened = /html\.dark :where\(\.bg-\[#D8F3DC\]\)/.test(
+    INDEX.replace(/\\/g, '')
+  );
+  assert.ok(
+    inkLifted === washDarkened,
+    'the #1B3B32 ink and the #D8F3DC wash must both be remapped, or neither'
+  );
 });
 
 /* --- 4. the household tokens exist outside their own canvas ---------- */

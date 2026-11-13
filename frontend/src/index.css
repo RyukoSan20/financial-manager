@@ -524,6 +524,16 @@ html.dark :where(.bg-\[\#EAE6DF\]) {
   background-color: #2A332E;
 }
 
+/* The lime wash has to move with its ink.
+   #1B3B32 on #D8F3DC is a deep forest on a pale lime - a pair. The
+   ink is lifted to a light step above, so if the wash stayed pale the
+   badge became light-on-light: the "0/7" chip on /goals measured
+   1.57:1, which is worse than the 1.35:1 it started at. The two are
+   one decision, so they move together. */
+html.dark :where(.bg-\[\#D8F3DC\]) {
+  background-color: #1E3A2F;
+}
+
 /* The light hairline becomes the dark hairline. */
 html.dark :where(.border-\[\#EAE6DF\]) {
   border-color: var(--border-subtle, #2A332E);
@@ -1417,17 +1427,29 @@ html.dark :where(.text-fuchsia-800) {
 html.dark :where(.text-fuchsia-900) {
   color: #e879f9;
 }
-html.dark :where(.text-gray-500) {
+/* Same weight problem as the slate scale: components write
+   `text-gray-400 dark:text-gray-500` explicitly, and #6b7280 on the
+   dark card is 3.73:1. A zero-weight rule loses to that variant, so
+   this one matches its weight. */
+html.dark .text-gray-500 {
   color: #9ca3af;
 }
 
 /* The slate scale in the dark mode. `dark:text-slate-500` (#64748b) on
    the dark card is 3.17:1 - the dark half of the same miss the light
-   floor above covers, and the same empty-chart captions. */
-html.dark :where(.text-slate-500) {
+   floor above covers, and the same empty-chart captions.
+
+   These are NOT wrapped in :where(). The usual rule is that a blanket
+   colour must not outrank a component's own dark: variant - but here
+   the component's variant IS the unreadable colour: the dashboard
+   writes `text-slate-400 dark:text-slate-500`, and #64748b on the dark
+   card is the 3.17:1 failure itself. A zero-weight rule loses to it and
+   changes nothing. Matching Tailwind's own `:is(.dark *)` weight and
+   coming later in the file is what makes the floor actually apply. */
+html.dark .text-slate-500 {
   color: #a8b4c4;
 }
-html.dark :where(.text-slate-400) {
+html.dark .text-slate-400 {
   color: #a8b4c4;
 }
 html.dark :where(.text-gray-600) {

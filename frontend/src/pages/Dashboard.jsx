@@ -904,7 +904,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const bgPrimary = isDark ? 'bg-gray-900' : 'bg-gray-50';
   const bgCard = isDark ? 'bg-gray-800' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  // In the dark mode this sits on cards and on raised chips
+  // (`bg-gray-700`), where `text-gray-400` (#9ca3af) is only 4.06:1 -
+  // just under the body-text floor. gray-300 clears it on both.
+  const textSecondary = isDark ? 'text-gray-300' : 'text-gray-600';
   const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
 
   // Loading state
