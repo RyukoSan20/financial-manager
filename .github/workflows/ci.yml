@@ -195,6 +195,7 @@ jobs:
             src/pages/__tests__/analyticsLoadingShell.test.js \
             src/styles/__tests__/themeBothModes.test.js \
             src/contexts/__tests__/themeModes.test.js \
+            src/pages/__tests__/chartTheme.test.js \
             src/styles/__tests__/kakeiboPalette.test.js
           do
             if [ -f "$t" ]; then

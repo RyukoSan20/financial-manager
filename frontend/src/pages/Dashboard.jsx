@@ -83,11 +83,11 @@ const CHART_COLORS = {
   budget: '#f59e0b',
   safe: '#10b981',
   grid: '#e5e7eb',
-  crosshair: '#94a3b8',
+  crosshair: '#64748b',
   dark: {
     grid: '#374151',
     text: '#9ca3af',
-    crosshair: '#6b7280',
+    crosshair: '#9ca3af',
   }
 };
 
@@ -638,8 +638,19 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         },
         crosshair: {
           mode: CrosshairMode.Normal,
-          vertLine: { color: CHART_COLORS.crosshair, labelBackgroundColor: isDark ? '#4b5563' : '#374151' },
-          horzLine: { color: CHART_COLORS.crosshair, labelBackgroundColor: isDark ? '#4b5563' : '#374151' },
+          // The crosshair follows the mode. It used to be the light
+          // value in both, because the dark half of CHART_COLORS was
+          // never read - the object existed and nothing asked it for.
+          // On a dark page #94a3b8 is a dim line, and the axis text
+          // beside it was #6b7280, which is 3.67:1 on the dark card.
+          vertLine: {
+            color: isDark ? CHART_COLORS.dark.crosshair : CHART_COLORS.crosshair,
+            labelBackgroundColor: isDark ? '#4b5563' : '#374151',
+          },
+          horzLine: {
+            color: isDark ? CHART_COLORS.dark.crosshair : CHART_COLORS.crosshair,
+            labelBackgroundColor: isDark ? '#4b5563' : '#374151',
+          },
         },
         rightPriceScale: { 
           borderColor: gridColor,
@@ -737,7 +748,11 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         
         // Add baseline at 0
         const baselineSeries = chart.addSeries(LineSeries, {
-          color: '#6b7280',
+          // The zero line follows the mode like the grid does. It is
+          // decorative rather than text, so it is not held to the
+          // body-text floor - but a baseline that disappears into the
+          // dark page is a baseline the reader cannot see.
+          color: isDark ? '#6b7280' : '#9ca3af',
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           title: 'Baseline',
