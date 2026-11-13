@@ -1966,6 +1966,8 @@ export default {
     title: "Kalender Hari Paling Boros",
     worst_day: "Hari Terboros: {date}",
     close: "Tutup",
+    prev_month: "Bulan sebelumnya",
+    next_month: "Bulan berikutnya",
     transaction_count: "{count} transaksi",
   },
 

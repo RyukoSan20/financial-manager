@@ -191,7 +191,7 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect, on
           <button
             type="button"
             onClick={() => goToMonth(-1)}
-            aria-label={t('heatmap.prev_month', 'Bulan sebelumnya')}
+            aria-label={t('heatmap.prev_month')}
             className="p-1 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" aria-hidden="true" />
@@ -200,7 +200,7 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect, on
           <button
             type="button"
             onClick={() => goToMonth(1)}
-            aria-label={t('heatmap.next_month', 'Bulan berikutnya')}
+            aria-label={t('heatmap.next_month')}
             className="p-1 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             <ChevronRight className="w-4 h-4" aria-hidden="true" />

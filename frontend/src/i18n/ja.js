@@ -1966,6 +1966,8 @@ export default {
     title: "支出カレンダー · 最も使った日",
     worst_day: "最も使った日: {date}",
     close: "閉じる",
+    prev_month: "前の月",
+    next_month: "次の月",
     transaction_count: "{count} 件",
   },
 

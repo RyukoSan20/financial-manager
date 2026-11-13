@@ -1966,6 +1966,8 @@ export default {
     title: "Spending Calendar · Busiest Day",
     worst_day: "Busiest day: {date}",
     close: "Close",
+    prev_month: "Previous month",
+    next_month: "Next month",
     transaction_count: "{count} transactions",
   },
 
