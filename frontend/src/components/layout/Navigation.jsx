@@ -33,6 +33,7 @@ import {
   Mail, Package,
   Users,
   Home,
+  MonitorSmartphone,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -187,7 +188,24 @@ const Sidebar = () => {
 const MobileHeader = ({ title, showBack = false, onBack }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-  const { isDarkMode, toggleTheme } = useTheme();
+  const { isDarkMode, themeMode, setThemeMode } = useTheme();
+
+  // The three modes, in the order the button cycles through them.
+  //
+  // The reader's choice is what is stored, and 'system' is a real
+  // choice: it means "follow the device", and it was unreachable from
+  // the interface until now. The label says which mode the click will
+  // move to, so the button never surprises anybody.
+  const THEME_CYCLE = ['light', 'dark', 'system'];
+  const THEME_LABEL = {
+    light: 'Light mode',
+    dark: 'Dark mode',
+    system: 'System mode (follow the device)',
+  };
+  const currentMode = THEME_CYCLE.includes(themeMode) ? themeMode : 'light';
+  const nextMode = THEME_CYCLE[(THEME_CYCLE.indexOf(currentMode) + 1) % THEME_CYCLE.length];
+  const themeModeLabel = `${THEME_LABEL[currentMode]} - click for ${THEME_LABEL[nextMode].toLowerCase()}`;
+  const cycleTheme = () => setThemeMode(nextMode);
   const { t , language } = useTranslation();
   const K = batch3[language]?.navigation;
   // The mobile menu leaves out the entries whose switch is off, the
@@ -227,15 +245,35 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
           
           {/* Right */}
           <div className="flex items-center gap-1">
-            {/* Theme Toggle */}
-            <button 
-              onClick={toggleTheme}
+            {/* Theme Toggle.
+
+                Three modes, one button: light, dark, and system. The
+                system mode existed in the code from the start - the
+                context stored it, the server kept it, and the watcher
+                followed the OS - but no control could ever reach it,
+                so a reader who wanted the app to follow their phone
+                had no way to say so.
+
+                Clicking cycles: light -> dark -> system -> light. The
+                label says which mode comes next, and the icon says
+                which mode is on now, so the button is never a guess:
+                in the system mode the icon is the device, because that
+                is what is deciding. */}
+            <button
+              onClick={cycleTheme}
               data-testid="theme-toggle"
-              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              data-theme-mode={themeMode}
+              aria-label={themeModeLabel}
+              title={themeModeLabel}
               className="p-2.5 text-gray-600 dark:text-gray-300 active:bg-gray-100 dark:active:bg-gray-800 rounded-lg"
-              title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
             >
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {themeMode === 'system' ? (
+                <MonitorSmartphone className="w-5 h-5" />
+              ) : isDarkMode ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
             </button>
             <NotificationBell />
             <button 

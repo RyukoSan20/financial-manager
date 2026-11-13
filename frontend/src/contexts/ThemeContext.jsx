@@ -153,13 +153,27 @@ export const ThemeProvider = ({ children }) => {
       // The theme too, but only when the user has not pinned it on
       // this device. A device that was deliberately set to light stays
       // light.
+      //
+      // 'system' is the subtle one. It used to be treated as "not
+      // pinned", so the server's copy overwrote it - and since the
+      // server's copy was a resolved 'light', the mode was lost within
+      // one sync interval and the app fell back to following the OS
+      // without the reader ever being able to say "follow the server".
+      //
+      // The rule is: an explicit 'light' or 'dark' on this device
+      // wins over the server, because the reader pinned it here. A
+      // local 'system' does not pin anything, so the server may set
+      // the mode - but only to a real mode, and only if it actually
+      // has one. When the server says 'system' too, the device
+      // follows the OS, which is what 'system' means.
       if (
         data.theme === THEME_LIGHT ||
         data.theme === THEME_DARK ||
         data.theme === THEME_SYSTEM
       ) {
         const local = readStoredTheme();
-        if (!local || local === THEME_SYSTEM) {
+        const localPinned = local === THEME_LIGHT || local === THEME_DARK;
+        if (!localPinned) {
           writeStoredTheme(data.theme);
           setModeState(data.theme);
           const resolved =
@@ -289,6 +303,8 @@ export const ThemeProvider = ({ children }) => {
    */
   const setTheme = useCallback(
     (next) => {
+      // 'system' is a first-class choice, not a fallback: it hands
+      // control back to the device and keeps following it.
       const value =
         next === THEME_DARK || next === THEME_SYSTEM ? next : THEME_LIGHT;
       writeStoredTheme(value);
@@ -386,7 +402,13 @@ export const ThemeProvider = ({ children }) => {
         revision,
         syncFromServer,
         // Legacy aliases kept so existing call sites keep working.
-        themeMode: theme,
+        //
+        // `themeMode` is the user's CHOICE ('light' | 'dark' |
+        // 'system'), not the resolved theme. It used to be the resolved
+        // one, which meant a control that highlights by it could never
+        // show "system" as chosen - the option looked broken - and the
+        // header's cycle had nothing to cycle back to.
+        themeMode: mode,
         setThemeMode: setTheme,
       }}
     >

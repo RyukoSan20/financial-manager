@@ -127,6 +127,7 @@ for test_file in \
   src/styles/__tests__/motionSystem.test.js \
   src/pages/__tests__/analyticsLoadingShell.test.js \
   src/styles/__tests__/themeBothModes.test.js \
+  src/contexts/__tests__/themeModes.test.js \
   src/utils/__tests__/eisenhowerPriority.test.js \
   src/components/ui/__tests__/confirmDialog.test.js \
   src/components/split/__tests__/splitMath.test.js \
