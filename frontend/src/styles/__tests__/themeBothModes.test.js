@@ -219,6 +219,54 @@ check('the muted scales have a floor in both modes', () => {
   }
 });
 
+check('the primary scale moves up in the dark mode', () => {
+  // The primary scale IS the scheme's scale, so step 400 is a mid
+  // step: fine on a light card, too dark on a dark one. For the forest
+  // scheme that is #52796F, and the analytics summary strip was drawn
+  // in it at 3.02:1. In the dark mode the primary steps come up the
+  // scale instead.
+  for (const step of ['400', '500', '600', '700']) {
+    assert.ok(
+      INDEX.includes(`html.dark :where(.text-primary-${step})`),
+      `primary-${step} has a dark-mode value`
+    );
+  }
+  assert.ok(
+    INDEX.includes('html.dark :where(.text-primary-400)'),
+    'and the mid step is remapped, not left as the scheme mid step'
+  );
+});
+
+check('every primary step the app uses has a dark rule for BOTH class names', () => {
+  // The component writes `dark:text-primary-400`, which Tailwind
+  // compiles to the class `dark\:text-primary-400`. A rule against
+  // the bare name never matches it.
+  const used = new Set();
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) { if (e.name !== '__tests__') walk(full); continue; }
+      if (!/\.jsx?$/.test(e.name)) continue;
+      for (const m of fs.readFileSync(full, 'utf8').matchAll(/dark:text-primary-(\d+)/g)) {
+        used.add(m[1]);
+      }
+    }
+  };
+  walk(path.join(ROOT, 'src'));
+  assert.ok(used.size >= 2, `the app uses several primary steps in dark, found ${[...used].join(', ')}`);
+
+  for (const step of used) {
+    assert.ok(
+      INDEX.includes(`html.dark :where(.text-primary-${step})`),
+      `primary-${step} has a rule for the bare class`
+    );
+    assert.ok(
+      INDEX.includes(`html.dark :where(.dark\\:text-primary-${step})`),
+      `primary-${step} has a rule for the dark: variant class`
+    );
+  }
+});
+
 check('a wash and its ink move together between the modes', () => {
   // Lifting the ink of a pale badge without darkening the wash turns
   // a dark-on-light badge into light-on-light. The "0/7" chip went
