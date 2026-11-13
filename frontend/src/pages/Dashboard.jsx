@@ -748,11 +748,13 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         
         // Add baseline at 0
         const baselineSeries = chart.addSeries(LineSeries, {
-          // The zero line follows the mode like the grid does. It is
-          // decorative rather than text, so it is not held to the
-          // body-text floor - but a baseline that disappears into the
-          // dark page is a baseline the reader cannot see.
-          color: isDark ? '#6b7280' : '#9ca3af',
+          // The zero line is decorative rather than text, so it is not
+          // held to the body-text floor - but it has to be VISIBLE on
+          // the page it is on. It used to be darker in the dark mode
+          // than in the light one, which is backwards: a dim grey line
+          // on a dark card is harder to see than a dim grey line on
+          // cream. The two are now the same weight.
+          color: '#9ca3af',
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           title: 'Baseline',

@@ -77,12 +77,14 @@ check('the axis text colour follows the mode', () => {
   );
 });
 
-check('the zero baseline follows the mode', () => {
-  // Decorative rather than text, but a baseline the reader cannot see
-  // on a dark page is not a baseline.
+check('the zero baseline is visible in both modes', () => {
+  // Decorative rather than text, so it is not held to the body-text
+  // floor - but it has to be visible. It used to be #6b7280 in the
+  // dark mode and #9ca3af in the light one, which is backwards: a dim
+  // grey line on a dark card is harder to see than on cream.
   assert.ok(
-    /color: isDark \? '#6b7280' : '#9ca3af'/.test(DASH),
-    'the baseline is drawn for the mode it is on'
+    /color: '#9ca3af',\s*\n\s*lineWidth: 1,\s*\n\s*lineStyle: LineStyle\.Dashed,\s*\n\s*title: 'Baseline'/.test(DASH),
+    'the baseline is the same visible grey in both modes'
   );
 });
 
