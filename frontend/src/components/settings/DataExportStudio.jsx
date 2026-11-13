@@ -25,7 +25,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileJson, FileSpreadsheet, X } from 'lucide-react';
+import { FileJson, FileSpreadsheet, X, Calendar } from 'lucide-react';
 
 import { useTranslation } from '../../i18n';
 import { api } from '../../services/api';
@@ -240,7 +240,12 @@ export default function DataExportStudio({ onClose }) {
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
-                {option.key === 'custom' ? `📅 ${t(`export.preset_${option.key}`)}` : t(`export.preset_${option.key}`)}
+                {option.key === 'custom' ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Calendar className="w-3 h-3" aria-hidden="true" />
+                    {t(`export.preset_${option.key}`)}
+                  </span>
+                ) : t(`export.preset_${option.key}`)}
               </button>
             );
           })}

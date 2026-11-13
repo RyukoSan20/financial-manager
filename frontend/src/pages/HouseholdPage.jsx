@@ -563,6 +563,11 @@ export default function HouseholdPage() {
         return answer;
       },
       shareGoal: (goalId) => run(() => api.household.shareGoal(goalId), { nod: t('household.goal_shared') }),
+      unshareGoal: (goalId) => run(() => api.household.unshareGoal(goalId), { nod: t('household.goal_unshared') }),
+      contributeGoal: (goalId, amount) => run(
+        () => api.goals.contribute(goalId, { amount }),
+        { nod: t('household.goal_contributed') },
+      ),
 
       addNote: (body) => run(() => api.household.addNote(body), { nod: t('household.note_added') }),
       removeNote: (id) => run(() => api.household.removeNote(id)),

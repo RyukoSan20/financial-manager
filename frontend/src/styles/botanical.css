@@ -32,6 +32,9 @@
   --botanical-cream: #F4F1EA;    /* soft cream */
   --botanical-terracotta: #E07A5F;/* pastel terracotta accent */
 
+  /* The month-timeline bar fill. Sage in light mode. */
+  --month-timeline-bar: #52796F;
+
   /* The forest/lime names are kept as aliases so the many rules and
      components that still reference them land on the Kakeibo palette
      instead of the old neon. Nothing else has to change to stop the
@@ -56,6 +59,9 @@
   --botanical-ink: #ECEFEC;
   --botanical-muted: #9DB5A8;
   --botanical-lime: #D8F3DC;
+  /* A dim sage bar is invisible against the dark card, so dark mode
+     gets a brighter emerald instead. */
+  --month-timeline-bar: #34D399;
 }
 
 /* --- 1. the canvas ----------------------------------------------------- */

@@ -431,6 +431,10 @@ export function GoalsTab({ data, actions, busy, myGoals }) {
   const { t, language } = useTranslation();
   const [form, setForm] = useState({ name: '', target_amount: '', target_date: '' });
   const [existing, setExisting] = useState('');
+  // Which shared goal card has its "add savings" box open, and what
+  // the reader has typed into it.
+  const [contributing, setContributing] = useState(null);
+  const [contributionAmount, setContributionAmount] = useState('');
   const shared = data.goals || [];
   const sharedIds = new Set(shared.map((goal) => goal.id));
   const shareable = (myGoals || []).filter((goal) => !sharedIds.has(goal.id));
@@ -445,6 +449,17 @@ export function GoalsTab({ data, actions, busy, myGoals }) {
       target_date: form.target_date || null,
     });
     if (saved) setForm({ name: '', target_amount: '', target_date: '' });
+  };
+
+  const submitContribution = async (event, goalId) => {
+    event.preventDefault();
+    const amount = Number(contributionAmount) || 0;
+    if (amount <= 0) return;
+    const saved = await actions.contributeGoal(goalId, amount);
+    if (saved) {
+      setContributing(null);
+      setContributionAmount('');
+    }
   };
 
   return (
@@ -514,6 +529,60 @@ export function GoalsTab({ data, actions, busy, myGoals }) {
                   goal.target_date ? shortDate(goal.target_date, language) : '',
                 ].filter(Boolean).join(' · ')}
               </p>
+
+              {contributing === goal.id ? (
+                <form
+                  onSubmit={(event) => submitContribution(event, goal.id)}
+                  className="mt-3 flex items-center gap-2"
+                >
+                  <input
+                    type="number"
+                    min={1}
+                    step="any"
+                    inputMode="decimal"
+                    autoFocus
+                    required
+                    className="hh-field flex-1"
+                    placeholder={t('household.goal_contribution_placeholder')}
+                    value={contributionAmount}
+                    onChange={(e) => setContributionAmount(e.target.value)}
+                  />
+                  <button type="submit" className="hh-button !py-1.5 !px-3 text-xs" disabled={busy}>
+                    {t('household.goal_contribution_save')}
+                  </button>
+                  <button
+                    type="button"
+                    className="hh-button hh-button-ghost !py-1.5 !px-3 text-xs"
+                    onClick={() => { setContributing(null); setContributionAmount(''); }}
+                  >
+                    {t('household.cancel')}
+                  </button>
+                </form>
+              ) : (
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+                  <button
+                    type="button"
+                    className="font-semibold text-[#2F4842] dark:text-emerald-400 hover:underline"
+                    onClick={() => { setContributing(goal.id); setContributionAmount(''); }}
+                  >
+                    + {t('household.goal_add_savings')}
+                  </button>
+                  <a
+                    href="/goals"
+                    className="font-semibold text-[#2F4842] dark:text-emerald-400 hover:underline"
+                  >
+                    {t('household.goal_open')}
+                  </a>
+                  <button
+                    type="button"
+                    className="font-semibold text-rose-600 hover:text-rose-700"
+                    disabled={busy}
+                    onClick={() => actions.unshareGoal(goal.id)}
+                  >
+                    {t('household.goal_unshare')}
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

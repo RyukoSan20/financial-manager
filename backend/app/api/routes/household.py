@@ -419,3 +419,18 @@ def share_goal(
     except HouseholdError as error:
         raise _refuse(error)
     return {"goals": service.shared_goals(db, household.id, current_user.id)}
+
+
+@router.delete("/goals/{goal_id}/share")
+def unshare_goal(
+    goal_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Take a shared target back off the household's list."""
+    try:
+        service.unshare_goal(db, current_user, goal_id)
+        household = service.get_or_create(db, current_user)
+    except HouseholdError as error:
+        raise _refuse(error)
+    return {"goals": service.shared_goals(db, household.id, current_user.id)}

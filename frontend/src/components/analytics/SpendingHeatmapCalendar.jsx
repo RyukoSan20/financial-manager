@@ -20,7 +20,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Flame, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame, X } from 'lucide-react';
 
 /**
  * A rupiah amount, shortened to fit inside a day cell.
@@ -104,19 +104,40 @@ export function spendingByDate(days = []) {
  * @param {Array} props.days          The days with spending on them
  * @param {string} props.month        The month, as YYYY-MM
  * @param {Function} [props.onSelect] Called with the date that was clicked
+ * @param {Function} [props.onMonthChange] Called with the new YYYY-MM
+ *   when the reader moves to another month with the ‹ › buttons.
  */
-export default function SpendingHeatmapCalendar({ days = [], month, onSelect }) {
+export default function SpendingHeatmapCalendar({ days = [], month, onSelect, onMonthChange }) {
   const { t } = useTranslation();
   const [selected, setSelected] = useState(null);
 
-  const [year, monthIndex] = useMemo(() => {
-    if (!month) {
-      const today = new Date();
-      return [today.getFullYear(), today.getMonth()];
+  // The month being shown. It starts from the `month` prop (or
+  // today, when none is given) and can then be moved by the reader
+  // with the chevrons, independently of whatever the parent passed
+  // in - a dashboard card showing "November 2026" with no way to
+  // look at October is a dead end, not a calendar.
+  const [cursor, setCursor] = useState(() => {
+    if (month) {
+      const [y, m] = String(month).split('-');
+      return { year: Number(y), monthIndex: Number(m) - 1 };
     }
-    const [y, m] = String(month).split('-');
-    return [Number(y), Number(m) - 1];
-  }, [month]);
+    const today = new Date();
+    return { year: today.getFullYear(), monthIndex: today.getMonth() };
+  });
+
+  const year = cursor.year;
+  const monthIndex = cursor.monthIndex;
+
+  const goToMonth = (delta) => {
+    setCursor((prev) => {
+      const next = new Date(prev.year, prev.monthIndex + delta, 1);
+      const nextCursor = { year: next.getFullYear(), monthIndex: next.getMonth() };
+      const asKey = `${nextCursor.year}-${String(nextCursor.monthIndex + 1).padStart(2, '0')}`;
+      onMonthChange?.(asKey);
+      return nextCursor;
+    });
+    setSelected(null);
+  };
 
   const byDate = useMemo(() => spendingByDate(days), [days]);
 
@@ -162,15 +183,35 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect }) 
 
   return (
     <div className="spending-heatmap" data-testid="spending-heatmap">
-      <div className="flex items-baseline justify-between gap-2 mb-3">
+      <div className="flex items-center justify-between gap-2 mb-3">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
           {t('heatmap.title')}
         </h3>
-        <span className="text-xs text-gray-500 dark:text-gray-400">{monthName}</span>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => goToMonth(-1)}
+            aria-label={t('heatmap.prev_month', 'Bulan sebelumnya')}
+            className="p-1 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+          </button>
+          <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[7.5rem] text-center">{monthName}</span>
+          <button
+            type="button"
+            onClick={() => goToMonth(1)}
+            aria-label={t('heatmap.next_month', 'Bulan berikutnya')}
+            className="p-1 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
-      {/* The names of the days. */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
+      {/* The names of the days. Same grid container as the day cells
+          below, so each weekday label sits directly above its
+          column. */}
+      <div className="grid grid-cols-7 gap-1.5 text-center mb-1">
         {DAY_NAMES.map((name) => (
           <div
             key={name}
@@ -182,7 +223,7 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect }) 
       </div>
 
       {/* The days. */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1.5 text-center">
         {calendarDays.map((day) => {
           if (day.blank) {
             return <div key={day.key} className="aspect-square" aria-hidden="true" />;

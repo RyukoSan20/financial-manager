@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Button, Spinner, Badge, Modal } from '../components/ui';
 import HonestEmptyState from '../components/common/HonestEmptyState';
 import {
@@ -23,6 +24,7 @@ import { ask } from '../contexts/ConfirmContext';
 
 export const CategoryExpenses = () => {
   const { t, language } = useTranslation();
+  const navigate = useNavigate();
   const K = batch3[language];
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
@@ -147,10 +149,13 @@ export const CategoryExpenses = () => {
     );
   });
 
-  // Edit transaction
+  // Edit transaction - handed off to the rich editor on the
+  // Transactions page, rather than this page's own, thinner form,
+  // so every field that editor has (the sub-category, the place,
+  // the discount and the tax, the bill's own lines) is reachable
+  // from here too.
   const handleEdit = (trans) => {
-    setEditingTransaction(trans);
-    setShowEditModal(true);
+    navigate(`/transactions?edit=${trans.id}`);
   };
 
   // Delete transaction
@@ -350,7 +355,7 @@ export const CategoryExpenses = () => {
                           <div key={trans.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
                             <div className="flex-1">
                               <p className="font-medium text-gray-900">
-                                {trans.description || trans.merchant_name || 'Expense'}
+                                {trans.description || trans.merchant_name || getDisplayName(catInfo)}
                               </p>
                               <div className="flex items-center gap-2 mt-1">
                                 {trans.merchant_name && (
@@ -397,19 +402,8 @@ export const CategoryExpenses = () => {
         </div>
       )}
 
-      {/* Edit Transaction Modal */}
-      {showEditModal && editingTransaction && (
-        <EditTransactionModal
-          isOpen={showEditModal}
-          onClose={() => { setShowEditModal(false); setEditingTransaction(null); }}
-          transaction={editingTransaction}
-          onSave={() => {
-            setShowEditModal(false);
-            setEditingTransaction(null);
-            fetchData();
-          }}
-        />
-      )}
+      {/* Edit happens on the Transactions page's rich editor now;
+          see handleEdit above. */}
     </div>
   );
 };

@@ -90,9 +90,15 @@ export default function DateRangeFilterBar({ value, onChange, onApply }) {
                 onClick={() => choosePreset(preset.key)}
                 aria-pressed={isActive}
                 data-testid={`date-preset-${preset.key}`}
-                className={`botanical-pill !py-1.5 !text-xs ${isActive ? 'is-active' : ''}`}
+                className={`botanical-pill !py-1.5 !text-xs inline-flex items-center gap-1 ${isActive ? 'is-active font-semibold shadow-sm' : ''}`}
+                style={isActive ? { background: '#52796F', borderColor: '#52796F', color: '#fff' } : undefined}
               >
-                {preset.key === 'custom' ? `📅 ${t(`date_range.preset_${preset.key}`)}` : t(`date_range.preset_${preset.key}`)}
+                {preset.key === 'custom' ? (
+                  <>
+                    <Calendar className="w-3 h-3" aria-hidden="true" />
+                    {t(`date_range.preset_${preset.key}`)}
+                  </>
+                ) : t(`date_range.preset_${preset.key}`)}
               </button>
             );
           })}

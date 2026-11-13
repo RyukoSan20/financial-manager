@@ -56,6 +56,7 @@ export const ACTIVITY_ACTIONS = [
   'note_added',
   'note_removed',
   'goal_shared',
+  'goal_unshared',
 ];
 
 export const ATTENTION_KINDS = ['upcoming_bill', 'over_budget', 'unsettled_split'];

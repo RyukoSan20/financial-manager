@@ -129,6 +129,13 @@ def _chapter_month(
             .all()
         )
         for rule in rules:
+            # "Wajib keluar" - money that must go out - only comes
+            # from rules that actually spend money. A recurring rule
+            # that brings money in (salary, a standing transfer in)
+            # is not an outgoing obligation and must never inflate
+            # this total.
+            if (rule.type or "").lower() != "expense":
+                continue
             amount = _num(rule.amount)
             # A rule that happens every month is a subscription; one
             # that happens every week is a week of spending, so only

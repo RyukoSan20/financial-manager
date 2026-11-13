@@ -115,6 +115,14 @@ export const Transactions = () => {
     const raw = new URLSearchParams(window.location.search).get('highlight');
     return raw ? parseInt(raw, 10) : null;
   });
+  // A transaction another page asked to open straight into the rich
+  // editor - the row the reader clicked "Edit" on from the category
+  // breakdown page, say - rather than only scrolled to and left
+  // closed.
+  const [editId] = useState(() => {
+    const raw = new URLSearchParams(window.location.search).get('edit');
+    return raw ? parseInt(raw, 10) : null;
+  });
   // How many transactions have been asked for. The list is read in
   // blocks, because a reader with a year of spending behind them has
   // more than one screen of it, and there was no way to reach any of
@@ -143,6 +151,15 @@ export const Transactions = () => {
     }, 300);
     return () => clearTimeout(timer);
   }, [highlightId, loading, transactions.length]);
+
+  // Open the rich editor straight away for a transaction asked for
+  // by `?edit=id` in the URL, instead of leaving the reader to find
+  // and click it themselves.
+  useEffect(() => {
+    if (!editId || loading || !transactions.length) return;
+    const target = transactions.find((tx) => tx.id === editId);
+    if (target) startEdit(target);
+  }, [editId, loading, transactions.length]);
 
   // The total the application holds. It is the sum of the balances of
   // the accounts, which is the same figure the accounts page shows,

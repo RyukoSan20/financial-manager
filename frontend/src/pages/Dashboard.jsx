@@ -5,8 +5,8 @@ import { Card, Button, Badge, Spinner, EmptyState } from '../components/ui';
 import AnimatedProgressBar from '../components/ui/AnimatedProgressBar';
 import CountUpNumber from '../components/ui/CountUpNumber';
 import { 
-  TrendingUp, TrendingDown, Wallet, PiggyBank, RefreshCw, Camera, 
-  CheckCircle, AlertTriangle, XCircle, Clock, Target, Sparkles,
+  TrendingUp, TrendingDown, Wallet, PiggyBank, RefreshCw, Camera,
+  CheckCircle, AlertTriangle, XCircle, Clock, Target, Sparkles, X,
   ArrowUpRight, ArrowDownRight, Zap, Award, Shield, Trophy, Bell,
   BarChart3, Activity, DollarSign, Bitcoin, Globe, Gem, Sun, Moon,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Settings2,
@@ -348,6 +348,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   // Loading states
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
+  // Whether the reader has dismissed the spending-ratio alert card
+  // for this visit. Resets on reload, since it is tied to the
+  // month's own numbers, not a permanent preference.
+  const [healthAlertDismissed, setHealthAlertDismissed] = useState(false);
   
   // Data states - SEMUA DIPULIHKAN
   const [userSettings, setUserSettings] = useState(null);
@@ -851,11 +855,23 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
     else if (percent >= 80) status = 'warning';
     else if (percent >= 50) status = 'caution';
     
-    return { percent, status };
+    return { percent, status, income, expense };
   };
 
   const safeToSpend = calculateSafeToSpend();
   const spendingRatio = calculateSpendingRatio();
+
+  // Whether an actual budget ("total_budget") is set and, if so,
+  // what is left of it. The 102% figure above compares expense to
+  // income, not to the budget - the two numbers can disagree, and
+  // the card below must never claim a budget is "jebol" (burst)
+  // when the budget itself still has money left in it.
+  const totalBudgetAmount = summary?.total_budget
+    || (budgets.length > 0 ? budgets.reduce((sum, b) => sum + (b.amount || 0), 0) : 0);
+  const totalSpentAmount = summary?.totalExpense || summary?.total_expense || summary?.total_spent || 0;
+  const budgetRemainingAmount = totalBudgetAmount - totalSpentAmount;
+  const hasRealBudget = totalBudgetAmount > 0;
+  const budgetActuallyExceeded = hasRealBudget && budgetRemainingAmount <= 0;
 
   // Status colors and icons
   const statusColors = {
@@ -1083,15 +1099,36 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
       {/* ================================================================ */}
       {/* FINANCIAL HEALTH STATUS - DIPULIHKAN */}
       {/* ================================================================ */}
-      <Card className={`p-4 border-2 ${statusColors[spendingRatio.status]}`}>
+      {!healthAlertDismissed && (
+      <Card className={`relative p-4 pr-10 border-2 ${statusColors[spendingRatio.status]}`}>
+        <button
+          type="button"
+          onClick={() => setHealthAlertDismissed(true)}
+          aria-label={t('dashboard.dismiss') || 'Tutup'}
+          className="absolute top-3.5 right-3.5 p-1 rounded-full opacity-60 hover:opacity-100 transition-opacity"
+        >
+          <X className="w-4 h-4" />
+        </button>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             {getStatusIcon(spendingRatio.status)}
             <div>
               <p className="font-bold text-lg">{getStatusText(spendingRatio.status)}</p>
               <p className="text-sm opacity-80">
-                {spendingRatio.status === 'danger' ? '⚠️ ' + t('dashboard.budget_exceeded') :
-                 spendingRatio.status === 'warning' ? t('dashboard.spending_near_limit') : t('dashboard.spending_within_limit')}
+                {spendingRatio.status === 'danger'
+                  ? (budgetActuallyExceeded
+                      // There really is no budget money left - this is
+                      // the one case the strong wording is accurate.
+                      ? '⚠️ ' + t('dashboard.budget_exceeded')
+                      // The budget itself still has money in it; only
+                      // spending has outrun income this month. Say
+                      // exactly that, with the real numbers, instead of
+                      // a false "budget jebol" claim.
+                      : t('dashboard.spending_exceeds_income', '', {
+                          expense: formatCurrency(spendingRatio.expense || 0),
+                          income: formatCurrency(spendingRatio.income || 0),
+                        }))
+                  : spendingRatio.status === 'warning' ? t('dashboard.spending_near_limit') : t('dashboard.spending_within_limit')}
               </p>
             </div>
           </div>
@@ -1109,6 +1146,7 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           />
         </div>
       </Card>
+      )}
 
       {/* ================================================================ */}
       {/* SUMMARY CARDS - DIPULIHKAN */}

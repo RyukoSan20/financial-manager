@@ -25,6 +25,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { clsx } from 'clsx';
+import { Calendar } from 'lucide-react';
 
 import AnimatedNumber from '../common/AnimatedNumber';
 import RiggedSvgMascot from '../mascot/RiggedSvgMascot';
@@ -340,7 +341,9 @@ export default function FinancialProfileShowcase({ profile, onRecord }) {
                 }}
                 className={clsx('botanical-pill shrink-0 whitespace-nowrap !py-1.5', active && 'is-active')}
               >
-                <span aria-hidden="true">{item.icon}</span>
+                <span aria-hidden="true">
+                  {item.key === 'month' ? <Calendar className="w-3.5 h-3.5 inline -mt-0.5" /> : item.icon}
+                </span>
                 {t(item.labelKey)}
               </button>
             );
@@ -377,7 +380,7 @@ export default function FinancialProfileShowcase({ profile, onRecord }) {
               className="shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-100 to-violet-100 dark:from-sky-500/15 dark:to-violet-500/15 flex flex-col items-center justify-center animate-[float_6s_ease-in-out_infinite]"
               aria-hidden="true"
             >
-              <span className="text-xl">📅</span>
+              <Calendar className="w-5 h-5 text-sky-500 dark:text-sky-300" aria-hidden="true" />
               <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                 {new Date().getDate()}
               </span>

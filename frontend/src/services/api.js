@@ -691,6 +691,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ goal_id: goalId }),
     }),
+    unshareGoal: (goalId) => api.request(`/household/goals/${goalId}/share`, { method: 'DELETE' }),
   },
 
   // Exchange rates

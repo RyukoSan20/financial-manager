@@ -83,6 +83,55 @@ export default function MonthTimeline() {
             </div>
           </div>
 
+          {/* The bars.
+              One bar per day, sized to the biggest day in the month,
+              so the shape of the month is visible at a glance. In
+              dark mode a dim bar is invisible against the dark card,
+              so the fill is a brighter sage/emerald there than it is
+              in light mode. */}
+          {(() => {
+            const maxAbs = Math.max(1, ...days.map((d) => Math.abs(d.net || 0)));
+            return (
+              <div className="flex items-end gap-0.5 h-20 mb-1" role="img" aria-label={K.timeline_title}>
+                {days.map((day) => {
+                  const heightPct = Math.max(4, (Math.abs(day.net || 0) / maxAbs) * 100);
+                  const isNeg = (day.net || 0) < 0;
+                  return (
+                    <div
+                      key={day.date}
+                      className="flex-1 flex flex-col items-center justify-end h-full"
+                      title={`${K.timeline_day.replace('{day}', String(day.day))}: ${formatCurrency(day.net, data.currency)}`}
+                    >
+                      <div
+                        className="w-full rounded-sm"
+                        style={{
+                          height: `${heightPct}%`,
+                          backgroundColor: isNeg
+                            ? '#FB7185'
+                            : 'var(--month-timeline-bar, #52796F)',
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+          {/* The x-axis. Showing a label under every day would crowd
+              and clip on a phone screen, so only every 4th day and
+              the last day are labelled. */}
+          <div className="flex items-start gap-0.5 mb-3">
+            {days.map((day, index) => (
+              <div key={day.date} className="flex-1 text-center">
+                {(index % 4 === 0 || index === days.length - 1) && (
+                  <span className="px-1 text-[11px] text-slate-400 dark:text-slate-500">
+                    {day.day}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {days.map((day) => {
               const isOpen = openDay === day.date;

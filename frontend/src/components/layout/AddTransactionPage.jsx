@@ -1534,7 +1534,7 @@ const AddTransactionPage = () => {
             onClick={() => setShowDateSheet(true)}
             className="px-4 py-2 rounded-full text-sm font-medium bg-white text-gray-600"
           >
-            <IconText name="calendar" emoji="📅" on={polished}>{K.pick}</IconText>
+            <IconText name="calendar" emoji="📅" on={true}>{K.pick}</IconText>
           </button>
         </div>
 

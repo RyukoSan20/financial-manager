@@ -965,3 +965,37 @@ def share_goal(db: Session, user: Any, goal_id: int) -> None:
         )
         log(db, household.id, display_name(user), "goal_shared", goal.name)
         db.commit()
+
+
+def unshare_goal(db: Session, user: Any, goal_id: int) -> None:
+    """Take a target back off the household's shared list.
+
+    This only removes the link - the goal itself, and whatever has
+    been saved toward it, stays exactly as it was. Only the member
+    who shared it, or the one who owns it, may take it back off.
+    """
+    from app.models.goal import Goal
+
+    household = get_or_create(db, user)
+    link = (
+        db.query(HouseholdGoalLink)
+        .filter(
+            HouseholdGoalLink.household_id == household.id,
+            HouseholdGoalLink.goal_id == goal_id,
+        )
+        .first()
+    )
+    if link is None:
+        raise HouseholdError(404, "not_found")
+
+    goal = db.query(Goal).filter(Goal.id == goal_id).first()
+    is_owner = goal is not None and goal.user_id == user.id
+    is_sharer = link.shared_by == display_name(user)
+    if not (is_owner or is_sharer):
+        raise HouseholdError(403, "not_allowed")
+
+    label = goal.name if goal is not None else "Target"
+    db.delete(link)
+    log(db, household.id, display_name(user), "goal_unshared", label)
+    db.commit()
+

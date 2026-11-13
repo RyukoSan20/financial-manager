@@ -5,7 +5,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
-import { Camera, FileText, Loader2, Check, Sparkles, AlertCircle, ChevronDown, ChevronUp, Copy, Trash2, Zap } from 'lucide-react';
+import { Camera, FileText, Loader2, Check, Sparkles, AlertCircle, ChevronDown, ChevronUp, Copy, Trash2, Zap, Calendar } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 import { useTranslation } from '../../i18n';
@@ -445,7 +445,8 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
                     
                     {/* Date */}
                     {result.date && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 inline-flex items-center gap-1">
+                        <Calendar className="w-3 h-3" aria-hidden="true" />
                         {K.result_date} {result.date}
                       </p>
                     )}
