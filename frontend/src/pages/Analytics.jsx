@@ -373,13 +373,17 @@ export const Analytics = () => {
     [prefs.order, prefs.hidden]
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
+  // The page is NOT swapped for a spinner while it loads.
+  //
+  // It used to be: `if (loading) return <Spinner/>` replaced the whole
+  // page, filter bar included. Choosing a range re-fetches, which sets
+  // loading, which unmounted DateRangeFilterBar - and an unmounted
+  // component loses its state, so the Custom Date Range Studio closed
+  // the instant it was opened. From the reader's side the button
+  // simply did nothing.
+  //
+  // So the header and the filter bar stay mounted and the spinner
+  // takes the place of the cards only. See `contentLoading` below.
 
   const getScoreColor = (score) => {
     if (score >= 80) return 'text-success-600';
@@ -894,6 +898,16 @@ export const Analytics = () => {
         </Card>
       )}
 
+      {/* The spinner takes the place of the cards, not of the page.
+          The filter bar above stays mounted while the new range is
+          fetched, so the Custom Date Range Studio keeps whatever the
+          reader has typed into it. */}
+      {loading && (
+        <div className="flex items-center justify-center h-64" data-testid="analytics-loading">
+          <Spinner size="lg" />
+        </div>
+      )}
+
       {/* The summary strip: the four numbers that decide whether the
           month went well, in one row before any chart. */}
       {!loading && health && (
@@ -1059,7 +1073,7 @@ export const Analytics = () => {
           twelve-column Bento row. The calendar is the question a monthly
           total cannot answer, so it takes the wider seven columns; the
           score is the glance-able verdict in the remaining five. */}
-      {dailySpending?.days?.length ? (
+      {!loading && dailySpending?.days?.length ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-5 items-stretch">
           <Card className="lg:col-span-7">
             <CardBody>
@@ -1096,25 +1110,27 @@ export const Analytics = () => {
       ) : null}
 
       {/* Widgets */}
-      <div className="grid lg:grid-cols-2 gap-5">
-        {visible.map((id, index) => (
-          <div key={id} className="contents">
-            {renderWidget(id, index)}
-          </div>
-        ))}
-      </div>
+      {!loading && (
+        <div className="grid lg:grid-cols-2 gap-5">
+          {visible.map((id, index) => (
+            <div key={id} className="contents">
+              {renderWidget(id, index)}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* The river of money: where it came from, what it was spent on,
           and what is left over. Behind the switch, so the page is
           unchanged when it is off. */}
-      {fintech && (
+      {!loading && fintech && (
         <CashFlowDiagram
           incomeBreakdown={incomeBreakdown}
           expenseBreakdown={expenseBreakdown}
         />
       )}
 
-      {visible.length === 0 && (
+      {!loading && visible.length === 0 && (
         <Card>
           <CardBody className="text-center text-gray-500 py-12">
             <Sparkles size={20} className="mx-auto mb-2 text-gray-400" />
