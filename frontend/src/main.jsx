@@ -16,6 +16,9 @@ import './styles/fintech.css'
 import './styles/shape.css'
 import './styles/mascot-motion.css';
 import './styles/cute-editorial.css'
+// The campus editorial layer must load AFTER cute-editorial: the ink
+// guard and the clipping fixes are deliberate overrides of it.
+import './styles/campus-editorial.css'
 import './styles/motion-system.css'
 // The botanical studio has the last word on colour.
 import './styles/botanical.css'

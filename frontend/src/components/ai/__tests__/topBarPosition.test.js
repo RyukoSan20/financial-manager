@@ -123,7 +123,11 @@ check('docking does not make the page jump', () => {
 
 check('the bar docks on scroll, at the stated offset', () => {
   const source = read(BAR);
-  assert.ok(/window\.scrollY >= 120/.test(source), 'it docks past 120px');
+  // The offset is now 80px, and both scroll roots are read: on a
+  // page that scrolls a wrapper rather than the window, scrollY
+  // stays at zero and the pill would never dock.
+  assert.ok(/y > 80/.test(source), 'it docks past 80px');
+  assert.ok(/document\.scrollingElement/.test(source), 'and it reads both scroll roots');
   assert.ok(/addEventListener\('scroll'/.test(source), 'it listens');
   assert.ok(/removeEventListener\('scroll'/.test(source), 'and it stops listening');
   assert.ok(/passive: true/.test(source), 'without blocking the scroll');

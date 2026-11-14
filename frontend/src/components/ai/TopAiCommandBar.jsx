@@ -161,7 +161,13 @@ export default function TopAiCommandBar({ userData = {} }) {
   const [docked, setDocked] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setDocked(window.scrollY >= 120);
+    // Both roots are read: on a page whose scrolling happens on a
+    // wrapper rather than on the window, `window.scrollY` stays at
+    // zero forever and the pill would never dock.
+    const onScroll = () => {
+      const y = window.scrollY || document.scrollingElement?.scrollTop || 0;
+      setDocked(y > 80);
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);

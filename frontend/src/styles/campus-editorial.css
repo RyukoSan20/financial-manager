@@ -1,0 +1,398 @@
+/*
+ * The campus editorial theme.
+ *
+ * Three things live here that could not live in utility classes:
+ *
+ *  1. The ink guard. The login page shipped with white headings on a
+ *     cream canvas, which is not a low-contrast heading but an
+ *     invisible one. The rules below force espresso ink on every
+ *     wordmark and heading on a light section, with `!important`,
+ *     because the whole point is that no later rule may undo it.
+ *
+ *  2. The clipping fix. Rotated polaroids, bouncing companions and
+ *     speech bubbles were being sliced on phones by cards that were
+ *     `overflow: hidden` with no padding to spare. The page wrapper
+ *     uses `overflow-x: clip` rather than `hidden`, because `hidden`
+ *     silently makes every ancestor a scroll container and breaks
+ *     `position: sticky` - which is what the pill navbar depends on.
+ *
+ *  3. The motion. Every keyframe here animates `transform` and
+ *     nothing else, declares `will-change`, and uses `translate3d` so
+ *     a phone composites it rather than repainting it. All of it
+ *     stops for a reader who has asked for less movement.
+ */
+
+/* ---------------------------------------------------------------------------
+   1. The ink guard
+   --------------------------------------------------------------------------- */
+
+/* The wordmark and the headline, on every light section. There is no
+   state in which these are allowed to be pale. */
+.login-gateway__brand-name,
+.campus-nav__wordmark,
+.login-gateway__title,
+.campus-heading__title {
+  color: #2C221E !important;
+  -webkit-text-fill-color: #2C221E !important;
+}
+
+/* The marker pen under the part of the headline that matters. The
+   gradient starts below the x-height so it reads as a highlighter
+   stroke rather than a filled box. */
+.login-gateway__title em,
+.cute-underline {
+  font-style: normal;
+  color: #1F3A2E !important;
+  -webkit-text-fill-color: #1F3A2E !important;
+  background: linear-gradient(transparent 62%, #F9C6B0 62%);
+  background-repeat: no-repeat;
+  padding: 0 0.08em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* A heading is scannable only if it is heavy and spaced. */
+.campus-heading__title {
+  text-wrap: balance;
+}
+
+/* ---------------------------------------------------------------------------
+   2. The clipping fix
+   --------------------------------------------------------------------------- */
+
+/*
+ * `clip` instead of `hidden`.
+ *
+ * `overflow-x: hidden` turns the element into a scroll container on
+ * both axes, which (a) makes any `position: sticky` descendant stick
+ * to that box instead of the viewport, and (b) crops the vertical
+ * drop shadows the stationery cards are built from. `clip` cuts the
+ * overflow without creating the scroll container, so the pill navbar
+ * still sticks and the shadows still show.
+ */
+.campus-page {
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+/*
+ * The page was a two-column grid with the form on the left and a
+ * preview on the right, both locked to the viewport height. It is
+ * now a stack of full-width sections the reader scrolls through, so
+ * the grid, the height lock and the per-column scrolling all have to
+ * go - otherwise section one would scroll inside its own box while
+ * the page below it stayed put.
+ */
+.login-gateway.campus-page {
+  display: block;
+  min-height: 0;
+  background: #F7F2E7;
+}
+
+.login-gateway.campus-page .login-gateway__form,
+.login-gateway.campus-page .login-gateway__preview {
+  display: block;
+  overflow: visible;
+  padding: 0;
+  min-height: 0;
+  background: transparent;
+}
+
+/* The simulator cards, now that they sit on honey rather than on
+   their own column. */
+.login-gateway.campus-page .login-gateway__preview > div {
+  max-width: none;
+  width: 100%;
+}
+
+/* Sections never clip their own decoration: the beads, the tilted
+   frames and the bounce all leave the box on purpose. */
+.campus-section {
+  overflow: visible;
+}
+
+/* The cards that hold something that moves. A rotated corner or a
+   -8px bounce needs room above the content, or it is sliced by the
+   card's own edge on a narrow screen. */
+.minigame-card,
+.parade-card,
+.polaroid-snap,
+.campus-greeter-card {
+  overflow: visible;
+}
+
+@media (max-width: 639px) {
+  /* The breathing room, on phones only - on a desktop the grid gap
+     already provides it and the extra padding would look loose. */
+  .minigame-card,
+  .parade-card,
+  .campus-greeter-card {
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Nothing decorative may be wider than the phone. A fixed
+     `min-width` on a floating element is what pushed the page
+     sideways. */
+  .minigame-card,
+  .parade-card,
+  .polaroid-snap,
+  .campus-greeter-card,
+  .campus-section {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   3. The motion
+   --------------------------------------------------------------------------- */
+
+/* The beads drifting around a section. */
+@keyframes memphis-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(0, -9px, 0) rotate(8deg); }
+}
+
+.memphis-float {
+  animation: memphis-drift 5.5s ease-in-out infinite;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+
+/* The star in the navbar and on every overline badge. */
+@keyframes campus-star-spin {
+  from { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.18); }
+  to { transform: rotate(360deg) scale(1); }
+}
+
+.campus-star {
+  display: inline-block;
+  animation: campus-star-spin 6s linear infinite;
+  will-change: transform;
+}
+
+/* A coin arriving in a slot. */
+@keyframes coin-drop-in {
+  0% { transform: translate3d(0, -14px, 0) scale(0.6); opacity: 0; }
+  60% { transform: translate3d(0, 2px, 0) scale(1.08); opacity: 1; }
+  100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+}
+
+.coin-drop-pop {
+  animation: coin-drop-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  will-change: transform;
+}
+
+/* A full slot breathing, so the board is alive between taps. */
+@keyframes coin-slot-breathe {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -4px, 0); }
+}
+
+.coin-slot--full {
+  animation: coin-slot-breathe 1.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* The score badge floating off a slot that was just tapped. */
+@keyframes coin-pop-rise {
+  0% { transform: translate3d(-50%, 0, 0) scale(0.8); opacity: 0; }
+  25% { transform: translate3d(-50%, -10px, 0) scale(1.1); opacity: 1; }
+  100% { transform: translate3d(-50%, -30px, 0) scale(0.95); opacity: 0; }
+}
+
+.coin-pop {
+  animation: coin-pop-rise 0.85s ease-out both;
+  will-change: transform, opacity;
+}
+
+/* The konpeito bottle filling. */
+.konpeito-bottle__fill {
+  background: linear-gradient(90deg, #8FBFA8 0%, #E8B84B 55%, #F9C6B0 100%);
+  transition: width 0.45s cubic-bezier(0.34, 1.26, 0.64, 1);
+}
+
+/* The capsule machine, while it is spinning. */
+@keyframes gacha-shake {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  25% { transform: translate3d(-2px, -3px, 0) rotate(-12deg); }
+  75% { transform: translate3d(2px, -1px, 0) rotate(14deg); }
+}
+
+.gacha-capsule-shake {
+  animation: gacha-shake 0.32s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes gacha-knob {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.gacha-knob-turn {
+  animation: gacha-knob 0.6s linear infinite;
+  will-change: transform;
+}
+
+/* The fortune card arriving. */
+@keyframes gacha-reveal-in {
+  0% { transform: translate3d(0, 10px, 0) scale(0.94); opacity: 0; }
+  100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+}
+
+.gacha-reveal {
+  animation: gacha-reveal-in 0.4s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  will-change: transform, opacity;
+}
+
+/* A companion in the parade, poked. */
+@keyframes parade-jump {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  35% { transform: translate3d(0, -12px, 0) scale(1.04); }
+  60% { transform: translate3d(0, 0, 0) scale(0.98); }
+  80% { transform: translate3d(0, -4px, 0); }
+}
+
+.petit-poyo-bounce {
+  animation: parade-jump 0.65s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  will-change: transform;
+}
+
+/* What a companion says, arriving under it. */
+@keyframes parade-say-in {
+  from { transform: translate3d(0, -4px, 0); opacity: 0; }
+  to { transform: translate3d(0, 0, 0); opacity: 1; }
+}
+
+.parade-say {
+  animation: parade-say-in 0.25s ease-out both;
+}
+
+/*
+ * Mobile keyframes must not be switched off.
+ *
+ * A previous rule disabled these animations under a width media
+ * query, which is why the page was still on a phone. Motion is a
+ * reader's choice, not a screen size, so the ONLY thing that stops
+ * it is the reader's own system setting below.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .memphis-float,
+  .campus-star,
+  .coin-drop-pop,
+  .coin-slot--full,
+  .coin-pop,
+  .gacha-capsule-shake,
+  .gacha-knob-turn,
+  .gacha-reveal,
+  .petit-poyo-bounce,
+  .parade-say {
+    animation: none !important;
+  }
+
+  .konpeito-bottle__fill {
+    transition: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The pill navbar
+   --------------------------------------------------------------------------- */
+
+/* The links row scrolls sideways on a phone, without the grey bar. */
+.campus-nav__links {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.campus-nav__links::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   The mobile popover clamp
+   --------------------------------------------------------------------------- */
+
+/*
+ * A speech board anchored to a companion sitting near the left edge
+ * of a phone opened off-screen. On a narrow screen the board stops
+ * being a popover and becomes a centred card the width of the
+ * viewport minus its margins, so it cannot leave the screen on any
+ * side.
+ */
+@media (max-width: 639px) {
+  .shoujo-board,
+  .kakeibo-hover-board,
+  .mascot-popover {
+    position: fixed !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: calc(100vw - 32px) !important;
+    max-width: 320px !important;
+    min-width: 0 !important;
+  }
+
+  /* Near the top of the screen it opens downward, because there is
+     nothing above it to open into. */
+  .shoujo-board[data-placement='top'],
+  .kakeibo-hover-board[data-placement='top'] {
+    top: auto !important;
+    bottom: auto !important;
+  }
+}
+
+
+/* ---------------------------------------------------------------------------
+   The app chrome, in the same stationery
+   --------------------------------------------------------------------------- */
+
+/*
+ * The sidebar and the phone's bottom bar were plain white with grey
+ * hairlines while every surface between them was warm paper. These
+ * rules bring the chrome onto the same desk: a cream surface, an oat
+ * edge, and a pill behind whatever page the reader is on.
+ *
+ * Dark mode is left alone - the warm paper is a light-mode idea, and
+ * forcing cream onto a dark UI would be the contrast bug this change
+ * exists to fix, in the other direction.
+ */
+html:not(.dark) .nav-glass {
+  background: #FFFDF9;
+  border-right-color: #E5DAC9;
+}
+
+html:not(.dark) .nav-glass a[aria-current='page'],
+html:not(.dark) .nav-glass a.bg-primary-50,
+html:not(.dark) .nav-glass a[data-active='true'] {
+  /* The pill behind the current page. */
+  border-radius: 9999px;
+  background: #FFF6D6;
+  box-shadow: inset 0 0 0 1.5px rgba(74, 53, 64, 0.22);
+  color: #2C221E;
+  font-weight: 700;
+}
+
+/* The Memphis dot that marks the active row. */
+html:not(.dark) .nav-glass .aurora-active-dot {
+  background: #D96B43;
+  box-shadow: 0 0 0 3px rgba(217, 107, 67, 0.16);
+}
+
+/* The phone's bottom bar, and the header above it. */
+html:not(.dark) nav.safe-area-bottom,
+html:not(.dark) header.safe-area-top {
+  background: rgba(255, 253, 249, 0.96);
+  border-color: #E5DAC9;
+}
+
+/* A label on the chrome is read at a glance, so it is bold. */
+html:not(.dark) nav.safe-area-bottom [data-active='true'] {
+  color: #2F4842;
+  font-weight: 700;
+}

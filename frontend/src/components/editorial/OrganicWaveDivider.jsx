@@ -23,6 +23,9 @@ export default function OrganicWaveDivider({
     sage: 'text-[#E3F2EA]',
     sakura: 'text-[#FDE8E4]',
     oat: 'text-[#F4EFE6]',
+    matcha: 'text-[#E6F3EC]',
+    honey: 'text-[#FFF8E7]',
+    wood: 'text-[#F7F2E7]',
   };
 
   const up = (
@@ -38,6 +41,29 @@ export default function OrganicWaveDivider({
     />
   );
 
+  // The campus divider: a straight slash rather than a curve, which
+  // is what carries the "this is a new chapter" feeling on the
+  // reference campus page without repeating the same wave twice.
+  const diagonal = (
+    <path d="M0,96 L1440,8 L1440,96 Z" fill="currentColor" />
+  );
+
+  // The scalloped edge: a row of half-circles, the way a paper doily
+  // or a stamp border is cut.
+  const scallop = (() => {
+    const bumps = 24;
+    const step = 1440 / bumps;
+    let d = 'M0,96 L0,56 ';
+    for (let i = 0; i < bumps; i += 1) {
+      d += `A ${step / 2} ${step / 2} 0 0 1 ${step * (i + 1)},56 `;
+    }
+    d += 'L1440,96 Z';
+    return <path d={d} fill="currentColor" />;
+  })();
+
+  const shape =
+    direction === 'down' ? down : direction === 'diagonal' ? diagonal : direction === 'scallop' ? scallop : up;
+
   return (
     <div
       className={`cute-wave ${classNameForTone[tone] || classNameForTone.cream} ${className}`}
@@ -50,7 +76,7 @@ export default function OrganicWaveDivider({
         preserveAspectRatio="none"
         style={{ display: 'block', width: '100%', height: '56px' }}
       >
-        {direction === 'down' ? down : up}
+        {shape}
       </svg>
     </div>
   );

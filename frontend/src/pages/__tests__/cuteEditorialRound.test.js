@@ -298,7 +298,14 @@ check('the scrapbook is three taped photographs', () => {
   assert.ok(book.includes('-rotate-2'), 'each turned a little');
   assert.ok(book.includes('rotate-[1.5deg]'), 'each a different amount');
   assert.ok(book.includes('Snap #01'), 'with a handwritten caption');
-  assert.ok(LOGIN.includes('EditorialScrapbook'), 'and the login page shows it');
+  // The login page now shows the three photographs through the
+  // richer campus lookbook rather than the plain scrapbook, so the
+  // assertion follows where they moved to.
+  assert.ok(
+    read('src/components/login/FriendSnapSections.jsx').includes('snap-1'),
+    'and the login page shows them through the lookbook'
+  );
+  assert.ok(LOGIN.includes('FriendSnapLookbook'), 'which the login page mounts');
 });
 
 check('the photographs are real files, bundled', () => {
