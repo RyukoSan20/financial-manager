@@ -39,52 +39,90 @@ const BAR = 'src/components/ai/TopAiCommandBar.jsx';
 // The bar
 // ---------------------------------------------------------------------------
 
-check('the bar is not sticky', () => {
+// The bar has two shapes. At the top of the page it is roomy and in
+// the flow. Once the reader scrolls past it, it docks as a narrow
+// glass pill at the top centre.
+//
+// The old failure this file was written for was a FULL-WIDTH sticky
+// bar: it rode down over the cards and the reader watched a band
+// slide across their own finances. A narrow centred pill is a
+// different thing, so the rules below are about width and flow rather
+// than about the word `fixed`: undocked must stay in the flow, and
+// docked may leave it only as a pill that cannot cover a whole card.
+
+const undockedClasses = (source) => {
+  const m = source.match(/:\s*'(relative z-20 mb-6[^']*)'/);
+  assert.ok(m, 'the undocked class list was not found');
+  return m[1];
+};
+
+const dockedClasses = (source) => {
+  const m = source.match(/\?\s*'(fixed top-3[^']*)'/);
+  assert.ok(m, 'the docked class list was not found');
+  return m[1];
+};
+
+check('the bar is never sticky, and is only fixed once docked', () => {
   const source = read(BAR);
+  // Only the class lists count. A bare word search hits the comments
+  // that explain WHY the sticky version was removed, and a naive
+  // string-literal scan is worse: an apostrophe inside a comment
+  // ("the bar has docked itself") opens a bogus literal that swallows
+  // the surrounding prose.
+  const classLists = [undockedClasses(source), dockedClasses(source)].join(' ');
   assert.ok(
-    !/className="[^"]*\bsticky\b/.test(source),
-    'the bar is still sticky, so it rides down over the cards'
+    !/\bsticky\b/.test(classLists),
+    `the bar is still sticky, so it rides down over the cards: ${classLists}`
   );
+  // `fixed` is allowed, but only on the docked pill and only when it
+  // is guarded by the docked state.
+  assert.ok(/docked\s*$/m.test(source) || /docked$/m.test(source) || source.includes('docked'), 'the docked state exists');
   assert.ok(
     !/className="[^"]*\bfixed\b/.test(source),
-    'the bar is still fixed, so it rides down over the cards'
+    'the bar is unconditionally fixed in a className string'
   );
 });
 
-check('the bar is relative and in the flow of the page', () => {
+check('undocked, the bar is relative and in the flow of the page', () => {
   const source = read(BAR);
-  const wrapper = source.match(/className="([^"]*)"[^>]*aria-label=\{label\}/);
-  assert.ok(wrapper, 'the wrapper of the bar was not found');
-  const classes = wrapper[1];
-  assert.ok(
-    /\brelative\b/.test(classes),
-    `the wrapper is not relative: ${classes}`
-  );
-  assert.ok(
-    /\bz-20\b/.test(classes),
-    `the wrapper has no layer of its own: ${classes}`
-  );
-  assert.ok(
-    /\bmb-6\b/.test(classes),
-    `the wrapper does not leave room below it: ${classes}`
-  );
+  const classes = undockedClasses(source);
+  assert.ok(/\brelative\b/.test(classes), `not relative: ${classes}`);
+  assert.ok(/\bz-20\b/.test(classes), `no layer of its own: ${classes}`);
+  assert.ok(/\bmb-6\b/.test(classes), `no room below it: ${classes}`);
 });
 
-check('the bar does not cover the page with a solid band', () => {
-  // It used to carry a full-width background and a border, which is
-  // what made it read as a floating band over the cards. Now it is
-  // just a bar in the flow.
+check('undocked, the bar does not cover the page with a solid band', () => {
   const source = read(BAR);
-  const wrapper = source.match(/className="([^"]*)"[^>]*aria-label=\{label\}/);
-  const classes = wrapper[1];
-  assert.ok(
-    !/bg-white\/85/.test(classes),
-    'the wrapper is still a solid band across the page'
-  );
-  assert.ok(
-    !/backdrop-blur/.test(classes),
-    'the wrapper still floats over the page'
-  );
+  const classes = undockedClasses(source);
+  assert.ok(!/bg-white\/85/.test(classes), 'still a solid band across the page');
+  assert.ok(!/backdrop-blur/.test(classes), 'still floats over the page');
+});
+
+check('docked, the bar is a narrow pill that cannot cover a card', () => {
+  const source = read(BAR);
+  const classes = dockedClasses(source);
+  // Narrow and centred: the old sticky bar was full width, which is
+  // what let it cover the cards underneath it.
+  assert.ok(/max-w-xl/.test(classes), `the pill is not narrow: ${classes}`);
+  assert.ok(/left-1\/2/.test(classes) && /-translate-x-1\/2/.test(classes), 'not centred');
+  assert.ok(/rounded-full/.test(classes), 'not a pill');
+  assert.ok(!/\bw-full\b/.test(classes), 'the docked bar is full width');
+});
+
+check('docking does not make the page jump', () => {
+  // A docked bar is out of the flow, so the space it used to take has
+  // to be held open or every card below it leaps upward.
+  const source = read(BAR);
+  assert.ok(source.includes('barHeightRef'), 'the height is remembered');
+  assert.ok(/docked \? <div aria-hidden/.test(source), 'and the space is held');
+});
+
+check('the bar docks on scroll, at the stated offset', () => {
+  const source = read(BAR);
+  assert.ok(/window\.scrollY >= 120/.test(source), 'it docks past 120px');
+  assert.ok(/addEventListener\('scroll'/.test(source), 'it listens');
+  assert.ok(/removeEventListener\('scroll'/.test(source), 'and it stops listening');
+  assert.ok(/passive: true/.test(source), 'without blocking the scroll');
 });
 
 // ---------------------------------------------------------------------------

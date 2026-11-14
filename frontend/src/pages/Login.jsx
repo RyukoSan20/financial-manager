@@ -29,6 +29,7 @@ import { computeBill, largestRemainderSplit } from '../utils/receiptBill';
 import { amountsFromSplit, dailyFromSplit } from '../utils/budgetRecipes';
 import { ShieldCheck, Lock, Mail, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import ClampShoujoMascot from '../components/mascot/ClampShoujoMascot';
+import PixelArtBusinessIcon from '../components/ui/PixelArtBusinessIcon';
 
 // The switch. It is read in ONE place, so it cannot be honoured on
 // one screen and ignored on another by a mistake.
@@ -148,7 +149,10 @@ const LoginPreview = ({ W }) => {
         {/* The companion, before the reader has an account. It can be
             asked a question here too, so the app answers something
             before it asks for anything. */}
-        <div className="login-gateway__mascot" data-testid="login-mascot">
+        <div
+          className="login-gateway__card--glass login-gateway__card--sakura login-gateway__mascot"
+          data-testid="login-mascot"
+        >
           <ClampShoujoMascot
             size={132}
             mood="happy"
@@ -160,9 +164,9 @@ const LoginPreview = ({ W }) => {
 
         <div className="login-gateway__cards">
           {/* The budget. */}
-          <section className="login-gateway__card--glass">
+          <section className="login-gateway__card--glass login-gateway__card--mint">
             <h3 className="login-gateway__card-title">
-              <ShieldCheck size={16} aria-hidden="true" />
+              <PixelArtBusinessIcon name="ledger_green" size={22} />
               {W.budget_title}
             </h3>
             <p className="login-gateway__muted">{W.budget_lead}</p>
@@ -213,9 +217,9 @@ const LoginPreview = ({ W }) => {
           </section>
 
           {/* The shared receipt. */}
-          <section className="login-gateway__card--glass">
+          <section className="login-gateway__card--glass login-gateway__card--oat">
             <h3 className="login-gateway__card-title">
-              <Lock size={16} aria-hidden="true" />
+              <PixelArtBusinessIcon name="receipt" size={22} />
               {W.split_title}
             </h3>
             <p className="login-gateway__muted">{W.split_lead}</p>
@@ -263,10 +267,7 @@ const LoginPreview = ({ W }) => {
               </span>
               <select
                 className="login-gateway__input"
-                style={{
-                  background: 'rgba(255,255,255,0.94)',
-                  color: '#10161a',
-                }}
+                style={{ background: '#FFFFFF', color: '#1F2421' }}
                 value={taxRuleId}
                 onChange={(e) => setTaxRuleId(e.target.value)}
                 aria-label={W.split_tax_label}
@@ -306,6 +307,34 @@ const LoginPreview = ({ W }) => {
               <span className="login-gateway__line-amount">{money(bill.total)}</span>
             </div>
           </section>
+
+          {/* The three things the application is for, as a third tile.
+              Drawn icons rather than emoji, so the same picture shows
+              on every machine. */}
+          <section
+            className="login-gateway__card--glass login-gateway__card--lavender"
+            data-testid="login-scenarios"
+          >
+            <h3 className="login-gateway__card-title">
+              <PixelArtBusinessIcon name="coffee" size={22} />
+              {W.scenarios_title}
+            </h3>
+            <ul className="login-gateway__scenarios">
+              {[
+                ['coffee', W.scenario_coffee_title, W.scenario_coffee_lead],
+                ['home', W.scenario_household_title, W.scenario_household_lead],
+                ['money_bag_rp', W.scenario_goal_title, W.scenario_goal_lead],
+              ].map(([icon, title, lead]) => (
+                <li className="login-gateway__scenario" key={icon}>
+                  <PixelArtBusinessIcon name={icon} size={30} />
+                  <span>
+                    <strong>{title}</strong>
+                    <span className="login-gateway__muted">{lead}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
         </div>
 
         {/* What is true about the data. */}
@@ -331,7 +360,7 @@ const LoginPreview = ({ W }) => {
               <Lock size={14} aria-hidden="true" />
               <span>
                 {W.trust_notice}{' '}
-                <Link to="/privacy" style={{ color: '#ccff00', fontWeight: 600 }}>
+                <Link to="/privacy" style={{ color: '#2F4842', fontWeight: 600 }}>
                   {W.trust_link}
                 </Link>
               </span>
@@ -573,7 +602,7 @@ export const Login = () => {
             <button
               onClick={handleGuestLogin}
               disabled={loading}
-              className="text-white/80 hover:text-white text-sm underline underline-offset-4"
+              className="text-[#5C6460] hover:text-[#1F2421] text-sm underline underline-offset-4"
             >
               {K.guest}
             </button>
@@ -614,6 +643,22 @@ export const Login = () => {
             >
               <GoogleMark />
               {W.google}
+            </button>
+
+            {/* The second one-tap way in. A reader who does not want
+                an account yet can still see the application with
+                their own numbers in it, and the button says so
+                plainly rather than hiding under the form as a small
+                underlined link. */}
+            <button
+              type="button"
+              onClick={handleGuestLogin}
+              disabled={loading}
+              className="login-gateway__guest"
+              data-testid="login-guest-cta"
+            >
+              <PixelArtBusinessIcon name="ledger_green" size={18} badge={false} />
+              {W.guest_cta}
             </button>
 
             <p className="login-gateway__or">{W.google_divider}</p>

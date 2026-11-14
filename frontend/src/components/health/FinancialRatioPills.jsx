@@ -129,7 +129,7 @@ const RatioCard = ({
 
   return (
     <div
-      className="wellness-ratio-card p-4 rounded-2xl border border-[#EAE6DF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/60"
+      className="wellness-ratio-card flex flex-col gap-2 p-4 pb-6 leading-relaxed rounded-2xl border border-[#EAE6DF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/60"
       title={detail || label}
       data-testid="ratio-card"
     >
@@ -150,16 +150,22 @@ const RatioCard = ({
         ) : null}
       </div>
 
-      {/* Row 2: the big value, left; the target badge, right - its
-          own container, so the two can never be read as one string. */}
-      <div className="flex items-baseline justify-between mt-1.5 gap-3" data-testid="ratio-row-value">
+      {/* Row 2: the big value, then the target. On a narrow screen the
+          two stack onto separate lines: both are whitespace-nowrap, so
+          side by side at 390px they could not overlap but they did
+          overflow the card, which is what pushed "58.8 bulan" and
+          "Target ideal: 3-6 bulan" into each other visually. */}
+      <div
+        className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3 mt-1.5"
+        data-testid="ratio-row-value"
+      >
         <p className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums text-[#1F2421] dark:text-[#FAF9F6] whitespace-nowrap">
           <CountUpNumber value={value} from={0} format={(n) => n.toFixed(1)} />
           {suffix}
         </p>
         {benchmarkLabel ? (
           <span
-            className="text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full bg-[#F4F1EA] dark:bg-slate-700/60"
+            className="self-start text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap px-2 py-0.5 rounded-full bg-[#F4F1EA] dark:bg-slate-700/60"
             data-testid="ratio-benchmark"
           >
             {benchmarkLabel}

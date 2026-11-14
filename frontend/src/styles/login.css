@@ -28,8 +28,8 @@
   min-height: 100dvh;
   display: grid;
   grid-template-columns: 1fr;
-  background: #071410;
-  color: #f4f7f5;
+  background: #FAF9F6;
+  color: #1F2421;
   overflow-x: hidden;
 }
 
@@ -46,20 +46,27 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 1.5rem;
-  padding: 2rem 1.25rem 3rem;
+  /* Centred only when there is room to centre. With justify-content
+     fixed at `center` and 3rem of padding, a card taller than the
+     viewport had its bottom - the submit button - pushed off the
+     screen with no way to scroll to it. `safe center` and an auto
+     overflow mean a tall card starts at the top and scrolls instead
+     of being clipped. */
+  justify-content: safe center;
+  overflow-y: auto;
+  gap: 1.25rem;
+  padding: 1.75rem 1.25rem 2.25rem;
 }
 
 @media (min-width: 640px) {
   .login-gateway__form {
-    padding: 3rem 2.5rem;
+    padding: 2rem 2.5rem;
   }
 }
 
 @media (min-width: 1024px) {
   .login-gateway__form {
-    padding: 3rem clamp(2.5rem, 5vw, 5rem);
+    padding: 2rem clamp(2rem, 4vw, 4rem);
   }
 }
 
@@ -90,18 +97,10 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background:
-    radial-gradient(
-      78% 58% at 50% 0%,
-      rgba(140, 210, 160, 0.16) 0%,
-      rgba(140, 210, 160, 0) 100%
-    ),
-    radial-gradient(
-      68% 52% at 50% 100%,
-      rgba(170, 225, 120, 0.18) 0%,
-      rgba(170, 225, 120, 0) 100%
-    ),
-    linear-gradient(180deg, #04120c 0%, #08211a 42%, #0b2b1f 100%);
+  /* An editorial page is paper, not a wash. The two green radial
+     hazes and the vertical gradient are gone: the canvas is one warm
+     off-white, and the only colour on it comes from the bento tiles. */
+  background: #FAF9F6;
 }
 
 /* The grain. It keeps the gradient from looking like a gradient. */
@@ -111,8 +110,8 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.2;
-  mix-blend-mode: overlay;
+  opacity: 0.035;
+  mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -156,7 +155,7 @@
 
 .login-gateway__title em {
   font-style: normal;
-  color: #ccff00;
+  color: #2F4842;
 }
 
 .login-gateway__lead {
@@ -164,7 +163,7 @@
   max-width: 34rem;
   font-size: 1.02rem;
   line-height: 1.55;
-  color: rgba(255, 255, 255, 0.78);
+  color: #5C6460;
 }
 
 /* ---------------------------------------------------------------------------
@@ -176,12 +175,10 @@
   max-width: 27rem;
   padding: 1.6rem;
   border-radius: 1.5rem;
-  background: rgba(255, 255, 255, 0.97);
-  color: #10161a;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.22) inset,
-    0 1px 0 rgba(255, 255, 255, 0.3) inset,
-    0 26px 60px -26px rgba(4, 16, 10, 0.7);
+  background: #FFFFFF;
+  color: #1F2421;
+  border: 1px solid #EAE6DF;
+  box-shadow: 0 8px 30px rgb(45 49 46 / 0.05);
 }
 
 @media (min-width: 640px) {
@@ -200,14 +197,14 @@
   margin-bottom: 0.4rem;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #2b3742;
+  color: #1F2421;
 }
 
 .login-gateway__input {
   width: 100%;
   padding: 0.72rem 0.9rem;
   font-size: 0.95rem;
-  color: #10161a;
+  color: #1F2421;
   background: #ffffff;
   border: 1px solid #d7dee3;
   border-radius: 0.85rem;
@@ -218,12 +215,12 @@
 }
 
 .login-gateway__input::placeholder {
-  color: #97a3ad;
+  color: #7A827E;
 }
 
 .login-gateway__input:focus-visible {
-  border-color: #0f766e;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
+  border-color: #2F4842;
+  box-shadow: 0 0 0 3px rgba(47, 72, 66, 0.18);
 }
 
 /* The password box, with the eye on the right of it. */
@@ -255,11 +252,11 @@
 }
 
 .login-gateway__eye:hover {
-  color: #10161a;
+  color: #1F2421;
 }
 
 .login-gateway__eye:focus-visible {
-  outline: 2px solid #0f766e;
+  outline: 2px solid #2F4842;
   outline-offset: 2px;
 }
 
@@ -275,7 +272,7 @@
 .login-gateway__link {
   font-size: 0.83rem;
   font-weight: 600;
-  color: #0f766e;
+  color: #2F4842;
   text-decoration: none;
   background: none;
   border: 0;
@@ -288,7 +285,7 @@
 }
 
 .login-gateway__link:focus-visible {
-  outline: 2px solid #0f766e;
+  outline: 2px solid #2F4842;
   outline-offset: 2px;
   border-radius: 0.25rem;
 }
@@ -307,8 +304,11 @@
   padding: 0.8rem 1.4rem;
   font-size: 0.97rem;
   font-weight: 700;
-  color: #10161a;
-  background: #ccff00;
+  /* Cream on deep sage. The lime button had near-black text, which
+     is right on lime and wrong on sage: #1F2421 on #2F4842 is about
+     1.5:1 and effectively invisible. */
+  color: #FAF9F6;
+  background: #2F4842;
   border: 0;
   border-radius: 999px;
   cursor: pointer;
@@ -320,7 +320,7 @@
 
 .login-gateway__submit:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 12px 26px -14px rgba(204, 255, 0, 0.8);
+  box-shadow: 0 12px 26px -14px rgba(47, 72, 66, 0.55);
 }
 
 .login-gateway__submit:active:not(:disabled) {
@@ -347,7 +347,7 @@
   padding: 0.8rem 1.4rem;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #2b3742;
+  color: #1F2421;
   background: #ffffff;
   border: 1.5px solid #d7dee3;
   border-radius: 999px;
@@ -358,12 +358,12 @@
 }
 
 .login-gateway__google:hover:not(:disabled) {
-  border-color: #b6c0c8;
+  border-color: #7A827E;
   background: #f6f8f9;
 }
 
 .login-gateway__google:focus-visible {
-  outline: 3px solid rgba(15, 118, 110, 0.5);
+  outline: 3px solid rgba(47, 72, 66, 0.5);
   outline-offset: 2px;
 }
 
@@ -379,19 +379,27 @@
   gap: 0.5rem;
   width: 100%;
   min-height: 2.7rem;
+  margin-top: 0.625rem;
   padding: 0.6rem 1.2rem;
   font-size: 0.88rem;
   font-weight: 600;
-  color: #2b3742;
-  background: #f2f5f6;
-  border: 0;
-  border-radius: 999px;
+  /* Pastel mint, so the guest way in reads as a real second option
+     beside the Google button rather than as a grey afterthought. */
+  color: #1B3B32;
+  background: #E3F2EA;
+  border: 1px solid #D0E8DC;
+  border-radius: 0.75rem;
   cursor: pointer;
-  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 150ms ease;
 }
 
 .login-gateway__guest:hover:not(:disabled) {
-  background: #e7edef;
+  background: #D0E8DC;
+}
+
+.login-gateway__guest:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .login-gateway__guest:disabled {
@@ -400,7 +408,7 @@
 }
 
 .login-gateway__guest:focus-visible {
-  outline: 3px solid rgba(15, 118, 110, 0.5);
+  outline: 3px solid rgba(47, 72, 66, 0.5);
   outline-offset: 2px;
 }
 
@@ -445,7 +453,7 @@
 
 .login-gateway__foot a {
   font-weight: 600;
-  color: #0f766e;
+  color: #2F4842;
   text-decoration: none;
 }
 
@@ -466,7 +474,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #ccff00;
+  color: #2F4842;
 }
 
 .login-gateway__preview-head::before {
@@ -474,7 +482,7 @@
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: #ccff00;
+  background: #2F4842;
 }
 
 .login-gateway__preview-title {
@@ -491,7 +499,7 @@
   max-width: 30rem;
   font-size: 0.95rem;
   line-height: 1.55;
-  color: rgba(255, 255, 255, 0.7);
+  color: #5C6460;
 }
 
 /* The three cards of the preview. */
@@ -509,20 +517,22 @@
 
 /* A card of the preview. It is glass, because it sits on the dark
    wash, and it is the one place on the page that is. */
+/* A bento tile. It was glass because the page behind it was dark;
+   on paper, glass is just a smudge, so each tile is now its own
+   pastel card with a quiet border. The tints are set per tile by
+   .login-gateway__card--sakura / mint / oat / lavender below. */
 .login-gateway__card--glass {
   padding: 1.1rem 1.2rem;
   border-radius: 1.15rem;
-  background: linear-gradient(
-    160deg,
-    rgba(200, 240, 210, 0.17) 0%,
-    rgba(120, 190, 150, 0.07) 55%,
-    rgba(40, 110, 80, 0.17) 100%
-  );
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.2) inset,
-    0 1px 0 rgba(255, 255, 255, 0.3) inset,
-    0 18px 40px -22px rgba(4, 16, 10, 0.8);
+  background: #FFFDF9;
+  border: 1px solid #EAE6DF;
+  box-shadow: 0 8px 30px rgb(45 49 46 / 0.05);
 }
+
+.login-gateway__card--sakura { background: #FFFDF9; border-color: #F5D5CE; }
+.login-gateway__card--mint { background: #F2F9F5; border-color: #D3E8DC; }
+.login-gateway__card--oat { background: #FBF8F1; border-color: #E8E0CE; }
+.login-gateway__card--lavender { background: #F6F5FA; border-color: #E2DFEE; }
 
 .login-gateway__card-title {
   display: flex;
@@ -531,7 +541,7 @@
   margin: 0 0 0.7rem;
   font-size: 0.86rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
+  color: #1F2421;
 }
 
 .login-gateway__big {
@@ -546,7 +556,7 @@
   margin: 0.2rem 0 0;
   font-size: 0.82rem;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.66);
+  color: #7A827E;
 }
 
 /* On the light card the muted colour has to be darker. The one above
@@ -574,24 +584,24 @@
   margin-bottom: 0.35rem;
   font-size: 0.76rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.72);
+  color: #7A827E;
 }
 
 .login-gateway__control-value {
   font-weight: 700;
-  color: #ccff00;
+  color: #2F4842;
   font-variant-numeric: tabular-nums;
 }
 
 .login-gateway__slider {
   width: 100%;
   height: 1.6rem;
-  accent-color: #ccff00;
+  accent-color: #2F4842;
   cursor: pointer;
 }
 
 .login-gateway__slider:focus-visible {
-  outline: 3px solid rgba(255, 255, 255, 0.8);
+  outline: 3px solid #5C6460;
   outline-offset: 3px;
   border-radius: 999px;
 }
@@ -612,20 +622,20 @@
 }
 
 .login-gateway__bar-name {
-  color: rgba(255, 255, 255, 0.78);
+  color: #5C6460;
 }
 
 .login-gateway__bar-track {
   height: 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(45, 49, 46, 0.08);
   overflow: hidden;
 }
 
 .login-gateway__bar-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #9fe870 0%, #ccff00 100%);
+  background: linear-gradient(90deg, #52796F 0%, #2F4842 100%);
 }
 
 .login-gateway__bar-amount {
@@ -648,7 +658,7 @@
   justify-content: space-between;
   gap: 0.8rem;
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.82);
+  color: #5C6460;
 }
 
 .login-gateway__line-amount {
@@ -666,9 +676,9 @@
   gap: 0.8rem;
   margin-top: 0.6rem;
   padding-top: 0.6rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(45, 49, 46, 0.10);
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.66);
+  color: #7A827E;
 }
 
 /* ---------------------------------------------------------------------------
@@ -678,7 +688,7 @@
 .login-gateway__trust {
   margin-top: 1.5rem;
   padding-top: 1.2rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(45, 49, 46, 0.08);
 }
 
 .login-gateway__trust-title {
@@ -688,7 +698,7 @@
   margin: 0 0 0.7rem;
   font-size: 0.8rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.88);
+  color: #1F2421;
 }
 
 .login-gateway__trust-list {
@@ -705,12 +715,12 @@
   gap: 0.6rem;
   font-size: 0.83rem;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.7);
+  color: #5C6460;
 }
 
 .login-gateway__trust-item svg {
   margin-top: 0.18rem;
-  color: #9fe870;
+  color: #52796F;
 }
 
 /* ---------------------------------------------------------------------------
@@ -765,4 +775,51 @@
   justify-content: center;
   margin: 0.5rem 0 1rem;
   overflow: visible;
+}
+
+/* ---------------------------------------------------------------------------
+   The second one-tap way in, and the scenarios tile
+   --------------------------------------------------------------------------- */
+
+/* The guest button. It is the pastel mint sibling of the Google
+   button above it, not a small underlined link below the form: a
+   reader who does not want an account yet should be able to see
+   that at a glance. */
+/* The companion's tile. It needs room for the hover board to open
+   above the character without being clipped. */
+.login-gateway__mascot {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 1.2rem 1.2rem;
+  margin: 0.75rem 0 1rem;
+  overflow: visible;
+}
+
+/* The three scenarios. */
+.login-gateway__scenarios {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.login-gateway__scenario {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.login-gateway__scenario > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.login-gateway__scenario strong {
+  font-weight: 700;
+  color: #1F2421;
 }

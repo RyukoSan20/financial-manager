@@ -12,6 +12,8 @@ import { amountSign, isIncoming } from '../utils/transactionSign';
 import { showNotification } from '../components/notifications/NotificationHelper';
 import { useTranslation } from '../i18n';
 import { categoryName } from '../utils/categoryName';
+import PixelArtBusinessIcon from '../components/ui/PixelArtBusinessIcon';
+import { pixelIconForCategory } from '../utils/pixelCategoryIcon';
 import { batch3 } from '../i18n/keys_batch3';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
@@ -309,7 +311,12 @@ export const CategoryExpenses = () => {
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${catInfo.color}`}>
-                        <span className="text-lg">{catInfo.icon}</span>
+                        <PixelArtBusinessIcon
+                          name={pixelIconForCategory(catInfo)}
+                          size={26}
+                          badge={false}
+                          title={getDisplayName(catInfo)}
+                        />
                       </div>
                       <div className="text-left">
                         <p className="font-semibold text-gray-900">
@@ -359,13 +366,15 @@ export const CategoryExpenses = () => {
                               </p>
                               <div className="flex items-center gap-2 mt-1">
                                 {trans.merchant_name && (
-                                  <span className="text-xs text-gray-500">
-                                    🏪 {trans.merchant_name}
+                                  <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                                    <PixelArtBusinessIcon name="merchant" size={14} badge={false} />
+                                    {trans.merchant_name}
                                   </span>
                                 )}
                                 {trans.location && (
-                                  <span className="text-xs text-gray-500">
-                                    📍 {trans.location}
+                                  <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                                    <PixelArtBusinessIcon name="home" size={14} badge={false} />
+                                    {trans.location}
                                   </span>
                                 )}
                                 <span className="text-xs text-gray-400">

@@ -151,6 +151,26 @@ export default function TopAiCommandBar({ userData = {} }) {
   const [activeAction, setActiveAction] = useState(null);
   const [actionsOpen, setActionsOpen] = useState(false);
 
+  // Whether the bar has docked itself to the top of the window.
+  //
+  // At the top of the page the bar is roomy and sits in the flow. Once
+  // the reader has scrolled past it, it shrinks to a glass pill fixed
+  // at the top centre - narrow enough that it cannot ride down over a
+  // whole card, which is what made the old `sticky top-0` version
+  // unusable, and it expands again when it is focused or clicked.
+  const [docked, setDocked] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setDocked(window.scrollY >= 120);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // A docked bar is out of the flow, so the page would jump by its
+  // height at the moment it docks. The placeholder holds that space.
+  const barHeightRef = useRef(null);
+
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -376,9 +396,22 @@ export default function TopAiCommandBar({ userData = {} }) {
        The panels that open out of the bar - the quick actions and
        the answer - are positioned against this wrapper, so they open
        from the bar and not from the top of the screen. */
+    <>
+    {/* The space the bar used to occupy, held open while it is docked
+        so the page does not jump at the moment it leaves the flow. */}
+    {docked ? <div aria-hidden="true" style={{ height: barHeightRef.current || 56, marginBottom: '1.5rem' }} /> : null}
     <div
-      className="relative z-20 mb-6"
+      ref={(node) => {
+        if (node && !docked) barHeightRef.current = node.offsetHeight;
+      }}
+      className={
+        docked
+          ? 'fixed top-3 left-1/2 -translate-x-1/2 z-40 max-w-xl w-[92%] backdrop-blur-md bg-[#FAF9F6]/95 dark:bg-[#161F1C]/95 border border-[#52796F]/30 shadow-lg rounded-full py-1.5 px-3 transition-[background-color,box-shadow,border-color,max-width] duration-300'
+          : 'relative z-20 mb-6 transition-[background-color,box-shadow,border-color,max-width] duration-300'
+      }
       aria-label={label}
+      data-ai-bar-docked={docked ? 'true' : 'false'}
+      data-testid="top-ai-command-bar"
     >
       <div className="flex items-center gap-2">
         {/* The mascot, in the corner of the bar.
@@ -576,6 +609,11 @@ export default function TopAiCommandBar({ userData = {} }) {
                  it is in the ordinary flow, because there is room
                  for the pills on the bar itself. */
               'absolute top-full left-0 right-0 mt-2 z-30 flex flex-wrap gap-2 p-3 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-slate-900 shadow-lg md:static md:p-0 md:mt-2 md:border-0 md:bg-transparent md:shadow-none'
+            : docked && !open
+            ? /* Docked and untouched, the pill is just the pill. The
+                 four actions come back the moment it is focused or
+                 clicked, so nothing is lost - only folded away. */
+              'hidden'
             : 'hidden md:flex md:flex-wrap md:gap-2'
         }
         aria-label={t('ai_assistant.quick_actions')}
@@ -597,6 +635,7 @@ export default function TopAiCommandBar({ userData = {} }) {
         })}
       </div>
     </div>
+    </>
   );
 }
 
