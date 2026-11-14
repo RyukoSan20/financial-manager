@@ -482,6 +482,16 @@ export default {
     tip_pending: "• Transactions from a receipt scan or an email import arrive as Pending",
     tip_approve: "• Approve a transaction to add it to your financial reports",
     tip_reject: "• Reject an invalid transaction to remove it from the queue",
+    workflow_title: "How Transaction Review Works",
+    step1_title: "Scan & Import",
+    step1_body: "Transactions from a receipt scan or Gmail land in the queue automatically.",
+    step2_title: "Filter by status",
+    step2_body: "Track transactions under Pending, Approved or Rejected.",
+    step3_title: "Check the details",
+    step3_body: "Confirm the items, category and amount before approving.",
+    step4_title: "Approve to the ledger",
+    step4_body: "One click records it to your reports and account balance.",
+    scan_or_import: "+ Scan Receipt / Import Email",
   },
 
   // Settings
@@ -1976,6 +1986,8 @@ export default {
     prev_month: "Previous month",
     next_month: "Next month",
     transaction_count: "{count} transactions",
+    see_in_transactions: "See in Transactions",
+    untitled: "Transaction",
   },
 
   quick_pill: {

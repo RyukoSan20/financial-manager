@@ -482,6 +482,16 @@ export default {
     tip_pending: "• Transaksi dari scan receipt atau import email akan masuk sebagai Menunggu",
     tip_approve: "• Setujui transaksi untuk menambahkan ke laporan keuangan Anda",
     tip_reject: "• Tolak transaksi yang tidak valid untuk menghapusnya dari antrian",
+    workflow_title: "Cara Kerja Review Transaksi",
+    step1_title: "Scan & Import",
+    step1_body: "Transaksi dari scan struk atau Gmail otomatis masuk ke antrian.",
+    step2_title: "Filter Status",
+    step2_body: "Pantau transaksi di tab Menunggu, Disetujui, atau Ditolak.",
+    step3_title: "Periksa Rincian",
+    step3_body: "Cek kecocokan item, kategori, dan nominal sebelum disetujui.",
+    step4_title: "Setujui ke Buku Kas",
+    step4_body: "Sekali klik untuk mencatat otomatis ke laporan & saldo akun.",
+    scan_or_import: "+ Scan Struk / Import Email",
   },
 
   // Settings
@@ -1976,6 +1986,8 @@ export default {
     prev_month: "Bulan sebelumnya",
     next_month: "Bulan berikutnya",
     transaction_count: "{count} transaksi",
+    see_in_transactions: "Lihat di Transaksi",
+    untitled: "Transaksi",
   },
 
   quick_pill: {

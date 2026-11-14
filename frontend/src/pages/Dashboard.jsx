@@ -611,11 +611,19 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         // almost equal amounts comes out of the database with a long
         // tail. Cleaning it first means the axis never says
         // "Rp -0.0000014397338687".
+        //
+        // The scale is taken from the magnitude, with the sign put
+        // back afterwards. Reading the thresholds off the signed value
+        // meant every negative amount fell past all three branches to
+        // the bare rupiah case, so a tick at minus one thousand
+        // printed "Rp -1000" and a rounded minus one printed "Rp -1".
         const value = cleanNumber(price);
-        if (value >= 1000000000) return `${axisSymbol} ${(value / 1000000000).toFixed(1)}B`;
-        if (value >= 1000000) return `${axisSymbol} ${(value / 1000000).toFixed(1)}M`;
-        if (value >= 1000) return `${axisSymbol} ${(value / 1000).toFixed(0)}K`;
-        return `${axisSymbol} ${value}`;
+        const sign = value < 0 ? '-' : '';
+        const n = Math.abs(value);
+        if (n >= 1000000000) return `${sign}${axisSymbol} ${(n / 1000000000).toFixed(1)}B`;
+        if (n >= 1000000) return `${sign}${axisSymbol} ${(n / 1000000).toFixed(1)}jt`;
+        if (n >= 1000) return `${sign}${axisSymbol} ${(n / 1000).toFixed(0)}rb`;
+        return `${sign}${axisSymbol} ${Math.round(n)}`;
       };
       if (chartInstanceRef.current) {
         try { chartInstanceRef.current.remove(); } catch (e) {}
@@ -655,7 +663,12 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         rightPriceScale: { 
           borderColor: gridColor,
           scaleMargins: { top: 0.1, bottom: 0.2 },
-          mode: 1,
+          // Normal, not logarithmic. Mode 1 is PriceScaleMode.Logarithmic,
+          // which cannot represent zero or a negative number - and net
+          // cash flow is routinely both. That is what flattened the
+          // line onto zero and made it fall off a cliff at the right
+          // edge with a nonsense tick beside it.
+          mode: 0,
         },
         localization: {
           priceFormatter: axisFormatter,
@@ -733,7 +746,30 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         expenseSeries.setData(data.map(d => ({ time: d.time, value: d.expense })));
         savingsAreaSeries.setData(data.map(d => ({ time: d.time, value: d.savings })));
       } else {
-        // BASIC: Net savings only with area
+        // BASIC: income and expense alongside the net, so a flat net
+        // line is not the whole story - a reader seeing nothing at
+        // zero still wants to know what came in and what went out.
+        const incomeArea = chart.addSeries(AreaSeries, {
+          color: CHART_COLORS.income + '40',
+          lineColor: CHART_COLORS.income,
+          lineWidth: 2,
+          topColor: CHART_COLORS.income + '40',
+          bottomColor: CHART_COLORS.income + '05',
+          title: t('dashboard.income'),
+          crosshairMarkerVisible: true,
+        });
+        const expenseArea = chart.addSeries(AreaSeries, {
+          color: CHART_COLORS.expense + '40',
+          lineColor: CHART_COLORS.expense,
+          lineWidth: 2,
+          topColor: CHART_COLORS.expense + '40',
+          bottomColor: CHART_COLORS.expense + '05',
+          title: t('dashboard.expense'),
+          crosshairMarkerVisible: true,
+        });
+        incomeArea.setData(data.map(d => ({ time: d.time, value: d.income })));
+        expenseArea.setData(data.map(d => ({ time: d.time, value: d.expense })));
+
         const savingsSeries = chart.addSeries(AreaSeries, {
           color: savingsColor() + '60',
           lineColor: savingsColor(),

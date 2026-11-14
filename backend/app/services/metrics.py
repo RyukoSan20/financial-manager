@@ -23,6 +23,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.account import Account
+from app.models.category import Category
 from app.models.debt import Debt
 from app.models.transaction import Transaction
 from app.models.user import User
@@ -507,11 +508,49 @@ def daily_spending(
         .all()
     )
 
+    # The transactions themselves, so a reader who taps a day is told
+    # what they spent it on rather than only how much. A total with no
+    # names cannot be recognised or disputed.
+    detail_rows = (
+        db.query(Transaction, Category)
+        .outerjoin(Category, Category.id == Transaction.category_id)
+        .filter(
+            Transaction.type == "expense",
+            Transaction.user_id == user_id,
+            Transaction.date >= start_date,
+            Transaction.date <= end_date,
+            *personal_expense_filter(),
+        )
+        .order_by(Transaction.date, Transaction.amount.desc())
+        .all()
+    )
+
+    by_day: Dict[str, List[Dict[str, Any]]] = {}
+    for tx, category in detail_rows:
+        key = tx.date.isoformat() if hasattr(tx.date, "isoformat") else str(tx.date)
+        # At most a handful per day; a tapped day is a summary, not the
+        # transactions page.
+        bucket = by_day.setdefault(key, [])
+        if len(bucket) >= 6:
+            continue
+        bucket.append(
+            {
+                "id": tx.id,
+                "description": tx.description or None,
+                "category": getattr(category, "name", None),
+                "amount": float(tx.amount or 0),
+            }
+        )
+
     return [
         {
             "date": row.day.isoformat() if hasattr(row.day, "isoformat") else str(row.day),
             "total": float(row.total or 0),
             "count": int(row.count or 0),
+            "transactions": by_day.get(
+                row.day.isoformat() if hasattr(row.day, "isoformat") else str(row.day),
+                [],
+            ),
         }
         for row in rows
     ]

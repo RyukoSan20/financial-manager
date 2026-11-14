@@ -724,11 +724,16 @@ export const Transactions = () => {
                       className={`money-list-row ${isHighlighted ? 'ring-2 ring-inset ring-primary-500' : ''}`}
                       style={{ '--money-row-index': Math.min(index, 12) }}
                     >
+                      {/* Two decks. Deck 1 carries the title and the money
+                          and nothing else, so a 390px screen can never
+                          squeeze the description down to an initial. The
+                          actions live on their own deck underneath. */}
                       <div
-                        className="py-3.5 px-4 sm:px-5 hover:bg-[#FAF9F6] dark:hover:bg-white/5 transition-colors flex items-center justify-between gap-3 cursor-pointer"
+                        className="flex flex-col gap-2 p-3.5 sm:p-4 hover:bg-[#FAF9F6] dark:hover:bg-white/5 transition-colors cursor-pointer"
                         onClick={() => setExpandedTxId(isExpanded ? null : tx.id)}
                       >
-                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-3">
+                      <div className="flex items-center justify-between gap-3 w-full">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                           <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
                             isIncoming(tx.type)
                               ? 'bg-success-100 text-success-600'
@@ -742,39 +747,46 @@ export const Transactions = () => {
                               <ArrowDownRight className="w-5 h-5" />
                             )}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <p className="font-semibold text-[#2D312E] dark:text-gray-100 truncate min-w-0">
-                                {tx.description || (category ? categoryName(category, language) : null) || (tx.type === 'income' ? K.income : K.expense)}
-                              </p>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-[15px] text-[#1F2421] dark:text-[#FAF9F6] truncate">
+                              {tx.description || (category ? categoryName(category, language) : null) || (tx.type === 'income' ? K.income : K.expense)}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-[#5C6460] dark:text-gray-400 min-w-0">
+                              <span className="truncate">
+                                {transactionLabel({
+                                  tx,
+                                  category,
+                                  account,
+                                  language,
+                                  unknown: K.unknown,
+                                })}
+                              </span>
                               <SourceBadge type={tx.detection_type} K={K} />
                               {tx.status === 'pending' && (
-                                <span className="flex-shrink-0 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 text-xs font-medium">
+                                <span className="flex-shrink-0 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-1.5 py-0.5 text-[10px] font-medium">
                                   {K.pendingBadge}
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-gray-500 truncate">
-                              {transactionLabel({
-                                tx,
-                                category,
-                                account,
-                                language,
-                                unknown: K.unknown,
-                              })}
-                            </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                          <p className={`font-bold text-base sm:text-lg whitespace-nowrap tabular-nums ${
+                        <div className="shrink-0 text-right pl-2">
+                          <p className={`font-bold text-[15px] whitespace-nowrap tabular-nums ${
                             isIncoming(tx.type) ? 'text-success-600' : 'text-[#2D312E] dark:text-gray-100'
                           }`}>
                             {amountSign(tx.type)}{formatCurrency(tx.amount, tx.currency)}
+                            {isExpanded
+                              ? <ChevronUp className="w-4 h-4 inline ml-1 text-gray-400" />
+                              : <ChevronDown className="w-4 h-4 inline ml-1 text-gray-400" />}
                           </p>
-                          {/* The row actions - always drawn (a touch screen
-                              has no hover), small and quiet so they do not
-                              crowd the money. */}
-                          <div className="flex items-center gap-0.5">
+                        </div>
+                      </div>
+                      {/* Deck 2 - the actions, on a bar of their own with
+                          room to be hit by a thumb. */}
+                      <div
+                        className="flex items-center justify-end gap-3 pt-2 border-t border-[#F2EFE9] dark:border-slate-800"
+                        data-testid={`tx-action-deck-${tx.id}`}
+                      >
                             <button
                               onClick={(e) => { e.stopPropagation(); startEdit(tx); }}
                               className="p-2 text-gray-400 hover:text-primary-500 hover:bg-gray-100 rounded-lg"
@@ -805,16 +817,7 @@ export const Transactions = () => {
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setExpandedTxId(isExpanded ? null : tx.id); }}
-                              className="p-1 text-gray-300 hover:text-gray-500"
-                              aria-label={K.details}
-                              aria-expanded={isExpanded}
-                            >
-                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            </button>
-                          </div>
-                        </div>
+                      </div>
                       </div>
                       {/* Progressive disclosure: the itemised receipt of
                           this one active row. */}

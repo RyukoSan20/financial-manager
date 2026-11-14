@@ -222,13 +222,26 @@ check('the shopping shops are chips and not rows', () => {
 
 check('a transaction title cannot be drawn on top of the amount', () => {
   const transactions = read('src/pages/Transactions.jsx');
+  // The row is now two decks: the title and the amount own deck 1
+  // outright, and the action buttons were moved to a deck of their
+  // own. That is a stronger guarantee than the old single row, where
+  // the text column merely refused to shrink while five buttons
+  // competed with it for the same 390px.
   assert.ok(
-    /flex-1 min-w-0 pr-3/.test(transactions),
+    /className="flex flex-col gap-2 p-3\.5 sm:p-4/.test(transactions),
+    'the row is not a two-deck container'
+  );
+  assert.ok(
+    /className="flex items-center justify-between gap-3 w-full"/.test(transactions),
+    'deck 1 is not a full-width row'
+  );
+  assert.ok(
+    /className="min-w-0 flex-1"/.test(transactions),
     'the text column is not allowed to shrink'
   );
   assert.ok(
-    /flex items-center gap-2 min-w-0/.test(transactions),
-    'the title row is not allowed to shrink'
+    /data-testid=\{`tx-action-deck-\$\{tx\.id\}`\}/.test(transactions),
+    'the actions are not on a deck of their own'
   );
 });
 

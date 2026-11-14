@@ -482,6 +482,16 @@ export default {
     tip_pending: "• レシートスキャンやメールインポートは保留中として入ります",
     tip_approve: "• 取引を承認すると財務レポートに反映されます",
     tip_reject: "• 無効な取引は拒否するとキューから消えます",
+    workflow_title: "取引レビューの流れ",
+    step1_title: "スキャンと取り込み",
+    step1_body: "レシートのスキャンやGmailからの取引が自動でキューに入ります。",
+    step2_title: "ステータスで絞り込む",
+    step2_body: "保留・承認済み・却下のタブで取引を確認します。",
+    step3_title: "内容を確認する",
+    step3_body: "承認する前に品目・カテゴリ・金額を照合します。",
+    step4_title: "家計簿に承認する",
+    step4_body: "ワンクリックでレポートと口座残高に自動記録されます。",
+    scan_or_import: "+ レシートをスキャン / メールを取り込む",
   },
 
   // Settings
@@ -1976,6 +1986,8 @@ export default {
     prev_month: "前の月",
     next_month: "次の月",
     transaction_count: "{count} 件",
+    see_in_transactions: "取引一覧で見る",
+    untitled: "取引",
   },
 
   quick_pill: {

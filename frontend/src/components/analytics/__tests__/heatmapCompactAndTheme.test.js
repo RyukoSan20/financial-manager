@@ -25,8 +25,14 @@ const check = (name, fn) => {
 
 const HEAT = read('components/analytics/SpendingHeatmapCalendar.jsx');
 
-check('the day cell is a short fixed height, not a giant square', () => {
-  assert.ok(HEAT.includes('h-14 sm:h-16'), 'the cell has the compact height');
+check('the day cell is a short cell, not a giant square', () => {
+  // A min-height with its own padding, rather than a hard height: the
+  // fixed h-14/h-16 left the amount label touching the rounded bottom
+  // border, so the cell now sets a floor and lets the padding hold
+  // the label clear of the edge.
+  assert.ok(HEAT.includes('min-h-[54px]'), 'the cell has a compact height floor');
+  assert.ok(HEAT.includes('p-1.5 sm:p-2'), 'the cell has its own padding');
+  assert.ok(!HEAT.includes('h-14 sm:h-16'), 'the clipping fixed height is gone');
   assert.ok(!HEAT.includes('relative aspect-square rounded-lg flex flex-col items-center justify-center'), 'the giant square cell is gone');
 });
 
