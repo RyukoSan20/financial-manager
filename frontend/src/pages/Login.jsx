@@ -654,18 +654,10 @@ export const Login = () => {
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-12">
           {/* The form side. */}
           <div className="lg:col-span-5">
-            <Link to="/" className="login-gateway__brand">
-              <img
-                src={`${import.meta.env.BASE_URL}assets/generated/brand/logo-dynamic-glow.svg`}
-                alt=""
-                aria-hidden="true"
-                width="40"
-                height="40"
-              />
-              <span className="login-gateway__brand-name">FinManager</span>
-            </Link>
-
-            <p className="campus-overline mt-4 inline-flex items-center gap-1.5 rounded-full border-2 border-[#4A3540] bg-[#FFF6D6] px-4 py-1 text-[11px] font-extrabold tracking-[0.12em] text-[#2C221E] shadow-[0_3px_0_#4A3540]">
+            {/* No wordmark here: the sticky navbar directly above
+                already carries it, and two FinManagers stacked within
+                90px of each other read as a rendering fault. */}
+            <p className="campus-overline mt-1 inline-flex items-center gap-1.5 rounded-full border-2 border-[#4A3540] bg-[#FFF6D6] px-4 py-1 text-[11px] font-extrabold tracking-[0.12em] text-[#2C221E] shadow-[0_3px_0_#4A3540]">
               <span aria-hidden="true" className="campus-star">✦</span>
               {C.hero_badge}
             </p>
@@ -673,8 +665,9 @@ export const Login = () => {
             {/* The headline. Espresso ink, with the marker stroke
                 under the part that names what the app does. */}
             <h1 className="login-gateway__title mt-3" data-testid="login-hero-title">
-              {W.title_lead}{' '}
-              <em className="cute-underline">{W.title_accent}</em>
+              {C.hero_lead}{' '}
+              <em className="cute-underline">{C.hero_accent}</em>{' '}
+              {C.hero_tail}
             </h1>
             <p className="login-gateway__lead">{W.lead}</p>
 

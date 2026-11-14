@@ -396,3 +396,59 @@ html:not(.dark) nav.safe-area-bottom [data-active='true'] {
   color: #2F4842;
   font-weight: 700;
 }
+
+
+/* ---------------------------------------------------------------------------
+   Two things a DOM probe cannot see
+   --------------------------------------------------------------------------- */
+
+/*
+ * The marker stroke must wrap with the words.
+ *
+ * On a headline that breaks over three lines the gradient was being
+ * painted across the full width of the element rather than behind
+ * the words, so the stroke appeared under a line it did not belong
+ * to. `display: inline` with cloned box decorations paints one
+ * stroke per line fragment, which is how a real highlighter behaves.
+ */
+.login-gateway__title .cute-underline {
+  display: inline;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  background-size: 100% 100%;
+}
+
+/*
+ * The greeter's figure must not stand on its own chips.
+ *
+ * In the studio layout the character is absolutely placed against
+ * the stage, and inside the narrow greeter card that put it on top
+ * of the question pills. Here the card lays the figure and the board
+ * out in the flow instead, so neither can cover the other.
+ */
+.campus-greeter-card .shoujo-studio {
+  display: block;
+}
+
+.campus-greeter-card .shoujo-studio-stage {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.campus-greeter-card .shoujo-figure,
+.campus-greeter-card .shoujo-studio-stage > svg {
+  position: relative !important;
+  inset: auto !important;
+  transform: none !important;
+}
+
+.campus-greeter-card .shoujo-board,
+.campus-greeter-card .shoujo-board-body {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  transform: none !important;
+}
