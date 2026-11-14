@@ -340,6 +340,7 @@ check('no page draws with the phone emoji font', () => {
     'src/components/mascot/ClampShoujoMascot.jsx',
     'src/components/transactions/QuickPillRow.jsx',
     'src/data/categoryDictionary.js',
+    'src/components/transactions/ItemizedBillEditor.jsx',
   ];
   for (const file of watched) {
     const text = read(file);
