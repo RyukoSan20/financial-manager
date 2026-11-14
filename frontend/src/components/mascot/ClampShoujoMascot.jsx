@@ -33,15 +33,37 @@ import {
   PALETTES,
   ShoujoDefs,
   ShoujoSparkles,
+  renderAnimeEmote,
   renderBishounen,
   renderKobato,
+  renderPetitPersona,
 } from './shoujoArtLayers.jsx';
+import {
+  DEFAULT_PETIT_PERSONA,
+  PETIT_CHIBI_CAST,
+  PETIT_PERSONA_IDS,
+  getPetitPersona,
+  petitText,
+} from './petitChibiCast.js';
 
 /** Where the choice of companion is remembered. */
 export const PERSONA_KEY = 'fm.mascot.persona';
 
-/** The two personas, in the order the switcher shows them. */
+/**
+ * The two original drawings, kept by name.
+ *
+ * They were the whole cast before the guild existed, and pages and
+ * tests still ask for them, so "kobato" and "bishounen" keep
+ * working and keep their own renderers.
+ */
 export const PERSONAS = ['kobato', 'bishounen'];
+
+/**
+ * "auto" means: show whoever specialises in the page the reader is
+ * on. It is the interesting setting, and it is what the dock offers
+ * alongside the six of them.
+ */
+export const AUTO_PERSONA = 'auto';
 
 const BLINK_EVERY_MS = 3800;
 const BLINK_HOLD_MS = 140;
@@ -52,9 +74,13 @@ const DOUBLE_BLINK_GAP_MS = 220;
 export function readStoredPersona() {
   try {
     const held = window.localStorage.getItem(PERSONA_KEY);
-    return PERSONAS.includes(held) ? held : 'kobato';
+    if (held === AUTO_PERSONA) return held;
+    if (PERSONAS.includes(held)) return held;
+    if (held && PETIT_CHIBI_CAST[held]) return held;
+    return AUTO_PERSONA;
   } catch {
-    return 'kobato';
+    // A browser that refuses storage still gets a companion.
+    return AUTO_PERSONA;
   }
 }
 
@@ -81,17 +107,42 @@ export default function ClampShoujoMascot({
   said = '',
   tip = '',
 }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const uid = useId().replace(/:/g, '');
 
   const [stored, setStored] = useState(() => readStoredPersona());
-  const persona = personaProp || stored;
-  const palette = PALETTES[persona] || PALETTES.kobato;
+  const choice = personaProp || stored;
+
+  // Which of the three kinds of companion this is.
+  //
+  // "kobato"/"bishounen" are the two original drawings and keep their
+  // own renderers. Anything else is one of the guild, either named
+  // outright or decided by the page when the reader chose "auto".
+  const isLegacy = PERSONAS.includes(choice);
+  // The page the reader is on, when there is one. Rendered on a
+  // server there is a `window` but no `location` on it, so testing
+  // for `window` alone is not enough - that threw and took the whole
+  // page down with it.
+  const currentPath =
+    (typeof window !== 'undefined' && window.location && window.location.pathname) || '/';
+
+  const petit = isLegacy
+    ? null
+    : getPetitPersona(choice === AUTO_PERSONA ? currentPath : choice);
+
+  const persona = isLegacy ? choice : petit.id;
+  const palette = isLegacy
+    ? PALETTES[choice] || PALETTES.kobato
+    : petit.palette;
 
   const [blinking, setBlinking] = useState(false);
   const [greeted, setGreeted] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [paused, setPaused] = useState(false);
+  // The squash-and-stretch, played on a click or a change of
+  // companion. It is a one-shot class, so it has to be taken off
+  // again or it will never play a second time.
+  const [bounced, setBounced] = useState(false);
 
   // The conversation. `answer` is what the character is saying now.
   const [question, setQuestion] = useState('');
@@ -129,18 +180,22 @@ export default function ClampShoujoMascot({
 
   const choosePersona = useCallback((next) => {
     setStored(next);
+    setBounced(true);
+    later('poyo', () => setBounced(false), 520);
     try {
       window.localStorage.setItem(PERSONA_KEY, next);
     } catch {
       // A browser that refuses storage still gets to switch; it just
       // will not be remembered.
     }
-  }, []);
+  }, [later]);
 
   // Greeting it stops the walk, springs it, and bursts the sparkles.
   const greet = useCallback(() => {
     setGreeted(true);
+    setBounced(true);
     later('greet', () => setGreeted(false), 620);
+    later('poyo', () => setBounced(false), 520);
   }, [later]);
 
   const handleClick = useCallback(() => {
@@ -177,10 +232,19 @@ export default function ClampShoujoMascot({
     [t]
   );
 
-  const name =
-    persona === 'kobato'
-      ? t('shoujo.name_kobato', 'Kobato')
-      : t('shoujo.name_bishounen', 'Tsukasa');
+  const name = petit
+    ? petit.name
+    : persona === 'kobato'
+    ? t('shoujo.name_kobato', 'Kobato')
+    : t('shoujo.name_bishounen', 'Tsukasa');
+
+  // The character's own words, in the reader's language. These live on
+  // the character rather than in the i18n files: a translator who
+  // changes "wealth that keeps growing" is changing who Mone is.
+  const kanji = petit?.kanji || '';
+  const tagline = petit ? petitText(petit, 'tagline', language) : '';
+  const bio = petit ? petitText(petit, 'bio', language) : '';
+  const meaning = petit ? petitText(petit, 'meaning', language) : '';
 
   const showBoard = interactive && (hovering || boardOpen);
   const spoken = answer || said || tip;
@@ -195,7 +259,8 @@ export default function ClampShoujoMascot({
         type="button"
         className={clsx(
           'shoujo-button',
-          roaming && 'shoujo-roaming-walker',
+          roaming && 'shoujo-roaming-walker petit-totoko-walk',
+          bounced && 'petit-poyo-bounce',
           (paused || greeted || showBoard) && 'is-paused',
           greeted && 'is-greeted'
         )}
@@ -222,7 +287,9 @@ export default function ClampShoujoMascot({
               than each part of it. */}
           <g filter={`url(#${uid}-sticker)`}>
             <g className="shoujo-rig-body">
-              {persona === 'bishounen'
+              {petit
+                ? renderPetitPersona(petit, uid, mood)
+                : persona === 'bishounen'
                 ? renderBishounen(palette, uid, mood)
                 : renderKobato(palette, uid, mood)}
 
@@ -248,6 +315,9 @@ export default function ClampShoujoMascot({
             </g>
 
             {(greeted || mood === 'happy' || mood === 'celebrate') ? <ShoujoSparkles /> : null}
+
+            {/* The 2000s reaction symbol, above-right of the head. */}
+            {renderAnimeEmote(mood)}
           </g>
         </svg>
       </button>
@@ -262,22 +332,81 @@ export default function ClampShoujoMascot({
           className="shoujo-board"
         >
           <div className="shoujo-board-body" data-testid="shoujo-board">
-            {/* Who is keeping the reader company. */}
-            <div className="shoujo-persona-switch" role="group" aria-label={t('shoujo.switch', 'Ganti teman')}>
-              {PERSONAS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => choosePersona(p)}
-                  aria-pressed={persona === p}
-                  className={clsx('shoujo-persona-pill', persona === p && 'is-active')}
-                  data-testid={`shoujo-persona-${p}`}
-                >
-                  {p === 'kobato'
-                    ? t('shoujo.pill_kobato', '🌸 Kobato')
-                    : t('shoujo.pill_bishounen', '📖 Bishounen')}
-                </button>
-              ))}
+            {/* Who is keeping the reader company, and what their name
+                means. The kanji is shown because the joke IS the
+                kanji - Mone is a sprout and a sound. */}
+            {petit ? (
+              <div className="shoujo-petit-header" data-testid="shoujo-petit-header">
+                <span className="shoujo-petit-name">
+                  {petit.name}
+                  {kanji ? <span className="shoujo-petit-kanji">{kanji}</span> : null}
+                </span>
+                {tagline ? <span className="shoujo-petit-tagline">{tagline}</span> : null}
+                {bio ? <span className="shoujo-petit-bio">{bio}</span> : null}
+                {meaning ? (
+                  <span className="shoujo-petit-meaning" title={meaning}>
+                    {meaning}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* The guild, as six portraits, plus "whoever belongs to
+                this page". */}
+            <div
+              className="shoujo-petit-dock"
+              role="group"
+              aria-label={t('shoujo.switch', 'Ganti teman')}
+              data-testid="shoujo-petit-dock"
+            >
+              <button
+                type="button"
+                onClick={() => choosePersona(AUTO_PERSONA)}
+                aria-pressed={stored === AUTO_PERSONA}
+                className={clsx('shoujo-petit-portrait is-auto', stored === AUTO_PERSONA && 'is-active')}
+                title={t('shoujo.auto_hint', 'Sesuaikan dengan halaman')}
+                data-testid="shoujo-persona-auto"
+              >
+                <span aria-hidden="true">✦</span>
+                <span className="shoujo-petit-portrait-name">
+                  {t('shoujo.auto', 'Auto')}
+                </span>
+              </button>
+              {PETIT_PERSONA_IDS.map((id) => {
+                const member = PETIT_CHIBI_CAST[id];
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => choosePersona(id)}
+                    aria-pressed={stored === id}
+                    className={clsx('shoujo-petit-portrait', stored === id && 'is-active')}
+                    title={`${member.name} (${member.kanji})`}
+                    data-testid={`shoujo-persona-${id}`}
+                  >
+                    {/* A portrait, not a photograph: the head and the
+                        hair colour of the character themselves. */}
+                    <svg viewBox="0 0 48 48" aria-hidden="true" className="shoujo-petit-portrait-art">
+                      <circle cx="24" cy="24" r="22" fill={member.palette.cloth} />
+                      <path
+                        d="M 24 8 C 36 8 42 16 41 24 C 40 33 33 40 24 40 C 15 40 8 33 7 24 C 6 16 12 8 24 8 Z"
+                        fill={member.palette.skin}
+                        stroke={member.palette.hairDark}
+                        strokeWidth="1.4"
+                      />
+                      <path
+                        d="M 24 7 C 12 7 6 16 7 25 C 11 18 16 15 22 15 C 30 15 38 18 41 25 C 42 16 36 7 24 7 Z"
+                        fill={member.palette.hairDark}
+                      />
+                      <circle cx="17" cy="26" r="3.4" fill={member.palette.irisMid} />
+                      <circle cx="31" cy="26" r="3.4" fill={member.palette.irisMid} />
+                      <circle cx="16" cy="25" r="1.2" fill="#FFFFFF" />
+                      <circle cx="30" cy="25" r="1.2" fill="#FFFFFF" />
+                    </svg>
+                    <span className="shoujo-petit-portrait-name">{member.name}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Three things worth asking, one tap each. */}

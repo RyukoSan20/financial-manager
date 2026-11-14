@@ -86,7 +86,11 @@ export function ShoujoDefs({ uid, palette }) {
       <linearGradient id={`${uid}-iris`} x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stopColor={palette.irisTop} />
         <stop offset="55%" stopColor={palette.irisMid} />
-        <stop offset="100%" stopColor={palette.irisLow} />
+        {/* The two original drawings call this stop `irisLow`; the
+            guild's palettes call it `irisBottom`. Accepting both means
+            the bottom of the iris is never an undefined colour - which
+            is what it silently was for all six of the guild. */}
+        <stop offset="100%" stopColor={palette.irisBottom || palette.irisLow} />
       </linearGradient>
 
       <linearGradient id={`${uid}-hair`} x1="0.2" y1="0" x2="0.8" y2="1">
@@ -671,3 +675,571 @@ export function ShoujoSparkles() {
     </g>
   );
 }
+
+
+/* =====================================================================
+   The Petit Chibi Guild: six silhouettes, six props, and the emotes.
+
+   Everything below is driven by the cast registry in
+   `petitChibiCast.js`. The character is chosen by id and the
+   renderers are looked up by the `hair` and `prop` names on that
+   entry, so a seventh companion is a new row in the registry and two
+   new cases here - never a new branch in the component.
+   ===================================================================== */
+
+/** The 2000s zig-zag angel ring across the bangs. */
+function angelRing(d, width = 5) {
+  return (
+    <path
+      d={d}
+      fill="none"
+      stroke="rgba(255, 248, 231, 0.55)"
+      strokeWidth={width}
+      strokeLinecap="round"
+      data-part="halo-highlight"
+    />
+  );
+}
+
+/* --- the six hair silhouettes -------------------------------------- */
+
+/** Mone: long waves, twin side locks, and the straw hat above them. */
+function hairTwinLocksHat(p, uid) {
+  return {
+    back: (
+      <g className="shoujo-rig-hair" data-part="hair-back" data-hair="twin_locks_hat">
+        <path
+          d="M 100 26 C 136 26 150 54 148 84 C 146 112 142 140 136 164
+             C 130 150 128 126 126 110 C 120 118 108 120 100 120
+             C 92 120 80 118 74 110 C 72 126 70 150 64 164
+             C 58 140 54 112 52 84 C 50 54 64 26 100 26 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        />
+      </g>
+    ),
+    front: (
+      <>
+        <g className="shoujo-rig-hair" data-part="hair-front">
+        <path
+          d="M 100 26 C 74 26 58 46 58 70 C 66 58 76 50 88 48
+             C 84 56 84 62 88 68 C 94 56 104 50 116 52
+             C 126 54 136 60 142 70 C 142 46 126 26 100 26 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        />
+        {angelRing('M 70 54 l 8 6 l -5 7 l 9 5 l -6 7 l 10 4')}
+        <path d="M 60 70 C 54 94 56 116 62 134 C 68 118 70 96 70 76 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+        <path d="M 140 70 C 146 94 144 116 138 134 C 132 118 130 96 130 76 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+      </g>
+      <g className="shoujo-hat" data-part="straw-hat">
+        <path d="M 44 54 C 56 34 76 22 100 22 C 124 22 144 34 156 54 C 138 46 120 42 100 42 C 80 42 62 46 44 54 Z"
+          fill={`url(#${uid}-straw)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" />
+        <path d="M 62 48 C 72 32 86 24 100 24 C 114 24 128 32 138 48"
+          fill="none" stroke={p.ribbon} strokeWidth="5" strokeLinecap="round" />
+        <g data-part="sakura" transform="translate(58 44)">
+          {[0, 72, 144, 216, 288].map((deg) => (
+            <ellipse key={deg} cx="0" cy="-5" rx="3" ry="4.6" fill="#F9C9D4"
+              stroke={INK} strokeWidth="0.9" transform={`rotate(${deg})`} />
+          ))}
+          <circle cx="0" cy="0" r="2" fill="#F4E285" />
+        </g>
+        {/* the sprout, for the character whose name is a sprout */}
+        <path d="M 140 40 q 6 -8 11 -3 q -4 7 -11 3 z" fill={p.accent} stroke={INK} strokeWidth="0.9" data-part="sprout" />
+      </g>
+      </>
+    ),
+  };
+}
+
+/** Kaneru: fluffy bishounen bangs under a knit beret. */
+function hairFluffyBangs(p, uid) {
+  return {
+    back: (
+      <g className="shoujo-rig-hair" data-part="hair-back" data-hair="fluffy_bangs">
+        <path
+          d="M 100 24 C 132 24 146 48 146 76 C 146 98 142 114 138 128
+             C 134 114 132 98 130 86 C 120 94 108 96 100 96
+             C 92 96 80 94 70 86 C 68 98 66 114 62 128
+             C 58 114 54 98 54 76 C 54 48 68 24 100 24 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        />
+      </g>
+    ),
+    front: (
+      <>
+        <g className="shoujo-rig-hair" data-part="hair-front">
+        <path
+          d="M 100 24 C 74 24 56 44 56 70 C 64 56 74 48 86 46
+             C 82 54 82 60 86 66 C 92 54 102 48 114 50
+             C 126 52 136 58 144 70 C 144 44 126 24 100 24 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        />
+        {angelRing('M 72 50 l 9 5 l -5 7 l 10 5 l -6 6 l 10 4')}
+        <path d="M 64 46 C 70 28 86 20 102 22 C 120 24 134 34 136 48 C 118 40 84 38 64 46 Z"
+          fill={p.cloth} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" data-part="beret" />
+        <circle cx="100" cy="21" r="3.4" fill={p.accent} stroke={INK} strokeWidth="1" />
+      </g>
+      </>
+    ),
+  };
+}
+
+/** Kogane: curled twin tails, each tied with a ribbon bow. */
+function hairTwinTailsBows(p, uid) {
+  return {
+    back: (
+      <g className="shoujo-rig-hair" data-part="hair-back" data-hair="twin_tails_bows">
+        <path
+          d="M 100 24 C 134 24 148 50 146 80 C 144 104 140 122 136 136
+             C 130 120 128 102 126 90 C 118 98 108 100 100 100
+             C 92 100 82 98 74 90 C 72 102 70 120 64 136
+             C 60 122 56 104 54 80 C 52 50 66 24 100 24 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        />
+        {/* the two curled tails, outside the head */}
+        <path d="M 52 84 C 36 96 30 122 40 146 C 48 128 50 106 60 92 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+        <path d="M 148 84 C 164 96 170 122 160 146 C 152 128 150 106 140 92 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+      </g>
+    ),
+    front: (
+      <>
+        <g className="shoujo-rig-hair" data-part="hair-front">
+        <path
+          d="M 100 24 C 74 24 58 44 58 68 C 66 56 78 48 90 47
+             C 86 55 86 61 90 67 C 96 55 106 49 118 51
+             C 128 53 136 59 142 68 C 142 44 126 24 100 24 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        />
+        {angelRing('M 70 52 l 9 6 l -5 7 l 10 5 l -6 6 l 11 4')}
+        {/* the bows, where the tails are tied */}
+        {[[54, 84], [146, 84]].map(([bx, by]) => (
+          <g key={bx} data-part="ribbon-bow" transform={`translate(${bx} ${by})`}>
+            <path d="M 0 0 l -8 -5 l 0 10 z M 0 0 l 8 -5 l 0 10 z"
+              fill={p.ribbon} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+            <circle cx="0" cy="0" r="2.4" fill={p.ribbon} stroke={INK} strokeWidth="0.9" />
+          </g>
+        ))}
+      </g>
+      </>
+    ),
+  };
+}
+
+/** Zenimaru: short energetic spikes under a merchant's headband. */
+function hairShortSpikesBand(p, uid) {
+  return {
+    back: (
+      <g className="shoujo-rig-hair" data-part="hair-back" data-hair="short_spikes_band">
+        <path
+          d="M 100 24 C 130 24 144 46 144 74 C 144 88 142 98 140 108
+             C 136 98 134 90 132 84 C 120 92 108 94 100 94
+             C 92 94 80 92 68 84 C 66 90 64 98 60 108
+             C 58 98 56 88 56 74 C 56 46 70 24 100 24 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        />
+      </g>
+    ),
+    front: (
+      <>
+        <g className="shoujo-rig-hair" data-part="hair-front">
+        {/* spikes rather than a smooth fringe */}
+        <path
+          d="M 100 24 C 76 24 58 42 57 68
+             L 68 50 L 72 66 L 84 46 L 90 64 L 100 44
+             L 110 64 L 118 46 L 128 64 L 134 50 L 143 68
+             C 142 42 124 24 100 24 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        />
+        {angelRing('M 74 48 l 8 6 l -5 6 l 9 5 l -5 6 l 10 4', 4)}
+        {/* the headband */}
+        <path d="M 54 60 C 72 50 128 50 146 60 L 146 68 C 128 58 72 58 54 68 Z"
+          fill={p.ribbon} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" data-part="headband" />
+        <path d="M 146 62 l 12 -4 l -2 10 z" fill={p.ribbon} stroke={INK} strokeWidth="0.9" />
+      </g>
+      </>
+    ),
+  };
+}
+
+/** Minori: a gentle braid over one shoulder, with a wheat hairpin. */
+function hairSideBraid(p, uid) {
+  return {
+    back: (
+      <g className="shoujo-rig-hair" data-part="hair-back" data-hair="side_braid">
+        <path
+          d="M 100 25 C 132 25 147 50 146 80 C 145 102 141 120 137 134
+             C 131 118 129 100 127 88 C 118 96 108 98 100 98
+             C 92 98 82 96 73 88 C 71 100 69 118 63 134
+             C 59 120 55 102 54 80 C 53 50 68 25 100 25 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        />
+        {/* the braid: three plaits down the right side */}
+        <g data-part="braid">
+          {[0, 1, 2, 3].map((i) => (
+            <ellipse key={i} cx={142 + i * 2} cy={104 + i * 14} rx="7.5" ry="8"
+              fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_INNER} />
+          ))}
+          <path d={`M ${148} ${160} l -5 8 l 10 0 z`} fill={p.ribbon} stroke={INK} strokeWidth="0.9" />
+        </g>
+      </g>
+    ),
+    front: (
+      <>
+        <g className="shoujo-rig-hair" data-part="hair-front">
+        <path
+          d="M 100 25 C 76 25 59 44 58 69 C 67 57 78 49 90 48
+             C 87 56 87 62 91 68 C 97 56 107 50 119 52
+             C 129 54 137 60 142 69 C 141 44 124 25 100 25 Z"
+          fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        />
+        {angelRing('M 71 52 l 9 6 l -5 7 l 10 5 l -6 6 l 10 4')}
+        {/* the wheat pin */}
+        <g data-part="wheat-pin" transform="translate(62 54) rotate(-20)">
+          <path d="M 0 0 l 0 -14" stroke="#C9A227" strokeWidth="1.6" strokeLinecap="round" />
+          {[-11, -7, -3].map((y) => (
+            <g key={y}>
+              <ellipse cx="-3" cy={y} rx="2.4" ry="3.4" fill="#E6C86E" stroke={INK} strokeWidth="0.7" />
+              <ellipse cx="3" cy={y} rx="2.4" ry="3.4" fill="#E6C86E" stroke={INK} strokeWidth="0.7" />
+            </g>
+          ))}
+        </g>
+      </g>
+      </>
+    ),
+  };
+}
+
+/** Koneko: a cat-eared hood, calico tipped. */
+function hairCatEarHood(p, uid) {
+  return {
+    back: (
+      <g className="shoujo-rig-hair" data-part="hair-back" data-hair="cat_ear_hood">
+        <path
+          d="M 100 26 C 134 26 148 52 147 82 C 146 104 142 120 138 132
+             C 132 118 130 102 128 90 C 118 98 108 100 100 100
+             C 92 100 82 98 72 90 C 70 102 68 118 62 132
+             C 58 120 54 104 53 82 C 52 52 66 26 100 26 Z"
+          fill={p.cloth} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        />
+      </g>
+    ),
+    front: (
+      <>
+        <g className="shoujo-rig-hair" data-part="hair-front">
+        {/* the hood brim */}
+        <path d="M 100 26 C 72 26 56 46 56 70 C 70 58 84 52 100 52 C 116 52 130 58 144 70 C 144 46 128 26 100 26 Z"
+          fill={p.cloth} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" />
+        {angelRing('M 74 48 l 8 5 l -5 6 l 9 4', 4)}
+        {/* the two ears, tipped in calico */}
+        <g data-part="cat-ears">
+          <path d="M 62 44 L 58 16 L 86 34 Z" fill={p.cloth} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" />
+          <path d="M 63 36 L 61 23 L 74 32 Z" fill={p.clothAlt} />
+          <path d="M 138 44 L 142 16 L 114 34 Z" fill={p.cloth} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" />
+          <path d="M 137 36 L 139 23 L 126 32 Z" fill={p.hairDark} />
+        </g>
+      </g>
+      </>
+    ),
+  };
+}
+
+const HAIR_RENDERERS = {
+  twin_locks_hat: hairTwinLocksHat,
+  fluffy_bangs: hairFluffyBangs,
+  twin_tails_bows: hairTwinTailsBows,
+  short_spikes_band: hairShortSpikesBand,
+  side_braid: hairSideBraid,
+  cat_ear_hood: hairCatEarHood,
+};
+
+/* --- the six props -------------------------------------------------- */
+
+/** Mone: the konpeito bottle, glowing. */
+function propKonpeitoBottle(p, uid) {
+  return (
+    <g className="shoujo-prop" data-part="konpeito_bottle">
+      <circle cx="100" cy="162" r="22" fill={`url(#${uid}-bottle-glow)`} />
+      <path d="M 94 146 l 12 0 l 0 6 l 4 4 l 0 18 q 0 4 -4 4 l -12 0 q -4 0 -4 -4 l 0 -18 l 4 -4 z"
+        fill="rgba(227, 242, 234, 0.75)" stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+      <rect x="95" y="141" width="10" height="5" rx="1.6" fill="#C9A227" stroke={INK} strokeWidth="1" />
+      <path d="M 96 166 l 1.4 2.6 l 2.6 1.4 l -2.6 1.4 l -1.4 2.6 l -1.4 -2.6 l -2.6 -1.4 l 2.6 -1.4 z" fill="#F4E285" />
+      <path d="M 103 171 l 1.2 2.2 l 2.2 1.2 l -2.2 1.2 l -1.2 2.2 l -1.2 -2.2 l -2.2 -1.2 l 2.2 -1.2 z" fill="#F7B2AD" />
+      <path d="M 99 157 l 1.1 2 l 2 1.1 l -2 1.1 l -1.1 2 l -1.1 -2 l -2 -1.1 l 2 -1.1 z" fill="#A8E6CF" />
+      <circle cx="88" cy="164" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="112" cy="164" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+    </g>
+  );
+}
+
+/** Kaneru: the ledger, with notes rising off it. */
+function propKakeiboMelody(p) {
+  return (
+    <g className="shoujo-prop" data-part="kakeibo_melody">
+      <path d="M 76 152 l 26 -5 l 0 24 l -26 5 z" fill="#8A5B4C" stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+      <path d="M 78 156 l 22 -4 M 78 162 l 22 -4" stroke="#F6E7C4" strokeWidth="1.4" />
+      <circle cx="86" cy="164" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+      <g className="shoujo-quill" data-part="notes">
+        {/* a quaver and a beamed pair, in gold */}
+        <g transform="translate(118 138)">
+          <ellipse cx="0" cy="8" rx="3.4" ry="2.6" fill="#C9A227" stroke={INK} strokeWidth="0.8" transform="rotate(-20)" />
+          <path d="M 3 7 l 0 -12 q 5 2 5 6" fill="none" stroke="#C9A227" strokeWidth="1.6" strokeLinecap="round" />
+        </g>
+        <g transform="translate(134 150)">
+          <ellipse cx="0" cy="6" rx="2.8" ry="2.2" fill="#E6B84D" stroke={INK} strokeWidth="0.7" transform="rotate(-20)" />
+          <ellipse cx="10" cy="4" rx="2.8" ry="2.2" fill="#E6B84D" stroke={INK} strokeWidth="0.7" transform="rotate(-20)" />
+          <path d="M 2.5 5 l 0 -9 l 10 -2 l 0 9" fill="none" stroke="#E6B84D" strokeWidth="1.5" strokeLinecap="round" />
+        </g>
+      </g>
+    </g>
+  );
+}
+
+/** Kogane: the pocket watch, on its chain, with a treasure key. */
+function propGoldenWatch(p) {
+  return (
+    <g className="shoujo-prop" data-part="golden_watch">
+      <path d="M 100 132 q 14 10 10 24" fill="none" stroke="#C9A227" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="108" cy="162" r="11" fill="#F4E285" stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="108" cy="162" r="7.5" fill="#FFFDF5" stroke={INK} strokeWidth="0.9" />
+      <path d="M 108 162 l 0 -5 M 108 162 l 4 2" stroke={INK} strokeWidth="1.2" strokeLinecap="round" />
+      <rect x="105.5" y="148" width="5" height="4" rx="1.4" fill="#C9A227" stroke={INK} strokeWidth="0.9" />
+      {/* the key */}
+      <g data-part="treasure-key" transform="translate(80 158)">
+        <circle cx="0" cy="0" r="4.4" fill="none" stroke="#C9A227" strokeWidth="2" />
+        <path d="M 0 4.4 l 0 12 M 0 11 l 5 0 M 0 15 l 4 0" stroke="#C9A227" strokeWidth="2" strokeLinecap="round" />
+      </g>
+      <circle cx="88" cy="164" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+    </g>
+  );
+}
+
+/** Zenimaru: the square-holed coin, and a small abacus. */
+function propLuckyCoin(p) {
+  return (
+    <g className="shoujo-prop" data-part="lucky_coin">
+      <circle cx="100" cy="160" r="17" fill="#F4E285" stroke={INK} strokeWidth={STROKE_OUTER} />
+      <circle cx="100" cy="160" r="12.5" fill="none" stroke="#C9A227" strokeWidth="1.2" />
+      <rect x="95" y="155" width="10" height="10" rx="1.2" fill={p.cloth} stroke={INK} strokeWidth={STROKE_INNER} />
+      {/* 寛永 on the rim, suggested rather than written */}
+      <path d="M 100 147 l 0 4 M 100 169 l 0 4 M 87 160 l 4 0 M 109 160 l 4 0" stroke="#C9A227" strokeWidth="1.4" strokeLinecap="round" />
+      {/* the abacus */}
+      <g data-part="abacus" transform="translate(126 150)">
+        <rect x="0" y="0" width="22" height="18" rx="2" fill="#8A5B4C" stroke={INK} strokeWidth={STROKE_INNER} />
+        <path d="M 0 9 l 22 0" stroke="#F6E7C4" strokeWidth="1" />
+        {[3, 9, 15].map((x) => (
+          <g key={x}>
+            <circle cx={x + 1} cy="4.5" r="1.8" fill="#F4E285" />
+            <circle cx={x + 1} cy="13.5" r="1.8" fill="#F4E285" />
+          </g>
+        ))}
+      </g>
+      <circle cx="84" cy="166" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+    </g>
+  );
+}
+
+/** Minori: the harvest basket, with star fruit and coins in it. */
+function propHarvestBasket(p) {
+  return (
+    <g className="shoujo-prop" data-part="harvest_basket">
+      <path d="M 78 152 l 44 0 l -5 24 q -1 4 -5 4 l -24 0 q -4 0 -5 -4 z"
+        fill="#C89A6B" stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" />
+      {/* the weave */}
+      <path d="M 80 160 l 40 0 M 81 168 l 38 0 M 92 152 l -2 28 M 108 152 l 2 28"
+        fill="none" stroke="#8A5B4C" strokeWidth="1" />
+      <path d="M 84 152 q 16 -16 32 0" fill="none" stroke="#8A5B4C" strokeWidth="2.2" strokeLinecap="round" />
+      {/* what is in it */}
+      <path d="M 92 146 l 2 4 l 4 2 l -4 2 l -2 4 l -2 -4 l -4 -2 l 4 -2 z" fill="#F4E285" stroke={INK} strokeWidth="0.7" />
+      <path d="M 108 144 l 1.6 3.2 l 3.2 1.6 l -3.2 1.6 l -1.6 3.2 l -1.6 -3.2 l -3.2 -1.6 l 3.2 -1.6 z" fill={p.accent} stroke={INK} strokeWidth="0.7" />
+      <circle cx="100" cy="150" r="4" fill="#F4E285" stroke={INK} strokeWidth="0.8" />
+      <circle cx="78" cy="168" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="122" cy="168" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+    </g>
+  );
+}
+
+/** Koneko: the koban, the collar bell, and the paw stamp. */
+function propFukuKoban(p) {
+  return (
+    <g className="shoujo-prop" data-part="fuku_koban">
+      {/* the collar and its bell sit on the body, above the prop */}
+      <path d="M 82 126 q 18 8 36 0" fill="none" stroke={p.accent} strokeWidth="6" strokeLinecap="round" data-part="collar" />
+      <circle cx="100" cy="132" r="5.5" fill="#FFD54F" stroke={INK} strokeWidth={STROKE_INNER} data-part="fuku-bell" />
+      <path d="M 100 129 l 0 6 M 97.5 132 l 5 0" stroke={INK} strokeWidth="1" strokeLinecap="round" />
+      {/* the koban */}
+      <path d="M 84 150 q 16 -7 32 0 l -4 22 q -12 5 -24 0 z"
+        fill="#F4E285" stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" />
+      <path d="M 92 158 l 16 0 M 94 165 l 12 0" stroke="#C9A227" strokeWidth="1.4" strokeLinecap="round" />
+      {/* the paw stamp pad */}
+      <g data-part="paw-stamp" transform="translate(126 158)">
+        <rect x="0" y="0" width="16" height="12" rx="2.5" fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} />
+        <circle cx="8" cy="7" r="2.6" fill={p.accent} />
+        <circle cx="4.5" cy="3.5" r="1.1" fill={p.accent} />
+        <circle cx="8" cy="2.6" r="1.1" fill={p.accent} />
+        <circle cx="11.5" cy="3.5" r="1.1" fill={p.accent} />
+      </g>
+      <circle cx="80" cy="164" r="5" fill={p.cloth} stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="120" cy="164" r="5" fill={p.cloth} stroke={INK} strokeWidth={STROKE_INNER} />
+    </g>
+  );
+}
+
+const PROP_RENDERERS = {
+  konpeito_bottle: propKonpeitoBottle,
+  kakeibo_melody: propKakeiboMelody,
+  golden_watch: propGoldenWatch,
+  lucky_coin: propLuckyCoin,
+  harvest_basket: propHarvestBasket,
+  fuku_koban: propFukuKoban,
+};
+
+/* --- the body, shared, tinted per character ------------------------ */
+
+function petitBody(p, uid, persona) {
+  // The merchant and the cat wear something different at the collar;
+  // everyone else wears the layered dress or cardigan.
+  const isHaori = persona.prop === 'lucky_coin';
+  const isHood = persona.hair === 'cat_ear_hood';
+
+  return (
+    <g data-part="body">
+      <path
+        d="M 100 118 C 86 118 78 122 76 132 C 72 150 66 174 62 192 L 138 192
+           C 134 174 128 150 124 132 C 122 122 114 118 100 118 Z"
+        fill={`url(#${uid}-cloth)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+      />
+      {/* the hem: scalloped lace, or a straight apron edge */}
+      {isHaori || isHood ? (
+        <path d="M 62 192 l 76 0" stroke={INK} strokeWidth={STROKE_INNER} />
+      ) : (
+        <path d="M 62 192 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0"
+          fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+      )}
+      {/* the collar */}
+      {isHaori ? (
+        <path d="M 88 120 l 12 14 l 12 -14 l 6 8 l -18 18 l -18 -18 z"
+          fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" data-part="haori" />
+      ) : isHood ? null : (
+        <path d="M 82 124 q 4.5 6 9 0 q 4.5 6 9 0 q 4.5 6 9 0"
+          fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} />
+      )}
+      {/* the bow, for everyone who wears one */}
+      {isHood ? null : (
+        <>
+          <path d="M 100 128 l -9 -6 l 0 10 z M 100 128 l 9 -6 l 0 10 z"
+            fill={p.ribbon} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+          <circle cx="100" cy="128" r="2.6" fill={p.ribbon} stroke={INK} strokeWidth="1" />
+        </>
+      )}
+      {/* the arms */}
+      <path d="M 78 132 C 70 146 74 158 88 162" fill="none" stroke={INK} strokeWidth={STROKE_OUTER} strokeLinecap="round" />
+      <path d="M 122 132 C 130 146 126 158 112 162" fill="none" stroke={INK} strokeWidth={STROKE_OUTER} strokeLinecap="round" />
+      {/* the legs and the shoes */}
+      <path d="M 86 192 l 0 32" stroke={INK} strokeWidth="6" strokeLinecap="round" />
+      <path d="M 114 192 l 0 32" stroke={INK} strokeWidth="6" strokeLinecap="round" />
+      <g className="shoujo-rig-foot-left">
+        <ellipse cx="86" cy="230" rx="9" ry="6" fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} />
+      </g>
+      <g className="shoujo-rig-foot-right">
+        <ellipse cx="114" cy="230" rx="9" ry="6" fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} />
+      </g>
+    </g>
+  );
+}
+
+/* --- the 2000s emote badges ---------------------------------------- */
+
+/**
+ * The reaction symbol above the character's head.
+ *
+ * These are the 2000s television shorthand: kirakira stars and a
+ * blooming flower when things are going well, notes when nothing much
+ * is happening, and a sweat drop with a double bang when a budget is
+ * about to be broken. They are drawn, so they read the same on every
+ * machine - an emoji here would be a different picture per phone.
+ */
+export function renderAnimeEmote(mood) {
+  const good = mood === 'happy' || mood === 'celebrate';
+  const bad = mood === 'alert' || mood === 'over_budget';
+
+  if (good) {
+    return (
+      <g className="shoujo-kirakira-float" data-emote="kirakira" aria-hidden="true">
+        <path d="M 150 30 L 153 38 L 161 41 L 153 44 L 150 52 L 147 44 L 139 41 L 147 38 Z" fill="#FFD54F" />
+        <path d="M 168 52 L 169.6 56 L 173.6 57.6 L 169.6 59.2 L 168 63.2 L 166.4 59.2 L 162.4 57.6 L 166.4 56 Z" fill="#F4E285" />
+        <g data-emote-part="flower" transform="translate(172 32)">
+          {[0, 72, 144, 216, 288].map((deg) => (
+            <ellipse key={deg} cx="0" cy="-5" rx="2.6" ry="4" fill="#F9C9D4" stroke={INK} strokeWidth="0.7" transform={`rotate(${deg})`} />
+          ))}
+          <circle cx="0" cy="0" r="1.8" fill="#FFD54F" />
+        </g>
+      </g>
+    );
+  }
+
+  if (bad) {
+    return (
+      <g data-emote="sweat" aria-hidden="true">
+        {/* the sweat drop: a teardrop, point up */}
+        <path d="M 152 30 C 152 30 144 42 144 47 a 8 8 0 0 0 16 0 C 160 42 152 30 152 30 Z"
+          fill="#90CAF9" stroke={INK} strokeWidth="1" />
+        <ellipse cx="149" cy="45" rx="2" ry="3" fill="#FFFDF9" opacity="0.8" />
+        {/* the double bang */}
+        <g data-emote-part="bangs" fill={INK}>
+          <path d="M 168 30 l 4 0 l -1 14 l -2 0 z" />
+          <circle cx="170" cy="48" r="2" />
+          <path d="M 177 30 l 4 0 l -1 14 l -2 0 z" />
+          <circle cx="179" cy="48" r="2" />
+        </g>
+      </g>
+    );
+  }
+
+  // The quiet case: two notes, drifting.
+  return (
+    <g className="shoujo-kirakira-float" data-emote="melody" aria-hidden="true">
+      <g transform="translate(152 36)">
+        <ellipse cx="0" cy="8" rx="3.2" ry="2.5" fill="#B39DDB" stroke={INK} strokeWidth="0.8" transform="rotate(-20)" />
+        <path d="M 2.8 7 l 0 -11 q 4.5 1.8 4.5 5.5" fill="none" stroke="#B39DDB" strokeWidth="1.5" strokeLinecap="round" />
+      </g>
+      <g transform="translate(170 50) scale(0.8)">
+        <ellipse cx="0" cy="8" rx="3.2" ry="2.5" fill="#A8E6CF" stroke={INK} strokeWidth="0.8" transform="rotate(-20)" />
+        <path d="M 2.8 7 l 0 -11 q 4.5 1.8 4.5 5.5" fill="none" stroke="#A8E6CF" strokeWidth="1.5" strokeLinecap="round" />
+      </g>
+    </g>
+  );
+}
+
+/**
+ * One of the guild, drawn.
+ *
+ * The persona is an entry from PETIT_CHIBI_CAST. Its `hair` and `prop`
+ * names are looked up in the tables above, so this function has no
+ * idea which characters exist - it only knows how to assemble one.
+ */
+export function renderPetitPersona(persona, uid, mood) {
+  const p = persona.palette;
+  const hair = HAIR_RENDERERS[persona.hair] || HAIR_RENDERERS.twin_locks_hat;
+  const prop = PROP_RENDERERS[persona.prop] || PROP_RENDERERS.konpeito_bottle;
+  // Each hair renderer hands back its two halves explicitly. Reaching
+  // into a fragment's children by index worked but broke silently the
+  // moment a silhouette grew a third group.
+  const layers = hair(p, uid);
+
+  return (
+    <g data-persona={persona.id} data-petit-kanji={persona.kanji}>
+      {/* back hair, then the body, then the face, then front hair, so
+          the fringe falls over the forehead and the hat over that. */}
+      {layers.back}
+      {petitBody(p, uid, persona)}
+      {renderFace(mood, false, p, uid)}
+      {layers.front}
+      {prop(p, uid)}
+    </g>
+  );
+}
+
+export { HAIR_RENDERERS, PROP_RENDERERS };

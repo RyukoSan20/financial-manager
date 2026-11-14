@@ -1995,6 +1995,9 @@ export default {
     asking: "...",
     no_answer: "I do not have an answer for that yet.",
     ask_failed: "The question did not go through. Try again.",
+    auto: "Auto",
+    auto_hint: "Match the page I am on",
+    guild_title: "Petit Chibi Guild",
   },
   heatmap: {
     title: "Spending Calendar · Busiest Day",

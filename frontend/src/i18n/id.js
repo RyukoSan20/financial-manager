@@ -1995,6 +1995,9 @@ export default {
     asking: "...",
     no_answer: "Aku belum punya jawaban untuk itu.",
     ask_failed: "Gagal bertanya. Coba lagi.",
+    auto: "Auto",
+    auto_hint: "Sesuaikan dengan halaman",
+    guild_title: "Petit Chibi Guild",
   },
   heatmap: {
     title: "Kalender Hari Paling Boros",

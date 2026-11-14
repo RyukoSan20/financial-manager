@@ -1995,6 +1995,9 @@ export default {
     asking: "...",
     no_answer: "それにはまだ答えられません。",
     ask_failed: "質問を送れませんでした。もう一度お試しください。",
+    auto: "おまかせ",
+    auto_hint: "ページに合わせる",
+    guild_title: "プチちびギルド",
   },
   heatmap: {
     title: "支出カレンダー · 最も使った日",

@@ -1020,3 +1020,177 @@
 
   .shoujo-sparkle { opacity: 0.9; }
 }
+
+
+/* =====================================================================
+   The Petit Chibi Guild: motion loops and the avatar dock.
+   ===================================================================== */
+
+/* The mochi bounce. Squash on the way down, stretch on the way up,
+   and settle - played once when the character is clicked or when the
+   reader picks a different one. */
+.petit-poyo-bounce .shoujo-figure {
+  animation: petitPoyo 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center bottom;
+}
+
+@keyframes petitPoyo {
+  0%   { transform: scale(1, 1); }
+  28%  { transform: scale(1.07, 0.93); }
+  58%  { transform: scale(0.96, 1.05); }
+  80%  { transform: scale(1.02, 0.98); }
+  100% { transform: scale(1, 1); }
+}
+
+/* The waddle. A chibi walks with its whole body, so the tilt is on
+   the figure and the steps are on the feet. */
+.petit-totoko-walk .shoujo-figure {
+  animation: petitWaddle 0.72s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes petitWaddle {
+  0%, 100% { transform: rotate(-3deg) translateY(0); }
+  25%      { transform: rotate(0deg) translateY(-2px); }
+  50%      { transform: rotate(3deg) translateY(0); }
+  75%      { transform: rotate(0deg) translateY(-2px); }
+}
+
+.petit-totoko-walk.is-paused .shoujo-figure {
+  animation-play-state: paused;
+}
+
+/* The drifting sparkle layer: petals, notes and stars around the
+   character. The emote badges ride on this too, so a reaction symbol
+   floats rather than sitting still beside the head. */
+.shoujo-kirakira-float {
+  animation: shoujoKirakira 3.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes shoujoKirakira {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.85; }
+  35%      { transform: translateY(-5px) rotate(8deg); opacity: 1; }
+  70%      { transform: translateY(-2px) rotate(-6deg); opacity: 0.9; }
+}
+
+/* --- the character header in the popover ---------------------------- */
+
+.shoujo-petit-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #EAE6DF;
+}
+
+.shoujo-petit-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1F2421;
+}
+
+.shoujo-petit-kanji {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #52796F;
+}
+
+.shoujo-petit-tagline {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #2F4842;
+}
+
+.shoujo-petit-bio,
+.shoujo-petit-meaning {
+  font-size: 0.65rem;
+  line-height: 1.45;
+  color: #5C6460;
+}
+
+.shoujo-petit-meaning {
+  color: #7A827E;
+}
+
+/* --- the six portraits ---------------------------------------------- */
+
+.shoujo-petit-dock {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.shoujo-petit-portrait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.25rem 0.1rem;
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.shoujo-petit-portrait:hover {
+  background: #F4F1EA;
+  transform: translateY(-1px);
+}
+
+.shoujo-petit-portrait.is-active {
+  background: #E3F2EA;
+  border-color: #2F4842;
+}
+
+.shoujo-petit-portrait:focus-visible {
+  outline: 2px solid #52796F;
+  outline-offset: 1px;
+}
+
+.shoujo-petit-portrait-art {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+}
+
+.shoujo-petit-portrait.is-auto {
+  justify-content: center;
+  font-size: 0.95rem;
+  color: #2F4842;
+}
+
+.shoujo-petit-portrait-name {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: #5C6460;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.shoujo-petit-portrait.is-active .shoujo-petit-portrait-name {
+  color: #1F2421;
+}
+
+.dark .shoujo-petit-header { border-color: rgba(255, 255, 255, 0.12); }
+.dark .shoujo-petit-name { color: #FAF9F6; }
+.dark .shoujo-petit-tagline { color: #A8E6CF; }
+.dark .shoujo-petit-bio,
+.dark .shoujo-petit-meaning { color: #CFCAC2; }
+.dark .shoujo-petit-portrait:hover { background: rgba(255, 255, 255, 0.08); }
+.dark .shoujo-petit-portrait.is-active { background: rgba(168, 230, 207, 0.16); }
+.dark .shoujo-petit-portrait-name { color: #CFCAC2; }
+
+@media (prefers-reduced-motion: reduce) {
+  .petit-poyo-bounce .shoujo-figure,
+  .petit-totoko-walk .shoujo-figure,
+  .shoujo-kirakira-float {
+    animation: none !important;
+  }
+}

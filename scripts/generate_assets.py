@@ -356,6 +356,58 @@ def avatar_rose():
     return _avatar(c["rose_soft"], c["sun_soft"], c["rose"])
 
 
+# The Petit Chibi Guild, as profile pictures.
+#
+# The six companions can be worn as an avatar, in the household and on
+# the profile. The colours here are the same ones the drawing uses in
+# `frontend/src/components/mascot/petitChibiCast.js` - if one is
+# changed there it has to be changed here, which is why they are
+# written out rather than guessed: an avatar that is nearly the
+# character is worse than one that plainly is.
+PETIT_AVATARS = {
+    # id: (hair, face, cloth, iris)
+    "mone": ("#6E473B", "#FBE6DA", "#FCE8E6", "#9E6B55"),
+    "kaneru": ("#6D5448", "#FBE6DA", "#EFECE6", "#6B9E88"),
+    "kogane": ("#B8864B", "#FBE6DA", "#FFFDF5", "#C9A227"),
+    "zenimaru": ("#3E2723", "#FBE6DA", "#E3F2EA", "#D08C60"),
+    "minori": ("#5A3E48", "#FBE6DA", "#F4EFFA", "#9C8AA5"),
+    "koneko": ("#D49A6A", "#FBE6DA", "#FFFDF9", "#C9A227"),
+}
+
+
+def _petit_avatar(persona):
+    """
+    One of the guild, as a round portrait.
+
+    It is the same head the popover's avatar dock draws, at avatar
+    size: the hair colour over the face, two eyes with a catchlight
+    each, and the character's own cloth colour behind them. The cat
+    gets her ears.
+    """
+    hair, face, cloth, iris = PETIT_AVATARS[persona]
+    ears = ""
+    if persona == "koneko":
+        ears = (
+            f'\n  <path d="M38 36 L32 8 L66 30 Z" fill="{cloth}" '
+            f'stroke="{hair}" stroke-width="3" stroke-linejoin="round"/>'
+            f'\n  <path d="M90 36 L96 8 L62 30 Z" fill="{cloth}" '
+            f'stroke="{hair}" stroke-width="3" stroke-linejoin="round"/>'
+        )
+    body = f"""  <circle cx="64" cy="64" r="60" fill="{cloth}"/>{ears}
+  <path d="M64 20 C96 20 112 42 109 64 C106 88 88 106 64 106
+           C40 106 22 88 19 64 C16 42 32 20 64 20 Z"
+        fill="{face}" stroke="{hair}" stroke-width="3.2" stroke-linejoin="round"/>
+  <path d="M64 17 C32 17 16 42 19 67 C30 48 44 40 60 40
+           C82 40 103 48 109 67 C112 42 96 17 64 17 Z" fill="{hair}"/>
+  <circle cx="48" cy="70" r="9" fill="{iris}"/>
+  <circle cx="80" cy="70" r="9" fill="{iris}"/>
+  <circle cx="45" cy="67" r="3.2" fill="#FFFFFF"/>
+  <circle cx="77" cy="67" r="3.2" fill="#FFFFFF"/>
+  <path d="M58 86 Q64 92 70 86" stroke="#4A3540" stroke-width="2.6"
+        fill="none" stroke-linecap="round"/>"""
+    return svg(128, 128, body, f"{persona} avatar")
+
+
 # ---------------------------------------------------------------------------
 # The map pins
 #
@@ -444,6 +496,16 @@ ASSETS = {
     "avatar-sun": ("brand", avatar_sun),
     "avatar-sky": ("brand", avatar_sky),
     "avatar-rose": ("brand", avatar_rose),
+    # The guild, wearable as a profile picture. `default=persona` binds
+    # the loop variable at definition time; a bare closure over it
+    # would give all six the last name in the list.
+    **{
+        f"avatar-petit-{persona}": (
+            "brand",
+            lambda persona=persona: _petit_avatar(persona),
+        )
+        for persona in PETIT_AVATARS
+    },
     "pin-minimarket": ("pin", pin_minimarket),
     "pin-supermarket": ("pin", pin_supermarket),
     "pin-restaurant": ("pin", pin_restaurant),

@@ -201,7 +201,10 @@ check('the reader can switch companion, and the choice is remembered', () => {
   assert.ok(MASCOT.includes("PERSONA_KEY = 'fm.mascot.persona'"), 'a place to remember it');
   assert.ok(MASCOT.includes('localStorage.setItem'), 'it is written');
   assert.ok(MASCOT.includes('localStorage.getItem'), 'and read back');
-  assert.ok(MASCOT.includes('data-testid={`shoujo-persona-${p}`}'), 'the switcher pills');
+  // The two-pill switcher became the guild's six-portrait dock plus
+  // an "auto" button; the per-character testid is the same shape.
+  assert.ok(MASCOT.includes('data-testid={`shoujo-persona-${id}`}'), 'a portrait per character');
+  assert.ok(MASCOT.includes('shoujo-persona-auto'), 'and the auto-by-page button');
   assert.ok(/catch\s*\{/.test(MASCOT), 'a browser that refuses storage still works');
 });
 
@@ -258,9 +261,13 @@ check('greeting it springs and bursts petals', () => {
 });
 
 check('a reader who asked for less movement gets a still character', () => {
-  const reduced = CSS.slice(CSS.lastIndexOf('@media (prefers-reduced-motion: reduce)'));
+  // There are several reduced-motion blocks in this sheet now, one per
+  // group of animations. Reading only the last one tested whichever
+  // group happened to be appended most recently, so every block is
+  // joined and searched instead.
+  const blocks = CSS.split('@media (prefers-reduced-motion: reduce)').slice(1).join('\n');
   for (const sel of ['.shoujo-rig-body', '.shoujo-rig-hair', '.shoujo-roaming-walker', '.shoujo-sparkle']) {
-    assert.ok(reduced.includes(sel), sel);
+    assert.ok(blocks.includes(sel), sel);
   }
 });
 

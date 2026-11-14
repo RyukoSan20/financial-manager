@@ -19,6 +19,10 @@ import { useState } from 'react';
 import { clsx } from 'clsx';
 import { useTranslation } from '../../i18n';
 import { getUserAvatarUrl } from '../../utils/avatarHelper';
+import {
+  PETIT_CHIBI_CAST,
+  PETIT_PERSONA_IDS,
+} from '../mascot/petitChibiCast.js';
 
 /**
  * The drawn faces.
@@ -31,6 +35,15 @@ export const AVATAR_CHOICES = [
   { id: 'avatar-sun', tone: 'warm' },
   { id: 'avatar-sky', tone: 'cool' },
   { id: 'avatar-rose', tone: 'bright' },
+  // The Petit Chibi Guild. The six companions can be worn as a face,
+  // which is the one picture a reader is likely to actually want: it
+  // is the character that keeps them company on the dashboard.
+  ...PETIT_PERSONA_IDS.map((persona) => ({
+    id: `avatar-petit-${persona}`,
+    tone: 'petit',
+    persona,
+    label: PETIT_CHIBI_CAST[persona].name,
+  })),
 ];
 
 const assetUrl = (name) =>
