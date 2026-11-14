@@ -232,14 +232,23 @@ check('the mascot draws in every state, outfit and frame', () => {
   assert.equal(seen.size, 16, 'all sixteen drawings are different');
 });
 
-check('the mascot is drawn as a flat stationery figure, not a pixel grid', () => {
-  // Phase 2: the sixteen-by-sixteen grid was harsh next to a rounded
-  // card, so the mascot is now a clean vector with one warm-brown
-  // outline. The pixel grid is still available as variant="pixel".
+check('the mascot is drawn as the shoujo companion, not a pixel grid', () => {
+  // Phase 3: the semi-chibi shoujo companion is the default drawing.
+  // The flat stationery character is still reachable as
+  // variant="kanahei" and the pixel grid as variant="pixel".
   const html = drawn.mascot({});
-  assert.ok(html.includes('viewBox="0 0 120 120"'), 'the vector viewBox');
-  assert.ok(html.includes('data-variant="kanahei"'), 'the flat drawing is the default');
+  assert.ok(html.includes('viewBox="0 0 200 260"'), 'the 2.5-head vector viewBox');
+  assert.ok(html.includes('data-variant="shoujo"'), 'the shoujo drawing is the default');
   assert.ok(!html.includes('shape-rendering="crispEdges"'), 'no pixel-grid edges');
+  for (const layer of ['shoujo-rig-body', 'shoujo-rig-hair', 'shoujo-face', 'shoujo-prop']) {
+    assert.ok(html.includes(`class="${layer}"`), layer);
+  }
+});
+
+check('the flat stationery drawing is still there, by name', () => {
+  const html = drawn.mascot({ variant: 'kanahei' });
+  assert.ok(html.includes('viewBox="0 0 120 120"'), 'the vector viewBox');
+  assert.ok(html.includes('data-variant="kanahei"'), 'asked for by name');
   for (const layer of ['kanahei-shadow', 'kanahei-ears', 'kanahei-body', 'kanahei-face', 'kanahei-prop']) {
     assert.ok(html.includes(`class="${layer}"`), layer);
   }
@@ -254,12 +263,16 @@ check('the old pixel grid is still there, for anyone who asks for it', () => {
   }
 });
 
-check('the mascot is a warm-brown outlined drawing, not rectangles', () => {
+check('the mascot is a berry-sepia outlined drawing, not rectangles', () => {
   const html = drawn.mascot({ state: 'celebrate', mode: 'business' });
-  assert.equal(count(html, '<rect'), 0, 'no pixel rectangles');
   assert.ok(count(html, '<path') > 0, 'it is drawn with paths');
-  // The outline is one warm brown, used everywhere.
-  assert.ok(html.includes('#4A3F35'), 'the warm stationery brown outline');
+  // The shoujo lineart is a warm berry-sepia, and never pure black.
+  assert.ok(html.includes('#4A3540'), 'the berry-sepia lineart');
+  assert.ok(!html.includes('#000000'), 'no pure black lineart');
+  // The flat drawing keeps its own warm stationery brown.
+  const flat = drawn.mascot({ variant: 'kanahei', state: 'celebrate' });
+  assert.equal(count(flat, '<rect'), 0, 'no pixel rectangles in the flat drawing');
+  assert.ok(flat.includes('#4A3F35'), 'the warm stationery brown outline');
 });
 
 check('the mascot bobs at rest and can be pressed', () => {
@@ -270,8 +283,10 @@ check('the mascot bobs at rest and can be pressed', () => {
 });
 
 check('the family wears the sprout and the business wears the coin', () => {
-  const family = drawn.mascot({ mode: 'family' });
-  const business = drawn.mascot({ mode: 'business' });
+  // The outfit belongs to the flat stationery drawing, which is the
+  // one that has a mode-dependent prop.
+  const family = drawn.mascot({ variant: 'kanahei', mode: 'family' });
+  const business = drawn.mascot({ variant: 'kanahei', mode: 'business' });
   // The sprout is sage green; the business coin is butter gold.
   assert.ok(family.includes('#52796F'));
   assert.ok(business.includes('#F4E285'));

@@ -28,6 +28,7 @@ import { formatNative } from '../utils/format';
 import { computeBill, largestRemainderSplit } from '../utils/receiptBill';
 import { amountsFromSplit, dailyFromSplit } from '../utils/budgetRecipes';
 import { ShieldCheck, Lock, Mail, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import ClampShoujoMascot from '../components/mascot/ClampShoujoMascot';
 
 // The switch. It is read in ONE place, so it cannot be honoured on
 // one screen and ignored on another by a mistake.
@@ -143,6 +144,19 @@ const LoginPreview = ({ W }) => {
         <p className="login-gateway__preview-head">{W.preview_badge}</p>
         <h2 className="login-gateway__preview-title">{W.preview_title}</h2>
         <p className="login-gateway__preview-lead">{W.preview_lead}</p>
+
+        {/* The companion, before the reader has an account. It can be
+            asked a question here too, so the app answers something
+            before it asks for anything. */}
+        <div className="login-gateway__mascot" data-testid="login-mascot">
+          <ClampShoujoMascot
+            size={132}
+            mood="happy"
+            roaming
+            interactive
+            label={W.preview_title}
+          />
+        </div>
 
         <div className="login-gateway__cards">
           {/* The budget. */}

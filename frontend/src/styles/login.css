@@ -758,3 +758,11 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* The companion on the sign-in showcase. */
+.login-gateway__mascot {
+  display: flex;
+  justify-content: center;
+  margin: 0.5rem 0 1rem;
+  overflow: visible;
+}

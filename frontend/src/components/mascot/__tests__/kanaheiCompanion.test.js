@@ -152,10 +152,15 @@ check('a stamp opens the hover board with its episode', () => {
 // The wiring
 // ---------------------------------------------------------------------------
 
-check('the mascot shows the flat drawing by default, and keeps the old one', () => {
-  assert.ok(RIGGED.includes("variant = 'kanahei'"), 'the flat drawing is the default');
-  assert.ok(RIGGED.includes("variant !== 'pixel'"), 'the flat drawing is drawn');
-  assert.ok(RIGGED.includes('<KanaheiStationeryMascot'), 'it is the Kakeibo one');
+check('the shoujo drawing is the default, and the older two are kept', () => {
+  // Phase 3: the shoujo companion is the default. The flat Kakeibo
+  // drawing this file is about is still rendered, by name, and so is
+  // the old pixel grid.
+  assert.ok(RIGGED.includes("variant = 'shoujo'"), 'the shoujo drawing is the default');
+  assert.ok(RIGGED.includes('<ClampShoujoMascot'), 'and it is drawn');
+  assert.ok(RIGGED.includes("variant !== 'pixel'"), 'the flat drawing is still drawn');
+  assert.ok(RIGGED.includes('<KanaheiStationeryMascot'), 'it is still the Kakeibo one');
+  assert.ok(RIGGED.includes('variant="kanahei"'), 'reachable by name');
   assert.ok(RIGGED.includes('variant="pixel"'), 'the old grid is still there');
 });
 

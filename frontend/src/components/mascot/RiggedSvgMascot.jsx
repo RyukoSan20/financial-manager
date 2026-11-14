@@ -35,6 +35,7 @@ import {
   mascotLayers,
 } from './mascotFrames.js';
 import KanaheiStationeryMascot from './KanaheiStationeryMascot.jsx';
+import ClampShoujoMascot from './ClampShoujoMascot.jsx';
 
 // How long a mood lasts before the mascot is at rest again.
 const MOOD_MS = 2200;
@@ -95,9 +96,16 @@ const RiggedSvgMascot = forwardRef(function RiggedSvgMascot(
     className = '',
     // The first frame to draw. The timer takes over from there.
     initialFrame = 0,
-    // `kanahei` is the flat stationery drawing; `pixel` is the old
-    // sixteen-by-sixteen grid.
-    variant = 'kanahei',
+    // `shoujo` is the semi-chibi shoujo companion, and it is what a
+    // page gets when it does not ask for anything. `kanahei` is the
+    // flat stationery drawing it replaced; `pixel` is the old
+    // sixteen-by-sixteen grid. Both are still reachable by name.
+    variant = 'shoujo',
+    // Passed through to the shoujo companion: whether it strolls, and
+    // whether it can be asked a question.
+    roaming = false,
+    interactive = true,
+    persona,
     onClick,
   },
   ref
@@ -184,6 +192,40 @@ const RiggedSvgMascot = forwardRef(function RiggedSvgMascot(
       ? 'mascot-shake'
       : 'mascot-jump'
     : 'mascot-float';
+
+  // The shoujo companion - the default drawing.
+  if (variant === 'shoujo') {
+    return (
+      <span
+        className={`mascot-root ${className}`}
+        data-state={current}
+        data-mode={mode}
+        data-frame={frame}
+        data-variant="shoujo"
+      >
+        <span className={`mascot-figure ${motion}`}>
+          <ClampShoujoMascot
+            persona={persona}
+            mood={current}
+            size={size}
+            label={label}
+            said={said}
+            roaming={roaming}
+            interactive={interactive}
+            onClick={onMascotClick}
+          />
+        </span>
+
+        {burst ? (
+          <span className="mascot-sparkles" key={burst} aria-hidden="true">
+            {SPARKS.map((spark) => (
+              <Spark key={spark.id} spark={spark} />
+            ))}
+          </span>
+        ) : null}
+      </span>
+    );
+  }
 
   // The flat stationery drawing.
   if (variant !== 'pixel') {

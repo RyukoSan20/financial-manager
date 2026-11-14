@@ -1269,6 +1269,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   state: balanceValue < 0 ? 'alert' : 'idle',
                   label: t('dashboard.total_balance'),
                   lines: [t('dashboard.balance_caption')],
+                  // On the hero the companion strolls along the top
+                  // edge of the ticket and can be asked a question.
+                  roaming: true,
+                  interactive: true,
                 }}
               >
                 {/* The amount is one unbroken line: Rp and the digits

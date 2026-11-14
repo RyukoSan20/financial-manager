@@ -730,3 +730,293 @@
     opacity: 1;
   }
 }
+
+
+/* =====================================================================
+   The shoujo companion.
+
+   Five channels, each on its own element so they do not fight:
+
+     1. the body breathes          .shoujo-rig-body
+     2. the hair follows, late     .shoujo-rig-hair
+     3. the eyes blink             (a timer in the component, not here)
+     4. the character strolls      .shoujo-roaming-walker
+     5. it springs when greeted    .shoujo-button.is-greeted
+
+   The hair runs on the same period as the breath but a third of a
+   beat behind it. That lag is the whole trick: hair that moves in
+   time with the body looks welded to it.
+   ===================================================================== */
+
+.shoujo-root {
+  display: inline-block;
+  position: relative;
+  line-height: 0;
+}
+
+.shoujo-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  line-height: 0;
+  display: inline-block;
+}
+
+.shoujo-button:focus-visible {
+  outline: 2px solid #52796F;
+  outline-offset: 4px;
+  border-radius: 18px;
+}
+
+.shoujo-figure {
+  overflow: visible;
+  display: block;
+}
+
+/* 1. breathing: a slow rise and fall with a small pendulum tilt. */
+.shoujo-rig-body {
+  animation: shoujoBreathe 3.2s ease-in-out infinite;
+  transform-origin: 100px 230px;
+  transform-box: view-box;
+}
+
+@keyframes shoujoBreathe {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50%      { transform: translateY(-4px) rotate(1.5deg); }
+}
+
+/* 2. the hair and the ribbons, a beat behind the body. */
+.shoujo-rig-hair {
+  animation: shoujoHairBreeze 3.2s ease-in-out infinite;
+  animation-delay: -1.05s;
+  transform-origin: 100px 50px;
+  transform-box: view-box;
+}
+
+@keyframes shoujoHairBreeze {
+  0%, 100% { transform: rotate(-2deg); }
+  50%      { transform: rotate(2deg); }
+}
+
+/* the prop drifts gently too, so the hands do not look locked. */
+.shoujo-prop {
+  animation: shoujoPropFloat 4.4s ease-in-out infinite;
+  transform-origin: 100px 160px;
+  transform-box: view-box;
+}
+
+@keyframes shoujoPropFloat {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50%      { transform: translateY(-2.5px) rotate(1deg); }
+}
+
+.shoujo-quill {
+  animation: shoujoQuillDrift 3.6s ease-in-out infinite;
+  transform-origin: 126px 142px;
+  transform-box: view-box;
+}
+
+@keyframes shoujoQuillDrift {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50%      { transform: translateY(-3px) rotate(6deg); }
+}
+
+/* 4. the stroll, with the feet alternating under it. */
+.shoujo-roaming-walker {
+  animation: shoujoRoam 14s ease-in-out infinite;
+}
+
+@keyframes shoujoRoam {
+  0%        { transform: translateX(0) scaleX(1); }
+  44%       { transform: translateX(120px) scaleX(1); }
+  50%       { transform: translateX(120px) scaleX(-1); }
+  94%       { transform: translateX(0) scaleX(-1); }
+  100%      { transform: translateX(0) scaleX(1); }
+}
+
+.shoujo-roaming-walker .shoujo-rig-foot-left {
+  animation: shoujoStepLeft 0.72s ease-in-out infinite;
+  transform-origin: 86px 224px;
+  transform-box: view-box;
+}
+
+.shoujo-roaming-walker .shoujo-rig-foot-right {
+  animation: shoujoStepRight 0.72s ease-in-out infinite;
+  transform-origin: 114px 224px;
+  transform-box: view-box;
+}
+
+@keyframes shoujoStepLeft {
+  0%, 100% { transform: rotate(12deg); }
+  50%      { transform: rotate(-12deg); }
+}
+
+@keyframes shoujoStepRight {
+  0%, 100% { transform: rotate(-12deg); }
+  50%      { transform: rotate(12deg); }
+}
+
+/* Hovered or greeted, it stops where it is and faces the reader. */
+.shoujo-button.is-paused,
+.shoujo-button.is-paused .shoujo-rig-foot-left,
+.shoujo-button.is-paused .shoujo-rig-foot-right {
+  animation-play-state: paused;
+}
+
+/* 5. the greeting: a cheerful spring. */
+.shoujo-button.is-greeted .shoujo-figure {
+  animation: shoujoHop 620ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes shoujoHop {
+  0%   { transform: translateY(0) scale(1); }
+  35%  { transform: translateY(-14px) scale(1.04); }
+  65%  { transform: translateY(-4px) scale(0.99); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* the petals and stars that burst with the greeting. */
+.shoujo-sparkles {
+  pointer-events: none;
+}
+
+.shoujo-sparkle {
+  opacity: 0;
+  animation: shoujoSparkle 1.5s ease-out infinite;
+  animation-delay: var(--shoujo-spark-delay, 0ms);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes shoujoSparkle {
+  0%   { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  30%  { opacity: 1; transform: scale(1) rotate(45deg); }
+  100% { opacity: 0; transform: scale(0.5) rotate(140deg); }
+}
+
+/* --- the dialogue board --------------------------------------------- */
+
+.shoujo-board-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  line-height: 1.4;
+  min-width: 15rem;
+}
+
+.shoujo-persona-switch {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.15rem;
+  background: #F4F1EA;
+  border-radius: 9999px;
+}
+
+.shoujo-persona-pill {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  border-radius: 9999px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #5C6460;
+  cursor: pointer;
+}
+
+.shoujo-persona-pill.is-active {
+  background: #2F4842;
+  color: #FAF9F6;
+}
+
+.shoujo-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.shoujo-chip {
+  text-align: left;
+  border: 1px solid #EAE6DF;
+  background: #FFFDF9;
+  border-radius: 0.625rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.6875rem;
+  color: #1F2421;
+  cursor: pointer;
+}
+
+.shoujo-chip:hover:not(:disabled) {
+  background: #F4F1EA;
+}
+
+.shoujo-chip:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.shoujo-ask {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.shoujo-ask-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #EAE6DF;
+  border-radius: 0.625rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.6875rem;
+  background: #FFFDF9;
+  color: #1F2421;
+}
+
+.shoujo-ask-send {
+  border: 0;
+  border-radius: 0.625rem;
+  background: #2F4842;
+  color: #FAF9F6;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+
+.shoujo-ask-send:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.shoujo-ask-error {
+  font-size: 0.6875rem;
+  color: #B3261E;
+}
+
+.dark .shoujo-persona-switch { background: rgba(255, 255, 255, 0.08); }
+.dark .shoujo-persona-pill { color: #D7D3CB; }
+.dark .shoujo-chip,
+.dark .shoujo-ask-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #FAF9F6;
+}
+.dark .shoujo-ask-error { color: #F2B8B5; }
+
+/* A reader who asked for less movement gets a still character. It is
+   still a character, and the board still works. */
+@media (prefers-reduced-motion: reduce) {
+  .shoujo-rig-body,
+  .shoujo-rig-hair,
+  .shoujo-prop,
+  .shoujo-quill,
+  .shoujo-roaming-walker,
+  .shoujo-roaming-walker .shoujo-rig-foot-left,
+  .shoujo-roaming-walker .shoujo-rig-foot-right,
+  .shoujo-sparkle,
+  .shoujo-button.is-greeted .shoujo-figure {
+    animation: none !important;
+  }
+
+  .shoujo-sparkle { opacity: 0.9; }
+}
