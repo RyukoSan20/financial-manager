@@ -19,6 +19,7 @@
 
 import { clsx } from 'clsx';
 import { useTranslation } from '../../i18n';
+import batch3 from '../../i18n/keys_batch3';
 // The photographs are imported as modules rather than referenced by
 // path. Vite then hashes them into dist/assets/ alongside the code,
 // so the server serves them with a content type it recognises and
@@ -66,7 +67,12 @@ const SNAPS = [
 ];
 
 export default function EditorialScrapbook({ className = '' }) {
-  const { t } = useTranslation();
+  const { language } = useTranslation();
+  // These words live in the batch files, which are read directly
+  // rather than through `t()`: the batches are not merged into the
+  // main dictionary, so a `t('login_gateway....')` would never find
+  // them.
+  const W = batch3[language]?.login_gateway || batch3.id.login_gateway;
 
   return (
     <div
@@ -135,7 +141,7 @@ export default function EditorialScrapbook({ className = '' }) {
       ))}
 
       <p className="editorial-scrapbook__note col-span-full text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9E3B24]">
-        {t('login_gateway.snapbook_note', 'Tiga momen kecil, satu buku kas.')}
+        {W.snapbook_note}
       </p>
     </div>
   );

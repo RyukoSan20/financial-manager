@@ -640,7 +640,7 @@ export const Login = () => {
               under the part that matters. */}
           <p className="cute-overline mt-7">
             <span aria-hidden="true">✦</span>
-            {W.overline || t('login.overline', 'Hidup lebih tenang dengan Kakeibo pintar')}
+            {W.overline}
           </p>
           <h1 className="login-gateway__title mt-3">
             {W.title_lead}{' '}
