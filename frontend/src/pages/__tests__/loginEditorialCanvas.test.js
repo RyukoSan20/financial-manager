@@ -119,7 +119,9 @@ check('the page renders the shoujo companion', () => {
   assert.ok(LOGIN.includes('<ClampShoujoMascot'), 'the companion');
   assert.ok(LOGIN.includes("from '../components/mascot/ClampShoujoMascot'"), 'imported');
   assert.ok(LOGIN.includes('data-testid="login-mascot"'), 'on the page');
-  assert.ok(/roaming/.test(LOGIN), 'and it strolls');
+  // It used to stroll alone in a wide white box. It stands in the
+  // studio now, with the conversation beside it in the same card.
+  assert.ok(/inline/.test(LOGIN), 'and it sits inline in the studio card');
 });
 
 check('the page renders the drawn pixel icons, not emoji', () => {

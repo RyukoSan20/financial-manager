@@ -327,6 +327,76 @@ check('the photographs are imported, not addressed by a bare path', () => {
   assert.ok(!/src:\/\/images\/editorial/.test(book), 'no bare public path is left');
 });
 
+check('no page draws with the phone emoji font', () => {
+  // An emoji is drawn by the phone's font: different on every
+  // machine, blind to the colour scheme, and the signature of
+  // generated filler. Every drawing on these pages comes from the
+  // pixel icon family instead.
+  const slop = /[\u{1F300}-\u{1FAFF}]|[\u2728\u26A1\u2615]/u;
+  const watched = [
+    'src/pages/Login.jsx',
+    'src/components/layout/AddTransactionPage.jsx',
+    'src/features/transactions/nlp/timeOfDayChips.js',
+    'src/components/mascot/ClampShoujoMascot.jsx',
+    'src/components/transactions/QuickPillRow.jsx',
+    'src/data/categoryDictionary.js',
+  ];
+  for (const file of watched) {
+    const text = read(file);
+    const hit = text.match(slop);
+    assert.ok(!hit, `${file} draws "${hit && hit[0]}" with the emoji font`);
+  }
+  // And the words on the page carry none either.
+  for (const lang of ['id', 'en', 'ja']) {
+    const words = read(`src/i18n/${lang}.js`);
+    for (const key of ['chip_analyse', 'chip_snack', 'chip_record']) {
+      const line = words.split('\n').find((l) => l.includes(`${key}:`)) || '';
+      assert.ok(!slop.test(line), `${lang}.${key} still starts with an emoji`);
+    }
+  }
+  const batch3 = read('src/i18n/keys_batch3.js');
+  for (const line of batch3.split('\n')) {
+    if (line.includes('guest_cta:')) {
+      assert.ok(!/\u{1F680}/u.test(line), 'the guest button still carries the rocket');
+    }
+  }
+});
+
+check('the companion on the login page is a studio, not a popover', () => {
+  // The old layout was a wide white box with the figure alone at
+  // one side, and clicking it dropped a floating board over the
+  // simulator cards below. The studio lays the conversation INSIDE
+  // the card, beside the figure, so nothing floats and nothing is
+  // covered.
+  const login = read('src/pages/Login.jsx');
+  assert.ok(login.includes('inline'), 'the login mascot is not inline');
+  assert.ok(login.includes('md:grid-cols-12'), 'the studio card is not a 12-column grid');
+  const mascot = read('src/components/mascot/ClampShoujoMascot.jsx');
+  assert.ok(mascot.includes('shoujo-studio'), 'there is no studio layout');
+  assert.ok(mascot.includes("data-testid=\"shoujo-studio\""), 'the studio cannot be found by tests');
+  assert.ok(mascot.includes('md:col-span-7'), 'the conversation does not take the left seven columns');
+  assert.ok(mascot.includes('md:col-span-5'), 'the stage does not take the right five columns');
+});
+
+check('the add page is a desk, not a narrow white column', () => {
+  const addPage = read('src/components/layout/AddTransactionPage.jsx');
+  // The desk: a 12-column bento, the ledger left, the bookkeeper
+  // and the receipt pad right.
+  assert.ok(addPage.includes('lg:grid-cols-12'), 'the page is still one column');
+  assert.ok(addPage.includes('lg:col-span-7'), 'the ledger does not take the left seven columns');
+  assert.ok(addPage.includes('lg:col-span-5'), 'the right column is missing');
+  assert.ok(addPage.includes('kakeibo-desk'), 'the desk canvas is missing');
+  assert.ok(addPage.includes('DESK_THEMES'), 'there are no desk papers to choose');
+  assert.ok(addPage.includes('kakeibo-bookkeeper'), 'the bookkeeper is missing');
+  // The neon red is gone.
+  assert.ok(!addPage.includes('bg-red-500'), 'the expense tab still shouts in neon red');
+  assert.ok(addPage.includes('#D96B43'), 'the terracotta is missing');
+  // The pills wrap instead of scrolling sideways.
+  const pills = read('src/components/transactions/QuickPillRow.jsx');
+  assert.ok(!pills.includes('overflow-x-auto'), 'the pill rows still scroll sideways');
+  assert.ok(pills.includes('flex-wrap'), 'the pill rows do not wrap');
+});
+
 check('a photograph that cannot be fetched falls back to a drawing', () => {
   const book = read('src/components/editorial/EditorialScrapbook.jsx');
   assert.ok(book.includes('onError'), 'the frame handles a failure');

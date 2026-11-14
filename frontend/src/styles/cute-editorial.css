@@ -200,3 +200,105 @@
     transform: none;
   }
 }
+
+
+/* ============================================================
+   The desk.
+
+   The add page used to be a narrow white column on a gray screen.
+   It is a desk now: warm paper with the notebook dot-grid on it,
+   and four papers to choose from - lace, washi, wood and night.
+   ============================================================ */
+
+.kakeibo-desk {
+  background-color: #F7F2E7;
+  background-image: radial-gradient(rgba(74, 53, 64, 0.08) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.kakeibo-desk--sakura {
+  background-color: #FBF0F0;
+}
+
+.kakeibo-desk--matcha {
+  background-color: #EFF4EC;
+}
+
+.kakeibo-desk--honey {
+  background-color: #F9F1DE;
+}
+
+.kakeibo-desk--starlight {
+  background-color: #EEEDF6;
+}
+
+/* The bars at the top and the bottom: the same paper, not white. */
+.kakeibo-desk__bar {
+  background: rgba(255, 253, 249, 0.92);
+  backdrop-filter: blur(6px);
+  border-bottom: 2px solid #4A3540;
+}
+
+.kakeibo-desk__bar:last-child,
+.kakeibo-desk .fixed.kakeibo-desk__bar {
+  border-bottom: 0;
+  border-top: 2px solid #4A3540;
+}
+
+/* The four papers, as swatches. */
+.kakeibo-desk__switch {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.kakeibo-desk__swatch {
+  width: 26px;
+  height: 26px;
+  padding: 2px;
+  border: 2px solid #4A3540;
+  border-radius: 9999px;
+  background: #FFFDF9;
+  box-shadow: 0 2px 0 #E2D6C3;
+  transition: transform 0.15s ease;
+}
+
+.kakeibo-desk__swatch span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+}
+
+.kakeibo-desk__swatch.is-active {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 0 #E2D6C3;
+}
+
+/* The bookkeeper's card: a stage along the bottom for the walk. */
+.kakeibo-bookkeeper-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 9.5rem;
+  border: 2px solid #4A3540;
+  border-radius: 24px;
+  background: #FFFDF9;
+  box-shadow: 0 6px 0 #E2D6C3;
+}
+
+.kakeibo-bookkeeper-card::after {
+  /* The floor it walks on. */
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22px;
+  background: repeating-linear-gradient(
+    90deg,
+    #EAD9C3 0 26px,
+    #E2CDB2 26px 52px
+  );
+  border-top: 2px solid #4A3540;
+  pointer-events: none;
+}

@@ -1194,3 +1194,99 @@
     animation: none !important;
   }
 }
+
+
+/* ============================================================
+   The studio.
+
+   The same conversation as the floating board, laid INSIDE a card:
+   the words on the left, the character on a stage on the right.
+   It exists because the floating board, opened on the login page,
+   dropped over the simulator cards below it. A conversation that
+   is part of the card cannot cover anything.
+   ============================================================ */
+
+.shoujo-studio .shoujo-board-body {
+  /* The board body was written for a narrow floating card; in the
+     studio it may breathe. */
+  max-width: none;
+}
+
+.shoujo-studio-stage {
+  padding: 0.75rem;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 50% 62%, rgba(244, 226, 133, 0.5) 0%, rgba(253, 232, 228, 0.65) 46%, transparent 72%);
+}
+
+/* A little shoujo air: two soft petals drifting on the stage. */
+.shoujo-studio-stage::before,
+.shoujo-studio-stage::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 60% 40% 55% 45%;
+  background: #F6C6CF;
+  opacity: 0.85;
+  pointer-events: none;
+  animation: shoujo-petal-drift 7s ease-in-out infinite;
+}
+
+.shoujo-studio-stage::before {
+  top: 12%;
+  left: 16%;
+}
+
+.shoujo-studio-stage::after {
+  top: 22%;
+  right: 14%;
+  width: 7px;
+  height: 7px;
+  background: #F4E285;
+  border-radius: 50%;
+  animation-delay: -3.2s;
+}
+
+@keyframes shoujo-petal-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(6px, 14px, 0) rotate(40deg); }
+}
+
+/* What the character is saying, as a badge above its head. */
+.shoujo-studio-bubble {
+  position: relative;
+  z-index: 1;
+  max-width: 15rem;
+  margin-bottom: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  border: 2px solid #4A3540;
+  border-radius: 14px;
+  background: #FFFDF9;
+  box-shadow: 0 3px 0 #E2D6C3;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #2C221E;
+  text-align: center;
+}
+
+.shoujo-studio-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%) rotate(45deg);
+  background: #FFFDF9;
+  border-right: 2px solid #4A3540;
+  border-bottom: 2px solid #4A3540;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shoujo-studio-stage::before,
+  .shoujo-studio-stage::after {
+    animation: none;
+  }
+}

@@ -12,12 +12,13 @@ import { createGroup, addMember, createExpense, assignItems } from "../../servic
 import { fetchBootstrap, recordTokens, extractTokens } from "../../features/transactions/nlp/api.js";
 import { useTranslation } from "../../i18n";
 import { emitDataMutated } from "../../utils/dataSyncBus";
-import { IconText } from "../ui/IconText";
 import { X } from "lucide-react";
 import { buildFlag } from "../../utils/featureFlags";
 import { batch1, fill } from "../../i18n/keys_batch1";
 import { categoryName } from '../../utils/categoryName';
-import { combinedLabel } from '../../data/categoryDictionary';
+import { combinedLabel, pixelIconForCategory } from '../../data/categoryDictionary';
+import ClampShoujoMascot from '../mascot/ClampShoujoMascot';
+import PixelArtBusinessIcon from '../ui/PixelArtBusinessIcon';
 import { subCategoryName } from '../../features/transactions/nlp/subCategories.js';
 import CategoryTreeSheet from '../transactions/CategoryTreeSheet';
 import QuickPillRow from '../transactions/QuickPillRow';
@@ -64,6 +65,22 @@ const CATEGORY_KEYWORDS = [
 // The amounts the reader can reach with one tap.
 const QUICK_AMOUNTS = [5000, 10000, 15000, 25000, 50000, 100000, 200000, 500000, 1000000];
 
+/**
+ * The desks.
+ *
+ * Four papers the page can be laid on, named like stationery and
+ * tinted like the accent themes: a lace pink, a washi green, a wood
+ * amber and a quiet night blue. The choice is remembered.
+ */
+const DESK_THEMES = [
+  { id: 'sakura', name: 'Sakura Lace', tint: '#F6C6CF' },
+  { id: 'matcha', name: 'Matcha Washi', tint: '#BFD8C2' },
+  { id: 'honey', name: 'Honey Wood', tint: '#EAC98A' },
+  { id: 'starlight', name: 'Starlight', tint: '#B9B4D8' },
+];
+
+const DESK_KEY = 'fm.addtx.desk';
+
 const AddTransactionPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -71,6 +88,25 @@ const AddTransactionPage = () => {
   // With the polish switch off, the page keeps the drawings it has.
   const polished = buildFlag('UI_POLISH');
   const K = batch1[language]?.addTx || batch1.id.addTx;
+
+  // The paper the desk is covered with.
+  const [deskTheme, setDeskTheme] = useState(() => {
+    try {
+      const held = window.localStorage.getItem(DESK_KEY);
+      return DESK_THEMES.some((d) => d.id === held) ? held : 'sakura';
+    } catch {
+      return 'sakura';
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(DESK_KEY, deskTheme);
+    } catch {
+      // A browser that refuses storage still gets a desk; it just
+      // will not be remembered.
+    }
+  }, [deskTheme]);
+
   // The currency the amount is written in. This is the currency of the
   // account the money goes into, because a transaction is in the
   // currency of its account. The display currency is a reading choice
@@ -130,6 +166,30 @@ const AddTransactionPage = () => {
   // UI state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // What the bookkeeper is doing. It watches the form: an amount
+  // being typed makes it attentive, a chosen category makes it
+  // celebrate, a resting form leaves it idle.
+  const [bookkeeperMood, setBookkeeperMood] = useState('idle');
+  useEffect(() => {
+    if (categoryId) {
+      setBookkeeperMood('celebrate');
+      const quiet = setTimeout(() => setBookkeeperMood('happy'), 1600);
+      return () => clearTimeout(quiet);
+    }
+    return undefined;
+  }, [categoryId]);
+  useEffect(() => {
+    if (!categoryId) setBookkeeperMood(amount ? 'happy' : 'idle');
+  }, [amount, categoryId]);
+
+  const bookkeeperLine = useMemo(() => {
+    if (saving) return K.saving;
+    if (categoryId && amount) return K.bookkeeperReady;
+    if (amount) return K.bookkeeperAmount;
+    return K.bookkeeperIdle;
+  }, [saving, categoryId, amount, K]);
+
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   // The sub-category the reader chose, and the name of the category
   // they want to make for themselves.
@@ -1063,26 +1123,20 @@ const AddTransactionPage = () => {
     return feeCat?.id || categories[0]?.id || 1;
   };
 
+  // The colour of each kind of transaction. Terracotta for money
+  // going out, deep sage for money coming in, slate-indigo for money
+  // moving between pockets. The old #EF4444 neon red shouted at the
+  // reader every time they recorded a coffee.
   const getTypeColor = () => {
-    if (type === "expense") return "bg-red-500";
-    if (type === "income") return "bg-green-500";
-    return "bg-primary-500";
+    if (type === "expense") return "bg-[#D96B43]";
+    if (type === "income") return "bg-[#2F6F4F]";
+    return "bg-[#4A5568]";
   };
 
-  const getCategoryIcon = (name) => {
-    const icons = {
-      "Makanan & Minuman": "🍔",
-      "Transportasi": "🚗",
-      "Belanja": "🛒",
-      "Pulsa & Data": "📱",
-      "Tagihan": "💡",
-      "Kesehatan": "💊",
-      "Hiburan": "🎬",
-      "Fashion": "👕",
-      "Pendapatan": "💰",
-    };
-    return icons[name] || "📋";
-  };
+  // The drawing for a category is decided in one place, from the
+  // pixel icon family, so the chips here match the rest of the page
+  // instead of the phone's emoji font.
+  const getCategoryIcon = (name) => pixelIconForCategory(name);
 
   if (loading) {
     return (
@@ -1096,14 +1150,14 @@ const AddTransactionPage = () => {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="shape-card rounded-xl p-6 text-center max-w-sm">
-          <div className="text-4xl mb-4">⚠️</div>
+          <div className="mb-4 flex justify-center"><PixelArtBusinessIcon name="chat_question" size={40} /></div>
           <h2 className="font-semibold text-lg mb-2">{K.loadFailedTitle}</h2>
           <p className="text-gray-600 mb-4">{loadError}</p>
           <button
             onClick={loadData}
             className="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium"
           >
-            <IconText name="repeat" emoji="🔄" on={polished}>{K.retry}</IconText>
+            <span className="inline-flex items-center gap-1.5"><PixelArtBusinessIcon name="receipt" size={16} />{K.retry}</span>
           </button>
         </div>
       </div>
@@ -1111,19 +1165,36 @@ const AddTransactionPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-32">
+    <div className={`min-h-screen pb-32 kakeibo-desk kakeibo-desk--${deskTheme}`} data-testid="kakeibo-desk">
       {/* Header */}
-      <div className="bg-white px-4 py-3 border-b sticky top-0 z-10">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          <button onClick={() => navigate(-1)} className="p-2">
+      <div className="kakeibo-desk__bar px-4 py-3 sticky top-0 z-10">
+        <div className="flex items-center justify-between gap-2 max-w-5xl mx-auto">
+          <button onClick={() => navigate(-1)} className="p-2" aria-label={K.addTransaction}>
             ✕
           </button>
           <h1 className="font-semibold">{K.addTransaction}</h1>
-          <div className="w-10"></div>
+          {/* The desk. Four papers to lay the page on, the same four
+              moods the accent themes use. */}
+          <div className="kakeibo-desk__switch no-scrollbar" role="group" aria-label="Desk">
+            {DESK_THEMES.map((desk) => (
+              <button
+                key={desk.id}
+                type="button"
+                onClick={() => setDeskTheme(desk.id)}
+                aria-pressed={deskTheme === desk.id}
+                className={`kakeibo-desk__swatch ${deskTheme === desk.id ? 'is-active' : ''}`}
+                title={desk.name}
+                data-testid={`desk-theme-${desk.id}`}
+              >
+                <span style={{ background: desk.tint }} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto p-4 space-y-4">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 p-4 sm:p-6">
+        <div className="lg:col-span-7 space-y-4 min-w-0">
         {/* Type Tabs */}
         <div className="flex bg-gray-100 rounded-xl p-1">
           {["expense", "income", "transfer"].map((t) => (
@@ -1151,7 +1222,7 @@ const AddTransactionPage = () => {
         <div className="shape-card rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100/80 dark:bg-amber-500/15 shrink-0">
-              <IconText name="zap" emoji="⚡" on={polished} className="w-4 h-4" />
+              <PixelArtBusinessIcon name="chat_info" size={18} />
             </span>
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
               {K.quickType}
@@ -1174,7 +1245,7 @@ const AddTransactionPage = () => {
                   aria-label={`${chip.label} ${chip.amount}`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-200 border border-primary-100 dark:border-primary-900/40 hover:bg-primary-100/70 dark:hover:bg-primary-900/50 transition-colors"
                 >
-                  <span aria-hidden="true">{chip.emoji}</span>
+                  <PixelArtBusinessIcon name={chip.icon} size={14} />
                   <span>{chip.label}</span>
                   <span className="tabular-nums opacity-70">
                     {formatAmountInput(chip.amount)}
@@ -1252,7 +1323,7 @@ const AddTransactionPage = () => {
                     onClick={() => applyCombo(combo)}
                     className="inline-flex items-center gap-1.5 bg-white border border-slate-200/80 dark:border-white/10 rounded-full px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200 hover:border-emerald-400 hover:bg-emerald-50/70 dark:hover:bg-emerald-900/20 hover:text-emerald-900 dark:hover:text-emerald-100 hover:shadow-sm hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform] duration-150 cursor-pointer"
                   >
-                    <span aria-hidden="true">{getCategoryIcon(cat?.name)}</span>
+                    <PixelArtBusinessIcon name={getCategoryIcon(cat?.name)} size={14} />
                     <span className="max-w-[14rem] truncate">{what}</span>
                     <span className="text-slate-300 dark:text-slate-600">·</span>
                     <span className="font-medium tabular-nums whitespace-nowrap">
@@ -1394,6 +1465,24 @@ const AddTransactionPage = () => {
           </div>
         </div>
 
+        </div>
+
+        <div className="lg:col-span-5 space-y-4 min-w-0">
+        {/* The bookkeeper. The same companion as everywhere else,
+            standing on its own card and reacting to what is being
+            written: happy while an amount is being typed, celebrating
+            when a category is chosen. */}
+        <div className="kakeibo-bookkeeper-card" data-testid="kakeibo-bookkeeper">
+          <ClampShoujoMascot
+            size={96}
+            mood={bookkeeperMood}
+            roaming
+            interactive={false}
+            said={bookkeeperLine}
+            label={K.addTransaction}
+          />
+        </div>
+
         {/* The receipt, written down line by line, with the discount,
             the tax, the service charge, and the sharing. It is here
             and not only behind "Ketik cepat", because a receipt is
@@ -1439,7 +1528,7 @@ const AddTransactionPage = () => {
           className="w-full shape-card rounded-xl p-4 flex items-center justify-between"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <span className="text-2xl shrink-0">{getCategoryIcon(selectedCategory?.name)}</span>
+            <span className="shrink-0"><PixelArtBusinessIcon name={getCategoryIcon(selectedCategory?.name)} size={28} /></span>
             <div className="text-left min-w-0">
               <p className="text-sm text-gray-500">{K.category}</p>
               {/* The category and the sub-category together.
@@ -1534,7 +1623,7 @@ const AddTransactionPage = () => {
             onClick={() => setShowDateSheet(true)}
             className="px-4 py-2 rounded-full text-sm font-medium bg-white text-gray-600"
           >
-            <IconText name="calendar" emoji="📅" on={true}>{K.pick}</IconText>
+            <span className="inline-flex items-center gap-1.5"><PixelArtBusinessIcon name="calendar" size={16} />{K.pick}</span>
           </button>
         </div>
 
@@ -1554,22 +1643,23 @@ const AddTransactionPage = () => {
             <span className="text-gray-400">›</span>
           </div>
         </button>
+        </div>
       </div>
 
       {/* Bottom Action */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
-        <div className="max-w-lg mx-auto flex gap-3">
+      <div className="fixed bottom-0 left-0 right-0 kakeibo-desk__bar border-t-0 p-4">
+        <div className="max-w-5xl mx-auto flex gap-3">
           <button
             onClick={() => handleSave(true)}
             disabled={saving}
-            className="flex-1 py-4 rounded-xl border-2 border-primary-500 text-primary-500 font-semibold disabled:opacity-50"
+            className="flex-1 py-3.5 rounded-full border-2 border-[#4A3540] bg-[#FFFDF9] text-[#2C221E] font-extrabold shadow-[0_4px_0_#E2D6C3] active:translate-y-0.5 active:shadow-[0_2px_0_#E2D6C3] transition-[transform,box-shadow] disabled:opacity-50"
           >
             + {K.more}
           </button>
           <button
             onClick={() => handleSave(false)}
             disabled={saving}
-            className={`flex-1 py-4 rounded-xl text-white font-semibold disabled:opacity-50 ${getTypeColor()}`}
+            className="flex-1 py-3.5 rounded-full border-2 border-[#4A3540] bg-[#2F4842] text-[#FFFDF9] font-extrabold shadow-[0_4px_0_#1B2E28] active:translate-y-0.5 active:shadow-[0_2px_0_#1B2E28] transition-[transform,box-shadow] disabled:opacity-50"
           >
             {saving ? K.saving : K.save}
           </button>
@@ -1737,7 +1827,7 @@ const AddTransactionPage = () => {
                 }}
                 className="w-full py-4 bg-primary-600 text-white rounded-xl font-medium flex items-center justify-center gap-2"
               >
-                <IconText name="location" emoji="📍" on={polished}>{K.useCurrentLocation}</IconText>
+                <span className="inline-flex items-center gap-1.5"><PixelArtBusinessIcon name="home" size={16} />{K.useCurrentLocation}</span>
               </button>
 
               {/* Manual Input */}
@@ -1770,7 +1860,7 @@ const AddTransactionPage = () => {
                   onClick={() => { setLocation(""); setLocationCoords(null); setShowLocationSheet(false); }}
                   className="w-full py-3 text-red-500 border border-red-200 rounded-xl"
                 >
-                  <IconText name="trash" emoji="🗑️" on={polished}>{K.removeLocation}</IconText>
+                  <span className="inline-flex items-center gap-1.5"><PixelArtBusinessIcon name="clipboard" size={16} />{K.removeLocation}</span>
                 </button>
               )}
             </div>

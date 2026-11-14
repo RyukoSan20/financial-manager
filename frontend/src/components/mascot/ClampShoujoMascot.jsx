@@ -26,6 +26,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { KakeiboHoverBoard } from '../ui/KakeiboHoverBoard';
+import PixelArtBusinessIcon from '../ui/PixelArtBusinessIcon';
 import { useTranslation } from '../../i18n';
 import api from '../../services/api';
 import {
@@ -106,6 +107,11 @@ export default function ClampShoujoMascot({
   // What it should say instead of its own greeting.
   said = '',
   tip = '',
+  // The studio: the board is laid out BESIDE the figure, inside the
+  // card, instead of floating above it. A floating board on the
+  // login page dropped over the simulator cards below; a board that
+  // is part of the card cannot cover anything.
+  inline = false,
 }) {
   const { t, language } = useTranslation();
   const uid = useId().replace(/:/g, '');
@@ -241,11 +247,14 @@ export default function ClampShoujoMascot({
     }
   }, [asking, t]);
 
+  // Each chip carries the name of its drawing. The drawing is from
+  // the pixel icon family, so it is the same on every machine - an
+  // emoji here was drawn by the phone's font and matched nothing.
   const quickChips = useMemo(
     () => [
-      { key: 'analyse', label: t('shoujo.chip_analyse', '✨ Analisis uangku hari ini') },
-      { key: 'snack', label: t('shoujo.chip_snack', '🍵 Aman jajan Rp 35rb?') },
-      { key: 'record', label: t('shoujo.chip_record', '📒 Bantu catat pengeluaran') },
+      { key: 'analyse', icon: 'calculator', label: t('shoujo.chip_analyse', 'Analisis uangku hari ini') },
+      { key: 'snack', icon: 'coffee', label: t('shoujo.chip_snack', 'Aman jajan Rp 35rb?') },
+      { key: 'record', icon: 'ledger_red', label: t('shoujo.chip_record', 'Bantu catat pengeluaran') },
     ],
     [t]
   );
@@ -267,86 +276,248 @@ export default function ClampShoujoMascot({
   const showBoard = interactive && (hovering || boardOpen);
   const spoken = answer || said || tip;
 
+  // The board's content: who this is, the dock of six, the three
+  // chips and the question line. The floating board and the studio
+  // card show the same thing - the only difference is where it sits.
+  const boardBody = (
+    <div className="shoujo-board-body" data-testid="shoujo-board">
+      {petit ? (
+        <div className="shoujo-petit-header" data-testid="shoujo-petit-header">
+          <span className="shoujo-petit-name">
+            {petit.name}
+            {kanji ? <span className="shoujo-petit-kanji">{kanji}</span> : null}
+          </span>
+          {tagline ? <span className="shoujo-petit-tagline">{tagline}</span> : null}
+          {bio ? <span className="shoujo-petit-bio">{bio}</span> : null}
+          {meaning ? (
+            <span className="shoujo-petit-meaning" title={meaning}>
+              {meaning}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div
+        className="shoujo-petit-dock"
+        role="group"
+        aria-label={t('shoujo.switch', 'Ganti teman')}
+        data-testid="shoujo-petit-dock"
+      >
+        <button
+          type="button"
+          onClick={() => choosePersona(AUTO_PERSONA)}
+          aria-pressed={stored === AUTO_PERSONA}
+          className={clsx('shoujo-petit-portrait is-auto', stored === AUTO_PERSONA && 'is-active')}
+          title={t('shoujo.auto_hint', 'Sesuaikan dengan halaman')}
+          data-testid="shoujo-persona-auto"
+        >
+          <span aria-hidden="true">✦</span>
+          <span className="shoujo-petit-portrait-name">
+            {t('shoujo.auto', 'Auto')}
+          </span>
+        </button>
+        {PETIT_PERSONA_IDS.map((id) => {
+          const member = PETIT_CHIBI_CAST[id];
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => choosePersona(id)}
+              aria-pressed={stored === id}
+              className={clsx('shoujo-petit-portrait', stored === id && 'is-active')}
+              title={`${member.name} (${member.kanji})`}
+              data-testid={`shoujo-persona-${id}`}
+            >
+              {/* A portrait, not a photograph: the head and the
+                  hair colour of the character themselves. */}
+              <svg viewBox="0 0 48 48" aria-hidden="true" className="shoujo-petit-portrait-art">
+                <circle cx="24" cy="24" r="22" fill={member.palette.cloth} />
+                <path
+                  d="M 24 8 C 36 8 42 16 41 24 C 40 33 33 40 24 40 C 15 40 8 33 7 24 C 6 16 12 8 24 8 Z"
+                  fill={member.palette.skin}
+                  stroke={member.palette.hairDark}
+                  strokeWidth="1.4"
+                />
+                <path
+                  d="M 24 7 C 12 7 6 16 7 25 C 11 18 16 15 22 15 C 30 15 38 18 41 25 C 42 16 36 7 24 7 Z"
+                  fill={member.palette.hairDark}
+                />
+                <circle cx="17" cy="26" r="3.4" fill={member.palette.irisMid} />
+                <circle cx="31" cy="26" r="3.4" fill={member.palette.irisMid} />
+                <circle cx="16" cy="25" r="1.2" fill="#FFFFFF" />
+                <circle cx="30" cy="25" r="1.2" fill="#FFFFFF" />
+              </svg>
+              <span className="shoujo-petit-portrait-name">{member.name}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Three things worth asking, one tap each. */}
+      <div className="shoujo-chips">
+        {quickChips.map((chip) => (
+          <button
+            key={chip.key}
+            type="button"
+            className="shoujo-chip"
+            onClick={() => ask(chip.label)}
+            disabled={asking}
+            data-testid={`shoujo-chip-${chip.key}`}
+          >
+            <PixelArtBusinessIcon name={chip.icon} size={16} />
+            {chip.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Or anything else, in the reader's own words. */}
+      <form
+        className="shoujo-ask"
+        onSubmit={(e) => {
+          e.preventDefault();
+          ask(question);
+          setQuestion('');
+        }}
+      >
+        <input
+          type="text"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder={t('shoujo.ask_placeholder', 'Tanya apa saja...')}
+          aria-label={t('shoujo.ask_placeholder', 'Tanya apa saja...')}
+          className="shoujo-ask-input"
+          data-testid="shoujo-ask-input"
+        />
+        <button
+          type="submit"
+          className="shoujo-ask-send"
+          disabled={asking || !question.trim()}
+          data-testid="shoujo-ask-send"
+        >
+          {asking ? t('shoujo.asking', '...') : t('shoujo.send', 'Tanya')}
+        </button>
+      </form>
+
+      {askError ? (
+        <p className="shoujo-ask-error" role="alert" data-testid="shoujo-ask-error">
+          {askError}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  // The figure itself, shared by both layouts.
+  const figureButton = (
+    <button
+      type="button"
+      className={clsx(
+        'shoujo-button',
+        roaming && !inline && 'shoujo-roaming-walker petit-totoko-walk',
+        bounced && 'petit-poyo-bounce',
+        (paused || greeted || showBoard) && 'is-paused',
+        greeted && 'is-greeted'
+      )}
+      onClick={handleClick}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      aria-label={label}
+      aria-expanded={interactive && !inline ? showBoard : undefined}
+      data-testid="shoujo-mascot-button"
+    >
+      <svg
+        viewBox="0 0 200 220"
+        width={size}
+        height={(size * 220) / 200}
+        role="img"
+        aria-label={label}
+        className="shoujo-figure"
+        data-testid="shoujo-mascot-svg"
+      >
+        <ShoujoDefs uid={uid} palette={palette} />
+
+        {/* Everything inside the sticker filter, so the white border
+            follows the silhouette of the whole character rather
+            than each part of it. */}
+        <g filter={`url(#${uid}-sticker)`}>
+          <g className="shoujo-rig-body">
+            {petit
+              ? renderPetitPersona(petit, uid, mood)
+              : persona === 'bishounen'
+              ? renderBishounen(palette, uid, mood)
+              : renderKobato(palette, uid, mood)}
+
+            {/* The blink is drawn over the open eye rather than
+                replacing it inside the persona, so a blink does not
+                rebuild the entire figure. */}
+            {blinking ? (
+              <g data-part="blink-cover">
+                {[ANATOMY.eyes.leftCx, ANATOMY.eyes.rightCx].map((cx) => (
+                  <g key={cx}>
+                    <ellipse
+                      cx={cx}
+                      cy={ANATOMY.eyes.cy}
+                      rx={ANATOMY.eyes.rx * 1.16}
+                      ry={ANATOMY.eyes.ry * 1.13}
+                      fill={palette.skin}
+                    />
+                    <path
+                      d={`M ${cx - ANATOMY.eyes.rx * 0.95} ${ANATOMY.eyes.cy}
+                          Q ${cx} ${ANATOMY.eyes.cy + ANATOMY.eyes.ry * 0.61}
+                          ${cx + ANATOMY.eyes.rx * 0.95} ${ANATOMY.eyes.cy}`}
+                      fill="none"
+                      stroke="#3A222C"
+                      strokeWidth="2.6"
+                      strokeLinecap="round"
+                    />
+                  </g>
+                ))}
+              </g>
+            ) : null}
+          </g>
+
+          {(greeted || mood === 'happy' || mood === 'celebrate') ? <ShoujoSparkles /> : null}
+
+          {/* The 2000s reaction symbol, above-right of the head. */}
+          {renderAnimeEmote(mood)}
+        </g>
+      </svg>
+    </button>
+  );
+
+  // The studio: one card, the conversation on the left, the
+  // character on a soft stage on the right. Nothing floats, so
+  // nothing can cover the cards below.
+  if (inline) {
+    return (
+      <div
+        className={clsx(
+          'shoujo-studio grid grid-cols-1 md:grid-cols-12 gap-4 items-center',
+          className
+        )}
+        data-shoujo-persona={persona}
+        data-shoujo-mood={mood}
+        data-testid="shoujo-studio"
+      >
+        <div className="md:col-span-7 min-w-0">{boardBody}</div>
+        <div className="md:col-span-5 flex flex-col items-center justify-center relative shoujo-studio-stage">
+          {spoken ? (
+            <span className="shoujo-studio-bubble" data-testid="shoujo-studio-bubble">
+              {spoken}
+            </span>
+          ) : null}
+          {figureButton}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <span
       className={clsx('shoujo-root relative inline-block', className)}
       data-shoujo-persona={persona}
       data-shoujo-mood={mood}
     >
-      <button
-        type="button"
-        className={clsx(
-          'shoujo-button',
-          roaming && 'shoujo-roaming-walker petit-totoko-walk',
-          bounced && 'petit-poyo-bounce',
-          (paused || greeted || showBoard) && 'is-paused',
-          greeted && 'is-greeted'
-        )}
-        onClick={handleClick}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        aria-label={label}
-        aria-expanded={interactive ? showBoard : undefined}
-        data-testid="shoujo-mascot-button"
-      >
-        <svg
-          viewBox="0 0 200 220"
-          width={size}
-          height={(size * 220) / 200}
-          role="img"
-          aria-label={label}
-          className="shoujo-figure"
-          data-testid="shoujo-mascot-svg"
-        >
-          <ShoujoDefs uid={uid} palette={palette} />
-
-          {/* Everything inside the sticker filter, so the white border
-              follows the silhouette of the whole character rather
-              than each part of it. */}
-          <g filter={`url(#${uid}-sticker)`}>
-            <g className="shoujo-rig-body">
-              {petit
-                ? renderPetitPersona(petit, uid, mood)
-                : persona === 'bishounen'
-                ? renderBishounen(palette, uid, mood)
-                : renderKobato(palette, uid, mood)}
-
-              {/* The blink is drawn over the open eye rather than
-                  replacing it inside the persona, so a blink does not
-                  rebuild the entire figure. */}
-              {blinking ? (
-                <g data-part="blink-cover">
-                  {[ANATOMY.eyes.leftCx, ANATOMY.eyes.rightCx].map((cx) => (
-                    <g key={cx}>
-                      <ellipse
-                        cx={cx}
-                        cy={ANATOMY.eyes.cy}
-                        rx={ANATOMY.eyes.rx * 1.16}
-                        ry={ANATOMY.eyes.ry * 1.13}
-                        fill={palette.skin}
-                      />
-                      <path
-                        d={`M ${cx - ANATOMY.eyes.rx * 0.95} ${ANATOMY.eyes.cy}
-                            Q ${cx} ${ANATOMY.eyes.cy + ANATOMY.eyes.ry * 0.61}
-                            ${cx + ANATOMY.eyes.rx * 0.95} ${ANATOMY.eyes.cy}`}
-                        fill="none"
-                        stroke="#3A222C"
-                        strokeWidth="2.6"
-                        strokeLinecap="round"
-                      />
-                    </g>
-                  ))}
-                </g>
-              ) : null}
-            </g>
-
-            {(greeted || mood === 'happy' || mood === 'celebrate') ? <ShoujoSparkles /> : null}
-
-            {/* The 2000s reaction symbol, above-right of the head. */}
-            {renderAnimeEmote(mood)}
-          </g>
-        </svg>
-      </button>
+      {figureButton}
 
       {showBoard ? (
         <KakeiboHoverBoard
@@ -357,134 +528,7 @@ export default function ClampShoujoMascot({
           visible
           className="shoujo-board"
         >
-          <div className="shoujo-board-body" data-testid="shoujo-board">
-            {/* Who is keeping the reader company, and what their name
-                means. The kanji is shown because the joke IS the
-                kanji - Mone is a sprout and a sound. */}
-            {petit ? (
-              <div className="shoujo-petit-header" data-testid="shoujo-petit-header">
-                <span className="shoujo-petit-name">
-                  {petit.name}
-                  {kanji ? <span className="shoujo-petit-kanji">{kanji}</span> : null}
-                </span>
-                {tagline ? <span className="shoujo-petit-tagline">{tagline}</span> : null}
-                {bio ? <span className="shoujo-petit-bio">{bio}</span> : null}
-                {meaning ? (
-                  <span className="shoujo-petit-meaning" title={meaning}>
-                    {meaning}
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
-
-            {/* The guild, as six portraits, plus "whoever belongs to
-                this page". */}
-            <div
-              className="shoujo-petit-dock"
-              role="group"
-              aria-label={t('shoujo.switch', 'Ganti teman')}
-              data-testid="shoujo-petit-dock"
-            >
-              <button
-                type="button"
-                onClick={() => choosePersona(AUTO_PERSONA)}
-                aria-pressed={stored === AUTO_PERSONA}
-                className={clsx('shoujo-petit-portrait is-auto', stored === AUTO_PERSONA && 'is-active')}
-                title={t('shoujo.auto_hint', 'Sesuaikan dengan halaman')}
-                data-testid="shoujo-persona-auto"
-              >
-                <span aria-hidden="true">✦</span>
-                <span className="shoujo-petit-portrait-name">
-                  {t('shoujo.auto', 'Auto')}
-                </span>
-              </button>
-              {PETIT_PERSONA_IDS.map((id) => {
-                const member = PETIT_CHIBI_CAST[id];
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => choosePersona(id)}
-                    aria-pressed={stored === id}
-                    className={clsx('shoujo-petit-portrait', stored === id && 'is-active')}
-                    title={`${member.name} (${member.kanji})`}
-                    data-testid={`shoujo-persona-${id}`}
-                  >
-                    {/* A portrait, not a photograph: the head and the
-                        hair colour of the character themselves. */}
-                    <svg viewBox="0 0 48 48" aria-hidden="true" className="shoujo-petit-portrait-art">
-                      <circle cx="24" cy="24" r="22" fill={member.palette.cloth} />
-                      <path
-                        d="M 24 8 C 36 8 42 16 41 24 C 40 33 33 40 24 40 C 15 40 8 33 7 24 C 6 16 12 8 24 8 Z"
-                        fill={member.palette.skin}
-                        stroke={member.palette.hairDark}
-                        strokeWidth="1.4"
-                      />
-                      <path
-                        d="M 24 7 C 12 7 6 16 7 25 C 11 18 16 15 22 15 C 30 15 38 18 41 25 C 42 16 36 7 24 7 Z"
-                        fill={member.palette.hairDark}
-                      />
-                      <circle cx="17" cy="26" r="3.4" fill={member.palette.irisMid} />
-                      <circle cx="31" cy="26" r="3.4" fill={member.palette.irisMid} />
-                      <circle cx="16" cy="25" r="1.2" fill="#FFFFFF" />
-                      <circle cx="30" cy="25" r="1.2" fill="#FFFFFF" />
-                    </svg>
-                    <span className="shoujo-petit-portrait-name">{member.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Three things worth asking, one tap each. */}
-            <div className="shoujo-chips">
-              {quickChips.map((chip) => (
-                <button
-                  key={chip.key}
-                  type="button"
-                  className="shoujo-chip"
-                  onClick={() => ask(chip.label)}
-                  disabled={asking}
-                  data-testid={`shoujo-chip-${chip.key}`}
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Or anything else, in the reader's own words. */}
-            <form
-              className="shoujo-ask"
-              onSubmit={(e) => {
-                e.preventDefault();
-                ask(question);
-                setQuestion('');
-              }}
-            >
-              <input
-                type="text"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder={t('shoujo.ask_placeholder', 'Tanya apa saja...')}
-                aria-label={t('shoujo.ask_placeholder', 'Tanya apa saja...')}
-                className="shoujo-ask-input"
-                data-testid="shoujo-ask-input"
-              />
-              <button
-                type="submit"
-                className="shoujo-ask-send"
-                disabled={asking || !question.trim()}
-                data-testid="shoujo-ask-send"
-              >
-                {asking ? t('shoujo.asking', '...') : t('shoujo.send', 'Tanya')}
-              </button>
-            </form>
-
-            {askError ? (
-              <p className="shoujo-ask-error" role="alert" data-testid="shoujo-ask-error">
-                {askError}
-              </p>
-            ) : null}
-          </div>
+          {boardBody}
         </KakeiboHoverBoard>
       ) : null}
     </span>

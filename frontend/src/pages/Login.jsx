@@ -152,14 +152,22 @@ const LoginPreview = ({ W }) => {
             asked a question here too, so the app answers something
             before it asks for anything. */}
         <div
-          className="login-gateway__card--glass login-gateway__card--sakura login-gateway__mascot"
+          className="login-gateway__mascot grid grid-cols-1 md:grid-cols-12 gap-4 items-center p-5 rounded-[24px] border-2 border-[#4A3540] bg-gradient-to-br from-[#FFFDF9] via-[#FFF6F4] to-[#F3F8F4] shadow-[0_6px_0_#E2D6C3]"
           data-testid="login-mascot"
         >
+          {/* The studio. The character's name, the dock of six, the
+              three questions and the ask line fill the left of the
+              card, and the character stands on a stage at the right.
+              Before this the character stood alone in a wide white
+              box, and clicking it dropped a floating board over the
+              simulator cards below. Nothing floats now: the whole
+              conversation is part of the card. */}
           <ClampShoujoMascot
-            size={132}
+            size={145}
             mood="happy"
-            roaming
             interactive
+            inline
+            className="md:col-span-12"
             label={W.preview_title}
           />
         </div>
