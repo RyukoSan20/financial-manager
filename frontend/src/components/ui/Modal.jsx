@@ -16,6 +16,13 @@ export const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={onClose} />
         <div
+          // The dialog role and aria-modal are how anything on the
+          // page can tell that a dialog is open - the companion
+          // closes its board when it sees one, so it is never left
+          // floating over a form.
+          role="dialog"
+          aria-modal="true"
+          aria-label={title || 'Dialog'}
           className={clsx(
             'relative bg-white rounded-xl shadow-xl w-full settle-in',
             sizes[size]

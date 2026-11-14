@@ -30,6 +30,8 @@ import { amountsFromSplit, dailyFromSplit } from '../utils/budgetRecipes';
 import { ShieldCheck, Lock, Mail, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import ClampShoujoMascot from '../components/mascot/ClampShoujoMascot';
 import PixelArtBusinessIcon from '../components/ui/PixelArtBusinessIcon';
+import EditorialScrapbook from '../components/editorial/EditorialScrapbook';
+import OrganicWaveDivider from '../components/editorial/OrganicWaveDivider';
 
 // The switch. It is read in ONE place, so it cannot be honoured on
 // one screen and ignored on another by a mistake.
@@ -367,6 +369,12 @@ const LoginPreview = ({ W }) => {
             </li>
           </ul>
         </section>
+
+        {/* The scrapbook. Three photographs taped into the page at
+            slightly different angles, the way a page of a paper
+            journal is put together. */}
+        <OrganicWaveDivider tone="oat" direction="up" className="my-2" />
+        <EditorialScrapbook className="mb-2" />
       </div>
     </div>
   );
@@ -380,7 +388,7 @@ export const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginMethod, setLoginMethod] = useState('email');
   const { login, googleLogin, guestLogin, isSupabase } = useAuth();
-  const { language } = useTranslation();
+  const { t, language } = useTranslation();
   const K = batch3[language]?.login;
   const W = batch3[language]?.login_gateway || batch3.id.login_gateway;
   const navigate = useNavigate();
@@ -442,10 +450,10 @@ export const Login = () => {
         <div className="w-full max-w-md">
           {/* Logo & Title */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-2">FinManager</h1>
-            <p className="text-primary-100">{K.tagline}</p>
+            <h1 className="text-4xl font-bold text-[#2C221E] mb-2">FinManager</h1>
+            <p className="text-[#5C6460]">{K.tagline}</p>
             {isSupabase && (
-              <span className="inline-block mt-2 px-2 py-1 bg-white/20 rounded-full text-xs text-white">
+              <span className="inline-block mt-2 px-2 py-1 bg-[#E3F2EA] rounded-full text-xs text-[#1B3B32]">
                 {K.powered_by}
               </span>
             )}
@@ -628,9 +636,15 @@ export const Login = () => {
             <span className="login-gateway__brand-name">FinManager</span>
           </Link>
 
-          <h1 className="login-gateway__title" style={{ marginTop: '1.75rem' }}>
+          {/* The overline, and the headline with a marker-pen wave
+              under the part that matters. */}
+          <p className="cute-overline mt-7">
+            <span aria-hidden="true">✦</span>
+            {W.overline || t('login.overline', 'Hidup lebih tenang dengan Kakeibo pintar')}
+          </p>
+          <h1 className="login-gateway__title mt-3">
             {W.title_lead}{' '}
-            <em>{W.title_accent}</em>
+            <em className="cute-underline">{W.title_accent}</em>
           </h1>
           <p className="login-gateway__lead">{W.lead}</p>
 

@@ -249,7 +249,7 @@ check('all six render a valid svg tree', async () => {
   for (const id of PETIT_PERSONA_IDS) {
     const html = d.html[id];
     assert.ok(html.includes('<svg'), `${id}: an svg`);
-    assert.ok(html.includes('viewBox="0 0 200 260"'), `${id}: the 2.5-head box`);
+    assert.ok(html.includes('viewBox="0 0 200 220"'), `${id}: the plump chibi box`);
     assert.ok(html.includes(`data-persona="${id}"`), `${id}: labelled`);
     assert.ok(html.includes(`data-petit-kanji="${EXPECTED[id].kanji}"`), `${id}: the kanji is in the drawing`);
     assert.ok(html.split('<path').length > 12, `${id}: drawn with many paths`);

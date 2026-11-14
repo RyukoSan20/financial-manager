@@ -108,7 +108,7 @@ check('both personas render a valid svg tree', async () => {
   const d = await renderBoth();
   for (const [name, html] of [['kobato', d.kobato], ['bishounen', d.bishounen]]) {
     assert.ok(html.includes('<svg'), `${name}: an svg`);
-    assert.ok(html.includes('viewBox="0 0 200 260"'), `${name}: the 2.5-head box`);
+    assert.ok(html.includes('viewBox="0 0 200 220"'), `${name}: the plump chibi box`);
     assert.ok(count(html, '<path') > 10, `${name}: drawn with many paths`);
     assert.ok(html.includes(`data-persona="${name}"`), `${name}: labelled`);
     assert.ok(html.includes('data-testid="shoujo-mascot-svg"'), `${name}: the testid`);
@@ -133,11 +133,19 @@ check('the eye is really drawn in seven layers', async () => {
   // Two eyes, each with the full stack.
   assert.equal(count(html, 'data-eye='), 2, 'two eyes');
   // Layer 1 the white, 2 the graded iris, 4 the pupil: three ellipses
-  // per eye at least, plus the catchlights.
+  // per eye at least, plus the catchlights. Their sizes come from
+  // the anatomy now, so they are the plump ones rather than
+  // hard-coded numbers.
   assert.ok(count(html, '<ellipse') >= 8, 'the stacked ellipses');
-  assert.ok(html.includes('rx="9.5" ry="11.5"'), 'the sclera');
-  assert.ok(html.includes('rx="8" ry="10.5"'), 'the iris');
-  assert.ok(html.includes('rx="3.8" ry="4.8"'), 'the pupil');
+  // The rendered markup carries the computed sizes, not the
+  // expressions: the sclera is 15 wide, the iris 12.6, the pupil 6.
+  assert.ok(html.includes('rx="15"'), 'the sclera');
+  assert.ok(html.includes('ry="18"'), 'and its height');
+  assert.ok(/rx="12\.6/.test(html), 'the iris');
+  assert.ok(/rx="6"/.test(html), 'the pupil');
+  // And the expressions themselves are in the art, so the eye
+  // cannot drift away from the anatomy.
+  assert.ok(ART.includes('const RX = ANATOMY.eyes.rx'), 'the eye reads its size from the anatomy');
   assert.ok(html.includes('rgba(58, 34, 44, 0.35)'), 'the lash shadow');
   assert.ok(html.includes('#FFF8E7'), 'the light along the bottom rim');
   // Three catchlights per eye: the big circle, the droplet, the star.
@@ -184,13 +192,15 @@ check('the gradient ids are unique per instance', () => {
   assert.ok(ART.includes('${uid}-sticker'), 'the filter id is scoped');
 });
 
-check('the 2.5-head proportions are held to the stated bands', () => {
-  // head 24..118, torso 114..196, legs 192..238 in a 200x260 box.
-  assert.ok(ART.includes('head: { top: 24, bottom: 118'), 'the head band');
-  assert.ok(ART.includes('torso: { top: 114, bottom: 196'), 'the torso band');
-  assert.ok(ART.includes('legs: { top: 192, bottom: 238'), 'the leg band');
-  assert.ok(ART.includes('leftCx: 80, rightCx: 120'), 'the eyes at 80 and 120');
-  assert.ok(ART.includes('chinY: 114'), 'the pointed chin');
+check('the plump proportions are held to the stated bands', () => {
+  // A chibi figurine: the head is 55% of the figure, the body is a
+  // short bell and the legs are two stubby pegs. In a 200x220 box.
+  assert.ok(ART.includes('head: { top: 18, bottom: 126'), 'the head band');
+  assert.ok(ART.includes('torso: { top: 120, bottom: 178'), 'the torso band');
+  assert.ok(ART.includes('legs: { top: 172, bottom: 208'), 'the leg band');
+  assert.ok(ART.includes('leftCx: 74, rightCx: 126'), 'the eyes at 74 and 126');
+  assert.ok(ART.includes('rx: 15, ry: 18'), 'and they are huge');
+  assert.ok(ART.includes('chinY: 124'), 'the broad lower cheek');
 });
 
 // ---------------------------------------------------------------------

@@ -31,12 +31,20 @@ export const INK = '#4A3540';
 export const STROKE_OUTER = 2.0;
 export const STROKE_INNER = 1.3;
 
-/** Where each band of the body sits, in the 200x260 box. */
+/**
+ * Where each band of the body sits, in the 200x220 box.
+ *
+ * The proportions are the plump ones a chibi figurine is moulded in:
+ * the head is 55% of the whole figure, the body is a short bell, and
+ * the legs are two stubby rounded pegs. The earlier version had a
+ * small head on a long body with two thin stick legs, which read as a
+ * stick figure rather than as a character.
+ */
 export const ANATOMY = Object.freeze({
-  head: { top: 24, bottom: 118, cx: 100, cy: 78, chinX: 100, chinY: 114 },
-  torso: { top: 114, bottom: 196, shoulderY: 120, hemY: 192 },
-  legs: { top: 192, bottom: 238, leftX: 86, rightX: 114 },
-  eyes: { leftCx: 80, rightCx: 120, cy: 84, rx: 9.5, ry: 11.5 },
+  head: { top: 18, bottom: 126, cx: 100, cy: 72, chinX: 100, chinY: 124 },
+  torso: { top: 120, bottom: 178, shoulderY: 124, hemY: 176 },
+  legs: { top: 172, bottom: 208, leftX: 84, rightX: 116 },
+  eyes: { leftCx: 74, rightCx: 126, cy: 74, rx: 15, ry: 18 },
 });
 
 /** The two personas' palettes. */
@@ -163,6 +171,11 @@ export function ShoujoDefs({ uid, palette }) {
  */
 export function renderShoujoEye(cx, cy, isBlinking, palette, uid, side = 'left') {
   const outward = side === 'left' ? -1 : 1;
+  // The eye is sized from the anatomy rather than from fixed
+  // numbers, so the plump proportions carry through to it: the eyes
+  // have to be huge on a head this wide or the face reads as a mask.
+  const RX = ANATOMY.eyes.rx;
+  const RY = ANATOMY.eyes.ry;
 
   if (isBlinking) {
     return (
@@ -182,60 +195,67 @@ export function renderShoujoEye(cx, cy, isBlinking, palette, uid, side = 'left')
     );
   }
 
+  // Every dimension below is a fraction of the eye's own size, so
+  // the seven layers stay in proportion to each other however the
+  // eye is scaled.
+  const s = RX / 9.5;
+
   return (
     <g data-eye={side} data-blinking="false">
       {/* 1. the white */}
-      <ellipse cx={cx} cy={cy} rx="9.5" ry="11.5" fill="#FFFDF9" />
+      <ellipse cx={cx} cy={cy} rx={RX} ry={RY} fill="#FFFDF9" />
       {/* 2. the graded iris */}
-      <ellipse cx={cx} cy={cy + 1} rx="8" ry="10.5" fill={`url(#${uid}-iris)`} />
+      <ellipse cx={cx} cy={cy + RY * 0.09} rx={RX * 0.84} ry={RY * 0.91} fill={`url(#${uid}-iris)`} />
       {/* 3. the lash shadow across the top third */}
       <path
-        d={`M ${cx - 8} ${cy - 4} Q ${cx} ${cy + 2} ${cx + 8} ${cy - 4} L ${cx + 8} ${cy - 9} Q ${cx} ${cy - 12} ${cx - 8} ${cy - 9} Z`}
+        d={`M ${cx - RX * 0.84} ${cy - RY * 0.35} Q ${cx} ${cy + RY * 0.17} ${cx + RX * 0.84} ${cy - RY * 0.35}
+            L ${cx + RX * 0.84} ${cy - RY * 0.78} Q ${cx} ${cy - RY * 1.04} ${cx - RX * 0.84} ${cy - RY * 0.78} Z`}
         fill="rgba(58, 34, 44, 0.35)"
       />
       {/* 4. the pupil */}
-      <ellipse cx={cx} cy={cy + 1.5} rx="3.8" ry="4.8" fill="#3A222C" />
+      <ellipse cx={cx} cy={cy + RY * 0.13} rx={RX * 0.4} ry={RY * 0.42} fill="#3A222C" />
       {/* 5. the light pooling along the bottom rim */}
       <path
-        d={`M ${cx - 6} ${cy + 7} Q ${cx} ${cy + 10.5} ${cx + 6} ${cy + 7}`}
+        d={`M ${cx - RX * 0.63} ${cy + RY * 0.61} Q ${cx} ${cy + RY * 0.91} ${cx + RX * 0.63} ${cy + RY * 0.61}`}
         fill="none"
         stroke="#FFF8E7"
-        strokeWidth="2"
+        strokeWidth={2 * s}
         strokeLinecap="round"
       />
       {/* 6. the three catchlights */}
-      <circle cx={cx - 3.5} cy={cy - 4} r="3.2" fill="#FFFFFF" />
-      <circle cx={cx + 3.2} cy={cy + 4.5} r="1.8" fill="#FFFFFF" />
+      <circle cx={cx - RX * 0.37} cy={cy - RY * 0.35} r={RX * 0.34} fill="#FFFFFF" />
+      <circle cx={cx + RX * 0.34} cy={cy + RY * 0.39} r={RX * 0.19} fill="#FFFFFF" />
       <path
-        d={`M ${cx + 4} ${cy - 6} L ${cx + 5.4} ${cy - 3} L ${cx + 4} ${cy} L ${cx + 2.6} ${cy - 3} Z`}
+        d={`M ${cx + RX * 0.42} ${cy - RY * 0.63} L ${cx + RX * 0.57} ${cy - RY * 0.32}
+            L ${cx + RX * 0.42} ${cy} L ${cx + RX * 0.27} ${cy - RY * 0.32} Z`}
         fill="#FFFFFF"
       />
       {/* 7. the lash crown and the double eyelid */}
       <path
-        d={`M ${cx - 10} ${cy - 10} Q ${cx} ${cy - 16} ${cx + 10} ${cy - 10}`}
+        d={`M ${cx - RX * 1.05} ${cy - RY * 0.87} Q ${cx} ${cy - RY * 1.39} ${cx + RX * 1.05} ${cy - RY * 0.87}`}
         fill="none"
         stroke="#3A222C"
-        strokeWidth="2.4"
+        strokeWidth={2.4 * s}
         strokeLinecap="round"
       />
       <path
-        d={`M ${cx - 8} ${cy - 13} Q ${cx} ${cy - 18} ${cx + 8} ${cy - 13}`}
+        d={`M ${cx - RX * 0.84} ${cy - RY * 1.13} Q ${cx} ${cy - RY * 1.56} ${cx + RX * 0.84} ${cy - RY * 1.13}`}
         fill="none"
         stroke="#7A5A64"
-        strokeWidth="1.1"
+        strokeWidth={1.1 * s}
         strokeLinecap="round"
       />
       {/* the two feathered tips at the outer corner */}
       <path
-        d={`M ${cx + outward * 9.5} ${cy - 10} l ${outward * 4} -3.5`}
+        d={`M ${cx + outward * RX} ${cy - RY * 0.87} l ${outward * RX * 0.42} -${RY * 0.3}`}
         stroke="#3A222C"
-        strokeWidth="1.6"
+        strokeWidth={1.6 * s}
         strokeLinecap="round"
       />
       <path
-        d={`M ${cx + outward * 9} ${cy - 6.5} l ${outward * 4.2} -1.6`}
+        d={`M ${cx + outward * RX * 0.95} ${cy - RY * 0.56} l ${outward * RX * 0.44} -${RY * 0.14}`}
         stroke="#3A222C"
-        strokeWidth="1.4"
+        strokeWidth={1.4 * s}
         strokeLinecap="round"
       />
     </g>
@@ -245,36 +265,43 @@ export function renderShoujoEye(cx, cy, isBlinking, palette, uid, side = 'left')
 /** The face every persona shares: the head shape, the cheeks, a mouth. */
 export function renderFace(mood, blinking, palette, uid) {
   const { head, eyes } = ANATOMY;
+  // The mouth sits low on the plump face, below the eyes, and a
+  // happy mouth is a wide open curve rather than a small one.
   const mouth =
     mood === 'happy' || mood === 'celebrate'
-      ? `M 94 100 Q 100 106 106 100`
+      ? `M 88 104 Q 100 114 112 104`
       : mood === 'alert'
-      ? `M 95 103 Q 100 99 105 103`
-      : `M 96 101 Q 100 104 104 101`;
+      ? `M 91 108 Q 100 101 109 108`
+      : `M 94 106 Q 100 111 106 106`;
 
   return (
     <g className="shoujo-face">
-      {/* the head, with a soft cheek contour and a delicate chin */}
+      {/* The head: a wide, soft mochi shape.
+          It is much wider than it is tall and its lower edge is a
+          broad curve rather than a pointed chin - the shape a
+          chibi figurine is moulded with. The earlier head was a
+          narrow oval with a pointed chin, which read as a small
+          head on a long body. */}
       <path
-        d={`M 100 ${head.top + 4}
-            C 128 ${head.top + 4} 142 ${head.cy - 4} 140 ${head.cy + 10}
-            C 138 ${head.cy + 26} 120 ${head.chinY} 100 ${head.chinY}
-            C 80 ${head.chinY} 62 ${head.cy + 26} 60 ${head.cy + 10}
-            C 58 ${head.cy - 4} 72 ${head.top + 4} 100 ${head.top + 4} Z`}
+        d="M 44 72
+           C 42 40 68 18 100 18
+           C 132 18 158 40 156 72
+           C 155 100 138 124 100 124
+           C 62 124 45 100 44 72 Z"
         fill={palette.skin}
         stroke={INK}
-        strokeWidth={STROKE_OUTER}
+        strokeWidth={STROKE_OUTER + 0.6}
         strokeLinejoin="round"
       />
-      {/* the blush, under the eyes */}
-      <ellipse cx="72" cy="96" rx="8" ry="4.5" fill={`url(#${uid}-cheek)`} />
-      <ellipse cx="128" cy="96" rx="8" ry="4.5" fill={`url(#${uid}-cheek)`} />
+      {/* The blush: warm peach airbrush ovals, wide and low. */}
+      <ellipse cx="58" cy="94" rx="12" ry="7" fill="#FF9E9E" opacity="0.55" />
+      <ellipse cx="142" cy="94" rx="12" ry="7" fill="#FF9E9E" opacity="0.55" />
 
       {renderShoujoEye(eyes.leftCx, eyes.cy, blinking, palette, uid, 'left')}
       {renderShoujoEye(eyes.rightCx, eyes.cy, blinking, palette, uid, 'right')}
 
       {/* the nose is a hint, and the mouth carries the mood */}
-      <path d="M 100 92 l 1.6 2.2 l -3.2 0 z" fill="#C89A8C" />
+      <path d="M 100 96 l 1.8 2.4 l -3.6 0 z" fill="#C89A8C" />
       <path
         d={mouth}
         fill="none"
@@ -312,21 +339,18 @@ export function renderKobato(palette, uid, mood) {
       {/* --- the body, drawn before the front hair ------------------- */}
       <g data-part="body">
         {/* the frilled dress: narrow at the shoulders, flared at the hem */}
+        {/* The bell: short and wide, under the very large head. */}
         <path
-          d="M 100 118
-             C 86 118 78 122 76 132
-             C 72 150 66 174 62 192
-             L 138 192
-             C 134 174 128 150 124 132
-             C 122 122 114 118 100 118 Z"
+          d="M 100 114 C 84 114 75 120 73 132 C 70 146 66 164 63 176
+             L 137 176 C 134 164 130 146 127 132 C 125 120 116 114 100 114 Z"
           fill={`url(#${uid}-cloth)`}
           stroke={INK}
-          strokeWidth={STROKE_OUTER}
+          strokeWidth={STROKE_OUTER + 0.6}
           strokeLinejoin="round"
         />
         {/* the scalloped lace along the hem */}
         <path
-          d="M 62 192 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0"
+          d="M 63 176 q 6 7 12 0 q 6 7 12 0 q 6 7 12 0 q 6 7 12 0 q 6 7 12 0 q 6 7 12 0"
           fill="#FFFDF9"
           stroke={INK}
           strokeWidth={STROKE_INNER}
@@ -334,47 +358,53 @@ export function renderKobato(palette, uid, mood) {
         />
         {/* the lace at the collar */}
         <path
-          d="M 82 124 q 4.5 6 9 0 q 4.5 6 9 0 q 4.5 6 9 0"
+          d="M 82 120 q 4.5 6 9 0 q 4.5 6 9 0 q 4.5 6 9 0"
           fill="#FFFDF9"
           stroke={INK}
           strokeWidth={STROKE_INNER}
         />
         {/* the chest ribbon */}
         <path
-          d="M 100 128 l -9 -6 l 0 10 z M 100 128 l 9 -6 l 0 10 z"
+          d="M 100 124 l -9 -6 l 0 10 z M 100 124 l 9 -6 l 0 10 z"
           fill={palette.bow}
           stroke={INK}
           strokeWidth={STROKE_INNER}
           strokeLinejoin="round"
         />
-        <circle cx="100" cy="128" r="2.6" fill={palette.bow} stroke={INK} strokeWidth="1" />
+        <circle cx="100" cy="124" r="2.8" fill={palette.bow} stroke={INK} strokeWidth="1" />
 
         {/* the arms, coming round to hold the bottle */}
         <path
-          d="M 78 132 C 70 146 74 158 88 162"
+          d="M 74 132 C 64 142 66 154 82 158"
           fill="none"
           stroke={INK}
-          strokeWidth={STROKE_OUTER}
+          strokeWidth={STROKE_OUTER + 0.6}
           strokeLinecap="round"
         />
         <path
-          d="M 122 132 C 130 146 126 158 112 162"
+          d="M 126 132 C 136 142 134 154 118 158"
           fill="none"
           stroke={INK}
-          strokeWidth={STROKE_OUTER}
+          strokeWidth={STROKE_OUTER + 0.6}
           strokeLinecap="round"
         />
 
-        {/* the legs and the ribbon shoes */}
-        <path d="M 86 192 l 0 32" stroke={INK} strokeWidth="6" strokeLinecap="round" />
-        <path d="M 114 192 l 0 32" stroke={INK} strokeWidth="6" strokeLinecap="round" />
+        {/* The legs: stubby rounded pegs, not strokes. */}
         <g className="shoujo-rig-foot-left">
-          <ellipse cx="86" cy="230" rx="9" ry="6" fill={palette.dressAlt} stroke={INK} strokeWidth={STROKE_INNER} />
-          <path d="M 86 224 l -4 -4 l 8 0 z" fill={palette.ribbon} stroke={INK} strokeWidth="1" />
+          <rect x="76" y="168" width="18" height="26" rx="9" fill={palette.skin} stroke={INK} strokeWidth={STROKE_OUTER} />
         </g>
         <g className="shoujo-rig-foot-right">
-          <ellipse cx="114" cy="230" rx="9" ry="6" fill={palette.dressAlt} stroke={INK} strokeWidth={STROKE_INNER} />
-          <path d="M 114 224 l -4 -4 l 8 0 z" fill={palette.ribbon} stroke={INK} strokeWidth="1" />
+          <rect x="106" y="168" width="18" height="26" rx="9" fill={palette.skin} stroke={INK} strokeWidth={STROKE_OUTER} />
+        </g>
+        <g className="shoujo-rig-foot-left">
+          <path d="M 74 192 q 11 -5 22 0 q 2 8 -4 10 l -14 0 q -6 -2 -4 -10 z"
+            fill="#4A3540" stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+          <path d="M 82 188 l -4 -4 l 8 0 z" fill={palette.ribbon} stroke={INK} strokeWidth="1" />
+        </g>
+        <g className="shoujo-rig-foot-right">
+          <path d="M 104 192 q 11 -5 22 0 q 2 8 -4 10 l -14 0 q -6 -2 -4 -10 z"
+            fill="#4A3540" stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+          <path d="M 112 188 l -4 -4 l 8 0 z" fill={palette.ribbon} stroke={INK} strokeWidth="1" />
         </g>
       </g>
 
@@ -385,12 +415,12 @@ export function renderKobato(palette, uid, mood) {
         {/* the bangs, with the zig-zag angel halo across them */}
         <path
           d="M 100 26
-             C 74 26 58 46 58 70
-             C 66 58 76 50 88 48
-             C 84 56 84 62 88 68
-             C 94 56 104 50 116 52
-             C 126 54 136 60 142 70
-             C 142 46 126 26 100 26 Z"
+             C 70 16 50 36 48 64
+             C 58 50 70 42 84 40
+             C 80 50 80 56 84 63
+             C 92 50 104 44 118 46
+             C 130 48 142 56 150 64
+             C 152 36 130 16 100 16 Z"
           fill={`url(#${uid}-hair)`}
           stroke={INK}
           strokeWidth={STROKE_OUTER}
@@ -406,14 +436,14 @@ export function renderKobato(palette, uid, mood) {
         />
         {/* twin side locks */}
         <path
-          d="M 60 70 C 54 94 56 116 62 134 C 68 118 70 96 70 76 Z"
+          d="M 50 62 C 40 88 42 112 50 132 C 58 114 60 92 60 70 Z"
           fill={`url(#${uid}-hair)`}
           stroke={INK}
           strokeWidth={STROKE_INNER}
           strokeLinejoin="round"
         />
         <path
-          d="M 140 70 C 146 94 144 116 138 134 C 132 118 130 96 130 76 Z"
+          d="M 150 62 C 160 88 158 112 150 132 C 142 114 140 92 140 70 Z"
           fill={`url(#${uid}-hair)`}
           stroke={INK}
           strokeWidth={STROKE_INNER}
@@ -459,22 +489,22 @@ export function renderKobato(palette, uid, mood) {
 
       {/* --- the konpeito bottle, held at the chest ----------------- */}
       <g className="shoujo-prop" data-part="konpeito-bottle">
-        <circle cx="100" cy="162" r="22" fill={`url(#${uid}-bottle-glow)`} />
+        <circle cx="100" cy="140" r="22" fill={`url(#${uid}-bottle-glow)`} />
         <path
-          d="M 94 146 l 12 0 l 0 6 l 4 4 l 0 18 q 0 4 -4 4 l -12 0 q -4 0 -4 -4 l 0 -18 l 4 -4 z"
+          d="M 94 124 l 12 0 l 0 6 l 4 4 l 0 18 q 0 4 -4 4 l -12 0 q -4 0 -4 -4 l 0 -18 l 4 -4 z"
           fill="rgba(227, 242, 234, 0.75)"
           stroke={INK}
           strokeWidth={STROKE_INNER}
           strokeLinejoin="round"
         />
-        <rect x="95" y="141" width="10" height="5" rx="1.6" fill="#C9A227" stroke={INK} strokeWidth="1" />
+        <rect x="95" y="119" width="10" height="5" rx="1.6" fill="#C9A227" stroke={INK} strokeWidth="1" />
         {/* the candies inside */}
-        <path d="M 96 166 l 1.4 2.6 l 2.6 1.4 l -2.6 1.4 l -1.4 2.6 l -1.4 -2.6 l -2.6 -1.4 l 2.6 -1.4 z" fill="#F4E285" />
-        <path d="M 103 171 l 1.2 2.2 l 2.2 1.2 l -2.2 1.2 l -1.2 2.2 l -1.2 -2.2 l -2.2 -1.2 l 2.2 -1.2 z" fill="#F7B2AD" />
-        <path d="M 99 157 l 1.1 2 l 2 1.1 l -2 1.1 l -1.1 2 l -1.1 -2 l -2 -1.1 l 2 -1.1 z" fill="#A8E6CF" />
+        <path d="M 96 144 l 1.4 2.6 l 2.6 1.4 l -2.6 1.4 l -1.4 2.6 l -1.4 -2.6 l -2.6 -1.4 l 2.6 -1.4 z" fill="#F4E285" />
+        <path d="M 103 149 l 1.2 2.2 l 2.2 1.2 l -2.2 1.2 l -1.2 2.2 l -1.2 -2.2 l -2.2 -1.2 l 2.2 -1.2 z" fill="#F7B2AD" />
+        <path d="M 99 135 l 1.1 2 l 2 1.1 l -2 1.1 l -1.1 2 l -1.1 -2 l -2 -1.1 l 2 -1.1 z" fill="#A8E6CF" />
         {/* the hands holding it */}
-        <circle cx="88" cy="164" r="5" fill={palette.skin} stroke={INK} strokeWidth={STROKE_INNER} />
-        <circle cx="112" cy="164" r="5" fill={palette.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+        <circle cx="88" cy="142" r="5.5" fill={palette.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+        <circle cx="112" cy="142" r="5.5" fill={palette.skin} stroke={INK} strokeWidth={STROKE_INNER} />
       </g>
     </g>
   );
@@ -507,15 +537,15 @@ export function renderBishounen(palette, uid, mood) {
       <g data-part="body">
         {/* the ivory collared shirt */}
         <path
-          d="M 100 118 C 90 118 84 121 82 128 L 80 192 L 120 192 L 118 128 C 116 121 110 118 100 118 Z"
+          d="M 100 114 C 90 114 84 118 82 126 L 80 176 L 120 176 L 118 126 C 116 118 110 114 100 114 Z"
           fill="#FFFDF9"
           stroke={INK}
-          strokeWidth={STROKE_OUTER}
+          strokeWidth={STROKE_OUTER + 0.6}
           strokeLinejoin="round"
         />
         {/* the collar */}
         <path
-          d="M 92 120 l 8 8 l 8 -8"
+          d="M 92 116 l 8 8 l 8 -8"
           fill="none"
           stroke={INK}
           strokeWidth={STROKE_INNER}
@@ -523,50 +553,56 @@ export function renderBishounen(palette, uid, mood) {
         />
         {/* the knit cardigan over it, open down the front */}
         <path
-          d="M 100 118
-             C 84 118 76 123 74 134
-             C 70 152 66 174 64 192
-             L 86 192 L 88 136
-             M 100 118
-             C 116 118 124 123 126 134
-             C 130 152 134 174 136 192
-             L 114 192 L 112 136"
+          d="M 100 114
+             C 84 114 76 120 74 132
+             C 70 148 66 166 64 176
+             L 86 176 L 88 134
+             M 100 114
+             C 116 114 124 120 126 132
+             C 130 148 134 166 136 176
+             L 114 176 L 112 134"
           fill={`url(#${uid}-cloth)`}
           stroke={INK}
-          strokeWidth={STROKE_OUTER}
+          strokeWidth={STROKE_OUTER + 0.6}
           strokeLinejoin="round"
         />
         {/* the ribbon tie */}
         <path
-          d="M 100 130 l -8 -5 l 0 9 z M 100 130 l 8 -5 l 0 9 z"
+          d="M 100 126 l -8 -5 l 0 9 z M 100 126 l 8 -5 l 0 9 z"
           fill={palette.bow}
           stroke={INK}
           strokeWidth={STROKE_INNER}
           strokeLinejoin="round"
         />
-        <circle cx="100" cy="130" r="2.4" fill={palette.bow} stroke={INK} strokeWidth="1" />
+        <circle cx="100" cy="126" r="2.6" fill={palette.bow} stroke={INK} strokeWidth="1" />
         {/* the pocket-watch chain */}
         <path
-          d="M 112 142 q 8 6 4 14"
+          d="M 112 138 q 8 6 4 14"
           fill="none"
           stroke="#C9A227"
           strokeWidth="1.4"
           strokeLinecap="round"
         />
-        <circle cx="117" cy="158" r="3.4" fill="#F4E285" stroke={INK} strokeWidth="1" />
+        <circle cx="117" cy="154" r="3.4" fill="#F4E285" stroke={INK} strokeWidth="1" />
 
         {/* one arm holds the ledger, the other rests */}
-        <path d="M 76 134 C 68 148 72 160 86 164" fill="none" stroke={INK} strokeWidth={STROKE_OUTER} strokeLinecap="round" />
-        <path d="M 124 134 C 132 146 130 156 124 162" fill="none" stroke={INK} strokeWidth={STROKE_OUTER} strokeLinecap="round" />
+        <path d="M 76 132 C 68 144 72 154 86 158" fill="none" stroke={INK} strokeWidth={STROKE_OUTER + 0.6} strokeLinecap="round" />
+        <path d="M 124 132 C 132 144 130 154 124 158" fill="none" stroke={INK} strokeWidth={STROKE_OUTER + 0.6} strokeLinecap="round" />
 
-        {/* the legs and shoes */}
-        <path d="M 86 192 l 0 32" stroke={INK} strokeWidth="6.5" strokeLinecap="round" />
-        <path d="M 114 192 l 0 32" stroke={INK} strokeWidth="6.5" strokeLinecap="round" />
+        {/* The legs: stubby rounded pegs, not strokes. */}
         <g className="shoujo-rig-foot-left">
-          <ellipse cx="86" cy="230" rx="9.5" ry="6" fill="#8A6D5A" stroke={INK} strokeWidth={STROKE_INNER} />
+          <rect x="76" y="168" width="18" height="26" rx="9" fill={palette.skin} stroke={INK} strokeWidth={STROKE_OUTER} />
         </g>
         <g className="shoujo-rig-foot-right">
-          <ellipse cx="114" cy="230" rx="9.5" ry="6" fill="#8A6D5A" stroke={INK} strokeWidth={STROKE_INNER} />
+          <rect x="106" y="168" width="18" height="26" rx="9" fill={palette.skin} stroke={INK} strokeWidth={STROKE_OUTER} />
+        </g>
+        <g className="shoujo-rig-foot-left">
+          <path d="M 74 192 q 11 -5 22 0 q 2 8 -4 10 l -14 0 q -6 -2 -4 -10 z"
+            fill="#4A3540" stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+        </g>
+        <g className="shoujo-rig-foot-right">
+          <path d="M 104 192 q 11 -5 22 0 q 2 8 -4 10 l -14 0 q -6 -2 -4 -10 z"
+            fill="#4A3540" stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
         </g>
       </g>
 
@@ -576,12 +612,12 @@ export function renderBishounen(palette, uid, mood) {
       <g className="shoujo-rig-hair" data-part="hair-front">
         <path
           d="M 100 24
-             C 74 24 56 44 56 70
-             C 64 56 74 48 86 46
-             C 82 54 82 60 86 66
-             C 92 54 102 48 114 50
-             C 126 52 136 58 144 70
-             C 144 44 126 24 100 24 Z"
+             C 70 16 50 36 48 62
+             C 58 50 70 42 82 40
+             C 78 50 78 56 82 62
+             C 90 50 102 44 116 46
+             C 128 48 140 54 150 62
+             C 152 36 130 16 100 16 Z"
           fill={`url(#${uid}-hair)`}
           stroke={INK}
           strokeWidth={STROKE_OUTER}
@@ -611,28 +647,28 @@ export function renderBishounen(palette, uid, mood) {
       {/* --- the ledger and the quill ------------------------------- */}
       <g className="shoujo-prop" data-part="kakeibo-ledger">
         <path
-          d="M 76 152 l 26 -5 l 0 24 l -26 5 z"
+          d="M 76 130 l 26 -5 l 0 24 l -26 5 z"
           fill="#8A5B4C"
           stroke={INK}
           strokeWidth={STROKE_INNER}
           strokeLinejoin="round"
         />
-        <path d="M 78 156 l 22 -4 M 78 162 l 22 -4" stroke="#F6E7C4" strokeWidth="1.4" />
-        <circle cx="86" cy="164" r="5" fill={palette.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+        <path d="M 78 134 l 22 -4 M 78 140 l 22 -4" stroke="#F6E7C4" strokeWidth="1.4" />
+        <circle cx="86" cy="142" r="5.5" fill={palette.skin} stroke={INK} strokeWidth={STROKE_INNER} />
         {/* the quill, floating */}
         <g className="shoujo-quill">
           <path
-            d="M 118 140 q 10 -10 16 -4 q -4 8 -16 10 z"
+            d="M 118 118 q 10 -10 16 -4 q -4 8 -16 10 z"
             fill="#FFFDF9"
             stroke={INK}
             strokeWidth="1.1"
             strokeLinejoin="round"
           />
-          <path d="M 118 146 l -5 5" stroke="#C9A227" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M 118 124 l -5 5" stroke="#C9A227" strokeWidth="1.6" strokeLinecap="round" />
         </g>
         {/* drifting leaves */}
-        <path d="M 138 170 q 5 1 6 5 q -5 1 -6 -5 z" fill="#A8E6CF" opacity="0.8" />
-        <path d="M 60 176 q 5 1 6 5 q -5 1 -6 -5 z" fill="#A8E6CF" opacity="0.6" />
+        <path d="M 140 148 q 5 1 6 5 q -5 1 -6 -5 z" fill="#A8E6CF" opacity="0.8" />
+        <path d="M 58 154 q 5 1 6 5 q -5 1 -6 -5 z" fill="#A8E6CF" opacity="0.6" />
       </g>
     </g>
   );
@@ -709,10 +745,10 @@ function hairTwinLocksHat(p, uid) {
     back: (
       <g className="shoujo-rig-hair" data-part="hair-back" data-hair="twin_locks_hat">
         <path
-          d="M 100 26 C 136 26 150 54 148 84 C 146 112 142 140 136 164
+          d="M 100 26 C 140 16 156 40 155 74 C 153 104 149 130 142 150
              C 130 150 128 126 126 110 C 120 118 108 120 100 120
              C 92 120 80 118 74 110 C 72 126 70 150 64 164
-             C 58 140 54 112 52 84 C 50 54 64 26 100 26 Z"
+             C 56 132 50 104 45 74 C 41 40 60 16 100 16 Z"
           fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
         />
       </g>
@@ -721,23 +757,23 @@ function hairTwinLocksHat(p, uid) {
       <>
         <g className="shoujo-rig-hair" data-part="hair-front">
         <path
-          d="M 100 26 C 74 26 58 46 58 70 C 66 58 76 50 88 48
-             C 84 56 84 62 88 68 C 94 56 104 50 116 52
-             C 126 54 136 60 142 70 C 142 46 126 26 100 26 Z"
+          d="M 100 26 C 70 16 50 36 48 64 C 58 50 70 42 84 40
+             C 80 50 80 56 84 63 C 92 50 104 44 118 46
+             C 130 48 142 56 150 64 C 152 36 130 16 100 16 Z"
           fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
         />
         {angelRing('M 70 54 l 8 6 l -5 7 l 9 5 l -6 7 l 10 4')}
-        <path d="M 60 70 C 54 94 56 116 62 134 C 68 118 70 96 70 76 Z"
+        <path d="M 50 62 C 40 88 42 112 50 132 C 58 114 60 92 60 70 Z"
           fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
-        <path d="M 140 70 C 146 94 144 116 138 134 C 132 118 130 96 130 76 Z"
+        <path d="M 150 62 C 160 88 158 112 150 132 C 142 114 140 92 140 70 Z"
           fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
       </g>
       <g className="shoujo-hat" data-part="straw-hat">
-        <path d="M 44 54 C 56 34 76 22 100 22 C 124 22 144 34 156 54 C 138 46 120 42 100 42 C 80 42 62 46 44 54 Z"
-          fill={`url(#${uid}-straw)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" />
-        <path d="M 62 48 C 72 32 86 24 100 24 C 114 24 128 32 138 48"
+        <path d="M 38 48 C 52 24 74 10 100 10 C 126 10 148 24 162 48 C 142 38 122 32 100 32 C 78 32 58 38 38 48 Z"
+          fill={`url(#${uid}-straw)`} stroke={INK} strokeWidth={STROKE_OUTER + 0.6} strokeLinejoin="round" />
+        <path d="M 58 42 C 68 24 84 14 100 14 C 116 14 132 24 142 42"
           fill="none" stroke={p.ribbon} strokeWidth="5" strokeLinecap="round" />
-        <g data-part="sakura" transform="translate(58 44)">
+        <g data-part="sakura" transform="translate(52 38)">
           {[0, 72, 144, 216, 288].map((deg) => (
             <ellipse key={deg} cx="0" cy="-5" rx="3" ry="4.6" fill="#F9C9D4"
               stroke={INK} strokeWidth="0.9" transform={`rotate(${deg})`} />
@@ -758,10 +794,10 @@ function hairFluffyBangs(p, uid) {
     back: (
       <g className="shoujo-rig-hair" data-part="hair-back" data-hair="fluffy_bangs">
         <path
-          d="M 100 24 C 132 24 146 48 146 76 C 146 98 142 114 138 128
+          d="M 100 24 C 138 16 154 40 154 68 C 154 92 149 110 144 124
              C 134 114 132 98 130 86 C 120 94 108 96 100 96
              C 92 96 80 94 70 86 C 68 98 66 114 62 128
-             C 58 114 54 98 54 76 C 54 48 68 24 100 24 Z"
+             C 55 110 46 92 46 68 C 46 40 62 16 100 16 Z"
           fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
         />
       </g>
@@ -770,15 +806,15 @@ function hairFluffyBangs(p, uid) {
       <>
         <g className="shoujo-rig-hair" data-part="hair-front">
         <path
-          d="M 100 24 C 74 24 56 44 56 70 C 64 56 74 48 86 46
-             C 82 54 82 60 86 66 C 92 54 102 48 114 50
-             C 126 52 136 58 144 70 C 144 44 126 24 100 24 Z"
+          d="M 100 24 C 70 16 50 36 48 62 C 58 50 70 42 82 40
+             C 78 50 78 56 82 62 C 90 50 102 44 116 46
+             C 128 48 140 54 150 62 C 152 36 130 16 100 16 Z"
           fill={`url(#${uid}-hair)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
         />
         {angelRing('M 72 50 l 9 5 l -5 7 l 10 5 l -6 6 l 10 4')}
-        <path d="M 64 46 C 70 28 86 20 102 22 C 120 24 134 34 136 48 C 118 40 84 38 64 46 Z"
-          fill={p.cloth} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" data-part="beret" />
-        <circle cx="100" cy="21" r="3.4" fill={p.accent} stroke={INK} strokeWidth="1" />
+        <path d="M 58 38 C 64 18 82 8 100 10 C 120 12 136 24 138 40 C 118 30 82 28 58 38 Z"
+          fill={p.cloth} stroke={INK} strokeWidth={STROKE_OUTER + 0.6} strokeLinejoin="round" data-part="beret" />
+        <circle cx="100" cy="8" r="3.8" fill={p.accent} stroke={INK} strokeWidth="1" />
       </g>
       </>
     ),
@@ -935,10 +971,10 @@ function hairCatEarHood(p, uid) {
         {angelRing('M 74 48 l 8 5 l -5 6 l 9 4', 4)}
         {/* the two ears, tipped in calico */}
         <g data-part="cat-ears">
-          <path d="M 62 44 L 58 16 L 86 34 Z" fill={p.cloth} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" />
-          <path d="M 63 36 L 61 23 L 74 32 Z" fill={p.clothAlt} />
-          <path d="M 138 44 L 142 16 L 114 34 Z" fill={p.cloth} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" />
-          <path d="M 137 36 L 139 23 L 126 32 Z" fill={p.hairDark} />
+          <path d="M 58 40 L 50 6 L 86 28 Z" fill={p.cloth} stroke={INK} strokeWidth={STROKE_OUTER + 0.6} strokeLinejoin="round" />
+          <path d="M 60 31 L 56 16 L 72 27 Z" fill={p.clothAlt} />
+          <path d="M 142 40 L 150 6 L 114 28 Z" fill={p.cloth} stroke={INK} strokeWidth={STROKE_OUTER + 0.6} strokeLinejoin="round" />
+          <path d="M 140 31 L 144 16 L 128 27 Z" fill={p.hairDark} />
         </g>
       </g>
       </>
@@ -961,15 +997,15 @@ const HAIR_RENDERERS = {
 function propKonpeitoBottle(p, uid) {
   return (
     <g className="shoujo-prop" data-part="konpeito_bottle">
-      <circle cx="100" cy="162" r="22" fill={`url(#${uid}-bottle-glow)`} />
-      <path d="M 94 146 l 12 0 l 0 6 l 4 4 l 0 18 q 0 4 -4 4 l -12 0 q -4 0 -4 -4 l 0 -18 l 4 -4 z"
+      <circle cx="100" cy="140" r="22" fill={`url(#${uid}-bottle-glow)`} />
+      <path d="M 94 124 l 12 0 l 0 6 l 4 4 l 0 18 q 0 4 -4 4 l -12 0 q -4 0 -4 -4 l 0 -18 l 4 -4 z"
         fill="rgba(227, 242, 234, 0.75)" stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
-      <rect x="95" y="141" width="10" height="5" rx="1.6" fill="#C9A227" stroke={INK} strokeWidth="1" />
-      <path d="M 96 166 l 1.4 2.6 l 2.6 1.4 l -2.6 1.4 l -1.4 2.6 l -1.4 -2.6 l -2.6 -1.4 l 2.6 -1.4 z" fill="#F4E285" />
-      <path d="M 103 171 l 1.2 2.2 l 2.2 1.2 l -2.2 1.2 l -1.2 2.2 l -1.2 -2.2 l -2.2 -1.2 l 2.2 -1.2 z" fill="#F7B2AD" />
-      <path d="M 99 157 l 1.1 2 l 2 1.1 l -2 1.1 l -1.1 2 l -1.1 -2 l -2 -1.1 l 2 -1.1 z" fill="#A8E6CF" />
-      <circle cx="88" cy="164" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
-      <circle cx="112" cy="164" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+      <rect x="95" y="119" width="10" height="5" rx="1.6" fill="#C9A227" stroke={INK} strokeWidth="1" />
+      <path d="M 96 144 l 1.4 2.6 l 2.6 1.4 l -2.6 1.4 l -1.4 2.6 l -1.4 -2.6 l -2.6 -1.4 l 2.6 -1.4 z" fill="#F4E285" />
+      <path d="M 103 149 l 1.2 2.2 l 2.2 1.2 l -2.2 1.2 l -1.2 2.2 l -1.2 -2.2 l -2.2 -1.2 l 2.2 -1.2 z" fill="#F7B2AD" />
+      <path d="M 99 135 l 1.1 2 l 2 1.1 l -2 1.1 l -1.1 2 l -1.1 -2 l -2 -1.1 l 2 -1.1 z" fill="#A8E6CF" />
+      <circle cx="88" cy="142" r="5.5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="112" cy="142" r="5.5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
     </g>
   );
 }
@@ -978,16 +1014,16 @@ function propKonpeitoBottle(p, uid) {
 function propKakeiboMelody(p) {
   return (
     <g className="shoujo-prop" data-part="kakeibo_melody">
-      <path d="M 76 152 l 26 -5 l 0 24 l -26 5 z" fill="#8A5B4C" stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
-      <path d="M 78 156 l 22 -4 M 78 162 l 22 -4" stroke="#F6E7C4" strokeWidth="1.4" />
-      <circle cx="86" cy="164" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+      <path d="M 76 130 l 26 -5 l 0 24 l -26 5 z" fill="#8A5B4C" stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+      <path d="M 78 134 l 22 -4 M 78 140 l 22 -4" stroke="#F6E7C4" strokeWidth="1.4" />
+      <circle cx="86" cy="142" r="5.5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
       <g className="shoujo-quill" data-part="notes">
         {/* a quaver and a beamed pair, in gold */}
-        <g transform="translate(118 138)">
+        <g transform="translate(118 116)">
           <ellipse cx="0" cy="8" rx="3.4" ry="2.6" fill="#C9A227" stroke={INK} strokeWidth="0.8" transform="rotate(-20)" />
           <path d="M 3 7 l 0 -12 q 5 2 5 6" fill="none" stroke="#C9A227" strokeWidth="1.6" strokeLinecap="round" />
         </g>
-        <g transform="translate(134 150)">
+        <g transform="translate(134 128)">
           <ellipse cx="0" cy="6" rx="2.8" ry="2.2" fill="#E6B84D" stroke={INK} strokeWidth="0.7" transform="rotate(-20)" />
           <ellipse cx="10" cy="4" rx="2.8" ry="2.2" fill="#E6B84D" stroke={INK} strokeWidth="0.7" transform="rotate(-20)" />
           <path d="M 2.5 5 l 0 -9 l 10 -2 l 0 9" fill="none" stroke="#E6B84D" strokeWidth="1.5" strokeLinecap="round" />
@@ -1001,17 +1037,17 @@ function propKakeiboMelody(p) {
 function propGoldenWatch(p) {
   return (
     <g className="shoujo-prop" data-part="golden_watch">
-      <path d="M 100 132 q 14 10 10 24" fill="none" stroke="#C9A227" strokeWidth="1.6" strokeLinecap="round" />
-      <circle cx="108" cy="162" r="11" fill="#F4E285" stroke={INK} strokeWidth={STROKE_INNER} />
-      <circle cx="108" cy="162" r="7.5" fill="#FFFDF5" stroke={INK} strokeWidth="0.9" />
-      <path d="M 108 162 l 0 -5 M 108 162 l 4 2" stroke={INK} strokeWidth="1.2" strokeLinecap="round" />
-      <rect x="105.5" y="148" width="5" height="4" rx="1.4" fill="#C9A227" stroke={INK} strokeWidth="0.9" />
+      <path d="M 100 110 q 14 10 10 24" fill="none" stroke="#C9A227" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="108" cy="140" r="11" fill="#F4E285" stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="108" cy="140" r="7.5" fill="#FFFDF5" stroke={INK} strokeWidth="0.9" />
+      <path d="M 108 140 l 0 -5 M 108 140 l 4 2" stroke={INK} strokeWidth="1.2" strokeLinecap="round" />
+      <rect x="105.5" y="126" width="5" height="4" rx="1.4" fill="#C9A227" stroke={INK} strokeWidth="0.9" />
       {/* the key */}
-      <g data-part="treasure-key" transform="translate(80 158)">
+      <g data-part="treasure-key" transform="translate(78 136)">
         <circle cx="0" cy="0" r="4.4" fill="none" stroke="#C9A227" strokeWidth="2" />
         <path d="M 0 4.4 l 0 12 M 0 11 l 5 0 M 0 15 l 4 0" stroke="#C9A227" strokeWidth="2" strokeLinecap="round" />
       </g>
-      <circle cx="88" cy="164" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="88" cy="142" r="5.5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
     </g>
   );
 }
@@ -1020,13 +1056,13 @@ function propGoldenWatch(p) {
 function propLuckyCoin(p) {
   return (
     <g className="shoujo-prop" data-part="lucky_coin">
-      <circle cx="100" cy="160" r="17" fill="#F4E285" stroke={INK} strokeWidth={STROKE_OUTER} />
-      <circle cx="100" cy="160" r="12.5" fill="none" stroke="#C9A227" strokeWidth="1.2" />
-      <rect x="95" y="155" width="10" height="10" rx="1.2" fill={p.cloth} stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="100" cy="138" r="17" fill="#F4E285" stroke={INK} strokeWidth={STROKE_OUTER} />
+      <circle cx="100" cy="138" r="12.5" fill="none" stroke="#C9A227" strokeWidth="1.2" />
+      <rect x="95" y="133" width="10" height="10" rx="1.2" fill={p.cloth} stroke={INK} strokeWidth={STROKE_INNER} />
       {/* 寛永 on the rim, suggested rather than written */}
-      <path d="M 100 147 l 0 4 M 100 169 l 0 4 M 87 160 l 4 0 M 109 160 l 4 0" stroke="#C9A227" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M 100 125 l 0 4 M 100 147 l 0 4 M 87 138 l 4 0 M 109 138 l 4 0" stroke="#C9A227" strokeWidth="1.4" strokeLinecap="round" />
       {/* the abacus */}
-      <g data-part="abacus" transform="translate(126 150)">
+      <g data-part="abacus" transform="translate(128 128)">
         <rect x="0" y="0" width="22" height="18" rx="2" fill="#8A5B4C" stroke={INK} strokeWidth={STROKE_INNER} />
         <path d="M 0 9 l 22 0" stroke="#F6E7C4" strokeWidth="1" />
         {[3, 9, 15].map((x) => (
@@ -1036,7 +1072,7 @@ function propLuckyCoin(p) {
           </g>
         ))}
       </g>
-      <circle cx="84" cy="166" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="84" cy="144" r="5.5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
     </g>
   );
 }
@@ -1045,18 +1081,18 @@ function propLuckyCoin(p) {
 function propHarvestBasket(p) {
   return (
     <g className="shoujo-prop" data-part="harvest_basket">
-      <path d="M 78 152 l 44 0 l -5 24 q -1 4 -5 4 l -24 0 q -4 0 -5 -4 z"
+      <path d="M 78 130 l 44 0 l -5 24 q -1 4 -5 4 l -24 0 q -4 0 -5 -4 z"
         fill="#C89A6B" stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" />
       {/* the weave */}
-      <path d="M 80 160 l 40 0 M 81 168 l 38 0 M 92 152 l -2 28 M 108 152 l 2 28"
+      <path d="M 80 138 l 40 0 M 81 146 l 38 0 M 92 130 l -2 28 M 108 130 l 2 28"
         fill="none" stroke="#8A5B4C" strokeWidth="1" />
-      <path d="M 84 152 q 16 -16 32 0" fill="none" stroke="#8A5B4C" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M 84 130 q 16 -16 32 0" fill="none" stroke="#8A5B4C" strokeWidth="2.2" strokeLinecap="round" />
       {/* what is in it */}
-      <path d="M 92 146 l 2 4 l 4 2 l -4 2 l -2 4 l -2 -4 l -4 -2 l 4 -2 z" fill="#F4E285" stroke={INK} strokeWidth="0.7" />
-      <path d="M 108 144 l 1.6 3.2 l 3.2 1.6 l -3.2 1.6 l -1.6 3.2 l -1.6 -3.2 l -3.2 -1.6 l 3.2 -1.6 z" fill={p.accent} stroke={INK} strokeWidth="0.7" />
-      <circle cx="100" cy="150" r="4" fill="#F4E285" stroke={INK} strokeWidth="0.8" />
-      <circle cx="78" cy="168" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
-      <circle cx="122" cy="168" r="5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+      <path d="M 92 124 l 2 4 l 4 2 l -4 2 l -2 4 l -2 -4 l -4 -2 l 4 -2 z" fill="#F4E285" stroke={INK} strokeWidth="0.7" />
+      <path d="M 108 122 l 1.6 3.2 l 3.2 1.6 l -3.2 1.6 l -1.6 3.2 l -1.6 -3.2 l -3.2 -1.6 l 3.2 -1.6 z" fill={p.accent} stroke={INK} strokeWidth="0.7" />
+      <circle cx="100" cy="128" r="4" fill="#F4E285" stroke={INK} strokeWidth="0.8" />
+      <circle cx="78" cy="146" r="5.5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="122" cy="146" r="5.5" fill={p.skin} stroke={INK} strokeWidth={STROKE_INNER} />
     </g>
   );
 }
@@ -1066,23 +1102,23 @@ function propFukuKoban(p) {
   return (
     <g className="shoujo-prop" data-part="fuku_koban">
       {/* the collar and its bell sit on the body, above the prop */}
-      <path d="M 82 126 q 18 8 36 0" fill="none" stroke={p.accent} strokeWidth="6" strokeLinecap="round" data-part="collar" />
-      <circle cx="100" cy="132" r="5.5" fill="#FFD54F" stroke={INK} strokeWidth={STROKE_INNER} data-part="fuku-bell" />
-      <path d="M 100 129 l 0 6 M 97.5 132 l 5 0" stroke={INK} strokeWidth="1" strokeLinecap="round" />
+      <path d="M 82 122 q 18 8 36 0" fill="none" stroke={p.accent} strokeWidth="6" strokeLinecap="round" data-part="collar" />
+      <circle cx="100" cy="128" r="5.5" fill="#FFD54F" stroke={INK} strokeWidth={STROKE_INNER} data-part="fuku-bell" />
+      <path d="M 100 125 l 0 6 M 97.5 128 l 5 0" stroke={INK} strokeWidth="1" strokeLinecap="round" />
       {/* the koban */}
-      <path d="M 84 150 q 16 -7 32 0 l -4 22 q -12 5 -24 0 z"
+      <path d="M 84 128 q 16 -7 32 0 l -4 22 q -12 5 -24 0 z"
         fill="#F4E285" stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round" />
-      <path d="M 92 158 l 16 0 M 94 165 l 12 0" stroke="#C9A227" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M 92 136 l 16 0 M 94 143 l 12 0" stroke="#C9A227" strokeWidth="1.4" strokeLinecap="round" />
       {/* the paw stamp pad */}
-      <g data-part="paw-stamp" transform="translate(126 158)">
+      <g data-part="paw-stamp" transform="translate(128 136)">
         <rect x="0" y="0" width="16" height="12" rx="2.5" fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} />
         <circle cx="8" cy="7" r="2.6" fill={p.accent} />
         <circle cx="4.5" cy="3.5" r="1.1" fill={p.accent} />
         <circle cx="8" cy="2.6" r="1.1" fill={p.accent} />
         <circle cx="11.5" cy="3.5" r="1.1" fill={p.accent} />
       </g>
-      <circle cx="80" cy="164" r="5" fill={p.cloth} stroke={INK} strokeWidth={STROKE_INNER} />
-      <circle cx="120" cy="164" r="5" fill={p.cloth} stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="80" cy="142" r="5.5" fill={p.cloth} stroke={INK} strokeWidth={STROKE_INNER} />
+      <circle cx="120" cy="142" r="5.5" fill={p.cloth} stroke={INK} strokeWidth={STROKE_INNER} />
     </g>
   );
 }
@@ -1098,6 +1134,13 @@ const PROP_RENDERERS = {
 
 /* --- the body, shared, tinted per character ------------------------ */
 
+/**
+ * The shared body: a short bell and two stubby pegs.
+ *
+ * The legs were two vertical strokes with six pixels of width, which
+ * is what made the figure read as a stick figure. They are now two
+ * rounded pegs, and the shoes are loafer shapes rather than ovals.
+ */
 function petitBody(p, uid, persona) {
   // The merchant and the cat wear something different at the collar;
   // everyone else wears the layered dress or cardigan.
@@ -1106,45 +1149,60 @@ function petitBody(p, uid, persona) {
 
   return (
     <g data-part="body">
+      {/* The bell. Short and wide: it starts under the head at
+          y=118 and ends at y=176, and it flares out from the
+          shoulders, so the body reads as a small round shape under a
+          very large head. */}
       <path
-        d="M 100 118 C 86 118 78 122 76 132 C 72 150 66 174 62 192 L 138 192
-           C 134 174 128 150 124 132 C 122 122 114 118 100 118 Z"
-        fill={`url(#${uid}-cloth)`} stroke={INK} strokeWidth={STROKE_OUTER} strokeLinejoin="round"
+        d="M 100 114 C 84 114 75 120 73 132 C 70 146 66 164 63 176
+           L 137 176 C 134 164 130 146 127 132 C 125 120 116 114 100 114 Z"
+        fill={`url(#${uid}-cloth)`} stroke={INK} strokeWidth={STROKE_OUTER + 0.6} strokeLinejoin="round"
       />
       {/* the hem: scalloped lace, or a straight apron edge */}
       {isHaori || isHood ? (
-        <path d="M 62 192 l 76 0" stroke={INK} strokeWidth={STROKE_INNER} />
+        <path d="M 63 176 l 74 0" stroke={INK} strokeWidth={STROKE_INNER} />
       ) : (
-        <path d="M 62 192 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0 q 6 8 12 0"
+        <path d="M 63 176 q 6 7 12 0 q 6 7 12 0 q 6 7 12 0 q 6 7 12 0 q 6 7 12 0 q 6 7 12 0"
           fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
       )}
       {/* the collar */}
       {isHaori ? (
-        <path d="M 88 120 l 12 14 l 12 -14 l 6 8 l -18 18 l -18 -18 z"
+        <path d="M 88 116 l 12 14 l 12 -14 l 6 8 l -18 18 l -18 -18 z"
           fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" data-part="haori" />
       ) : isHood ? null : (
-        <path d="M 82 124 q 4.5 6 9 0 q 4.5 6 9 0 q 4.5 6 9 0"
+        <path d="M 82 120 q 4.5 6 9 0 q 4.5 6 9 0 q 4.5 6 9 0"
           fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} />
       )}
       {/* the bow, for everyone who wears one */}
       {isHood ? null : (
         <>
-          <path d="M 100 128 l -9 -6 l 0 10 z M 100 128 l 9 -6 l 0 10 z"
+          <path d="M 100 124 l -9 -6 l 0 10 z M 100 124 l 9 -6 l 0 10 z"
             fill={p.ribbon} stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
-          <circle cx="100" cy="128" r="2.6" fill={p.ribbon} stroke={INK} strokeWidth="1" />
+          <circle cx="100" cy="124" r="2.8" fill={p.ribbon} stroke={INK} strokeWidth="1" />
         </>
       )}
-      {/* the arms */}
-      <path d="M 78 132 C 70 146 74 158 88 162" fill="none" stroke={INK} strokeWidth={STROKE_OUTER} strokeLinecap="round" />
-      <path d="M 122 132 C 130 146 126 158 112 162" fill="none" stroke={INK} strokeWidth={STROKE_OUTER} strokeLinecap="round" />
-      {/* the legs and the shoes */}
-      <path d="M 86 192 l 0 32" stroke={INK} strokeWidth="6" strokeLinecap="round" />
-      <path d="M 114 192 l 0 32" stroke={INK} strokeWidth="6" strokeLinecap="round" />
+      {/* The arms: short, and ending in rounded mitten hands that
+          meet in front, where the prop is held. */}
+      <path d="M 74 132 C 64 142 66 154 82 158" fill="none" stroke={INK} strokeWidth={STROKE_OUTER + 0.6} strokeLinecap="round" />
+      <path d="M 126 132 C 136 142 134 154 118 158" fill="none" stroke={INK} strokeWidth={STROKE_OUTER + 0.6} strokeLinecap="round" />
+
+      {/* The legs: two stubby rounded pegs, not strokes. */}
       <g className="shoujo-rig-foot-left">
-        <ellipse cx="86" cy="230" rx="9" ry="6" fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} />
+        <rect x="76" y="168" width="18" height="26" rx="9" fill={p.skin} stroke={INK} strokeWidth={STROKE_OUTER} />
       </g>
       <g className="shoujo-rig-foot-right">
-        <ellipse cx="114" cy="230" rx="9" ry="6" fill={p.clothAlt} stroke={INK} strokeWidth={STROKE_INNER} />
+        <rect x="106" y="168" width="18" height="26" rx="9" fill={p.skin} stroke={INK} strokeWidth={STROKE_OUTER} />
+      </g>
+      {/* The shoes: little Mary-Janes with a strap. */}
+      <g className="shoujo-rig-foot-left">
+        <path d="M 74 192 q 11 -5 22 0 q 2 8 -4 10 l -14 0 q -6 -2 -4 -10 z"
+          fill="#4A3540" stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+        <path d="M 78 194 l 14 0" stroke="#FFFDF9" strokeWidth="1.4" opacity="0.7" />
+      </g>
+      <g className="shoujo-rig-foot-right">
+        <path d="M 104 192 q 11 -5 22 0 q 2 8 -4 10 l -14 0 q -6 -2 -4 -10 z"
+          fill="#4A3540" stroke={INK} strokeWidth={STROKE_INNER} strokeLinejoin="round" />
+        <path d="M 108 194 l 14 0" stroke="#FFFDF9" strokeWidth="1.4" opacity="0.7" />
       </g>
     </g>
   );

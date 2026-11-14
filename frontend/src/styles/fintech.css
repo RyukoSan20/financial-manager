@@ -649,6 +649,51 @@
   color: var(--text-secondary, #5d6b76);
 }
 
+/* An envelope that is carrying its leftover over. The name and the
+   amount are struck through together - one of them alone would read
+   as a mistake - and the whole row dims rather than disappearing,
+   because a reader still needs to see how much is in it. */
+.fintech-rollover__row.is-carried {
+  background: #FAF6F0;
+  border-radius: 0.75rem;
+}
+
+.fintech-rollover__row.is-carried .fintech-rollover__name,
+.fintech-rollover__row.is-carried .fintech-rollover__value {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  opacity: 0.65;
+  color: var(--text-secondary, #5d6b76);
+}
+
+.fintech-rollover__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  transition: background-color 160ms ease;
+}
+
+/* The stamp, in the corner of the row. */
+.fintech-rollover__stamp {
+  grid-column: 2;
+  justify-self: end;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #2F4842;
+  background: #E3F2EA;
+  border: 1px solid #C7E3D3;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  white-space: nowrap;
+}
+
+.fintech-rollover__name {
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
 /* Moving money between envelopes. */
 .fintech-transfer {
   display: grid;

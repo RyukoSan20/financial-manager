@@ -204,6 +204,24 @@ export default function ClampShoujoMascot({
     onClick?.();
   }, [greet, interactive, onClick]);
 
+  // The board closes itself when a dialog opens.
+  //
+  // A modal is z-50 and the board is z-30, so the board is behind it
+  // - but a board left open behind a dialog is still a board, with
+  // its own listeners, and it flashes when the dialog closes. It is
+  // better not to have opened it.
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const observer = new MutationObserver(() => {
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) {
+        setBoardOpen(false);
+        setGreeted(false);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    return () => observer.disconnect();
+  }, []);
+
   // A real question, answered by the same agent the app uses.
   const ask = useCallback(async (text) => {
     const message = String(text || '').trim();
@@ -272,9 +290,9 @@ export default function ClampShoujoMascot({
         data-testid="shoujo-mascot-button"
       >
         <svg
-          viewBox="0 0 200 260"
+          viewBox="0 0 200 220"
           width={size}
-          height={(size * 260) / 200}
+          height={(size * 220) / 200}
           role="img"
           aria-label={label}
           className="shoujo-figure"
@@ -298,17 +316,25 @@ export default function ClampShoujoMascot({
                   rebuild the entire figure. */}
               {blinking ? (
                 <g data-part="blink-cover">
-                  <ellipse cx={ANATOMY.eyes.leftCx} cy={ANATOMY.eyes.cy} rx="11" ry="13" fill={palette.skin} />
-                  <ellipse cx={ANATOMY.eyes.rightCx} cy={ANATOMY.eyes.cy} rx="11" ry="13" fill={palette.skin} />
                   {[ANATOMY.eyes.leftCx, ANATOMY.eyes.rightCx].map((cx) => (
-                    <path
-                      key={cx}
-                      d={`M ${cx - 9} ${ANATOMY.eyes.cy} Q ${cx} ${ANATOMY.eyes.cy + 7} ${cx + 9} ${ANATOMY.eyes.cy}`}
-                      fill="none"
-                      stroke="#3A222C"
-                      strokeWidth="2.4"
-                      strokeLinecap="round"
-                    />
+                    <g key={cx}>
+                      <ellipse
+                        cx={cx}
+                        cy={ANATOMY.eyes.cy}
+                        rx={ANATOMY.eyes.rx * 1.16}
+                        ry={ANATOMY.eyes.ry * 1.13}
+                        fill={palette.skin}
+                      />
+                      <path
+                        d={`M ${cx - ANATOMY.eyes.rx * 0.95} ${ANATOMY.eyes.cy}
+                            Q ${cx} ${ANATOMY.eyes.cy + ANATOMY.eyes.ry * 0.61}
+                            ${cx + ANATOMY.eyes.rx * 0.95} ${ANATOMY.eyes.cy}`}
+                        fill="none"
+                        stroke="#3A222C"
+                        strokeWidth="2.6"
+                        strokeLinecap="round"
+                      />
+                    </g>
                   ))}
                 </g>
               ) : null}

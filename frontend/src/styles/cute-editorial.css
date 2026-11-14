@@ -1,0 +1,202 @@
+/*
+ * The cute editorial system.
+ *
+ * Four ideas, used together:
+ *
+ *   1. the canvas is a warm desk, with a faint notebook dot-grid on
+ *      it, so a section reads as paper rather than as a white box;
+ *   2. the headings are wide-tracked and heavy, with a pill overline
+ *      above them and a little Memphis confetti around;
+ *   3. the cards are physical cut-outs - a two-pixel border and a
+ *      flat shadow below them, like a sticker on a page;
+ *   4. the sections are separated by a wave, so the page has a
+ *      rhythm rather than a seam.
+ *
+ * Everything here is additive. A page that uses none of it looks
+ * exactly as it did before.
+ */
+
+/* ---------------------------------------------------------------------------
+   1. The desk and the dot grid
+   --------------------------------------------------------------------------- */
+
+.cute-canvas {
+  position: relative;
+  background-color: #FAF9F6;
+  /* The notebook rule. One faint dot every twenty pixels, in the
+     colour of a warm desk, so a large empty area still has a texture
+     under it. */
+  background-image: radial-gradient(#D8CFC2 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* The wood of the desk, along one edge. A pair of thin bands rather
+   than a texture, because a texture on a whole page is noise. */
+.cute-canvas--wood::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    #E8DCC8 0 8px,
+    #DCCDB4 8px 14px,
+    #EFE4D2 14px 22px
+  );
+  opacity: 0.7;
+}
+
+.cute-canvas--wood {
+  padding-top: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+   2. Headings
+   --------------------------------------------------------------------------- */
+
+.cute-overline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  background: #FDE8E4;
+  color: #9E3B24;
+  padding: 0.25rem 0.875rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cute-heading {
+  color: #2C221E;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+
+/* The wavy underline, drawn rather than typed. A solid underline
+   reads as a mistake; a wave reads as a marker pen. */
+.cute-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.cute-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.3rem;
+  height: 7px;
+  background-repeat: repeat-x;
+  background-size: 14px 7px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='7' viewBox='0 0 14 7'%3E%3Cpath d='M0 5 Q3.5 0 7 5 T14 5' fill='none' stroke='%23D96B43' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  opacity: 0.55;
+}
+
+/* The Memphis confetti: a tiny star and a polka-dot stamp. */
+.cute-confetti {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+}
+
+.cute-confetti--star {
+  color: #D96B43;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.cute-confetti--dots {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background-image: radial-gradient(#D96B43 1.6px, transparent 1.7px);
+  background-size: 8px 8px;
+  opacity: 0.5;
+}
+
+/* ---------------------------------------------------------------------------
+   3. The cards as cut-outs
+   --------------------------------------------------------------------------- */
+
+.cute-card {
+  position: relative;
+  border-radius: 24px;
+  border: 2px solid #4A3540;
+  background: #FFFDF9;
+  /* A flat shadow underneath, not a blur. A blur is what a screen
+     does; a flat band is what a piece of paper does. */
+  box-shadow: 0 6px 0 #EAE0D5;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cute-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 0 #EAE0D5;
+}
+
+.cute-card--sage { background: #F2F9F5; }
+.cute-card--oat { background: #FBF8F1; }
+.cute-card--sakura { background: #FFF7F5; }
+.cute-card--lavender { background: #F7F5FB; }
+.cute-card--butter { background: #FFFAEB; }
+
+/* The polka-dot corner stamp. */
+.cute-card__stamp {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background-image: radial-gradient(#D96B43 1.8px, transparent 1.9px);
+  background-size: 9px 9px;
+  opacity: 0.45;
+}
+
+/* ---------------------------------------------------------------------------
+   4. The wave
+   --------------------------------------------------------------------------- */
+
+.cute-wave {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: #F4EFE6;
+}
+
+.cute-wave--sage { color: #E3F2EA; }
+.cute-wave--sakura { color: #FDE8E4; }
+.cute-wave--cream { color: #FAF9F6; }
+
+/* The diagonal, for a harder break between two sections. */
+.cute-diagonal {
+  height: 14px;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #F4EFE6 0 10px,
+    #FAF9F6 10px 20px
+  );
+}
+
+.dark .cute-canvas {
+  background-color: #161F1C;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+.dark .cute-heading { color: #FAF9F6; }
+.dark .cute-overline {
+  background: rgba(222, 107, 67, 0.18);
+  color: #F3B49C;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cute-card,
+  .cute-card:hover {
+    transition: none;
+    transform: none;
+  }
+}

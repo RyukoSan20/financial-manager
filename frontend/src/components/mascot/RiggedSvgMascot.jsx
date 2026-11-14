@@ -88,7 +88,7 @@ const RiggedSvgMascot = forwardRef(function RiggedSvgMascot(
     // `mood` is the older name for the same thing; both are accepted.
     mood,
     mode = 'family',
-    size = 72,
+    size = 120,
     message = '',
     // What it says when it is clicked, one after the other.
     lines = [],

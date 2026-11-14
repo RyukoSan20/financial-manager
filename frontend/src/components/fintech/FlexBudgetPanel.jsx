@@ -132,24 +132,46 @@ export function FlexBudgetPanel({ budgets = [], carry = {}, onCarryChange }) {
           <RotateCcw size={14} aria-hidden="true" /> {W.envelope_rollover}
         </p>
         <ul className="fintech-rollover__list">
-          {rolled.rows.map((row) => (
-            <li key={row.id} className="fintech-rollover__row">
-              <label className="fintech-rollover__label">
-                <input
-                  type="checkbox"
-                  checked={row.rollover > 0 || carry[row.id] === true}
-                  onChange={(event) => onCarryChange?.(row.id, event.target.checked)}
-                  aria-label={`${W.envelope_rollover} — ${row.name}`}
-                />
-                <span>{row.name}</span>
-              </label>
-              <span className="fintech-rollover__value">
-                {row.overspent
-                  ? `-${formatNative(Math.abs(row.leftover), 'IDR')}`
-                  : formatNative(row.leftover, 'IDR')}
-              </span>
-            </li>
-          ))}
+          {rolled.rows.map((row) => {
+            // An envelope that is already carrying money over is shown
+            // as carrying it, whether the reader ticked it or the
+            // server worked it out.
+            const carrying = row.rollover > 0 || carry[row.id] === true;
+            return (
+              <li
+                key={row.id}
+                className={`fintech-rollover__row${carrying ? ' is-carried' : ''}`}
+                data-testid={`rollover-row-${row.id}`}
+                data-carried={carrying ? 'true' : 'false'}
+              >
+                {/* The whole row is the target, not just the little
+                    square. A checkbox alone is a four-pixel target on
+                    a phone, which is why it read as "cannot be
+                    clicked". */}
+                <label className="fintech-rollover__label">
+                  <input
+                    type="checkbox"
+                    checked={carrying}
+                    onChange={(event) => onCarryChange?.(row.id, event.target.checked)}
+                    aria-label={`${W.envelope_rollover} — ${row.name}`}
+                  />
+                  <span className="fintech-rollover__name">{row.name}</span>
+                </label>
+                <span className="fintech-rollover__value">
+                  {row.overspent
+                    ? `-${formatNative(Math.abs(row.leftover), 'IDR')}`
+                    : formatNative(row.leftover, 'IDR')}
+                </span>
+                {/* The stamp. A tick on the row that carried it, so a
+                    glance says which envelopes are already handled. */}
+                {carrying ? (
+                  <span className="fintech-rollover__stamp" aria-hidden="true">
+                    ✓ {W.envelope_rollover_done || 'Sudah dipakai'}
+                  </span>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
         {rolled.carried > 0 && (
           <p className="fintech-panel__note">

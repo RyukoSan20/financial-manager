@@ -136,7 +136,9 @@
   font-weight: 700;
   font-size: 1.3rem;
   letter-spacing: -0.03em;
-  color: #ffffff;
+  /* The wordmark. It was white, which on the cream canvas made the
+     name itself invisible. */
+  color: #2C221E;
 }
 
 /* ---------------------------------------------------------------------------
@@ -146,10 +148,12 @@
 .login-gateway__title {
   margin: 0;
   font-size: clamp(2rem, 5.2vw, 3.1rem);
-  font-weight: 700;
-  line-height: 1.02;
+  font-weight: 800;
+  line-height: 1.04;
   letter-spacing: -0.035em;
-  color: #ffffff;
+  /* Deep espresso. This was white, which on the cream canvas was
+     not a low-contrast heading - it was an invisible one. */
+  color: #2C221E;
   text-wrap: balance;
 }
 
@@ -488,10 +492,10 @@
 .login-gateway__preview-title {
   margin: 0 0 0.4rem;
   font-size: clamp(1.5rem, 3.4vw, 2.1rem);
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.08;
   letter-spacing: -0.03em;
-  color: #ffffff;
+  color: #2C221E;
 }
 
 .login-gateway__preview-lead {
@@ -546,9 +550,10 @@
 
 .login-gateway__big {
   font-size: clamp(1.5rem, 3.2vw, 2rem);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.03em;
-  color: #ffffff;
+  /* The big rupiah figure. It was white too. */
+  color: #2C221E;
   font-variant-numeric: tabular-nums;
 }
 
@@ -640,7 +645,9 @@
 
 .login-gateway__bar-amount {
   font-weight: 700;
-  color: #ffffff;
+  /* The rupiah figures sit on the pastel tiles, not on a dark
+     wash, so they are espresso rather than white. */
+  color: #2C221E;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -663,7 +670,7 @@
 
 .login-gateway__line-amount {
   font-weight: 700;
-  color: #ffffff;
+  color: #2C221E;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }

@@ -237,7 +237,7 @@ check('the mascot is drawn as the shoujo companion, not a pixel grid', () => {
   // The flat stationery character is still reachable as
   // variant="kanahei" and the pixel grid as variant="pixel".
   const html = drawn.mascot({});
-  assert.ok(html.includes('viewBox="0 0 200 260"'), 'the 2.5-head vector viewBox');
+  assert.ok(html.includes('viewBox="0 0 200 220"'), 'the plump chibi vector viewBox');
   assert.ok(html.includes('data-variant="shoujo"'), 'the shoujo drawing is the default');
   assert.ok(!html.includes('shape-rendering="crispEdges"'), 'no pixel-grid edges');
   for (const layer of ['shoujo-rig-body', 'shoujo-rig-hair', 'shoujo-face', 'shoujo-prop']) {

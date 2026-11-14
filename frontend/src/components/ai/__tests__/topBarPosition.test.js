@@ -77,9 +77,13 @@ check('the bar is never sticky, and is only fixed once docked', () => {
   // `fixed` is allowed, but only on the docked pill and only when it
   // is guarded by the docked state.
   assert.ok(/docked\s*$/m.test(source) || /docked$/m.test(source) || source.includes('docked'), 'the docked state exists');
+  // `fixed` is allowed in the docked class list and in the portal
+  // pill - which is the whole point of the portal: it is pinned to
+  // the window, not to whatever card happens to contain the bar.
+  // What is not allowed is a `fixed` in the UNDOCKED list.
   assert.ok(
-    !/className="[^"]*\bfixed\b/.test(source),
-    'the bar is unconditionally fixed in a className string'
+    !/\bfixed\b/.test(undockedClasses(source)),
+    'the bar is fixed even when it is not docked'
   );
 });
 

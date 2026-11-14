@@ -376,7 +376,20 @@ export function timelinePoints(timeline, today, horizonDays = 30, lookbackDays =
   }
 
   points.sort((a, b) => a.days - b.days);
-  return points;
+
+  // Two points on the same day are one day, and the stepper draws
+  // one node per day. Without this the same date appeared twice -
+  // "Nov 8" and "Nov 8" side by side - which read as a mistake.
+  // The first of the day wins, because the points are already in
+  // date order and the earliest event of the day is the one the
+  // reader saw first.
+  const seen = new Set();
+  return points.filter((point) => {
+    const key = String(point.date).slice(0, 10);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**

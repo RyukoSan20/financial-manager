@@ -192,7 +192,12 @@ export function PerchedMascot({
         // board that opens below it would hang in the air. The
         // padding gives it a body to sit on, and the high z-index
         // keeps it above the card it is perched on.
-        'pointer-events-auto absolute -top-9 z-[2] pt-1',
+        //
+        // It sits a little further out than it used to. The companion
+        // is 120px wide now, and hanging it off the top edge of a
+        // card put it on top of the label of the card below - the
+        // word PEMASUKAN lost its first three letters.
+        'pointer-events-auto absolute -top-12 right-3 z-[2] pt-1',
         side === 'left' ? 'left-5' : 'right-5',
         className
       )}

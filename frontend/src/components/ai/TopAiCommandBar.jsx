@@ -33,6 +33,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Sparkles,
@@ -52,7 +53,6 @@ import {
 
 import { api } from '../../services/api';
 import { useTranslation } from '../../i18n';
-import FinBuddyMascot from '../common/FinBuddyMascot';
 import MarkdownText from '../common/MarkdownText';
 import { emitDataMutated } from '../../utils/dataSyncBus';
 
@@ -165,6 +165,48 @@ export default function TopAiCommandBar({ userData = {} }) {
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // The pill that follows the reader down the page.
+  //
+  // It is rendered through a portal onto document.body, because
+  // `position: fixed` is relative to the nearest ancestor that has a
+  // transform, a filter or a perspective - and the dashboard's cards
+  // have all three. A fixed bar inside one of those is pinned to the
+  // card, not to the window, which is exactly the bug it had.
+  const [portalOpen, setPortalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // The pill is only worth showing once the reader has scrolled far
+  // enough to have lost the bar.
+  useEffect(() => {
+    setPortalOpen(docked);
+  }, [docked]);
+
+  // A modal is open somewhere: the pill would sit on top of it.
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === 'Escape') setPortalOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    // A dialog that is open sets aria-modal, and a body that cannot
+    // scroll is a dialog that is open. Either is a signal.
+    const observer = new MutationObserver(() => {
+      const hasDialog = !!document.querySelector('[role="dialog"][aria-modal="true"]');
+      setModalOpen(hasDialog);
+      if (hasDialog) setPortalOpen(false);
+    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      observer.disconnect();
+    };
   }, []);
 
   // A docked bar is out of the flow, so the page would jump by its
@@ -414,12 +456,17 @@ export default function TopAiCommandBar({ userData = {} }) {
       data-testid="top-ai-command-bar"
     >
       <div className="flex items-center gap-2">
-        {/* The mascot, in the corner of the bar.
+        {/* The command badge.
 
-            It sits in a tinted holder, so it is a picture in the
-            bar rather than a picture floating beside it. */}
-        <span className="hidden sm:flex shrink-0 -ml-1 w-9 h-9 rounded-xl bg-gradient-to-br from-sky-100 to-violet-100 dark:from-sky-500/20 dark:to-violet-500/20 items-center justify-center">
-          <FinBuddyMascot mood={busy ? 'thinking' : 'idle'} size={28} />
+            This was the round smiley face of FinBuddy. It read as a
+            creepy cartoon head rather than as an affordance, so it
+            is now a sparkle in a soft warm pill - a mark that says
+            "this is a command bar" and nothing else. */}
+        <span
+          className="hidden sm:flex shrink-0 -ml-1 w-9 h-9 rounded-xl bg-[#FDE8E4] dark:bg-[#3A2A26] items-center justify-center"
+          aria-hidden="true"
+        >
+          <Sparkles className="w-4 h-4 text-[#D96B43]" />
         </span>
 
         <div className="flex-1 min-w-0 relative">
@@ -635,6 +682,69 @@ export default function TopAiCommandBar({ userData = {} }) {
         })}
       </div>
     </div>
+
+    {/* The floating pill.
+        It lives on document.body through a portal, so no ancestor's
+        transform, filter or overflow can trap it. It is hidden while
+        a dialog is open, so it can never sit over a modal. */}
+    {mounted && portalOpen && !modalOpen && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className="fixed top-3 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-xl"
+            data-testid="ai-command-portal-pill"
+            data-docked="true"
+          >
+            <div className="flex items-center gap-2 rounded-full border border-[#52796F]/30 bg-[#FAF9F6]/95 dark:bg-[#161F1C]/95 px-3 py-1.5 shadow-lg backdrop-blur-md">
+              <span
+                className="hidden sm:flex shrink-0 w-8 h-8 items-center justify-center rounded-full bg-[#FDE8E4] dark:bg-[#3A2A26]"
+                aria-hidden="true"
+              >
+                <Sparkles className="w-4 h-4 text-[#D96B43]" />
+              </span>
+              <div className="flex-1 min-w-0 relative">
+                <div className="flex items-center gap-2 rounded-full border border-transparent px-2.5 py-1.5 focus-within:border-[#52796F]/40 focus-within:bg-white dark:focus-within:bg-white/10 transition-[border-color,background-color] duration-150">
+                  <Sparkles className="w-4 h-4 text-[#D96B43] shrink-0" aria-hidden="true" />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={onKeyDown}
+                    onFocus={() => setOpen(true)}
+                    placeholder={placeholder}
+                    aria-label={placeholder}
+                    className="flex-1 min-w-0 bg-transparent outline-none text-sm text-[#1F2421] dark:text-[#FAF9F6] placeholder-[#8A827E]"
+                  />
+                  {voiceSupported ? (
+                    <button
+                      type="button"
+                      onClick={toggleVoice}
+                      aria-label={listening ? t('ai_assistant.command_bar_listening') : label}
+                      className="p-1.5 rounded-full text-[#5C6460] hover:bg-[#F4EFE6] shrink-0"
+                    >
+                      <Mic className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={submit}
+                    disabled={busy || !text.trim()}
+                    aria-label={label}
+                    className="shrink-0 rounded-full bg-[#2F4842] px-3 py-1.5 text-xs font-semibold text-[#FAF9F6] disabled:opacity-50"
+                  >
+                    {busy ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <CornerDownLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      : null}
     </>
   );
 }

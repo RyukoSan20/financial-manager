@@ -28,6 +28,7 @@ import ReadinessChecklist from '../components/ReadinessChecklist';
 import InsightsPanel from '../components/insights/InsightsPanel';
 import MonthTimeline from '../components/dashboard/MonthTimeline';
 import SpendingHeatmapCalendar from '../components/analytics/SpendingHeatmapCalendar';
+import OrganicWaveDivider from '../components/editorial/OrganicWaveDivider';
 import FinancialProfileShowcase from '../components/dashboard/FinancialProfileShowcase';
 import { ForestTicketCard } from '../components/ui/Botanical';
 import Onboarding from '../components/dashboard/Onboarding';
@@ -1216,6 +1217,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           on it. `auto-fit` fits as many cards as there is room for, each
           at least 240px wide, so the cards stay readable and the
           fourth one wraps to the next row when there is no room. */}
+      {/* A wave, so the page has a rhythm instead of a seam. */}
+      <OrganicWaveDivider tone="sage" direction="up" className="-mb-2 mt-2" />
+
       {/* A balanced 12-column Kakeibo bento row. TOTAL SALDO is the
           deep-sage hero ticket on the left (5 of 12); the three
           cashflow cards share the right (7 of 12) as equal white

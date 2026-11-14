@@ -170,7 +170,7 @@ export const Debts = () => {
   const paidOffDebts = debts.filter(d => d.status === 'paid_off').length;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 cute-canvas rounded-3xl">
       {/* Header */}
       <BotanicalPageHeader
         badge={t('debts.badge')}
@@ -220,47 +220,64 @@ export const Debts = () => {
         />
       )}
 
+      {/* The four figures, as the same cut-outs the budget page uses.
+          They were four differently coloured tiles with four
+          differently coloured icons, which is four rainbows and no
+          hierarchy. Now the paper is the same and only the number
+          carries a colour. */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card tier="tile" hue="rose" className="p-4">
+        <div className="cute-card cute-card--sakura p-4" data-testid="debt-stat-01">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-red-100 rounded-lg">
-              <CreditCard className="w-6 h-6 text-red-600" />
+            <div className="p-2.5 rounded-xl bg-[#FDE8E4]">
+              <CreditCard className="w-5 h-5 text-[#B3261E]" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">{t('debts.total_remaining')}</p>
-              <p className="text-xl font-bold text-red-600">{formatCurrency(totalDebt, displayCurrency)}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#5C6460]">
+                {t('debts.total_remaining')}
+              </p>
+              <p className="text-xl font-extrabold tabular-nums text-[#B3261E]">
+                {formatCurrency(totalDebt, displayCurrency)}
+              </p>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card tier="tile" hue="sky" className="p-4">
+        <div className="cute-card cute-card--butter p-4 md:translate-y-2" data-testid="debt-stat-02">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-primary-100 rounded-lg">
-              <DollarSign className="w-6 h-6 text-primary-600" />
+            <div className="p-2.5 rounded-xl bg-[#FFF6D6]">
+              <DollarSign className="w-5 h-5 text-[#8A6D1F]" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">{t('debts.total_principal')}</p>
-              <p className="text-xl font-bold text-primary-600">{formatCurrency(totalPrincipal, displayCurrency)}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#5C6460]">
+                {t('debts.total_principal')}
+              </p>
+              <p className="text-xl font-extrabold tabular-nums text-[#2C221E]">
+                {formatCurrency(totalPrincipal, displayCurrency)}
+              </p>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card tier="tile" hue="emerald" className="p-4">
+        <div className="cute-card cute-card--sage p-4" data-testid="debt-stat-03">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-100 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+            <div className="p-2.5 rounded-xl bg-[#E3F2EA]">
+              <CheckCircle className="w-5 h-5 text-[#2F4842]" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">{t('debts.total_paid')}</p>
-              <p className="text-xl font-bold text-green-600">{formatCurrency(totalPaid, displayCurrency)}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#5C6460]">
+                {t('debts.total_paid')}
+              </p>
+              <p className="text-xl font-extrabold tabular-nums text-[#2F4842]">
+                {formatCurrency(totalPaid, displayCurrency)}
+              </p>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-4">
+        <Card className="p-4 cute-card cute-card--oat md:translate-y-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-yellow-100 rounded-lg">
-              <Calendar className="w-6 h-6 text-yellow-600" />
+            <div className="p-2.5 rounded-xl bg-[#F4EFE6]">
+              <Calendar className="w-5 h-5 text-[#5C6460]" />
             </div>
             <div>
               <p className="text-sm text-gray-500">{t('debts.monthly_payment')}</p>
