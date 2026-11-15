@@ -166,6 +166,7 @@ export default {
     gmail: "Gmail Sync",
     merchant: "Merchant",
     kanban: "Shopping Board",
+    kobanShop: "Koban & Co. Shop",
     categoryExpenses: "Category Expenses",
     profile: "Profile",
     notifications: "Notifications",

@@ -166,6 +166,7 @@ export default {
     kanban: "ショッピングボード",
     gmail: "Gmail同期",
     merchant: "店舗・ULO",
+    kobanShop: "コバン商店",
     categoryExpenses: "カテゴリ別支出",
     profile: "プロフィール",
     notifications: "通知",

@@ -166,6 +166,7 @@ export default {
     kanban: "Kanban Belanja",
     gmail: "Gmail Sync",
     merchant: "Toko / Merchant",
+    kobanShop: "Toko Koban & Co.",
     categoryExpenses: "Kategori Pengeluaran",
     profile: "Profil",
     notifications: "Notifikasi",

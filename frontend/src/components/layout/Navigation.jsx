@@ -34,6 +34,7 @@ import {
   Users,
   Home,
   MonitorSmartphone,
+  Store,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -67,6 +68,7 @@ const navItems = (t) => [
   { name: t('nav.budgets'), href: '/budgets', icon: PiggyBank },
   { name: t('nav.recurring'), href: '/recurring', icon: Repeat },
   { name: t('nav.goals'), href: '/goals', icon: Target },
+  { name: t('nav.kobanShop'), href: '/koban-shop', icon: Store },
   { name: t('nav.debts'), href: '/debts', icon: CreditCard },
   // The shared bill. It is behind a switch, so it is not in the menu
   // until the reader has asked for it. Without this the flat menu

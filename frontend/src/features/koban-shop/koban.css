@@ -1,0 +1,140 @@
+/*
+ * Koban & Co. motion.
+ *
+ * Transform-only keyframes, composited with translate3d, stopped by
+ * the reader's reduced-motion setting and by nothing else.
+ */
+
+/* A companion standing at a post: a slow breath. */
+@keyframes koban-breathe {
+  0%, 100% { transform: translate3d(-50%, -100%, 0) scale(1); }
+  50% { transform: translate3d(-50%, -100%, 0) scale(1.025) translateY(-2px); }
+}
+.koban-chara { animation: koban-breathe 3.6s ease-in-out infinite; will-change: transform; transform-origin: 50% 100%; }
+
+/* A customer: in at the door (left), to a shelf, to the counter, out. */
+@keyframes koban-walk {
+  0% { left: -8%; opacity: 0; transform: translate3d(0, 0, 0); }
+  6% { opacity: 1; }
+  38% { left: var(--walk-to, 50%); transform: translate3d(0, -4px, 0); }
+  48% { left: var(--walk-to, 50%); transform: translate3d(0, 0, 0); }
+  72% { left: 52%; transform: translate3d(0, -4px, 0); }
+  80% { left: 52%; transform: translate3d(0, 0, 0); }
+  94% { opacity: 1; }
+  100% { left: 108%; opacity: 0; }
+}
+.koban-walker { animation-name: koban-walk; animation-timing-function: ease-in-out; animation-iteration-count: 1; animation-fill-mode: both; will-change: left, transform; }
+
+@keyframes koban-bob { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -3px, 0); } }
+.koban-ask { animation: koban-bob 0.9s ease-in-out infinite; display: inline-block; }
+
+@keyframes koban-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.koban-blink { animation: koban-blink 1s steps(2) infinite; }
+
+/* An empty shelf asks for attention. */
+@keyframes koban-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(217, 107, 67, 0.55); } 60% { box-shadow: 0 0 0 8px rgba(217, 107, 67, 0); } }
+.koban-hotspot--empty { animation: koban-pulse 1.6s ease-out infinite; }
+
+/* Fever. */
+@keyframes koban-fever-shimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+.koban-gauge--fever { background: linear-gradient(90deg, #E8B84B, #D96B43, #C9699A, #E8B84B); background-size: 200% 100%; animation: koban-fever-shimmer 1.2s linear infinite; }
+.koban-stage--fever { box-shadow: 0 6px 0 #DFD3C3, 0 0 0 3px #E8B84B inset; }
+.koban-fever-badge { animation: koban-bob 0.8s ease-in-out infinite; }
+
+/* An active skill. */
+@keyframes koban-glow { 0%, 100% { box-shadow: 0 3px 0 #4A3540, 0 0 0 0 rgba(47, 72, 66, 0.4); } 50% { box-shadow: 0 3px 0 #4A3540, 0 0 0 6px rgba(47, 72, 66, 0); } }
+.koban-skill-active { animation: koban-glow 1.4s ease-out infinite; }
+
+/* The battle log lines arrive one after another. */
+@keyframes koban-line-in { from { opacity: 0; transform: translate3d(-6px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+.koban-log-line { animation: koban-line-in 0.3s ease-out both; }
+
+/* A sheet rising. */
+@keyframes koban-sheet-in { from { opacity: 0; transform: translate3d(0, 16px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+.koban-sheet { animation: koban-sheet-in 0.22s ease-out both; }
+
+/*
+ * The shelf hotspots have two placements.
+ *
+ * Desktop: absolute, over the room, at the coordinates the room was
+ * drawn with. Phone: they leave the room and become a row of three
+ * under it. A 358-pixel stage cannot hold a label, a character and a
+ * bubble at once, and the label landing on top of a character's face
+ * is worse than the label being somewhere else.
+ *
+ * The wrapper is the positioning context: on a desktop it is exactly
+ * the size of the room so the absolute hotspots sit over the
+ * furniture; on a phone it is a column and the row follows the room.
+ */
+.koban-stage-wrap {
+  position: relative;
+}
+
+.koban-shelves {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.koban-hotspot {
+  position: absolute;
+  left: var(--sx);
+  top: var(--sy);
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+@media (max-width: 639px) {
+  .koban-stage-wrap {
+    position: static;
+  }
+  .koban-shelves {
+    position: static;
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.4rem 0.35rem 0;
+    pointer-events: auto;
+  }
+  .koban-hotspot {
+    position: static;
+    transform: none;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .koban-hotspot span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .koban-walker {
+    transform: scale(0.85);
+  }
+}
+
+/*
+ * The phone tab bar sits ABOVE the app's own bottom navigation, not
+ * over it.
+ *
+ * The app's bottom bar is 5rem tall (h-20) and is itself fixed. Two
+ * fixed bars cannot share the bottom edge, so the game's bar is
+ * lifted by exactly the app bar's height plus the safe area. The
+ * value is written as plain addition rather than `calc()` with
+ * `env()` because a browser that cannot parse the whole declaration
+ * drops the WHOLE rule and leaves the bar at the very bottom,
+ * underneath the app's navigation, where it cannot be tapped.
+ */
+.koban-tabs--fixed {
+  bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 1023px) {
+  .koban-page {
+    padding-bottom: 10rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .koban-chara, .koban-walker, .koban-ask, .koban-blink, .koban-hotspot--empty, .koban-gauge--fever,
+  .koban-fever-badge, .koban-skill-active, .koban-log-line, .koban-sheet { animation: none !important; }
+  .koban-walker { left: var(--walk-to, 50%); opacity: 1; }
+}

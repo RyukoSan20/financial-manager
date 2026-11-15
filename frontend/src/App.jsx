@@ -56,6 +56,7 @@ import SplitDashboardPage from './pages/SplitBill/SplitDashboardPage';
 import SplitGroupDetailPage from './pages/SplitBill/SplitGroupDetailPage';
 import GuestLiveClaimPage from './pages/SplitBill/GuestLiveClaimPage';
 import SplitInvitePage from './pages/SplitBill/SplitInvitePage';
+import KobanShopPage from './features/koban-shop/KobanShopPage';
 import { FlaggedRoute } from './components/split/FlaggedRoute';
 import { useTranslation } from './i18n';
 import { batch3 } from './i18n/keys_batch3';
@@ -169,6 +170,8 @@ function App() {
               <Route path="accounts" element={<Accounts />} />
               <Route path="budgets" element={<Budgets />} />
               <Route path="goals" element={<Goals />} />
+              <Route path="koban-shop" element={<KobanShopPage />} />
+              <Route path="shop-tycoon" element={<KobanShopPage />} />
               <Route path="debts" element={<Debts />} />
               <Route path="recurring" element={<Recurring />} />
               <Route path="calculators" element={<Calculators />} />
