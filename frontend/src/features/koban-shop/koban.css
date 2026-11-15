@@ -128,8 +128,17 @@
 }
 
 @media (max-width: 1023px) {
+  /*
+   * The page ends above the tab bar, not under it.
+   *
+   * The bar is fixed 5rem above the bottom (it sits on the app's own
+   * navigation), so the last 9rem of the page would be behind it.
+   * The padding reserves that space, and the diorama is given a
+   * little more of it, because the bottom of the room is where the
+   * characters stand.
+   */
   .koban-page {
-    padding-bottom: 10rem;
+    padding-bottom: 11rem;
   }
 }
 
