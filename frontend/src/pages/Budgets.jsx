@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { BudgetMethodPanels } from '../components/fintech/BudgetMethodPanels';
 import { useEnvelopeMover } from '../components/fintech/useEnvelopeMover';
 import { resolveBudgetMethod } from '../utils/decisionWidgets';
@@ -28,6 +29,12 @@ import { ask } from '../contexts/ConfirmContext';
 
 export const Budgets = () => {
   const { t, language } = useTranslation();
+  // `/budgets?preset=50-30-20` - sent by the Health Coach's one-tap
+  // fix. It opens the 50/30/20 recipe ready to apply; nothing is
+  // written until the reader presses apply.
+  const location = useLocation();
+  const presetFromCoach = new URLSearchParams(location.search).get('preset') === '50-30-20'
+    || location.state?.preset === '50-30-20';
   // With the polish switch off, the page keeps the header it has.
   const polished = buildFlag('UI_POLISH');
   // Which way the reader runs their money. It is their own
@@ -330,9 +337,10 @@ export const Budgets = () => {
 
           {/* The recipes. They are the easier way in for a reader who
               has nothing yet, so they sit under the explanation. */}
-          {useRecipes && (
-            <div className="mt-4">
+          {(useRecipes || presetFromCoach) && (
+            <div className="mt-4" data-testid={presetFromCoach ? 'budget-preset-503020' : undefined}>
               <BudgetRecipeSelector
+                selectedId={presetFromCoach ? 'balanced' : null}
                 total={3000000}
                 onApply={() => {
                   trackEvent('exp_budget_wizard', 'recipe_applied', undefined);
@@ -343,6 +351,16 @@ export const Budgets = () => {
           )}
         </>
       ) : (
+        <>
+        {presetFromCoach && (
+          <div className="mb-4" data-testid="budget-preset-503020">
+            <BudgetRecipeSelector
+              selectedId="balanced"
+              total={3000000}
+              onApply={() => setShowModal(true)}
+            />
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {budgets.map((budget) => {
             const spent = parseFloat(budget.spent || 0);
@@ -472,6 +490,7 @@ export const Budgets = () => {
             );
           })}
         </div>
+        </>
       )}
 
       {/* Add/Edit Modal */}

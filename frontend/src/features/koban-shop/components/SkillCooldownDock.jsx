@@ -41,7 +41,15 @@ export default function SkillCooldownDock({ state, nowMs, onActivate }) {
                 padding: 2,
               }}
             >
-              <img src={c.face} alt={c.name} className={clsx('h-full w-full rounded-full object-cover', !ready && 'opacity-60 grayscale')} />
+              <span
+                role="img"
+                aria-label={c.name}
+                className={clsx(
+                  'koban-portrait block h-full w-full rounded-full',
+                  !ready && 'opacity-60 grayscale'
+                )}
+                style={{ backgroundImage: `url(/koban-assets/sprites/${c.id}_portrait.png)` }}
+              />
             </span>
             <span className="text-[9.5px] font-extrabold text-[#2C221E]">{c.name.split(' ')[0]}</span>
             <span className={clsx('text-[8.5px] font-bold tabular-nums', ready ? 'text-[#2F4842]' : 'text-[#9E3B24]')}>

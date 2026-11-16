@@ -88,7 +88,9 @@ export default {
   ],
   "scenes": {
    "atelier": "/koban-assets/places/atelier.jpg",
-   "workshop": "/koban-assets/places/workshop.jpg"
+   "workshop": "/koban-assets/places/workshop.jpg",
+   "dungeon": "/koban-assets/places/dungeon_forest.jpg",
+   "vault": "/koban-assets/places/vault_bank.jpg"
   },
   "svgCount": 530
  },
@@ -100,8 +102,8 @@ export default {
    "kakeiboLink": "daily_income",
    "stageCoords": {
     "scene": "atelier",
-    "xPercent": 48,
-    "yPercent": 58
+    "xPercent": 44,
+    "yPercent": 50
    },
    "skill": {
     "id": "lucky_koban_bell",
@@ -144,8 +146,8 @@ export default {
    "kakeiboLink": "budget_audit",
    "stageCoords": {
     "scene": "atelier",
-    "xPercent": 66,
-    "yPercent": 52
+    "xPercent": 56,
+    "yPercent": 49
    },
    "skill": {
     "id": "abacus_audit",
@@ -166,8 +168,8 @@ export default {
    "kakeiboLink": "investments_goals",
    "stageCoords": {
     "scene": "atelier",
-    "xPercent": 28,
-    "yPercent": 68
+    "xPercent": 14,
+    "yPercent": 74
    },
    "skill": {
     "id": "golden_pocket_watch",
@@ -188,8 +190,8 @@ export default {
    "kakeiboLink": "saving_jar_bonus",
    "stageCoords": {
     "scene": "atelier",
-    "xPercent": 78,
-    "yPercent": 40
+    "xPercent": 88,
+    "yPercent": 76
    },
    "skill": {
     "id": "compound_konpeito",
@@ -210,8 +212,8 @@ export default {
    "kakeiboLink": "impulse_monster_slayer",
    "stageCoords": {
     "scene": "atelier",
-    "xPercent": 20,
-    "yPercent": 44
+    "xPercent": 63,
+    "yPercent": 88
    },
    "skill": {
     "id": "vanguard_coin_charge",

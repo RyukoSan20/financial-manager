@@ -43,6 +43,14 @@ export default function KobanShopPage() {
   const nowMs = useClock();
   const navigate = useNavigate();
   const [tab, setTab] = useState('shop');
+
+  // The companion who just fired a skill celebrates for a moment.
+  const [celebratingId, setCelebratingId] = useState(null);
+  useEffect(() => {
+    if (!celebratingId) return undefined;
+    const id = window.setTimeout(() => setCelebratingId(null), 1400);
+    return () => window.clearTimeout(id);
+  }, [celebratingId]);
   const [restockShelfId, setRestockShelfId] = useState(null);
   const [requestId, setRequestId] = useState(null);
 
@@ -80,7 +88,14 @@ export default function KobanShopPage() {
           </button>
         </div>
         <div className="mt-2">
-          <SkillCooldownDock state={state} nowMs={nowMs} onActivate={(id) => actions.activateSkill(id)} />
+          <SkillCooldownDock
+            state={state}
+            nowMs={nowMs}
+            onActivate={(id) => {
+              actions.activateSkill(id);
+              setCelebratingId(id);
+            }}
+          />
         </div>
       </Card>
 
@@ -122,7 +137,13 @@ export default function KobanShopPage() {
       {/* Panels */}
       {tab === 'shop' ? (
         <div className="space-y-3" data-testid="panel-shop">
-          <IsometricAtelierStage state={state} nowMs={nowMs} onShelfTap={setRestockShelfId} onCustomerTap={(id) => setRequestId(id)} />
+          <IsometricAtelierStage
+            state={state}
+            nowMs={nowMs}
+            onShelfTap={setRestockShelfId}
+            onCustomerTap={(id) => setRequestId(id)}
+            celebratingId={celebratingId}
+          />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Card className="p-3">
               <SectionTitle badge="GUDANG" title={`${stock.reduce((a, s) => a + s.qty, 0)} barang siap jual`} lead="Ketuk rak di toko untuk menata." />

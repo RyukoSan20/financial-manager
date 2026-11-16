@@ -277,13 +277,16 @@ check('the health bento has no gap beside the ratios', () => {
     bento.indexOf('lg:col-span-7')
   );
   assert.ok(scoreBlock, 'there is no five-column cell beside the seven');
+  // Three rows now - the daily quests (seven) beside the what-if
+  // simulator (five) sit between the two - so five and seven come
+  // three times each.
   assert.ok(
-    (bento.match(/lg:col-span-5/g) || []).length === 2,
-    'the score and the ratios are not both five columns wide'
+    (bento.match(/lg:col-span-5/g) || []).length === 3,
+    'the score, the what-if and the ratios are not all five columns wide'
   );
   assert.ok(
-    (bento.match(/lg:col-span-7/g) || []).length === 2,
-    'the amounts and the audit are not both seven columns wide'
+    (bento.match(/lg:col-span-7/g) || []).length === 3,
+    'the amounts, the quests and the audit are not all seven columns wide'
   );
 
   // The findings are their own card, not folded into the audit.

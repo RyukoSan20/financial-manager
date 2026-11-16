@@ -22,6 +22,8 @@ import './styles/campus-editorial.css'
 import './styles/motion-system.css'
 // The botanical studio has the last word on colour.
 import './styles/botanical.css'
+// The real chibi artwork and the physics around it.
+import './styles/koban-mascot.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

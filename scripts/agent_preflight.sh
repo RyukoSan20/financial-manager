@@ -166,7 +166,9 @@ for test_file in \
   src/utils/__tests__/financialProfile.test.js \
   src/components/ai/__tests__/topBarPosition.test.js \
   src/features/koban-shop/__tests__/kobanEngine.test.js \
-  src/features/koban-shop/__tests__/kobanShop.test.js
+  src/features/koban-shop/__tests__/kobanShop.test.js \
+  src/features/koban-shop/__tests__/kobanSprites.test.js \
+  src/components/mascot/__tests__/realChibiMascot.test.js
 do
   if [ ! -f "$test_file" ]; then
     echo "  SKIP $test_file (not present)"
@@ -210,6 +212,14 @@ else
 fi
 
 echo "--- generated assets -----------------------------------------"
+if "$ROOT/backend/venv/bin/python" "$ROOT/scripts/generate_koban_sprites.py" --check > /tmp/preflight_koban_sprites.log 2>&1; then
+  tail -1 /tmp/preflight_koban_sprites.log
+  echo "  -> koban sprites OK"
+else
+  tail -20 /tmp/preflight_koban_sprites.log
+  note_failure "koban sprites"
+fi
+
 if "$ROOT/backend/venv/bin/python" "$ROOT/scripts/generate_assets.py" --check > /tmp/preflight_assets.log 2>&1; then
   grep -E '^  OK' /tmp/preflight_assets.log
   echo "  -> assets OK"

@@ -82,15 +82,23 @@ check(
 
 check(
   'the bento shows a face, and the face follows the score',
-  /mood\s*=\s*numericScore\s*>=\s*60\s*\?\s*'happy'\s*:\s*'worried'/.test(bento),
+  // The face is now the real Minori & Kaneru artwork, and the mood is
+  // worked out from the score in one place: sweating below 60, happy
+  // from 60, celebrating from 70.
+  /<KakeiboStudioMascots score=\{numericScore\}/.test(bento) &&
+    /if \(score >= 70\) return 'celebrate';\s*if \(score >= 60\) return 'happy';\s*return 'sweating';/.test(
+      read('src/components/health/wellnessMath.js')
+    ),
   'a smile over a bad score would be a lie'
 );
 
 check(
-  'the bento is a two-row grid of twelve columns',
+  'the bento is a grid of twelve columns, five beside seven on every row',
+  // Three rows now: the score beside the amounts, the daily quests
+  // beside the what-if, and the ratios beside the audit.
   /lg:grid-cols-12/.test(bento) &&
-    (bento.match(/lg:col-span-5/g) || []).length === 2 &&
-    (bento.match(/lg:col-span-7/g) || []).length === 2
+    (bento.match(/lg:col-span-5/g) || []).length === 3 &&
+    (bento.match(/lg:col-span-7/g) || []).length === 3
 );
 
 // ---------------------------------------------------------------------

@@ -54,7 +54,11 @@ export default function KakeiboVaultLedgerTab({ state, actions }) {
         </Card>
 
         {/* The vault. */}
-        <Card className="p-3 lg:col-span-7" data-testid="mone-vault">
+        <Card
+          className="koban-vault relative overflow-hidden p-3 lg:col-span-7"
+          data-testid="mone-vault"
+          style={{ '--koban-vault-scene': `url(${DB.meta.scenes.vault})` }}
+        >
           <SectionTitle badge="BRANKAS MONE" title={`${fmt(state.vault.balance)} Koban tersimpan`} lead={`Bunga majemuk ${(DB.meta.vaultInterestPerHour * 100).toFixed(1)}% per jam nyata · total bunga ${fmt(state.vault.totalInterestEarned)}`} />
           <div className="flex flex-wrap items-center gap-2">
             <input type="number" min="1" value={deposit} onChange={(e) => setDeposit(Number(e.target.value) || 0)} className="w-28 rounded-full border-2 border-[#4A3540] px-3 py-1.5 text-[12.5px] font-bold text-[#2C221E]" aria-label="Jumlah" data-testid="vault-amount" />

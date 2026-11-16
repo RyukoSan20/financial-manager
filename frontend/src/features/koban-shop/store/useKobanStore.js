@@ -69,6 +69,7 @@ export const actions = {
   depositVault: act((s, amount, now) => E.depositVault(s, amount, now)),
   withdrawVault: act((s, amount) => E.withdrawVault(s, amount)),
   claimKakeibo: act((s, snapshot, now) => E.claimKakeiboRewards(s, snapshot, now)),
+  grantDailyQuest: act((s, questId, reward, now) => E.grantDailyQuest(s, questId, reward, now)),
   dismissOfflineReport: act((s) => ({ ...s, pendingOfflineReport: null })),
   triggerFever: act((s, now) => (s.kingVisitGauge >= 100 ? { ...s, kingVisitGauge: 0, feverModeUntil: now + E.FEVER_DURATION_SEC * 1000 } : s)),
   resetSave: () => set(E.initialState(Date.now())),

@@ -39,6 +39,17 @@ export default function DungeonExpeditionTab({ state, actions, nowMs }) {
 
   return (
     <div className="space-y-3" data-testid="dungeontab">
+      {/* The forest the expedition goes into. */}
+      <div
+        className="koban-scene relative h-24 overflow-hidden rounded-[18px] border-2 border-[#4A3540] shadow-[0_4px_0_#DFD3C3] sm:h-32"
+        style={{ backgroundImage: `url(${DB.meta.scenes.dungeon})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+        data-testid="dungeon-scene"
+      >
+        <span className="absolute bottom-2 left-3 rounded-full border-2 border-[#4A3540] bg-[#FFF6D6] px-3 py-1 text-[11px] font-extrabold tracking-[0.1em] text-[#2C221E] shadow-[0_3px_0_#4A3540]">
+          HUTAN BISU-BISU
+        </span>
+      </div>
+
       {/* The five zones. */}
       <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
         {DB.dungeons.map((z) => (

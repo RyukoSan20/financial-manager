@@ -134,7 +134,7 @@ const RatioCard = ({
       data-testid="ratio-card"
     >
       {/* Row 1: the icon and the name, left; the status pill, right. */}
-      <div className="flex items-center justify-between gap-3" data-testid="ratio-row-head">
+      <div className="flex items-center justify-between gap-3 flex-wrap" data-testid="ratio-row-head">
         <span className="flex items-center gap-2 min-w-0 text-xs font-bold uppercase tracking-[0.06em] text-[#52796F] dark:text-emerald-300">
           <span className="shrink-0" aria-hidden="true">{icon}</span>
           <span className="whitespace-normal break-words">{label}</span>

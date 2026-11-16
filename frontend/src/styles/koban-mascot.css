@@ -1,0 +1,229 @@
+/*
+ * The real companion, and the physics around it.
+ *
+ * The character is a picture. This file is what happens around it:
+ * the sparkle trail that follows the pointer, and the confetti that
+ * falls when the figure is let go.
+ *
+ * Both are DOM. A drag fires dozens of pointer moves a second, and
+ * each one leaves a mark, so the marks are few, they are short-lived,
+ * and they are ordinary elements - which means they cost nothing and
+ * they can be styled with the same tokens as everything else.
+ *
+ * Everything animates a transform or an opacity, so nothing here
+ * touches the layout. The confetti falls with a translate, not with
+ * a change of top, so a shower of twenty petals does not cost a
+ * layout pass a frame.
+ */
+
+.koban-mascot {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.koban-mascot-figure {
+  /* The figure is dragged with the transform, never with the layout,
+     so nothing else on the page moves with it. */
+  will-change: transform;
+  transform-origin: 50% 100%;
+}
+
+.koban-mascot-art {
+  object-fit: contain;
+  object-position: 50% 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 3px 0 rgba(74, 53, 64, 0.18));
+}
+
+/* --- the sparkle trail ------------------------------------------------ */
+
+/*
+ * A four-point shoujo glint. It is a rotated square with concave
+ * sides, which is the shape that reads as a sparkle rather than as a
+ * diamond.
+ */
+.koban-particle.is-glint {
+  width: 11px;
+  height: 11px;
+  background: currentColor;
+  clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
+}
+
+/* A pastel star. */
+.koban-particle.is-star {
+  width: 9px;
+  height: 9px;
+  background: currentColor;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+/* A koban coin: a disc with a square hole. */
+.koban-particle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translate3d(-50%, -50%, 0);
+  animation-name: koban-particle-float;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+.koban-particle:not(.is-glint):not(.is-star) {
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+@keyframes koban-particle-float {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.4) rotate(0deg);
+  }
+  22% {
+    opacity: 1;
+    transform: translate3d(calc(-50% + var(--dx) * 0.4), calc(-50% + var(--drift) * 0.4 - 6px), 0) scale(1.1) rotate(calc(var(--spin) * 0.4));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(-50% + var(--dx)), calc(-50% + var(--drift) - 34px), 0) scale(0.5) rotate(var(--spin));
+  }
+}
+
+/* --- the confetti and the sakura ------------------------------------- */
+
+/*
+ * A falling piece. It drops, it drifts sideways, and it turns.
+ * The sway is a separate animation on the same element so the two
+ * do not fight: one moves it down, the other moves it across.
+ */
+.koban-confetti {
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid currentColor;
+  transform: translate3d(-50%, -50%, 0);
+  animation-name: koban-confetti-fall, koban-confetti-sway;
+  animation-timing-function: cubic-bezier(0.4, 0.1, 0.6, 1), ease-in-out;
+  animation-iteration-count: 1, infinite;
+  animation-fill-mode: both, none;
+}
+
+/* A petal is round and flat. */
+.koban-confetti.is-star {
+  border-radius: 60% 12% 60% 12%;
+  width: 11px;
+  height: 9px;
+}
+
+/* A glint falls like a flat cross. */
+.koban-confetti.is-glint {
+  border: 0;
+  clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
+}
+
+@keyframes koban-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(-50% + var(--dx) * 0.5), 78vh, 0) rotate(var(--spin));
+  }
+}
+
+@keyframes koban-confetti-sway {
+  0% { margin-left: 0; }
+  50% { margin-left: var(--drift); }
+  100% { margin-left: 0; }
+}
+
+/*
+ * A reader who asked for less movement gets a still companion. The
+ * figure still works - it can still be dragged, and it still answers
+ * - it just does not throw confetti about.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .koban-particle,
+  .koban-confetti {
+    display: none;
+  }
+
+  .koban-mascot-figure {
+    transition: none;
+  }
+}
+
+/* --- the stationery canvas and the slider ----------------------------- */
+
+/* The polka dot-grid paper the stationery cards sit on. */
+.kakeibo-dot-canvas {
+  background-color: #f7f2e7;
+  background-image: radial-gradient(rgba(74, 53, 64, 0.13) 1.2px, transparent 1.3px);
+  background-size: 18px 18px;
+}
+
+.dark .kakeibo-dot-canvas {
+  background-color: #1d1916;
+  background-image: radial-gradient(rgba(203, 184, 166, 0.12) 1.2px, transparent 1.3px);
+}
+
+.kakeibo-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 12px;
+  border-radius: 999px;
+  border: 2px solid #4a3540;
+  background: #fff6d6;
+  outline: none;
+}
+
+.kakeibo-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 2px solid #4a3540;
+  background: #f7c8d8;
+  box-shadow: 0 3px 0 #4a3540;
+  cursor: grab;
+}
+
+.kakeibo-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid #4a3540;
+  background: #f7c8d8;
+  box-shadow: 0 3px 0 #4a3540;
+  cursor: grab;
+}
+
+.kakeibo-range:focus-visible::-webkit-slider-thumb {
+  outline: 3px solid #8ec9e0;
+  outline-offset: 2px;
+}
+
+/*
+ * The login studio sits in five of twelve columns on a wide screen,
+ * about 470px. A 7/5 split inside that leaves the conversation two
+ * words wide, so inside a narrow slot the stage goes on top and the
+ * conversation under it, full width.
+ */
+@media (min-width: 1024px) {
+  .shoujo-studio--narrow {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .shoujo-studio--narrow > * {
+    grid-column: 1 / -1 !important;
+  }
+  .shoujo-studio--narrow > .shoujo-studio-stage {
+    order: -1;
+  }
+}

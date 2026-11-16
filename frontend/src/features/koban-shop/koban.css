@@ -5,6 +5,130 @@
  * the reader's reduced-motion setting and by nothing else.
  */
 
+
+/*
+ * The pixel-art companions.
+ *
+ * A sprite strip is a row of frames side by side. To play it, the
+ * strip is slid left by exactly one frame width at a time.
+ *
+ * THE PERCENTAGE, WHICH IS THE WHOLE TRICK.
+ *
+ * A background-position percentage is measured against (container -
+ * image), not against the image. With the image scaled to N frames
+ * across, the overflow is N-1 frames wide, so one frame is 1/(N-1) of
+ * the overflow and a shift of one frame is 1/(N-1) as a percentage.
+ *
+ * steps(k) divides the keyframe range into k equal parts. To land on
+ * whole frames, the range must be N frames wide and the step count N:
+ * that advances exactly one frame per step, and the loop closes
+ * because the last position is frame N-1 and the next is frame 0.
+ *
+ * So the range is N/(N-1) of the overflow:
+ *
+ *   2 frames  ->  200%        3 frames  ->  150%
+ *   4 frames  ->  133.3333%
+ *
+ * Getting this wrong is invisible in a screenshot - every frame looks
+ * like frame one, and the strip shows all its frames side by side like
+ * a row of stickers - so it is worth writing down.
+ *
+ * The element carries the strip; an inner element is the window that
+ * clips it.
+ */
+.koban-sprite {
+  position: relative;
+  overflow: hidden;
+  image-rendering: pixelated;
+}
+
+.koban-sprite__strip {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  will-change: background-position;
+}
+
+/* The idle loop: three frames of a breathing bounce. */
+.koban-sprite--idle .koban-sprite__strip { animation: koban-sprite-idle 1.2s steps(3) infinite; }
+@keyframes koban-sprite-idle {
+  from { background-position: 0% 0; }
+  to { background-position: 150% 0; }
+}
+
+/* The walk cycle: four frames. */
+.koban-sprite--walk .koban-sprite__strip { animation: koban-sprite-walk 0.56s steps(4) infinite; }
+@keyframes koban-sprite-walk {
+  from { background-position: 0% 0; }
+  to { background-position: 133.3333% 0; }
+}
+
+/* The celebration: three frames, a little faster than the idle. */
+.koban-sprite--celebrate .koban-sprite__strip { animation: koban-sprite-celebrate 0.72s steps(3) infinite; }
+@keyframes koban-sprite-celebrate {
+  from { background-position: 0% 0; }
+  to { background-position: 150% 0; }
+}
+
+/* The working loop: two frames. */
+.koban-sprite--work .koban-sprite__strip { animation: koban-sprite-work 0.66s steps(2) infinite; }
+@keyframes koban-sprite-work {
+  from { background-position: 0% 0; }
+  to { background-position: 200% 0; }
+}
+
+/*
+ * A companion standing on the floor gets a contact shadow.
+ *
+ * Without it a sprite that is in exactly the right place still reads
+ * as pasted on, because nothing joins it to the boards underneath.
+ */
+.koban-sprite--standing::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 68%;
+  height: 7%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(44, 34, 30, 0.42) 0%, rgba(44, 34, 30, 0) 72%);
+  pointer-events: none;
+}
+
+/*
+ * A scene behind a card.
+ *
+ * The vault card carries the bank as a background, but the card is
+ * opaque and the scene would not show. The scene is drawn on the
+ * card's own top strip instead - a band, like a photograph above a
+ * caption.
+ */
+.koban-vault::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 74px;
+  background-image: var(--koban-vault-scene);
+  background-size: cover;
+  background-position: center;
+  opacity: 0.55;
+}
+
+.koban-vault > * {
+  position: relative;
+}
+
+/*
+ * The portrait in the skill dock is a circle. The generator writes a
+ * 1:1 head crop for it, so it is simply the image at 100%.
+ */
+.koban-portrait {
+  background-size: 100% 100%;
+  background-position: 0 0;
+}
+
 /* A companion standing at a post: a slow breath. */
 @keyframes koban-breathe {
   0%, 100% { transform: translate3d(-50%, -100%, 0) scale(1); }
@@ -144,6 +268,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .koban-chara, .koban-walker, .koban-ask, .koban-blink, .koban-hotspot--empty, .koban-gauge--fever,
+  .koban-sprite__strip,
   .koban-fever-badge, .koban-skill-active, .koban-log-line, .koban-sheet { animation: none !important; }
   .koban-walker { left: var(--walk-to, 50%); opacity: 1; }
 }

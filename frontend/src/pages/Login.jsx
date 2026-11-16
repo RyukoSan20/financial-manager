@@ -149,16 +149,17 @@ const LoginPreview = ({ W }) => {
 
   return (
     <div className="login-gateway__preview" aria-label={W.preview_title}>
-      <div style={{ width: '100%', maxWidth: '38rem' }}>
+      <div style={{ width: '100%' }}>
         <p className="login-gateway__preview-head">{W.preview_badge}</p>
         <h2 className="login-gateway__preview-title">{W.preview_title}</h2>
         <p className="login-gateway__preview-lead">{W.preview_lead}</p>
 
-        {/* The companion, before the reader has an account. It can be
-            asked a question here too, so the app answers something
-            before it asks for anything. */}
+        <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-12" data-testid="login-sim-row">
+        {/* The companion studio sits BESIDE the simulator cards, in the
+            same 12-column row, so the right of the Mone card is no
+            longer an empty stretch of page. */}
         <div
-          className="login-gateway__mascot grid grid-cols-1 md:grid-cols-12 gap-4 items-center p-5 rounded-[24px] border-2 border-[#4A3540] bg-gradient-to-br from-[#FFFDF9] via-[#FFF6F4] to-[#F3F8F4] shadow-[0_6px_0_#E2D6C3]"
+          className="login-gateway__mascot lg:col-span-5 self-start grid grid-cols-1 md:grid-cols-12 gap-4 items-center p-5 rounded-[24px] border-2 border-[#4A3540] bg-gradient-to-br from-[#FFFDF9] via-[#FFF6F4] to-[#F3F8F4] shadow-[0_6px_0_#E2D6C3]"
           data-testid="login-mascot"
         >
           {/* The studio. The character's name, the dock of six, the
@@ -173,12 +174,12 @@ const LoginPreview = ({ W }) => {
             mood="happy"
             interactive
             inline
-            className="md:col-span-12"
+            className="md:col-span-12 shoujo-studio--narrow"
             label={W.preview_title}
           />
         </div>
 
-        <div className="login-gateway__cards">
+        <div className="login-gateway__cards lg:col-span-7" data-testid="login-sim-cards">
           {/* The budget. */}
           <section className="login-gateway__card--glass login-gateway__card--mint">
             <h3 className="login-gateway__card-title">
@@ -351,6 +352,7 @@ const LoginPreview = ({ W }) => {
               ))}
             </ul>
           </section>
+        </div>
         </div>
 
         {/* What is true about the data. */}
@@ -796,6 +798,45 @@ export const Login = () => {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* -------- the shop game, said out loud -------- */}
+      <section className="px-4 pb-6 bg-[#F7F2E7]" data-testid="login-koban-banner-section">
+        <Link
+          to="/koban-shop"
+          className="group relative mx-auto flex max-w-6xl flex-col items-center gap-4 overflow-visible rounded-[24px] border-2 border-[#4A3540] bg-gradient-to-r from-[#FFF6D6] via-[#FFFDF9] to-[#FDE8E4] p-5 shadow-[0_6px_0_#E2D6C3] transition-transform hover:-translate-y-0.5 sm:flex-row"
+          data-testid="login-koban-banner"
+        >
+          <span aria-hidden="true" className="absolute -top-2 left-8 h-4 w-20 -rotate-2 rounded-sm bg-[#F7C8D8]/80" />
+          <span className="flex -space-x-5">
+            {['koneko', 'minori', 'kogane'].map((id) => (
+              <img
+                key={id}
+                src={`/koban-assets/face/${id}.webp`}
+                alt=""
+                className="h-14 w-14 rounded-full border-2 border-[#4A3540] bg-[#FFFDF9] object-cover"
+                loading="lazy"
+              />
+            ))}
+          </span>
+          <span className="flex-1 text-center sm:text-left">
+            <span className="block text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#B5654A]">
+              {language === 'en' ? 'Mini-game' : 'Mini-game'}
+            </span>
+            <span className="block text-lg font-extrabold text-[#2C221E]">
+              <PixelArtBusinessIcon name="merchant" size={22} badge={false} className="mr-1.5 inline-block align-[-4px]" />
+              {language === 'en' ? 'Play Koban & Co. General Goods' : 'Mainkan Koban & Co. General Goods'}
+            </span>
+            <span className="block text-[12.5px] text-[#5C6460]">
+              {language === 'en'
+                ? 'Run a cozy item shop with the six - craft, sell, and save.'
+                : 'Kelola toko serba ada bersama enam maskot: racik, jual, dan menabung.'}
+            </span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-[#4A3540] bg-[#2F4842] px-5 py-2.5 text-sm font-extrabold text-[#FFFDF9] shadow-[0_4px_0_#1B2E28]">
+            {language === 'en' ? 'Play now' : 'Main sekarang'} <ArrowRight size={16} aria-hidden="true" />
+          </span>
+        </Link>
       </section>
 
       {/* -------- wave -> the mini-games -------- */}

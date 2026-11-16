@@ -37,10 +37,9 @@ import {
   renderAnimeEmote,
   renderBishounen,
   renderKobato,
-  renderPetitPersona,
 } from './shoujoArtLayers.jsx';
+import DraggableSparkleMascot from './DraggableSparkleMascot';
 import {
-  DEFAULT_PETIT_PERSONA,
   PETIT_CHIBI_CAST,
   PETIT_PERSONA_IDS,
   getPetitPersona,
@@ -328,25 +327,13 @@ export default function ClampShoujoMascot({
               title={`${member.name} (${member.kanji})`}
               data-testid={`shoujo-persona-${id}`}
             >
-              {/* A portrait, not a photograph: the head and the
-                  hair colour of the character themselves. */}
-              <svg viewBox="0 0 48 48" aria-hidden="true" className="shoujo-petit-portrait-art">
-                <circle cx="24" cy="24" r="22" fill={member.palette.cloth} />
-                <path
-                  d="M 24 8 C 36 8 42 16 41 24 C 40 33 33 40 24 40 C 15 40 8 33 7 24 C 6 16 12 8 24 8 Z"
-                  fill={member.palette.skin}
-                  stroke={member.palette.hairDark}
-                  strokeWidth="1.4"
-                />
-                <path
-                  d="M 24 7 C 12 7 6 16 7 25 C 11 18 16 15 22 15 C 30 15 38 18 41 25 C 42 16 36 7 24 7 Z"
-                  fill={member.palette.hairDark}
-                />
-                <circle cx="17" cy="26" r="3.4" fill={member.palette.irisMid} />
-                <circle cx="31" cy="26" r="3.4" fill={member.palette.irisMid} />
-                <circle cx="16" cy="25" r="1.2" fill="#FFFFFF" />
-                <circle cx="30" cy="25" r="1.2" fill="#FFFFFF" />
-              </svg>
+              {/* The real portrait, cut from the character art. */}
+              <img
+                src={`/koban-assets/face/${id}.png`}
+                alt=""
+                className="shoujo-petit-portrait-art h-full w-full rounded-full object-cover"
+                data-testid={`shoujo-persona-portrait-${id}`}
+              />
               <span className="shoujo-petit-portrait-name">{member.name}</span>
             </button>
           );
@@ -407,7 +394,43 @@ export default function ClampShoujoMascot({
   );
 
   // The figure itself, shared by both layouts.
-  const figureButton = (
+  //
+  // This is the REAL artwork now: the high-resolution chibi sticker
+  // of the character, with the expression cut from the motion sheet
+  // laid over the head. The old procedural SVG body is gone - it was
+  // a blocky stand-in for a drawing that already existed.
+  //
+  // The two legacy personas (kobato, bishounen) are not among the
+  // six, so they keep their own drawings. Everything else is one of
+  // the six and gets the real thing.
+  const isRealCast = !isLegacy;
+
+  const figureButton = isRealCast ? (
+    <span
+      className={clsx(
+        'shoujo-button',
+        roaming && !inline && 'shoujo-roaming-walker petit-totoko-walk',
+        bounced && 'petit-poyo-bounce',
+        (paused || greeted || showBoard) && 'is-paused',
+        greeted && 'is-greeted'
+      )}
+      data-testid="shoujo-mascot-button"
+    >
+      <DraggableSparkleMascot
+        persona={persona}
+        mood={greeted ? 'celebrate' : mood}
+        size={size}
+        draggable
+        hint={t('shoujo.drag_hint', '✋ Geser aku!')}
+        label={label}
+        onTap={handleClick}
+        onCelebrate={() => {
+          setGreeted(true);
+          later('greet', () => setGreeted(false), 620);
+        }}
+      />
+    </span>
+  ) : (
     <button
       type="button"
       className={clsx(
@@ -440,9 +463,7 @@ export default function ClampShoujoMascot({
             than each part of it. */}
         <g filter={`url(#${uid}-sticker)`}>
           <g className="shoujo-rig-body">
-            {petit
-              ? renderPetitPersona(petit, uid, mood)
-              : persona === 'bishounen'
+            {persona === 'bishounen'
               ? renderBishounen(palette, uid, mood)
               : renderKobato(palette, uid, mood)}
 

@@ -221,7 +221,8 @@ check('the mascot draws in every state, outfit and frame', () => {
     for (const mode of MODES) {
       for (const initialFrame of [0, 1]) {
         const html = drawn.mascot({ state, mode, initialFrame });
-        assert.ok(html.includes('<svg'), `${state}/${mode}/${initialFrame}`);
+        // The real chibi artwork is an <img>; the named variants are <svg>.
+        assert.ok(html.includes('<svg') || html.includes('/koban-assets/'), `${state}/${mode}/${initialFrame}`);
         assert.ok(html.includes(`data-state="${state}"`));
         assert.ok(html.includes(`data-mode="${mode}"`));
         assert.ok(html.includes(`data-frame="${initialFrame}"`));
@@ -232,17 +233,17 @@ check('the mascot draws in every state, outfit and frame', () => {
   assert.equal(seen.size, 16, 'all sixteen drawings are different');
 });
 
-check('the mascot is drawn as the shoujo companion, not a pixel grid', () => {
-  // Phase 3: the semi-chibi shoujo companion is the default drawing.
-  // The flat stationery character is still reachable as
-  // variant="kanahei" and the pixel grid as variant="pixel".
+check('the mascot is the real chibi artwork, not a drawn stand-in', () => {
+  // The default companion is one of the six from Koban & Co., drawn
+  // from the real artwork in /koban-assets/ - the motion-sheet pose
+  // for the mood, with the sticker as its fallback - and it can be
+  // picked up and dragged.
   const html = drawn.mascot({});
-  assert.ok(html.includes('viewBox="0 0 200 220"'), 'the plump chibi vector viewBox');
-  assert.ok(html.includes('data-variant="shoujo"'), 'the shoujo drawing is the default');
+  assert.ok(html.includes('data-variant="shoujo"'), 'the shoujo companion is the default');
+  assert.ok(/\/koban-assets\/motion\/[a-z]+_[a-z]+\.webp/.test(html), 'the real motion-sheet pose');
+  assert.ok(html.includes('data-testid="draggable-mascot"'), 'the draggable companion');
+  assert.ok(!html.includes('viewBox="0 0 200 220"'), 'no procedural SVG body');
   assert.ok(!html.includes('shape-rendering="crispEdges"'), 'no pixel-grid edges');
-  for (const layer of ['shoujo-rig-body', 'shoujo-rig-hair', 'shoujo-face', 'shoujo-prop']) {
-    assert.ok(html.includes(`class="${layer}"`), layer);
-  }
 });
 
 check('the flat stationery drawing is still there, by name', () => {
@@ -263,11 +264,11 @@ check('the old pixel grid is still there, for anyone who asks for it', () => {
   }
 });
 
-check('the mascot is a berry-sepia outlined drawing, not rectangles', () => {
+check('the mascot is the real artwork, and the flat drawing is outlined, not rectangles', () => {
+  // The default companion is the real artwork, and its celebrating
+  // pose is the happy pose from the motion sheet.
   const html = drawn.mascot({ state: 'celebrate', mode: 'business' });
-  assert.ok(count(html, '<path') > 0, 'it is drawn with paths');
-  // The shoujo lineart is a warm berry-sepia, and never pure black.
-  assert.ok(html.includes('#4A3540'), 'the berry-sepia lineart');
+  assert.ok(/_happy\.webp/.test(html), 'the celebrating pose');
   assert.ok(!html.includes('#000000'), 'no pure black lineart');
   // The flat drawing keeps its own warm stationery brown.
   const flat = drawn.mascot({ variant: 'kanahei', state: 'celebrate' });

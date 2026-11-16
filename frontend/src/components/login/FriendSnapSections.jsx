@@ -14,7 +14,7 @@
 import { useState } from 'react';
 import { clsx } from 'clsx';
 import { useTranslation } from '../../i18n';
-import ClampShoujoMascot from '../mascot/ClampShoujoMascot';
+import DraggableSparkleMascot from '../mascot/DraggableSparkleMascot';
 import { PETIT_CHIBI_CAST, PETIT_PERSONA_IDS, petitText } from '../mascot/petitChibiCast';
 import { CampusHeading, MemphisBeads, PolaroidSnap } from './CampusKit.jsx';
 import { campusCopy } from './campusCopy.js';
@@ -118,28 +118,34 @@ export function PetitGuildParade({ className = '' }) {
           const persona = PETIT_CHIBI_CAST[id];
           const isSpeaking = speaking === id;
           return (
-            <button
+            <div
               key={id}
-              type="button"
-              onClick={() => poke(id)}
               data-testid={`parade-${id}`}
               className={clsx(
                 'parade-card flex flex-col items-center overflow-visible rounded-[20px]',
-                'border-2 border-[#4A3540] bg-white px-2 pb-3 pt-5 text-center',
-                'shadow-[0_5px_0_#DFD3C3] transition-transform active:scale-95',
+                'border-2 border-[#4A3540] bg-[#FFFDF9] px-2 pb-3 pt-5 text-center',
+                'shadow-[0_5px_0_#DFD3C3]',
                 jumping === id && 'petit-poyo-bounce'
               )}
             >
-              <ClampShoujoMascot
+              {/* The real character art. Tap it, or pick it up and
+                  drag it about - it lands with a shower of petals. */}
+              <DraggableSparkleMascot
                 persona={id}
-                size={72}
+                size={112}
                 mood={isSpeaking ? 'happy' : 'idle'}
-                interactive={false}
+                hint={language === 'en' ? '✨ Drag me!' : '✋ Geser aku!'}
                 label={persona.name}
+                onTap={() => poke(id)}
+                onCelebrate={() => setSpeaking(id)}
               />
-              <span className="mt-1.5 text-[12px] font-extrabold text-[#2C221E]">
+              <button
+                type="button"
+                onClick={() => poke(id)}
+                className="mt-1.5 text-[12px] font-extrabold text-[#2C221E]"
+              >
                 {persona.name}
-              </span>
+              </button>
               <span className="text-[9.5px] font-semibold leading-tight text-[#8A7F72]">
                 {petitText(persona, 'tagline', language)}
               </span>
@@ -151,7 +157,7 @@ export function PetitGuildParade({ className = '' }) {
                   {petitText(persona, 'bio', language)}
                 </span>
               ) : null}
-            </button>
+            </div>
           );
         })}
       </div>

@@ -18,13 +18,68 @@ import { clsx } from 'clsx';
 import { DB, ITEMS, SHELVES, REQUESTS } from '../store/kobanEngine.js';
 import { ItemIcon, Pill, fmt } from './ui.jsx';
 
+/**
+ * The pixel-art sprite for a companion.
+ *
+ * The strips live at /koban-assets/sprites/<id>_<anim>.png and are
+ * one frame wide per column, so the background is slid by a
+ * percentage of the element's own width to step through them.
+ */
+export const SPRITE_ANIMS = {
+  idle: { file: 'idle', frames: 3, ms: 1200 },
+  walk: { file: 'walk', frames: 4, ms: 560 },
+  celebrate: { file: 'celebrate', frames: 3, ms: 720 },
+  work: { file: 'work', frames: 2, ms: 660 },
+};
+
+/**
+ * The style for a sprite strip.
+ *
+ * backgroundSize is N frames across the window, which is what makes
+ * the percentage maths in koban.css line up: the overflow is then
+ * N-1 frames wide and one frame is 1/(N-1) of it.
+ */
+export function spriteStyle(charId, anim = 'idle') {
+  const a = SPRITE_ANIMS[anim] || SPRITE_ANIMS.idle;
+  return {
+    backgroundImage: `url(/koban-assets/sprites/${charId}_${a.file}.png)`,
+    backgroundSize: `${a.frames * 100}% 100%`,
+  };
+}
+
+/**
+ * One sprite, as a window onto a strip.
+ *
+ * The strip is the whole row of frames; the outer element is the
+ * window that clips it. The outer element keeps the frame's shape -
+ * a sprite is 48 wide by 64 tall, so it is taller than it is wide.
+ */
+export function Sprite({ charId, anim = 'idle', className = '', style = {}, ...rest }) {
+  return (
+    <span
+      className={`koban-sprite koban-sprite--${anim} ${className}`}
+      style={{ aspectRatio: '48 / 64', ...style }}
+      {...rest}
+    >
+      <span className="koban-sprite__strip" style={spriteStyle(charId, anim)} />
+    </span>
+  );
+}
+
 const CUSTOMER_SPRITES = DB.monsters.length
   ? ['/koban-assets/svg/animals/alpaca_white.svg', '/koban-assets/svg/animals/usagi_white.svg', '/koban-assets/svg/animals/araiguma.svg', '/koban-assets/svg/animals/azarashi.svg', '/koban-assets/svg/animals/alpaca_brown.svg']
   : [];
 
-export default function IsometricAtelierStage({ state, nowMs, onShelfTap, onCustomerTap }) {
+export default function IsometricAtelierStage({ state, nowMs, onShelfTap, onCustomerTap, celebratingId = null }) {
   const bell = state.activeBuffs.konekoBellUntil > nowMs;
   const fever = state.feverModeUntil > nowMs;
+
+  // The companion whose skill is running right now works at their
+  // post. The rest breathe.
+  const workingId = useMemo(() => {
+    const running = DB.characters.find((c) => (state.skills[c.id]?.activeUntilMs || 0) > nowMs);
+    return running ? running.id : null;
+  }, [state.skills, nowMs]);
 
   // Which open requests can walk in. One customer per open request
   // in the current chapter, up to three on the floor at once.
@@ -68,16 +123,30 @@ export default function IsometricAtelierStage({ state, nowMs, onShelfTap, onCust
       ) : null}
 
       {/* The companions at their posts. */}
-      {stageChars.map((c) => (
-        <img
-          key={c.id}
-          src={c.sprite}
-          alt={c.name}
-          title={c.role}
-          className="koban-chara pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full drop-shadow-[0_6px_6px_rgba(44,34,30,0.35)]"
-          style={{ left: `${c.stageCoords.xPercent}%`, top: `${c.stageCoords.yPercent}%`, width: '17%', animationDelay: `${(c.stageCoords.xPercent % 7) * 0.3}s` }}
-        />
-      ))}
+      {stageChars.map((c) => {
+        // A companion whose skill is running works at their post; the
+        // rest breathe. The one who just fired a skill celebrates.
+        const celebrating = celebratingId === c.id;
+        const anim = celebrating ? 'celebrate' : workingId === c.id ? 'work' : 'idle';
+        return (
+          <Sprite
+            key={c.id}
+            charId={c.id}
+            anim={anim}
+            role="img"
+            aria-label={c.name}
+            title={`${c.role} — ${c.skill.name}`}
+            data-testid={`stage-chara-${c.id}`}
+            className="koban-sprite--standing pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full drop-shadow-[0_6px_6px_rgba(44,34,30,0.35)]"
+            style={{
+              left: `${c.stageCoords.xPercent}%`,
+              top: `${c.stageCoords.yPercent}%`,
+              width: '9.5%',
+              animationDelay: `${(c.stageCoords.xPercent % 7) * 0.3}s`,
+            }}
+          />
+        );
+      })}
 
       {/* The customers walking in. */}
       {walkers.map((w) => (

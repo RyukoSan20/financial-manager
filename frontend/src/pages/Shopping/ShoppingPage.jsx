@@ -8,31 +8,47 @@ import {
   X, GripVertical, RefreshCw, DollarSign, TrendingUp, Filter, Search
 } from 'lucide-react';
 import { useTranslation } from '../../i18n';
-import { buildFlag } from '../../utils/featureFlags';
-import { SHOPPING_STAGE_ICONS } from '../../utils/icons';
-import { IconText } from '../../components/ui/IconText';
+import PixelArtBusinessIcon from '../../components/ui/PixelArtBusinessIcon';
+import DraggableSparkleMascot from '../../components/mascot/DraggableSparkleMascot';
 import { toast } from '../../contexts/ToastContext';
 import { ask } from '../../contexts/ConfirmContext';
 import VisualProductCatalogGrid, { saveProductToWishlist } from '../../components/shopping/VisualProductCatalogGrid';
 import PartnerMerchantFeedSection from '../../components/shopping/PartnerMerchantFeedSection';
 
 // Pipeline stages configuration
+// Each column is a stationery board column with its own pastel header
+// tape and a drawn pixel icon - no emoji.
 const STAGES = [
-  { id: 'wishlist', labelKey: 'shopping.stage_wishlist', icon: '💭', color: 'gray' },
-  { id: 'to_buy', labelKey: 'shopping.stage_to_buy', icon: '🛒', color: 'blue' },
-  { id: 'ordered', labelKey: 'shopping.stage_ordered', icon: '📦', color: 'purple' },
-  { id: 'shipped', labelKey: 'shopping.stage_shipped', icon: '🚚', color: 'orange' },
-  { id: 'received', labelKey: 'shopping.stage_received', icon: '✅', color: 'green' },
-  { id: 'cancelled', labelKey: 'shopping.stage_cancelled', icon: '❌', color: 'red' },
+  { id: 'wishlist', labelKey: 'shopping.stage_wishlist', icon: 'lightbulb', tape: '#FDE8E4', color: 'gray' },
+  { id: 'to_buy', labelKey: 'shopping.stage_to_buy', icon: 'money_bag_rp', tape: '#FFF6D6', color: 'blue' },
+  { id: 'ordered', labelKey: 'shopping.stage_ordered', icon: 'receipt', tape: '#E3F2EA', color: 'purple' },
+  { id: 'shipped', labelKey: 'shopping.stage_shipped', icon: 'briefcase', tape: '#EFE8FA', color: 'orange' },
+  { id: 'received', labelKey: 'shopping.stage_received', icon: 'income', tape: '#E3F2FD', color: 'green' },
+  { id: 'cancelled', labelKey: 'shopping.stage_cancelled', icon: 'ledger_red', tape: '#F3ECE6', color: 'red' },
 ];
+
+const ZENIMARU_CHEERS = {
+  id: ['Mantap, satu langkah lagi!', 'Barangnya jalan terus!', 'Catat dulu, baru beli. Sip!', 'Hore, pindah kolom!'],
+  en: ['Nice, one step closer!', 'On the move!', 'Plan first, then buy. Great!', 'Hooray, next column!'],
+};
 
 
 const MARKETPLACES = ['shopee', 'tokopedia', 'lazada', 'blibli', 'tiktok', 'bukalapak', 'lainnya'];
 
 const ShoppingPage = () => {
-  const { t } = useTranslation();
-  // With the polish switch off, the emoji stay as they are.
-  const polished = buildFlag('UI_POLISH');
+  const { t, language } = useTranslation();
+  const en = language === 'en';
+  // Zenimaru cheers when an item moves to another column.
+  const [cheer, setCheer] = useState(null);
+  const cheerMove = useCallback(() => {
+    const lines = ZENIMARU_CHEERS[en ? 'en' : 'id'];
+    setCheer({ text: lines[Math.floor(Math.random() * lines.length)], at: Date.now() });
+  }, [en]);
+  useEffect(() => {
+    if (!cheer) return undefined;
+    const id = setTimeout(() => setCheer(null), 2600);
+    return () => clearTimeout(id);
+  }, [cheer]);
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -131,6 +147,7 @@ const ShoppingPage = () => {
         method: 'POST',
         data: { stage: targetStage },
       });
+      cheerMove();
       fetchBoard();
     } catch (err) {
       console.error('Failed to move item:', err);
@@ -216,6 +233,7 @@ const ShoppingPage = () => {
         method: 'POST',
         data: { stage: newStage },
       });
+      cheerMove();
       fetchBoard();
     } catch (err) {
       console.error('Failed to move item:', err);
@@ -353,53 +371,80 @@ const ShoppingPage = () => {
 
   return (
     <div className="container mx-auto p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            <IconText name="cart" emoji="🛒" on={polished}>{t('shopping.title')}</IconText>
+      {/* Header: a stationery banner with Zenimaru, who cheers when an
+          item moves across the board. */}
+      <header
+        className="relative mb-6 flex flex-col items-center gap-4 overflow-visible rounded-[24px] border-2 border-[#4A3540] bg-gradient-to-r from-[#FFF6D6] via-[#FFFDF9] to-[#EFE8FA] p-5 shadow-[0_6px_0_#E2D6C3] sm:flex-row"
+        data-testid="kanban-header-banner"
+      >
+        <span aria-hidden="true" className="absolute -top-2.5 left-6 h-4 w-20 -rotate-2 rounded-sm bg-[#A8E6CF]/90" />
+        <span aria-hidden="true" className="absolute right-4 top-3 text-[#E07A5F]">✦</span>
+        <div className="relative shrink-0" data-testid="kanban-zenimaru">
+          <DraggableSparkleMascot
+            key={cheer ? cheer.at : 'idle'}
+            persona="zenimaru"
+            size={100}
+            mood={cheer ? 'celebrate' : 'happy'}
+            hint={en ? '✨ Drag me!' : '✋ Geser aku!'}
+            label="Zenimaru"
+          />
+          {cheer ? (
+            <span
+              role="status"
+              className="parade-say absolute -right-2 -top-3 translate-x-full whitespace-nowrap rounded-2xl border-2 border-[#4A3540] bg-[#FFF6D6] px-3 py-1 text-[12px] font-extrabold text-[#2C221E] shadow-[0_3px_0_#4A3540]"
+              data-testid="kanban-zenimaru-cheer"
+            >
+              {cheer.text}
+            </span>
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1 text-center sm:text-left">
+          <h1 className="flex items-center justify-center gap-2 text-2xl font-extrabold text-[#2C221E] sm:justify-start">
+            <PixelArtBusinessIcon name="clipboard" size={34} />
+            {t('shopping.title').replace(/^[^\p{L}\p{N}]+/u, '')}
           </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            {t('shopping.subtitle')}
-          </p>
+          <p className="mt-1 text-[12.5px] text-[#5C6460]">{t('shopping.subtitle')}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchBoard}>
+          <button
+            type="button"
+            onClick={fetchBoard}
+            aria-label={t('shopping.retry')}
+            className="rounded-full border-2 border-[#4A3540] bg-[#FFFDF9] p-2.5 shadow-[0_3px_0_#4A3540] active:translate-y-0.5"
+          >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button onClick={() => setShowAddModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border-2 border-[#4A3540] bg-[#2F4842] px-4 py-2 text-sm font-extrabold text-[#FFFDF9] shadow-[0_4px_0_#1B2E28] active:translate-y-0.5"
+          >
+            <Plus className="w-4 h-4" />
             {t('shopping.add_item')}
-          </Button>
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card className="!p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('shopping.total_budget')}</div>
-          <div className="text-xl font-bold text-primary-600 dark:text-primary-400">
-            {formatCurrency(board?.total_budget || 0)}
+      {/* The four totals, as stationery cards. */}
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4" data-testid="kanban-stats">
+        {[
+          { label: t('shopping.total_budget'), value: formatCurrency(board?.total_budget || 0), icon: 'money_bag_rp', tape: '#FDE8E4' },
+          { label: t('shopping.total_spent'), value: formatCurrency(board?.total_spent || 0), icon: 'receipt', tape: '#FFF6D6' },
+          { label: t('shopping.remaining_budget'), value: formatCurrency(board?.remaining_budget || 0), icon: 'coin', tape: '#E3F2EA' },
+          { label: t('shopping.total_items'), value: board?.stages?.reduce((sum, st) => sum + st.count, 0) || 0, icon: 'clipboard', tape: '#EFE8FA' },
+        ].map((card) => (
+          <div
+            key={card.icon}
+            className="relative rounded-[24px] border-2 border-[#4A3540] bg-[#FFFDF9] p-4 shadow-[0_6px_0_#E2D6C3] dark:bg-[#2A2420]"
+          >
+            <span aria-hidden="true" className="absolute -top-2 left-4 h-3.5 w-14 -rotate-2 rounded-sm" style={{ background: card.tape }} />
+            <div className="flex items-center gap-2 text-[12px] font-bold text-[#6B5E57] dark:text-[#CBB8A6]">
+              <PixelArtBusinessIcon name={card.icon} size={22} badge={false} />
+              {card.label}
+            </div>
+            <div className="mt-1 text-xl font-extrabold tabular-nums text-[#2C221E] dark:text-[#FAF5EE]">{card.value}</div>
           </div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('shopping.total_spent')}</div>
-          <div className="text-xl font-bold text-green-600 dark:text-green-400">
-            {formatCurrency(board?.total_spent || 0)}
-          </div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('shopping.remaining_budget')}</div>
-          <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
-            {formatCurrency(board?.remaining_budget || 0)}
-          </div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('shopping.total_items')}</div>
-          <div className="text-xl font-bold text-gray-900 dark:text-white">
-            {board?.stages?.reduce((sum, s) => sum + s.count, 0) || 0}
-          </div>
-        </Card>
+        ))}
       </div>
 
       {/* The catalogue.
@@ -411,9 +456,8 @@ const ShoppingPage = () => {
       <div className="mb-6 space-y-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <IconText name="cart" emoji="🛍️" on={polished}>
-              {t('shopping_catalog.title')}
-            </IconText>
+            <PixelArtBusinessIcon name="money_bag_rp" size={26} />
+            {String(t('shopping_catalog.title')).replace(/^[^\p{L}\p{N}]+/u, '')}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {t('shopping_catalog.subtitle')}
@@ -431,7 +475,7 @@ const ShoppingPage = () => {
             }}
             placeholder={t('shopping_catalog.placeholder')}
             aria-label={t('shopping_catalog.title')}
-            className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+            className="w-full pl-10 pr-3 py-2.5 rounded-full border-2 border-[#4A3540] bg-[#FFFDF9] dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm shadow-[0_3px_0_#E2D6C3]"
           />
         </div>
 
@@ -464,38 +508,32 @@ const ShoppingPage = () => {
           return (
             <div
               key={stage.id}
-              className={`flex-shrink-0 w-72 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 transition-colors ${
-                isDragOver ? 'ring-2 ring-primary-500 bg-primary-50 dark:bg-primary-900/20' : ''
+              data-testid={`kanban-column-${stage.id}`}
+              className={`relative flex-shrink-0 w-72 overflow-visible rounded-[24px] border-2 border-[#4A3540] bg-[#FFFDF9] dark:bg-[#2A2420] p-3 pt-0 shadow-[0_6px_0_#E2D6C3] transition-transform ${
+                isDragOver ? '-translate-y-1 ring-4 ring-[#F7C8D8]' : ''
               }`}
               onDragOver={(e) => handleDragOver(e, stage.id)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, stage.id)}
             >
-              {/* Stage Header */}
-              <div className="flex items-center justify-between mb-3">
+              {/* Stage header: a strip of pastel washi tape. */}
+              <span aria-hidden="true" className="pointer-events-none absolute -right-1.5 -top-2 text-[13px] text-[#E07A5F]">✦</span>
+              <span aria-hidden="true" className="pointer-events-none absolute -bottom-2 -left-1 text-[11px] text-[#8EC9E0]">✦</span>
+              <div
+                className="-mx-3 mb-3 flex items-center justify-between rounded-t-[22px] border-b-2 border-dashed border-[#4A3540]/40 px-3 py-2.5"
+                style={{ background: stage.tape }}
+                data-testid={`kanban-tape-${stage.id}`}
+              >
                 <div className="flex items-center gap-2">
-                  {(() => {
-                    const StageIcon = SHOPPING_STAGE_ICONS[stage.id];
-                    if (polished && StageIcon) {
-                      return <StageIcon className="w-5 h-5 shrink-0" aria-hidden="true" />;
-                    }
-                    return <span className="text-xl">{stage.icon}</span>;
-                  })()}
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    {t(stage.labelKey)}
+                  <PixelArtBusinessIcon name={stage.icon} size={24} badge={false} />
+                  <h3 className="font-extrabold text-[#2C221E]">
+                    {String(t(stage.labelKey)).replace(/^[^\p{L}\p{N}]+/u, '')}
                   </h3>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    stage.color === 'gray' ? 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300' :
-                    stage.color === 'blue' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
-                    stage.color === 'purple' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' :
-                    stage.color === 'orange' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' :
-                    stage.color === 'green' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
-                    'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                  }`}>
+                  <span className="rounded-full border border-[#4A3540]/40 bg-[#FFFDF9] px-2 py-0.5 text-xs font-extrabold text-[#2C221E]">
                     {stageData?.count || items.length}
                   </span>
                 </div>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm font-bold text-[#6B5E57]">
                   {formatCurrency(stageData?.total || items.reduce((sum, i) => sum + (i.price || 0) * i.quantity, 0))}
                 </span>
               </div>
@@ -510,7 +548,7 @@ const ShoppingPage = () => {
                   items.map((item) => (
                     <Card 
                       key={item.id} 
-                      className="!p-3 cursor-move hover:shadow-md transition-shadow"
+                      className="!p-3 !rounded-2xl !border-2 !border-[#4A3540] !shadow-[0_3px_0_#4A3540] cursor-move transition-transform hover:-translate-y-0.5"
                       draggable
                       onDragStart={(e) => handleDragStart(e, item, stage.id)}
                       onDragEnd={handleDragEnd}
@@ -658,7 +696,7 @@ const ShoppingPage = () => {
               >
                 {STAGES.filter(s => s.id !== 'received' && s.id !== 'cancelled').map((stage) => (
                   <option key={stage.id} value={stage.id}>
-                    {polished ? null : `${stage.icon} `}{t(stage.labelKey)}
+                    {String(t(stage.labelKey)).replace(/^[^\p{L}\p{N}]+/u, '')}
                   </option>
                 ))}
               </select>

@@ -98,6 +98,166 @@ def copy_scaled(src: Path, dst: Path, max_side: int, fmt: str) -> None:
         img.save(dst, fmt, optimize=True)
 
 
+def crop_face(chara_png: Path, dst: Path, size: int = 384) -> None:
+    """Cut the 1:1 head portrait out of the character art.
+
+    The head sits in the top third of the sticker, centred, with the
+    ears and the top of the hair in it. The crop is taken from the
+    transparent sprite, so the white ground of the original is gone
+    and the portrait sits on white of its own.
+    """
+    img = Image.open(chara_png).convert("RGBA")
+    w, h = img.size
+    # The head occupies roughly the top 46% of the sticker.
+    head_h = int(h * 0.46)
+    head = img.crop((0, 0, w, head_h))
+    # Centre the widest opaque run, so a character with a hat is not
+    # cropped off to one side.
+    alpha = head.getchannel("A")
+    bbox = alpha.getbbox()
+    if bbox:
+        left, right = bbox[0], bbox[2]
+        centre = (left + right) / 2
+        half = min(head_h, (right - left)) / 2
+        box_left = max(0, min(w - head_h * 2, int(centre - half)))
+        box_left = min(box_left, max(0, w - int(head_h * 1.5)))
+        crop = head.crop((box_left, 0, box_left + int(head_h * 1.5), head_h))
+    else:
+        crop = head
+
+    # A square, on white.
+    side = min(crop.size)
+    crop = crop.crop(((crop.width - side) // 2, 0, (crop.width - side) // 2 + side, side))
+    canvas = Image.new("RGB", (side, side), (255, 255, 255))
+    canvas.paste(crop, (0, 0), crop)
+    canvas = canvas.resize((size, size), Image.LANCZOS)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    canvas.save(dst, "JPEG", quality=88, optimize=True, progressive=True)
+
+
+# The palette the two drawn rooms use. It is the room's own palette:
+# warm brown timber, cream plaster, and the deep green of the
+# forest outside.
+ROOM = {
+    "timber": (94, 62, 42),
+    "timber_dark": (62, 40, 26),
+    "plaster": (238, 222, 194),
+    "plaster_dark": (206, 186, 152),
+    "floor": (168, 124, 78),
+    "floor_dark": (138, 98, 60),
+    "gold": (226, 176, 62),
+    "gold_dark": (176, 128, 36),
+    "green": (74, 104, 62),
+    "green_dark": (48, 72, 44),
+    "night": (38, 44, 56),
+    "night_light": (62, 72, 92),
+    "stone": (128, 120, 108),
+    "stone_dark": (92, 86, 78),
+    "paper": (246, 236, 212),
+    "ink": (62, 44, 34),
+}
+
+
+def _paint(dst: Path, width: int = 1600, height: int = 900) -> Image.Image:
+    """A room, painted band by band."""
+    img = Image.new("RGB", (width, height), ROOM["plaster"])
+    d = ImageDraw.Draw(img)
+    return img, d
+
+
+def draw_dungeon_forest(dst: Path) -> None:
+    """The forest the expedition goes into.
+
+    A wall of trunks and leaves at the back, a path going away from
+    the viewer, and a pool of moonlight on the ground.
+    """
+    width, height = 1600, 900
+    img, d = _paint(dst, width, height)
+
+    # The sky and the far trees.
+    d.rectangle([0, 0, width, height * 0.42], fill=ROOM["night"])
+    for i in range(0, width, 64):
+        shade = ROOM["green_dark"] if (i // 64) % 2 == 0 else ROOM["green"]
+        d.rectangle([i, 0, i + 96, height * 0.46], fill=shade)
+    # The canopy.
+    for i in range(0, width, 90):
+        d.ellipse([i - 60, -80, i + 150, 120], fill=ROOM["green_dark"])
+        d.ellipse([i, -120, i + 210, 70], fill=ROOM["green"])
+
+    # The trunks.
+    for x, w in ((120, 54), (430, 40), (1120, 48), (1420, 60), (760, 34)):
+        d.rectangle([x, height * 0.18, x + w, height * 0.86], fill=ROOM["timber_dark"])
+        d.rectangle([x, height * 0.18, x + w * 0.4, height * 0.86], fill=ROOM["timber"])
+
+    # The ground.
+    d.rectangle([0, height * 0.42, width, height], fill=ROOM["green_dark"])
+    d.polygon([(width * 0.34, height * 0.42), (width * 0.66, height * 0.42),
+               (width * 0.86, height), (width * 0.14, height)], fill=ROOM["floor_dark"])
+    d.polygon([(width * 0.40, height * 0.42), (width * 0.60, height * 0.42),
+               (width * 0.72, height), (width * 0.28, height)], fill=ROOM["floor"])
+
+    # The moonlight.
+    d.ellipse([width * 0.30, height * 0.58, width * 0.70, height * 0.92],
+              fill=tuple(min(255, c + 22) for c in ROOM["floor"]))
+
+    # The undergrowth.
+    for i in range(0, width, 47):
+        if (i // 47) % 3:
+            continue
+        y = height * 0.46 + (i % 5) * 40
+        d.ellipse([i, y, i + 70, y + 34], fill=ROOM["green"])
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    img.save(dst, "JPEG", quality=86, optimize=True, progressive=True)
+
+
+def draw_vault_bank(dst: Path) -> None:
+    """Mone's vault.
+
+    A marble wall, a tiled floor, and the strongbox in the middle
+    under a hanging lamp.
+    """
+    width, height = 1600, 900
+    img, d = _paint(dst, width, height)
+
+    # The back wall, in courses of stone.
+    for row in range(6):
+        y = row * height * 0.09
+        for col in range(-1, 11):
+            x = col * 160 + (80 if row % 2 else 0)
+            fill = ROOM["stone"] if (row + col) % 2 == 0 else ROOM["stone_dark"]
+            d.rectangle([x + 4, y + 4, x + 152, y + height * 0.09 - 4], fill=fill)
+
+    # The floor.
+    d.rectangle([0, height * 0.54, width, height], fill=ROOM["floor_dark"])
+    for row in range(4):
+        y = height * 0.54 + row * (height * 0.115)
+        for col in range(-1, 11):
+            x = col * 170 + (85 if row % 2 else 0)
+            fill = ROOM["floor"] if (row + col) % 2 == 0 else ROOM["floor_dark"]
+            d.rectangle([x + 3, y + 3, x + 162, y + height * 0.115 - 3], fill=fill)
+
+    # The lamp.
+    d.line([width * 0.5, 0, width * 0.5, height * 0.16], fill=ROOM["gold_dark"], width=6)
+    d.polygon([(width * 0.44, height * 0.16), (width * 0.56, height * 0.16),
+               (width * 0.60, height * 0.24), (width * 0.40, height * 0.24)], fill=ROOM["gold"])
+    d.ellipse([width * 0.40, height * 0.24, width * 0.60, height * 0.46],
+              fill=(250, 236, 180))
+
+    # The strongbox, on a plinth.
+    d.rectangle([width * 0.34, height * 0.60, width * 0.66, height * 0.66], fill=ROOM["stone_dark"])
+    d.rectangle([width * 0.36, height * 0.66, width * 0.64, height * 0.90], fill=ROOM["timber"])
+    d.rectangle([width * 0.36, height * 0.66, width * 0.64, height * 0.70], fill=ROOM["timber_dark"])
+    # The bands and the lock.
+    d.rectangle([width * 0.42, height * 0.66, width * 0.455, height * 0.90], fill=ROOM["gold_dark"])
+    d.rectangle([width * 0.545, height * 0.66, width * 0.58, height * 0.90], fill=ROOM["gold_dark"])
+    d.ellipse([width * 0.475, height * 0.74, width * 0.525, height * 0.80], fill=ROOM["gold"])
+    d.ellipse([width * 0.491, height * 0.762, width * 0.509, height * 0.782], fill=ROOM["ink"])
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    img.save(dst, "JPEG", quality=86, optimize=True, progressive=True)
+
+
 def build_images() -> dict:
     report = {"chara": [], "face": [], "places": []}
     for cid in CHARACTER_IDS:
@@ -105,14 +265,26 @@ def build_images() -> dict:
         dst = PUBLIC_DIR / "chara" / f"{cid}.png"
         remove_outer_white_background(src, dst)
         report["chara"].append(dst.name)
-        fsrc = MINI_GAME_DIR / "asset" / "face" / f"{cid}.jpeg"
+        # The face portrait is cut from the character art itself. The
+        # source folder has no face/ directory - the portrait is the
+        # top of the picture, where the head is - so it is cropped here
+        # rather than copied.
         fdst = PUBLIC_DIR / "face" / f"{cid}.jpg"
-        copy_scaled(fsrc, fdst, 384, "JPEG")
+        crop_face(dst, fdst)
         report["face"].append(fdst.name)
     for place in ["atelier", "workshop"]:
         src = MINI_GAME_DIR / "asset" / "places" / f"{place}.jpeg"
         dst = PUBLIC_DIR / "places" / f"{place}.jpg"
         copy_scaled(src, dst, 1600, "JPEG")
+        report["places"].append(dst.name)
+
+    # The dungeon and the vault have no photograph. They are drawn
+    # here, in the same warm palette as the room, so the panels that
+    # use them have a floor to sit on rather than a blank rectangle.
+    for name, painter in (("dungeon_forest", draw_dungeon_forest),
+                          ("vault_bank", draw_vault_bank)):
+        dst = PUBLIC_DIR / "places" / f"{name}.jpg"
+        painter(dst)
         report["places"].append(dst.name)
     return report
 
@@ -339,7 +511,7 @@ CHARACTERS = [
     {
         "id": "koneko", "name": "Koneko (貯猫)", "role": "Front Storekeeper & Kasir",
         "kakeiboLink": "daily_income",
-        "stageCoords": {"scene": "atelier", "xPercent": 48, "yPercent": 58},
+        "stageCoords": {"scene": "atelier", "xPercent": 44, "yPercent": 50},
         "skill": {"id": "lucky_koban_bell", "name": "Lucky Koban Bell",
                   "description": "Kecepatan kedatangan pelanggan +200% selama 30 detik.",
                   "durationSec": 30, "cooldownSec": 300, "effectType": "CUSTOMER_SPEED_MULTIPLIER", "value": 3.0},
@@ -355,7 +527,7 @@ CHARACTERS = [
     {
         "id": "kaneru", "name": "Kaneru (奏る)", "role": "Royal Ledger & Akuntan",
         "kakeiboLink": "budget_audit",
-        "stageCoords": {"scene": "atelier", "xPercent": 66, "yPercent": 52},
+        "stageCoords": {"scene": "atelier", "xPercent": 56, "yPercent": 49},
         "skill": {"id": "abacus_audit", "name": "Abacus Audit",
                   "description": "Memotong biaya kontrak mercenary ekspedisi berikutnya sebesar 30%.",
                   "durationSec": 0, "cooldownSec": 900, "effectType": "NEXT_EXPEDITION_DISCOUNT", "value": 0.30},
@@ -363,7 +535,7 @@ CHARACTERS = [
     {
         "id": "kogane", "name": "Kogane (黄金)", "role": "VIP Appraiser & Broker",
         "kakeiboLink": "investments_goals",
-        "stageCoords": {"scene": "atelier", "xPercent": 28, "yPercent": 68},
+        "stageCoords": {"scene": "atelier", "xPercent": 14, "yPercent": 74},
         "skill": {"id": "golden_pocket_watch", "name": "Golden Pocket Watch",
                   "description": "Mempercepat waktu ekspedisi dungeon & penjualan idle sebanyak 1 jam instan.",
                   "durationSec": 0, "cooldownSec": 1800, "effectType": "INSTANT_TIME_WARP_SEC", "value": 3600},
@@ -371,7 +543,7 @@ CHARACTERS = [
     {
         "id": "mone", "name": "Mone (萌音)", "role": "Merchant Supplier & Vault Banker",
         "kakeiboLink": "saving_jar_bonus",
-        "stageCoords": {"scene": "atelier", "xPercent": 78, "yPercent": 40},
+        "stageCoords": {"scene": "atelier", "xPercent": 88, "yPercent": 76},
         "skill": {"id": "compound_konpeito", "name": "Compound Konpeito Interest",
                   "description": "Memberikan bunga instan 5% dari saldo Brankas Tabungan Toko.",
                   "durationSec": 0, "cooldownSec": 1800, "effectType": "VAULT_INTEREST_PAYOUT", "value": 0.05},
@@ -379,7 +551,7 @@ CHARACTERS = [
     {
         "id": "zenimaru", "name": "Zenimaru (銭丸)", "role": "Guild Captain & Mercenary Leader",
         "kakeiboLink": "impulse_monster_slayer",
-        "stageCoords": {"scene": "atelier", "xPercent": 20, "yPercent": 44},
+        "stageCoords": {"scene": "atelier", "xPercent": 63, "yPercent": 88},
         "skill": {"id": "vanguard_coin_charge", "name": "Vanguard Charge",
                   "description": "Meningkatkan Win Rate ekspedisi dungeon sebesar +25% dan loot +1 bahan langka.",
                   "durationSec": 600, "cooldownSec": 600, "effectType": "DUNGEON_WIN_BOOST", "value": 0.25},
@@ -556,6 +728,30 @@ def build_database(library: dict[str, list[dict]]) -> dict:
     for c in CHARACTERS:
         chars.append(dict(c, sprite=f"/koban-assets/chara/{c['id']}.png", face=f"/koban-assets/face/{c['id']}.jpg"))
 
+    quests = {
+        "meta": {
+            "gameTitle": "Koban & Co. General Goods",
+            "questCount": len(requests),
+            "evaluation": {
+                "perfect": {"multiplier": 1.5, "pays": True, "gives": ["koban", "reputation", "story"], "keepsItem": True},
+                "acceptable": {"multiplier": 1.0, "pays": True, "gives": ["koban", "reputation"], "keepsItem": True},
+                "wrong": {"multiplier": 0.0, "pays": False, "gives": [], "keepsItem": True},
+            },
+        },
+        "quests": [
+            {
+                **r,
+                "lore": "Aurelia",
+                "evaluation": {
+                    "perfect": {"multiplier": 1.5, "rewardKoban": int(r["baseRewardKoban"] * 1.5)},
+                    "acceptable": {"multiplier": 1.0, "rewardKoban": r["baseRewardKoban"]},
+                    "wrong": {"multiplier": 0.0, "rewardKoban": 0},
+                },
+            }
+            for r in requests
+        ],
+    }
+
     return {
         "meta": {
             "gameTitle": "Koban & Co. General Goods",
@@ -564,7 +760,12 @@ def build_database(library: dict[str, list[dict]]) -> dict:
             "debtStages": [250000, 500000, 750000, 1000000, 1000000, 1500000],
             "vaultInterestPerHour": 0.004,
             "chapters": CHAPTERS,
-            "scenes": {"atelier": "/koban-assets/places/atelier.jpg", "workshop": "/koban-assets/places/workshop.jpg"},
+            "scenes": {
+                "atelier": "/koban-assets/places/atelier.jpg",
+                "workshop": "/koban-assets/places/workshop.jpg",
+                "dungeon": "/koban-assets/places/dungeon_forest.jpg",
+                "vault": "/koban-assets/places/vault_bank.jpg",
+            },
             "svgCount": sum(len(v) for v in library.values()),
         },
         "characters": chars,
@@ -575,6 +776,42 @@ def build_database(library: dict[str, list[dict]]) -> dict:
         "monsters": monsters,
         "dungeons": DUNGEONS,
         "customerRequests": requests,
+    }
+
+
+def build_quests(requests: list[dict]) -> dict:
+    """The quest file: the twelve deduction puzzles, with the
+    three-tier evaluation written out.
+
+    The shop database carries the requests because the shop needs
+    them. This file carries them too, in the shape the puzzle itself
+    is written in - what a perfect answer pays, what an acceptable
+    one pays, and what a wrong one does - so the rule is stated once
+    and the story is next to it.
+    """
+    return {
+        "meta": {
+            "gameTitle": "Koban & Co. General Goods",
+            "questCount": len(requests),
+            "tiers": ["perfect", "acceptable", "wrong"],
+            "evaluation": {
+                "perfect": {"multiplier": 1.5, "pays": True, "gives": ["koban", "reputation", "story"], "keepsItem": True},
+                "acceptable": {"multiplier": 1.0, "pays": True, "gives": ["koban", "reputation"], "keepsItem": True},
+                "wrong": {"multiplier": 0.0, "pays": False, "gives": [], "keepsItem": True},
+            },
+        },
+        "quests": [
+            {
+                **r,
+                "lore": "Aurelia",
+                "evaluation": {
+                    "perfect": {"multiplier": 1.5, "rewardKoban": int(r["baseRewardKoban"] * 1.5)},
+                    "acceptable": {"multiplier": 1.0, "rewardKoban": r["baseRewardKoban"]},
+                    "wrong": {"multiplier": 0.0, "rewardKoban": 0},
+                },
+            }
+            for r in requests
+        ],
     }
 
 
@@ -633,7 +870,7 @@ def main() -> int:
     print("2/3 SVG library …")
     library = copy_svgs(find_svg_root())
     print("    folders:", {k: len(v) for k, v in library.items()})
-    print("3/3 database.json …")
+    print("3/3 database.json + quests.json …")
     db = build_database(library)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(db, ensure_ascii=False, indent=1)
@@ -646,6 +883,16 @@ def main() -> int:
         "// Generated by scripts/build_koban_assets.py - do not edit.\n"
         "// The JSON next to this file is the source of truth.\n"
         f"export default {payload};\n"
+    )
+    # The quest file: the twelve deduction puzzles with the three-tier
+    # evaluation written out, beside the shop database.
+    quests = build_quests(db["customerRequests"])
+    qpayload = json.dumps(quests, ensure_ascii=False, indent=1)
+    (DATA_DIR / "quests.json").write_text(qpayload)
+    (DATA_DIR / "quests.js").write_text(
+        "// Generated by scripts/build_koban_assets.py - do not edit.\n"
+        "// The JSON next to this file is the source of truth.\n"
+        f"export default {qpayload};\n"
     )
     print(f"    characters={len(db['characters'])} facilities={len(db['facilities'])} raw={len(db['rawMaterials'])} "
           f"items={len(db['items'])} recipes={len(db['recipes'])} monsters={len(db['monsters'])} "

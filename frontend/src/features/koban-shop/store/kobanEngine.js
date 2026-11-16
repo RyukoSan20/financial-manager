@@ -469,6 +469,30 @@ export function claimKakeiboRewards(state, snapshot, nowMs = Date.now()) {
   return { state: pushLog(next, 'Hadiah Kakeibo diklaim dari catatan keuangan asli.', nowMs), rewards };
 }
 
+/**
+ * A daily habit quest from the Health Coach, paid into the shop.
+ *
+ * Each quest pays once per day: the key is `${day}:${questId}`, so
+ * ticking, unticking and ticking again does not mint koban.
+ */
+export function grantDailyQuest(state, questId, reward, nowMs = Date.now()) {
+  const day = new Date(nowMs).toISOString().slice(0, 10);
+  const key = `${day}:${questId}`;
+  const claimed = (state.kakeibo && state.kakeibo.questsClaimed) || [];
+  if (claimed.includes(key)) return { state, granted: false };
+  const koban = Math.max(0, Math.floor((reward && reward.koban) || 0));
+  const gems = Math.max(0, Math.floor((reward && reward.gems) || 0));
+  // Keep only the last two weeks of keys, so the save does not grow.
+  const recent = [...claimed, key].filter((k) => k.slice(0, 10) >= new Date(nowMs - 14 * 86400000).toISOString().slice(0, 10));
+  const next = {
+    ...state,
+    koban: state.koban + koban,
+    gems: state.gems + gems,
+    kakeibo: { ...state.kakeibo, questsClaimed: recent },
+  };
+  return { state: pushLog(next, `Misi harian selesai: +${koban} Koban${gems ? ` +${gems} Gem` : ''}.`, nowMs), granted: true };
+}
+
 /* ---------------------------------------------------------------------------
    Save / load
    --------------------------------------------------------------------------- */
