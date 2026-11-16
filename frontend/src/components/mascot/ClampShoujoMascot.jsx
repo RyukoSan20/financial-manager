@@ -421,7 +421,7 @@ export default function ClampShoujoMascot({
         mood={greeted ? 'celebrate' : mood}
         size={size}
         draggable
-        hint={t('shoujo.drag_hint', '✋ Geser aku!')}
+        hint={t('shoujo.drag_hint', 'Geser aku!')}
         label={label}
         onTap={handleClick}
         onCelebrate={() => {

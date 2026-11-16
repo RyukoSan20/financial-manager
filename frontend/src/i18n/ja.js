@@ -1981,6 +1981,7 @@ export default {
     needs_both_dates: "両方の日付を入力してください。",
   },
   shoujo: {
+    drag_hint: "ドラッグしてね！",
     name_kobato: "こばと",
     name_bishounen: "ツカサ",
     badge: "家計簿",

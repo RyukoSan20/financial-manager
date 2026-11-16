@@ -1981,6 +1981,7 @@ export default {
     needs_both_dates: "Please fill in both dates.",
   },
   shoujo: {
+    drag_hint: "Drag me!",
     name_kobato: "Kobato",
     name_bishounen: "Tsukasa",
     badge: "KAKEIBO",
