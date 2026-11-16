@@ -234,5 +234,15 @@ check('the sprites are transparent at the corner and keep their border', () => {
   must(colourType === 4 || colourType === 6, `colour type ${colourType} has no alpha`);
 });
 
+check('dark mode keeps the paper and the ink as a pair', () => {
+  // The app's dark safety net darkens bg-white but not the brown ink,
+  // which left the HUD title at a 1.06 contrast on a 390px phone.
+  must(/html\.dark \.koban-page \.bg-white[\s\S]{0,200}background-color:\s*#FFFDF9/.test(css), 'cards go dark under brown ink');
+  must(/html\.dark \.koban-page \.text-\\\[\\#2F4842\\\][\s\S]{0,120}color:\s*#2F4842/.test(css), 'sage ink lifted onto cream');
+  must(css.includes('html.dark .koban-page .koban-section-title h2'), 'off-card titles keep dark ink on the dark page');
+  const ui = read('src/features/koban-shop/components/ui.jsx');
+  must(ui.includes('koban-section-title'), 'SectionTitle has no hook for the dark rule');
+});
+
 console.log(`\nkoban shop: ${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

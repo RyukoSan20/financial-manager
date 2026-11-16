@@ -272,3 +272,53 @@
   .koban-fever-badge, .koban-skill-active, .koban-log-line, .koban-sheet { animation: none !important; }
   .koban-walker { left: var(--walk-to, 50%); opacity: 1; }
 }
+
+/*
+ * Dark mode: the shop keeps its own storybook palette.
+ *
+ * Every Koban card is drawn as cream paper with brown ink. The app's
+ * dark safety net (index.css) turns `bg-white` and `#FFFDF9` into the
+ * dark card and lifts `#2F4842` to a pale sage - but it leaves the
+ * brown ink alone, so in dark mode the headings went dark-on-dark
+ * (contrast 1.06) and the skill labels pale-on-cream (1.71).
+ *
+ * Inside the game the paper stays paper: these selectors carry an
+ * extra class, so they outrank the safety net without !important.
+ * The page around the cards still goes dark; only the ink and the
+ * paper are pinned, so every pair stays the one it was designed as.
+ */
+html.dark .koban-page .bg-white,
+html.dark .koban-sheet.bg-\[\#FFFDF9\],
+html.dark .koban-tabs.bg-\[\#FFFDF9\]\/95 {
+  background-color: #FFFDF9;
+  color: #2C221E;
+}
+html.dark .koban-page .bg-\[\#FFFDF9\] { background-color: #FFFDF9; }
+html.dark .koban-page .bg-\[\#FFFDF9\]\/95 { background-color: rgb(255 253 249 / 0.95); }
+html.dark .koban-tabs.bg-\[\#FFFDF9\]\/95 { background-color: rgb(255 253 249 / 0.95); }
+html.dark .koban-page .text-\[\#2F4842\],
+html.dark .koban-sheet .text-\[\#2F4842\],
+html.dark .koban-tabs .text-\[\#2F4842\] {
+  color: #2F4842;
+}
+html.dark .koban-page .text-\[\#5C6460\],
+html.dark .koban-sheet .text-\[\#5C6460\] {
+  color: #5C6460;
+}
+html.dark .koban-page,
+html.dark .koban-sheet,
+html.dark .koban-tabs {
+  color-scheme: light;
+}
+
+/*
+ * A section title that sits straight on the page, not on a card, has
+ * dark ink on the dark page. Only there does it take the light ink;
+ * inside a card the paper rule above keeps it brown.
+ */
+html.dark .koban-page .koban-section-title h2 { color: #ECEFEC; }
+html.dark .koban-page .koban-section-title p { color: #C2CCC6; }
+html.dark .koban-page .bg-white .koban-section-title h2,
+html.dark .koban-sheet .koban-section-title h2 { color: #2C221E; }
+html.dark .koban-page .bg-white .koban-section-title p,
+html.dark .koban-sheet .koban-section-title p { color: #5C6460; }

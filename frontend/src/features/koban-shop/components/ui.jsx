@@ -93,7 +93,7 @@ export function Button({ tone = 'ink', size = 'md', className = '', disabled, ch
 
 export function SectionTitle({ badge, title, lead }) {
   return (
-    <header className="mb-3">
+    <header className="koban-section-title mb-3">
       <Pill>{badge}</Pill>
       <h2 className="mt-1.5 text-[1.1rem] font-extrabold tracking-[0.02em] text-[#2C221E]">{title}</h2>
       {lead ? <p className="mt-0.5 text-[12px] text-[#5C6460]">{lead}</p> : null}
