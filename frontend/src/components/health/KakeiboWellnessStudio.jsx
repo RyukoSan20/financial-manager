@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import DraggableSparkleMascot from '../mascot/DraggableSparkleMascot';
+import RiggedCharacterPuppet from '../../features/koban-shop/components/RiggedCharacterPuppet.jsx';
 import PixelArtBusinessIcon from '../ui/PixelArtBusinessIcon';
 import { actions as kobanActions } from '../../features/koban-shop/store/useKobanStore';
 import {
@@ -35,8 +36,7 @@ import {
   toggleQuest,
 } from './wellnessMath';
 
-export const STATIONERY_CARD =
-  'relative rounded-[24px] border-2 border-[#4A3540] bg-[#FFFDF9] shadow-[0_6px_0_#E2D6C3] dark:bg-[#2A2420] dark:border-[#CBB8A6]';
+export const STATIONERY_CARD = 'fantasy-card relative';
 
 const COPY = {
   id: {
@@ -105,16 +105,12 @@ const COPY = {
 
 export const wellnessCopy = (language) => COPY[language === 'en' ? 'en' : 'id'];
 
-/** A washi-tape header strip. */
-export function WashiTape({ tone = '#F7C8D8', className = '' }) {
+/** The ornament a card opens with: a gold diamond rule. (Kept under the old name so callers need not change.) */
+export function WashiTape({ className = '' }) {
   return (
-    <span
-      aria-hidden="true"
-      className={clsx('pointer-events-none absolute -top-2.5 left-6 h-4 w-20 -rotate-2 rounded-sm opacity-90', className)}
-      style={{
-        background: `repeating-linear-gradient(45deg, ${tone}, ${tone} 6px, rgba(255,255,255,0.55) 6px, rgba(255,255,255,0.55) 9px)`,
-      }}
-    />
+    <span aria-hidden="true" className={clsx('pointer-events-none absolute left-5 top-2 text-[11px] tracking-[0.5em] text-[#c5a059]', className)}>
+      {'\u2756 \u2756 \u2756'}
+    </span>
   );
 }
 
@@ -166,6 +162,8 @@ export function useConfettiBurst() {
 
 /* --- the two companions ------------------------------------------------ */
 
+const PUPPET_MOOD = { sweating: 'sweat', thinking: 'think', walking: 'walk', happy: 'happy', celebrating: 'happy', celebrate: 'happy' };
+
 export function KakeiboStudioMascots({ score, language }) {
   const C = wellnessCopy(language);
   const mood = moodForScore(score);
@@ -183,7 +181,7 @@ export function KakeiboStudioMascots({ score, language }) {
     <div className="flex flex-col items-center gap-2" data-testid="wellness-studio-mascots" data-mood={mood}>
       {layer}
       <div className="flex items-end justify-center gap-1">
-        <DraggableSparkleMascot persona="minori" mood={mood} size={104} hint={C.drag} label="Minori" />
+        <RiggedCharacterPuppet who="minori" mood={PUPPET_MOOD[mood] || 'happy'} size={132} draggable label="Minori" data-testid="health-minori-puppet" />
         <DraggableSparkleMascot
           persona="kaneru"
           mood={mood === 'sweating' ? 'thinking' : mood}
@@ -193,7 +191,7 @@ export function KakeiboStudioMascots({ score, language }) {
         />
       </div>
       <p
-        className="relative max-w-[17rem] rounded-2xl border-2 border-[#4A3540] bg-[#FFF6D6] px-3 py-2 text-center text-[12px] font-semibold leading-snug text-[#2C221E] shadow-[0_3px_0_#4A3540]"
+        className="parchment-scroll relative max-w-[17rem] px-3 py-2 text-center text-[12px] font-semibold leading-snug text-[#2C221E] shadow-[0_3px_0_#4A3540]"
         data-testid="wellness-studio-line"
       >
         {line}
@@ -269,13 +267,13 @@ export function DailyQuestCard({ language, onHealthBonus }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <span
-            className="inline-flex items-center gap-1 rounded-full border-2 border-[#4A3540] bg-[#FDE8E4] px-3 py-1 text-[12px] font-extrabold text-[#2C221E] shadow-[0_3px_0_#4A3540]"
+            className="inline-flex items-center gap-1 rounded-full border-2 fantasy-pill px-3 py-1 text-[12px] font-extrabold text-[#2C221E] shadow-[0_3px_0_#4A3540]"
             data-testid="daily-quest-streak"
           >
             🔥 {C.streak(streak)}
           </span>
           <span
-            className="inline-flex items-center gap-1 rounded-full border-2 border-[#4A3540] bg-[#E3F2EA] px-3 py-1 text-[12px] font-extrabold text-[#2C221E] shadow-[0_3px_0_#4A3540]"
+            className="inline-flex items-center gap-1 rounded-full border-2 fantasy-pill px-3 py-1 text-[12px] font-extrabold text-[#2C221E] shadow-[0_3px_0_#4A3540]"
             data-testid="daily-quest-xp"
           >
             ✦ {state.xp || 0} {C.xp}
@@ -283,7 +281,7 @@ export function DailyQuestCard({ language, onHealthBonus }) {
         </div>
       </header>
 
-      <div className="mt-3 h-2.5 overflow-hidden rounded-full border-2 border-[#4A3540] bg-[#FFF6D6]">
+      <div className="mt-3 h-2.5 overflow-hidden rounded-full border-2 parchment-scroll">
         <div
           className="h-full bg-[#A8E6CF] transition-[width] duration-500"
           style={{ width: `${(doneCount / DAILY_QUESTS.length) * 100}%` }}
@@ -302,14 +300,14 @@ export function DailyQuestCard({ language, onHealthBonus }) {
                 onClick={(event) => tick(quest, event)}
                 data-testid={`daily-quest-${quest.id}`}
                 className={clsx(
-                  'relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border-2 border-[#4A3540] p-3 text-left transition-transform active:translate-y-0.5',
-                  isDone ? 'bg-[#F3F8F4] shadow-[0_2px_0_#4A3540]' : 'bg-white shadow-[0_4px_0_#4A3540] hover:-translate-y-0.5 dark:bg-[#332B26]'
+                  'relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border-2 p-3 text-left transition-transform active:translate-y-0.5',
+                  isDone ? 'bg-[#F3F8F4] shadow-[0_2px_0_#4A3540]' : 'bg-white shadow-[0_4px_0_#4A3540] hover:-translate-y-0.5 '
                 )}
               >
                 <span
                   className={clsx(
-                    'mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border-2 border-[#4A3540] text-[13px] font-black',
-                    isDone ? 'bg-[#2F4842] text-[#FFFDF9]' : 'bg-[#FFFDF9]'
+                    'mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border-2 text-[13px] font-black',
+                    isDone ? 'bg-[#2F4842] text-[#FFFDF9]' : 'parchment-scroll'
                   )}
                   aria-hidden="true"
                 >
@@ -346,7 +344,7 @@ export function DailyQuestCard({ language, onHealthBonus }) {
       {toast ? (
         <p
           role="status"
-          className="parade-say mt-3 rounded-xl border-2 border-[#4A3540] bg-[#FFF6D6] px-3 py-1.5 text-center text-[12px] font-bold text-[#2C221E]"
+          className="parade-say mt-3 rounded-xl border-2 parchment-scroll px-3 py-1.5 text-center text-[12px] font-bold text-[#2C221E]"
           data-testid="daily-quest-toast"
         >
           {toast}
@@ -392,7 +390,7 @@ export function WhatIfSimulator({ language, serverScore, savingsRatio, emergency
     <label className="block" htmlFor={id}>
       <span className="flex items-baseline justify-between text-[12.5px] font-bold text-[#2C221E] dark:text-[#FAF5EE]">
         {label}
-        <span className="rounded-full border-2 border-[#4A3540] px-2 py-0.5 text-[12px] font-extrabold tabular-nums" style={{ background: tint }}>
+        <span className="rounded-full border-2 px-2 py-0.5 text-[12px] font-extrabold tabular-nums" style={{ background: tint }}>
           {value}
           {unit}
         </span>
@@ -448,7 +446,7 @@ export function WhatIfSimulator({ language, serverScore, savingsRatio, emergency
         <div className="flex flex-col items-center gap-2">
           <DraggableSparkleMascot persona="minori" mood={mood} size={96} hint={C.drag} label="Minori" />
           <div
-            className="rounded-2xl border-2 border-[#4A3540] bg-[#FFFDF9] px-4 py-2 text-center shadow-[0_4px_0_#4A3540] dark:bg-[#332B26]"
+            className="rounded-2xl border-2 parchment-scroll px-4 py-2 text-center shadow-[0_4px_0_#4A3540] "
             data-testid="whatif-result"
           >
             <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#8A7F72]">
@@ -487,13 +485,13 @@ export function AuditFixPills({ language, category }) {
   const showBudget = !category || ['savings', 'spending', 'debt', 'income'].includes(category);
   const showEmergency = !category || ['emergency_fund', 'savings', 'liquidity'].includes(category);
   const pill =
-    'inline-flex items-center gap-1 rounded-full border-2 border-[#4A3540] px-3 py-1 text-[11.5px] font-extrabold text-[#2C221E] shadow-[0_3px_0_#4A3540] transition-transform hover:-translate-y-0.5 active:translate-y-0.5';
+    'inline-flex items-center gap-1 rounded-full border-2 px-3 py-1 text-[11.5px] font-extrabold text-[#2C221E] shadow-[0_3px_0_#4A3540] transition-transform hover:-translate-y-0.5 active:translate-y-0.5';
   return (
     <span className="mt-2 flex flex-wrap gap-2" data-testid="audit-fix-pills">
       {showBudget ? (
         <button
           type="button"
-          className={clsx(pill, 'bg-[#FFF6D6]')}
+          className={clsx(pill, 'parchment-scroll')}
           onClick={() => navigate('/budgets?preset=50-30-20', { state: { preset: '50-30-20' } })}
           data-testid="audit-fix-budget"
         >
@@ -503,7 +501,7 @@ export function AuditFixPills({ language, category }) {
       {showEmergency ? (
         <button
           type="button"
-          className={clsx(pill, 'bg-[#E3F2EA]')}
+          className={clsx(pill, 'fantasy-pill')}
           onClick={() => navigate('/goals?new=emergency', { state: { newGoal: 'emergency' } })}
           data-testid="audit-fix-emergency"
         >

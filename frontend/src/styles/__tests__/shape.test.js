@@ -204,8 +204,8 @@ check('the health coach says why the strengths are empty', () => {
 check('the four amounts of the health coach are one set', () => {
   const bento = read('src/components/health/CuteWellnessBento.jsx');
   // They are four panels of the same shape, not four loose drawings:
-  // four stationery tiles with the same border and the same shadow.
-  const panels = (bento.match(/rounded-2xl border-2 border-\[#4A3540\] bg-white/g) || []).length;
+  // four parchment tiles with the same border and the same shadow.
+  const panels = (bento.match(/parchment-scroll fantasy-keep rounded-xl px-3\.5 py-3/g) || []).length;
   assert.ok(panels >= 4, `only ${panels} of the four are in a panel`);
 });
 

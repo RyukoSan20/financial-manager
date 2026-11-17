@@ -314,14 +314,18 @@ check('the health score has a fill colour and a separate readable one', () => {
   assert.ok(/const ScoreColour/.test(bento), 'the fill colour exists');
   assert.ok(/const ScoreTextColour/.test(bento), 'and a separate text colour');
   assert.ok(
-    /color: ScoreTextColour\(numericScore, isDarkMode\)/.test(bento),
+    /color: ScoreTextColour\(numericScore, true\)/.test(bento),
     'the badge text uses the readable one, not the fill'
   );
 });
 
-check('the score badge reads the mode from the shared context', () => {
+check('the score badge sits on a panel that is dark in both modes', () => {
   const bento = read('src/components/health/CuteWellnessBento.jsx');
-  assert.ok(/useTheme\(\)/.test(bento), 'it uses the shared theme context');
+  // The guild panel (.fantasy-card) is midnight blue whatever the
+  // app's toggle says, so the badge asks for the dark-surface colour
+  // outright instead of reading a mode that cannot change what it sits on.
+  assert.ok(/STATIONERY_CARD/.test(bento), 'the score sits on the guild panel');
+  assert.ok(/fantasy-card/.test(read('src/components/health/KakeiboWellnessStudio.jsx')), 'and that panel is the fantasy card');
   assert.ok(
     !/matchMedia\(/.test(bento),
     'no private media query - that would drift from the toggle'

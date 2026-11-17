@@ -26,6 +26,7 @@ import BudgetRecipeSelector from '../components/budget/BudgetRecipeSelector';
 import { getVariant, readerKey, trackEvent } from '../utils/abTesting';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
+import { FantasyPage } from '../components/ui/FantasyKit';
 
 export const Budgets = () => {
   const { t, language } = useTranslation();
@@ -199,7 +200,7 @@ export const Budgets = () => {
   ].filter((row) => row.limit > 0 || row.spent > 0);
 
   return (
-    <div className="space-y-6 animate-fadeIn cute-canvas rounded-3xl p-1">
+    <FantasyPage className="space-y-6 animate-fadeIn" data-testid="budgets-guild">
       {/* Header */}
       <BotanicalPageHeader
         badge={t('budgets.badge')}
@@ -502,7 +503,7 @@ export const Budgets = () => {
         categories={categories}
         accounts={accounts}
       />
-    </div>
+    </FantasyPage>
   );
 };
 

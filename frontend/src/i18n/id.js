@@ -1575,7 +1575,7 @@ export default {
     plan_title: "Rencana Bulan Depan",
     tips_title: "Tips Finansial",
     improvement_tips: "Tips Perbaikan:",
-    refresh_data: "🔄 Refresh Data",
+    refresh_data: "Refresh Data",
     ratio_emergency_months: "Dana Darurat (Bulan)",
     ratio_emergency_months_desc: "Dana darurat Anda cukup untuk {months} bulan pengeluaran",
     ratio_savings_ratio: "Rasio Tabungan",

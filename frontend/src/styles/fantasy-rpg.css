@@ -1,0 +1,367 @@
+/*
+ * High-fantasy guild-hall theme.
+ *
+ * Three pieces, and a scope:
+ *   .fantasy-card     midnight-blue panel in a double gold frame
+ *   .fantasy-btn      metallic gold button
+ *   .parchment-scroll aged paper, for what is read or filled in
+ *   .fantasy-scope    a page wrapper that carries the theme down onto
+ *                     the utility classes the page is already written
+ *                     in, so a card, a stat box, a table, a modal and
+ *                     a primary button all change without rewriting
+ *                     every one of them.
+ *
+ * Every surface names its background AND its text colour, as a pair,
+ * so a dark panel never ends up with dark ink on it (and the other
+ * way round) whatever the app's light/dark switch says.
+ */
+
+:root {
+  --fr-gold: #c5a059;
+  --fr-gold-hi: #f3e9d2;
+  --fr-night-1: #161b2e;
+  --fr-night-2: #0b0e18;
+  --fr-parch: #f3e9d2;
+  --fr-ink: #2c1d0c;
+  --fr-wood: #8b5a2b;
+  --fr-cream: #f3e9d2;
+  --fr-muted: #c9b88a;
+  --fr-washi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .95 0 0 0 0 .85 0 0 0 0 .6 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  --fr-curl-tl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%238b5a2b' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M3 37V12Q3 3 12 3H37'/%3E%3Cpath d='M9 31V15Q9 9 15 9H31'/%3E%3Cpath d='M15 15q6 0 6 6t-6 6' stroke-width='1.3'/%3E%3C/g%3E%3Cpath d='M3 3l5 0 -5 5z' fill='%238b5a2b'/%3E%3C/svg%3E");
+  --fr-curl-tr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg transform='translate(40 0) scale(-1 1)' fill='none' stroke='%238b5a2b' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M3 37V12Q3 3 12 3H37'/%3E%3Cpath d='M9 31V15Q9 9 15 9H31'/%3E%3Cpath d='M15 15q6 0 6 6t-6 6' stroke-width='1.3'/%3E%3C/g%3E%3C/svg%3E");
+  --fr-curl-bl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg transform='translate(0 40) scale(1 -1)' fill='none' stroke='%238b5a2b' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M3 37V12Q3 3 12 3H37'/%3E%3Cpath d='M9 31V15Q9 9 15 9H31'/%3E%3Cpath d='M15 15q6 0 6 6t-6 6' stroke-width='1.3'/%3E%3C/g%3E%3C/svg%3E");
+  --fr-curl-br: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg transform='translate(40 40) scale(-1 -1)' fill='none' stroke='%238b5a2b' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M3 37V12Q3 3 12 3H37'/%3E%3Cpath d='M9 31V15Q9 9 15 9H31'/%3E%3Cpath d='M15 15q6 0 6 6t-6 6' stroke-width='1.3'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* --- the golden frame ---------------------------------------------------- */
+
+.fantasy-card {
+  position: relative;
+  overflow: visible;
+  color: var(--fr-cream);
+  background: var(--fr-washi), linear-gradient(180deg, #161b2e 0%, #0b0e18 100%);
+  background-blend-mode: soft-light, normal;
+  border: 2px solid #c5a059;
+  border-radius: 6px;
+  outline: 1px solid rgba(197, 160, 89, 0.5);
+  outline-offset: -6px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(197, 160, 89, 0.15);
+}
+.fantasy-card::before,
+.fantasy-card::after {
+  content: '\2756';
+  position: absolute;
+  left: 50%;
+  z-index: 2;
+  padding: 0 6px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--fr-gold);
+  background: var(--fr-night-1);
+  transform: translate(-50%, -52%);
+  pointer-events: none;
+  text-shadow: 0 0 6px rgba(197, 160, 89, 0.6);
+}
+.fantasy-card::before { top: 0; }
+.fantasy-card::after { top: 100%; background: var(--fr-night-2); }
+
+/* --- the gold button ----------------------------------------------------- */
+
+.fantasy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #1a120b;
+  background: linear-gradient(180deg, #d4af37 0%, #aa771c 100%);
+  border: 2px solid #f3e9d2;
+  border-radius: 8px;
+  box-shadow: 0 4px 0 #6b4a12, 0 6px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 244, 200, 0.7);
+  text-shadow: 0 1px 0 rgba(255, 238, 180, 0.5);
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+  cursor: pointer;
+}
+.fantasy-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.fantasy-btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #6b4a12, 0 3px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 244, 200, 0.6);
+}
+.fantasy-btn:focus-visible { outline: 3px solid var(--fr-gold-hi); outline-offset: 2px; }
+.fantasy-btn:disabled { opacity: 0.55; filter: grayscale(0.6); cursor: not-allowed; }
+.fantasy-btn--glow { animation: fr-glow 2.4s ease-in-out infinite; }
+.fantasy-btn--ghost {
+  color: var(--fr-cream);
+  background: linear-gradient(180deg, rgba(22, 27, 46, 0.95), rgba(11, 14, 24, 0.95));
+  border-color: var(--fr-gold);
+  box-shadow: 0 3px 0 #000, inset 0 0 10px rgba(197, 160, 89, 0.2);
+  text-shadow: none;
+}
+@keyframes fr-glow {
+  0%, 100% { box-shadow: 0 4px 0 #6b4a12, 0 0 0 0 rgba(212, 175, 55, 0), inset 0 1px 0 rgba(255, 244, 200, 0.7); }
+  50% { box-shadow: 0 4px 0 #6b4a12, 0 0 18px 4px rgba(212, 175, 55, 0.55), inset 0 1px 0 rgba(255, 244, 200, 0.7); }
+}
+
+/* --- parchment ------------------------------------------------------------ */
+
+.parchment-scroll {
+  position: relative;
+  color: var(--fr-ink);
+  background:
+    var(--fr-curl-tl) left 3px top 3px / 26px 26px no-repeat,
+    var(--fr-curl-tr) right 3px top 3px / 26px 26px no-repeat,
+    var(--fr-curl-bl) left 3px bottom 3px / 26px 26px no-repeat,
+    var(--fr-curl-br) right 3px bottom 3px / 26px 26px no-repeat,
+    radial-gradient(ellipse at 50% 40%, rgba(255, 250, 235, 0.55), rgba(139, 90, 43, 0.12) 100%),
+    var(--fr-parch);
+  border: 3px solid var(--fr-wood);
+  border-radius: 6px;
+  box-shadow: inset 0 0 18px rgba(139, 90, 43, 0.28), 0 4px 0 #4a2e12;
+}
+
+/* --- the plaque header ---------------------------------------------------- */
+
+.fantasy-plaque {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 26px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #1a120b;
+  background: linear-gradient(180deg, #f0d878 0%, #dcb23c 60%, #c8962a 100%);
+  border: 3px solid #4a2e12;
+  box-shadow: inset 0 0 0 2px var(--fr-gold-hi), 0 4px 0 #4a2e12, 0 8px 16px rgba(0, 0, 0, 0.4);
+  clip-path: polygon(0 6px, 6px 6px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px));
+  text-shadow: 0 1px 0 rgba(255, 238, 180, 0.6);
+}
+.fantasy-plaque::before,
+.fantasy-plaque::after { content: '\2756'; font-size: 0.8em; color: #4a2e12; }
+
+.fantasy-chest { display: grid; justify-items: center; gap: 6px; padding: 18px 10px; text-align: center; }
+.fantasy-chest__art { position: relative; width: 112px; height: 100px; }
+.fantasy-chest__art > img:first-child { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.5)); }
+.fantasy-chest__gem { position: absolute; left: 50%; top: -6px; width: 34px; height: 34px; transform: translateX(-50%); animation: fr-float 2.4s ease-in-out infinite; }
+@keyframes fr-float { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -5px); } }
+.fantasy-chest__title { font-size: 15px; font-weight: 800; }
+.fantasy-chest__hint { max-width: 30ch; font-size: 12px; opacity: 0.8; }
+
+.guild-badge {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #1a120b; background: linear-gradient(180deg, #e6c75a, #b8861a);
+  border: 2px solid #4a2e12; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--fr-gold-hi);
+}
+
+/* ==========================================================================
+   The scope. Everything below only applies inside .fantasy-scope.
+   The selector is doubled (.fantasy-scope.fantasy-scope) so that it wins
+   against the single-class utilities and the app's dark-mode safety net
+   whichever stylesheet comes last.
+   ========================================================================== */
+
+.fantasy-scope.fantasy-scope {
+  --fr-card-bg: linear-gradient(180deg, #161b2e 0%, #0b0e18 100%);
+  color: var(--fr-cream);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(197, 160, 89, 0.1), transparent 45%),
+    linear-gradient(180deg, #11152a 0%, #080a14 100%);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+/* the page's cards */
+.fantasy-scope.fantasy-scope :is(.shape-card, .aurora-card, .fintech-panel, .bg-white, .bg-gray-800, .bg-gray-900, .bg-slate-800, .bg-\[\#FFFDF9\], .bg-\[\#FFFDF7\], .bg-\[\#FAF9F6\]):not(button):not(input):not(select):not(textarea):not(.parchment-scroll):not(.fantasy-keep):not([role='dialog']) {
+  position: relative;
+  color: var(--fr-cream);
+  background: var(--fr-washi), var(--fr-card-bg);
+  background-blend-mode: soft-light, normal;
+  border: 1.5px solid var(--fr-gold);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55), inset 0 0 16px rgba(197, 160, 89, 0.12);
+}
+
+/* stat boxes, table heads, chips -> parchment */
+.fantasy-scope.fantasy-scope :is(.bg-gray-50, .bg-gray-100, .bg-primary-50, .bg-emerald-50, .bg-success-50, .bg-success-100, .bg-rose-50, .bg-red-50, .bg-amber-50, .bg-yellow-50, .bg-blue-50, .bg-\[\#FFF6D6\], .bg-\[\#F4EFE6\], .bg-\[\#FBF1D6\]):not(button):not(input):not(select):not(textarea) {
+  color: var(--fr-ink);
+  background: var(--fr-washi), var(--fr-parch);
+  background-blend-mode: multiply, normal;
+  border-color: var(--fr-wood);
+  box-shadow: inset 0 0 12px rgba(139, 90, 43, 0.25);
+}
+
+/* text on the dark panels */
+.fantasy-scope.fantasy-scope :is(.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-200, .text-gray-100, .text-\[\#2C221E\], .text-\[\#4A3540\], .text-slate-700, .text-slate-900) { color: var(--fr-cream); }
+.fantasy-scope.fantasy-scope :is(.text-gray-500, .text-gray-400, .text-gray-300, .text-slate-500) { color: var(--fr-muted); }
+.fantasy-scope.fantasy-scope :is(.text-danger-600, .text-danger-500, .text-red-600, .text-rose-600, .text-red-500) { color: #ff9b8a; }
+.fantasy-scope.fantasy-scope :is(.text-success-600, .text-success-500, .text-emerald-600, .text-green-600, .text-emerald-500) { color: #86e3a6; }
+.fantasy-scope.fantasy-scope :is(.text-primary-600, .text-primary-500, .text-primary-700) { color: #f0d283; }
+
+/* text on parchment (wins over the dark-panel rules, being more specific) */
+.fantasy-scope.fantasy-scope :is(.bg-gray-50, .bg-gray-100, .bg-primary-50, .bg-emerald-50, .bg-success-50, .bg-success-100, .bg-rose-50, .bg-red-50, .bg-amber-50, .bg-yellow-50, .bg-blue-50, .bg-\[\#FFF6D6\], .bg-\[\#F4EFE6\], .bg-\[\#FBF1D6\], .parchment-scroll) :is(*, .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-200, .text-gray-100, .text-\[\#2C221E\], .text-\[\#4A3540\]) { color: var(--fr-ink); }
+.fantasy-scope.fantasy-scope :is(.bg-gray-50, .bg-gray-100, .bg-primary-50, .bg-emerald-50, .bg-\[\#FFF6D6\], .parchment-scroll) :is(.text-gray-500, .text-gray-400, .text-gray-300) { color: #6b4a2e; }
+.fantasy-scope.fantasy-scope :is(.bg-gray-50, .bg-gray-100, .bg-primary-50, .bg-emerald-50, .bg-\[\#FFF6D6\], .parchment-scroll) :is(.text-danger-600, .text-red-600, .text-rose-600) { color: #9b2c1f; }
+.fantasy-scope.fantasy-scope :is(.bg-gray-50, .bg-gray-100, .bg-primary-50, .bg-emerald-50, .bg-\[\#FFF6D6\], .parchment-scroll) :is(.text-success-600, .text-emerald-600, .text-green-600) { color: #1f6b3a; }
+
+/* the borders */
+.fantasy-scope.fantasy-scope :is(.border, .border-2, .border-gray-100, .border-gray-200, .border-gray-300, .border-gray-700, .border-gray-800, .border-\[\#4A3540\], .border-\[\#EAE6DF\], .border-\[\#CBB8A6\]) { border-color: rgba(197, 160, 89, 0.7); }
+.fantasy-scope.fantasy-scope :is(.divide-y, .divide-gray-100, .divide-gray-200) > * + * { border-color: rgba(197, 160, 89, 0.35); }
+.fantasy-scope.fantasy-scope :is(.bg-gray-50, .bg-gray-100, .parchment-scroll) :is(.border, .border-2, .border-gray-100, .border-gray-200, .border-gray-300) { border-color: rgba(139, 90, 43, 0.55); }
+
+/* no plain green or blue button: every primary one is gold */
+.fantasy-scope.fantasy-scope :is(button, a, [role='button']):is(.hh-button, .money-fab, .bg-primary-500, .bg-primary-600, .bg-primary-700, .bg-emerald-500, .bg-emerald-600, .bg-emerald-700, .bg-green-500, .bg-green-600, .bg-green-700, .bg-success-500, .bg-success-600, .bg-success-700, .bg-teal-600, .bg-blue-500, .bg-blue-600, .bg-\[\#2F4842\], .bg-\[\#233833\]) {
+  color: #1a120b;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #d4af37 0%, #aa771c 100%);
+  border: 2px solid var(--fr-gold-hi);
+  box-shadow: 0 3px 0 #6b4a12, 0 5px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 244, 200, 0.7);
+  text-shadow: 0 1px 0 rgba(255, 238, 180, 0.5);
+}
+.fantasy-scope.fantasy-scope :is(button, a, [role='button']):is(.bg-primary-500, .bg-primary-600, .bg-primary-700, .bg-emerald-600, .bg-green-600, .bg-success-600, .bg-\[\#2F4842\]):active { transform: translateY(2px); box-shadow: 0 1px 0 #6b4a12; }
+.fantasy-scope.fantasy-scope :is(button, a, [role='button']):is(.bg-primary-500, .bg-primary-600, .bg-primary-700, .bg-emerald-600, .bg-green-600, .bg-success-600, .bg-\[\#2F4842\]) :is(*, svg) { color: #1a120b; }
+/* the quiet buttons: outlined gold on night */
+.fantasy-scope.fantasy-scope button:is(.bg-gray-100, .bg-gray-200, .bg-gray-700):not(.fantasy-keep) {
+  color: var(--fr-cream);
+  background: linear-gradient(180deg, rgba(22, 27, 46, 0.95), rgba(11, 14, 24, 0.95));
+  border: 1.5px solid var(--fr-gold);
+}
+.fantasy-scope.fantasy-scope button:is(.bg-danger-600, .bg-red-600, .bg-rose-600) { color: #fff; background: linear-gradient(180deg, #b3322a, #7a1c16); border: 2px solid #f0b0a8; }
+
+/* forms: paper to write on */
+.fantasy-scope.fantasy-scope :is(input, select, textarea):not([type='checkbox']):not([type='radio']):not([type='range']) {
+  color: var(--fr-ink) !important;
+  background: var(--fr-parch) !important;
+  border: 2px solid var(--fr-wood) !important;
+  border-radius: 6px;
+  box-shadow: inset 0 2px 5px rgba(139, 90, 43, 0.3);
+}
+.fantasy-scope.fantasy-scope :is(input, textarea)::placeholder { color: #8b6b43 !important; opacity: 1; }
+.fantasy-scope.fantasy-scope :is(input, select, textarea):focus { outline: 3px solid rgba(197, 160, 89, 0.8); outline-offset: 1px; }
+.fantasy-scope.fantasy-scope label { color: var(--fr-cream); }
+.fantasy-scope.fantasy-scope :is(.parchment-scroll, .bg-gray-50, .bg-gray-100) label { color: var(--fr-ink); }
+
+/* tables */
+.fantasy-scope.fantasy-scope table { color: var(--fr-cream); }
+.fantasy-scope.fantasy-scope thead :is(th, tr) { color: var(--fr-ink); background: var(--fr-parch); }
+.fantasy-scope.fantasy-scope tbody tr { border-color: rgba(197, 160, 89, 0.3); }
+
+/* modals: a dialog is a parchment on a night-time backdrop */
+.fantasy-scope.fantasy-scope .fixed.inset-0.bg-black\/50 { background-color: rgba(5, 7, 14, 0.82); }
+.fantasy-scope.fantasy-scope [role='dialog'][role='dialog'] {
+  position: relative;
+  color: var(--fr-ink);
+  background:
+    var(--fr-curl-tl) left 4px top 4px / 30px 30px no-repeat,
+    var(--fr-curl-tr) right 4px top 4px / 30px 30px no-repeat,
+    var(--fr-curl-bl) left 4px bottom 4px / 30px 30px no-repeat,
+    var(--fr-curl-br) right 4px bottom 4px / 30px 30px no-repeat,
+    radial-gradient(ellipse at 50% 30%, rgba(255, 250, 235, 0.55), rgba(139, 90, 43, 0.12) 100%),
+    var(--fr-parch) !important;
+  background-color: var(--fr-parch) !important;
+  border: 3px solid var(--fr-wood);
+  outline: 2px solid var(--fr-gold);
+  outline-offset: 2px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.8), inset 0 0 22px rgba(139, 90, 43, 0.3);
+}
+.fantasy-scope.fantasy-scope [role='dialog'] :is(h1, h2, h3, h4, p, span, label, li, td, th, div, dt, dd, small, legend):not(button *):not(.fantasy-keep) { color: var(--fr-ink); }
+.fantasy-scope.fantasy-scope [role='dialog'] :is(.text-gray-500, .text-gray-400, .text-gray-600) { color: #6b4a2e; }
+.fantasy-scope.fantasy-scope [role='dialog'] :is(.text-danger-600, .text-red-600) { color: #9b2c1f; }
+.fantasy-scope.fantasy-scope [role='dialog'] :is(.bg-white, .bg-gray-50, .bg-gray-100) { background: rgba(255, 250, 235, 0.6); box-shadow: none; border-color: rgba(139, 90, 43, 0.5); color: var(--fr-ink); }
+.fantasy-scope.fantasy-scope [role='dialog'] h3 { font-weight: 900; letter-spacing: 0.04em; }
+.fantasy-scope.fantasy-scope [role='dialog'] .border-b { border-color: rgba(139, 90, 43, 0.5); }
+
+.fantasy-scope.fantasy-scope h1, .fantasy-scope.fantasy-scope h2, .fantasy-scope.fantasy-scope h3 { color: var(--fr-cream); }
+.fantasy-scope.fantasy-scope :is(.parchment-scroll, .bg-gray-50, .bg-gray-100) :is(h1, h2, h3, h4) { color: var(--fr-ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fantasy-btn--glow, .fantasy-chest__gem { animation: none; }
+}
+
+/* ==========================================================================
+   Text colour, decided by the surface. Generated from one list so the
+   dark-panel rules and the light-surface rules cannot drift apart.
+   !important, because the app's own light-theme rules (index.css:
+   `[data-theme='light'] .text-gray-500 { ... !important }`) are
+   !important too and are more specific than a bare utility.
+   ========================================================================== */
+
+/* the panels are dark: text on them is cream (muted for the quiet ones) */
+.fantasy-scope.fantasy-scope :is(.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500, .text-gray-400, .text-gray-300, .text-gray-200, .text-gray-100, .text-slate-500, .text-slate-700, .text-slate-900, [class*="text-[#2C"], [class*="text-[#4A"], [class*="text-[#1F"], [class*="text-[#6B"], [class*="text-[#52"], [class*="text-[#8A"], [class*="text-[#FA"]) { color: var(--fr-cream) !important; }
+.fantasy-scope.fantasy-scope :is(.text-gray-500, .text-gray-400, .text-gray-300, .text-slate-500, [class*="text-[#6B"], [class*="text-[#8A"], [class*="text-[#52"]) { color: var(--fr-muted) !important; }
+.fantasy-scope.fantasy-scope :is(.text-danger-600, .text-danger-500, .text-red-600, .text-rose-600, .text-red-500, .text-danger-700) { color: #ff9b8a !important; }
+.fantasy-scope.fantasy-scope :is(.text-success-600, .text-success-500, .text-emerald-600, .text-green-600, .text-emerald-500, .text-success-700) { color: #86e3a6 !important; }
+.fantasy-scope.fantasy-scope h1, .fantasy-scope.fantasy-scope h2, .fantasy-scope.fantasy-scope h3 { color: var(--fr-cream); }
+.fantasy-scope.fantasy-scope .fantasy-plaque, .fantasy-scope.fantasy-scope .fantasy-plaque * { color: #1a120b !important; }
+
+/* the light surfaces: chips, tiles, white buttons. Ink on paper. */
+.fantasy-scope.fantasy-scope :is(.parchment-scroll, .bg-white\/80, .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-success-50, .bg-success-100, .bg-danger-100, .bg-rose-50, .bg-rose-100, .bg-red-50, .bg-red-100, .bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-blue-50, .bg-orange-50, [class*="bg-[#F"], [class*="bg-[#E"], [class*="bg-[#D"], [class*="bg-[#C"], .bg-white):not(.fantasy-card):not(.fantasy-btn):not(.fantasy-plaque):not(.fantasy-chest) { color: var(--fr-ink) !important; }
+.fantasy-scope.fantasy-scope :is(.parchment-scroll, .bg-white\/80, .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-success-50, .bg-success-100, .bg-danger-100, .bg-rose-50, .bg-rose-100, .bg-red-50, .bg-red-100, .bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-blue-50, .bg-orange-50, [class*="bg-[#F"], [class*="bg-[#E"], [class*="bg-[#D"], [class*="bg-[#C"], .bg-white):not(.fantasy-card):not(.fantasy-btn):not(.fantasy-plaque):not(.fantasy-chest) :is(.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500, .text-gray-400, .text-gray-300, .text-gray-200, .text-gray-100, .text-slate-500, .text-slate-700, .text-slate-900, [class*="text-[#2C"], [class*="text-[#4A"], [class*="text-[#1F"], [class*="text-[#6B"], [class*="text-[#52"], [class*="text-[#8A"], [class*="text-[#FA"], .text-white) { color: var(--fr-ink) !important; }
+.fantasy-scope.fantasy-scope :is(.parchment-scroll, .bg-white\/80, .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-success-50, .bg-success-100, .bg-danger-100, .bg-rose-50, .bg-rose-100, .bg-red-50, .bg-red-100, .bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-blue-50, .bg-orange-50, [class*="bg-[#F"], [class*="bg-[#E"], [class*="bg-[#D"], [class*="bg-[#C"], .bg-white):not(.fantasy-card):not(.fantasy-btn):not(.fantasy-plaque):not(.fantasy-chest) :is(.text-gray-500, .text-gray-400, .text-gray-300, .text-slate-500, [class*="text-[#6B"], [class*="text-[#8A"], [class*="text-[#52"]) { color: #6b4a2e !important; }
+.fantasy-scope.fantasy-scope :is(.parchment-scroll, .bg-white\/80, .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-success-50, .bg-success-100, .bg-danger-100, .bg-rose-50, .bg-rose-100, .bg-red-50, .bg-red-100, .bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-blue-50, .bg-orange-50, [class*="bg-[#F"], [class*="bg-[#E"], [class*="bg-[#D"], [class*="bg-[#C"], .bg-white):not(.fantasy-card):not(.fantasy-btn):not(.fantasy-plaque):not(.fantasy-chest) :is(.text-danger-600, .text-danger-500, .text-red-600, .text-rose-600, .text-red-500, .text-danger-700) { color: #9b2c1f !important; }
+.fantasy-scope.fantasy-scope :is(.parchment-scroll, .bg-white\/80, .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-success-50, .bg-success-100, .bg-danger-100, .bg-rose-50, .bg-rose-100, .bg-red-50, .bg-red-100, .bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-blue-50, .bg-orange-50, [class*="bg-[#F"], [class*="bg-[#E"], [class*="bg-[#D"], [class*="bg-[#C"], .bg-white):not(.fantasy-card):not(.fantasy-btn):not(.fantasy-plaque):not(.fantasy-chest) :is(.text-success-600, .text-success-500, .text-emerald-600, .text-green-600, .text-emerald-500, .text-success-700) { color: #1f6b3a !important; }
+.fantasy-scope.fantasy-scope :is(.parchment-scroll, .bg-white\/80, .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-success-50, .bg-success-100, .bg-danger-100, .bg-rose-50, .bg-rose-100, .bg-red-50, .bg-red-100, .bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-blue-50, .bg-orange-50, [class*="bg-[#F"], [class*="bg-[#E"], [class*="bg-[#D"], [class*="bg-[#C"], .bg-white):not(.fantasy-card):not(.fantasy-btn):not(.fantasy-plaque):not(.fantasy-chest) :is([class*="text-[#B5"], [class*="text-[#C0"], [class*="text-[#E0"]) { color: #8f4a33 !important; }
+/* a white or pale button is a piece of paper to press */
+.fantasy-scope.fantasy-scope button:is(.parchment-scroll, .bg-white\/80, .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-success-50, .bg-success-100, .bg-danger-100, .bg-rose-50, .bg-rose-100, .bg-red-50, .bg-red-100, .bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-blue-50, .bg-orange-50, [class*="bg-[#F"], [class*="bg-[#E"], [class*="bg-[#D"], [class*="bg-[#C"], .bg-white):not(.fantasy-btn):not([class*="from-"]) {
+  background: var(--fr-washi), var(--fr-parch) !important;
+  background-blend-mode: multiply, normal;
+  border: 2px solid var(--fr-wood) !important;
+  box-shadow: 0 3px 0 #4a2e12, inset 0 0 10px rgba(139, 90, 43, 0.25) !important;
+}
+.fantasy-scope.fantasy-scope button:is(.parchment-scroll, .bg-white\/80, .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-success-50, .bg-success-100, .bg-danger-100, .bg-rose-50, .bg-rose-100, .bg-red-50, .bg-red-100, .bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-blue-50, .bg-orange-50, [class*="bg-[#F"], [class*="bg-[#E"], [class*="bg-[#D"], [class*="bg-[#C"], .bg-white):not(.fantasy-btn):active { transform: translateY(2px); box-shadow: 0 1px 0 #4a2e12 !important; }
+/* a pill whose own wash is a low-alpha tint over a dark panel */
+.fantasy-scope.fantasy-scope .fantasy-pill { background: var(--fr-parch) !important; color: var(--fr-ink) !important; border: 2px solid var(--fr-wood); }
+.fantasy-scope.fantasy-scope .fantasy-pill * { color: var(--fr-ink) !important; }
+.fantasy-scope.fantasy-scope :is(.fintech-panel, .cute-card, .hh-card-forest, .forest-ticket, .kakeibo-card) {
+  position: relative;
+  color: var(--fr-cream);
+  background: var(--fr-washi), var(--fr-card-bg) !important;
+  background-blend-mode: soft-light, normal;
+  border: 1.5px solid var(--fr-gold) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55), inset 0 0 16px rgba(197, 160, 89, 0.12) !important;
+}
+
+/* the app's own small label and panel hint classes carry a colour of their own */
+.fantasy-scope.fantasy-scope :is(.shape-label, .fintech-panel__hint, .fintech-panel__title, .honest-empty__hint, .honest-empty__description) { color: var(--fr-muted) !important; }
+/* ...but on paper they are brown ink */
+.fantasy-scope.fantasy-scope :is(.parchment-scroll, .fantasy-pill, .fintech-method) :is(.shape-label, .fintech-method__detail, .fintech-method__summary, .fintech-method__current) { color: #5c3d1c !important; }
+.fantasy-scope.fantasy-scope .fintech-method { background: var(--fr-washi), var(--fr-parch) !important; background-blend-mode: multiply, normal; border: 2px solid var(--fr-wood) !important; color: var(--fr-ink) !important; }
+.fantasy-scope.fantasy-scope .fintech-method.is-active { outline: 3px solid var(--fr-gold); outline-offset: 1px; background: #fff3cf !important; }
+.fantasy-scope.fantasy-scope .fintech-method * { color: var(--fr-ink) !important; }
+.fantasy-scope.fantasy-scope .fintech-method .fintech-method__detail { color: #5c3d1c !important; }
+.fantasy-scope.fantasy-scope :is(.fintech-panel__title, .honest-empty__title) { color: var(--fr-cream) !important; }
+/* a ratio pill sits on its own pale wash: ink on it */
+.fantasy-scope.fantasy-scope [class*="rounded-full"][class*="border-2"][class*="px-2"]:not(.fantasy-btn):not(.guild-badge) { color: var(--fr-ink) !important; }
+.fantasy-scope.fantasy-scope [class*="rounded-full"][class*="border-2"][class*="px-2"]:not(.fantasy-btn):not(.guild-badge) * { color: var(--fr-ink) !important; }
+
+/* the botanical page buttons ('hh-button') are the app's primary actions: gold, like the rest */
+.fantasy-scope.fantasy-scope .hh-button:not(.hh-button-ghost) {
+  color: #1a120b !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #d4af37 0%, #aa771c 100%) !important;
+  border: 2px solid var(--fr-gold-hi) !important;
+  box-shadow: 0 3px 0 #6b4a12, 0 5px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 244, 200, 0.7) !important;
+  text-shadow: 0 1px 0 rgba(255, 238, 180, 0.5);
+}
+.fantasy-scope.fantasy-scope .hh-button:not(.hh-button-ghost) * { color: #1a120b !important; }
+.fantasy-scope.fantasy-scope .hh-button:active { transform: translateY(2px); }
+.fantasy-scope.fantasy-scope .hh-button-ghost { color: var(--fr-cream) !important; background: linear-gradient(180deg, rgba(22,27,46,.95), rgba(11,14,24,.95)) !important; border: 1.5px solid var(--fr-gold) !important; }
+/* the page headers of the botanical set: a plaque, with its badge as a small gold seal */
+.fantasy-scope.fantasy-scope .botanical-title { color: var(--fr-cream) !important; text-shadow: 0 2px 0 #000; }
+.fantasy-scope.fantasy-scope .hh-badge { color: #1a120b !important; background: linear-gradient(180deg, #e6c75a, #b8861a) !important; border: 2px solid #4a2e12 !important; }
+.fantasy-scope.fantasy-scope .hh-muted { color: var(--fr-muted) !important; }
+
+/* the botanical header inside a guild page: its title becomes the gold plaque */
+.fantasy-scope.fantasy-scope .botanical-header .botanical-title { margin-top: 12px; }
+.fantasy-scope.fantasy-scope .botanical-header .botanical-title__text {
+  display: inline-flex; align-items: center; gap: 10px; padding: 8px 26px;
+  font-size: 1.25rem; font-weight: 900; letter-spacing: 0.06em; color: #1a120b !important; text-shadow: 0 1px 0 rgba(255, 238, 180, 0.6);
+  background: linear-gradient(180deg, #f0d878 0%, #dcb23c 60%, #c8962a 100%);
+  border: 3px solid #4a2e12; box-shadow: inset 0 0 0 2px var(--fr-gold-hi), 0 4px 0 #4a2e12, 0 8px 16px rgba(0, 0, 0, 0.4);
+  clip-path: polygon(0 6px, 6px 6px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px));
+}
+.fantasy-scope.fantasy-scope .botanical-header .botanical-title__text::before,
+.fantasy-scope.fantasy-scope .botanical-header .botanical-title__text::after { content: '\2756'; font-size: 0.8em; color: #4a2e12; }
+.fantasy-scope.fantasy-scope .hh-badge { margin-right: 6px; }

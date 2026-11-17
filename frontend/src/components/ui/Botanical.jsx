@@ -60,7 +60,7 @@ export function BotanicalPageHeader({
   subtitle,
   action,
   aside,
-  icon = '🌿',
+  icon = '\u2756',
   className = '',
   children,
 }) {
@@ -79,7 +79,7 @@ export function BotanicalPageHeader({
           </span>
         ) : null}
         <h1 className="botanical-title mt-3 text-2xl font-extrabold sm:text-3xl">
-          {title}
+          <span className="botanical-title__text">{title}</span>
         </h1>
         {subtitle ? <p className="mt-1 text-sm hh-muted">{subtitle}</p> : null}
         {children}

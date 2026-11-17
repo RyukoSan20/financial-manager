@@ -168,6 +168,7 @@ for test_file in \
   src/features/koban-shop/__tests__/kobanEngine.test.js \
   src/features/koban-shop/__tests__/kobanShop.test.js \
   src/features/koban-shop/__tests__/kobanTilemap.test.js \
+  src/styles/__tests__/fantasyTheme.test.js \
   src/features/koban-shop/__tests__/kobanBattle.test.js \
   src/components/mascot/__tests__/realChibiMascot.test.js
 do

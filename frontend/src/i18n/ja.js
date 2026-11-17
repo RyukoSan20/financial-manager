@@ -1575,7 +1575,7 @@ export default {
     plan_title: "来月の計画",
     tips_title: "家計のヒント",
     improvement_tips: "改善のヒント:",
-    refresh_data: "🔄 データを更新",
+    refresh_data: "データを更新",
     ratio_emergency_months: "緊急予備資金（月数）",
     ratio_emergency_months_desc: "緊急予備資金は{months}か月の支出に相当します",
     ratio_savings_ratio: "貯蓄率",

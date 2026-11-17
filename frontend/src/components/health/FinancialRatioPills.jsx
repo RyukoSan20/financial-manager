@@ -129,13 +129,13 @@ const RatioCard = ({
 
   return (
     <div
-      className="wellness-ratio-card flex flex-col gap-2 p-4 pb-6 leading-relaxed rounded-2xl border border-[#EAE6DF] dark:border-slate-700 bg-white/70 dark:bg-slate-800/60"
+      className="wellness-ratio-card parchment-scroll fantasy-keep flex flex-col gap-2 p-4 pb-6 leading-relaxed rounded-xl"
       title={detail || label}
       data-testid="ratio-card"
     >
       {/* Row 1: the icon and the name, left; the status pill, right. */}
       <div className="flex items-center justify-between gap-3 flex-wrap" data-testid="ratio-row-head">
-        <span className="flex items-center gap-2 min-w-0 text-xs font-bold uppercase tracking-[0.06em] text-[#52796F] dark:text-emerald-300">
+        <span className="flex items-center gap-2 min-w-0 text-xs font-bold uppercase tracking-[0.06em] text-[#5c3d1c]">
           <span className="shrink-0" aria-hidden="true">{icon}</span>
           <span className="whitespace-normal break-words">{label}</span>
         </span>
@@ -159,13 +159,13 @@ const RatioCard = ({
         className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3 mt-1.5"
         data-testid="ratio-row-value"
       >
-        <p className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums text-[#1F2421] dark:text-[#FAF9F6] whitespace-nowrap">
+        <p className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums text-[#2c1d0c] whitespace-nowrap">
           <CountUpNumber value={value} from={0} format={(n) => n.toFixed(1)} />
           {suffix}
         </p>
         {benchmarkLabel ? (
           <span
-            className="self-start text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap px-2 py-0.5 rounded-full bg-[#F4F1EA] dark:bg-slate-700/60"
+            className="self-start text-[11px] font-medium text-[#5c3d1c] whitespace-nowrap px-2 py-0.5 rounded-full bg-[#fff6dc] border border-[#8b5a2b]/50"
             data-testid="ratio-benchmark"
           >
             {benchmarkLabel}
@@ -177,7 +177,7 @@ const RatioCard = ({
           ideal target so the reader sees where they sit relative to
           it at a glance. */}
       <div className="mt-2.5 relative" data-testid="ratio-row-bar">
-        <div className="motion-scrub-bar h-2.5 rounded-full bg-[#EAE6DF] dark:bg-slate-700 overflow-hidden relative">
+        <div className="motion-scrub-bar h-2.5 rounded-full bg-[#d9c79c] overflow-hidden relative">
           <div
             className={`motion-scrub-bar__fill h-full rounded-full ${barFill}`}
             style={{ width: `${clampedProgress}%` }}

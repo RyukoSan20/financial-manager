@@ -318,9 +318,29 @@ def workbench():
     return c.save("tile_workbench")
 
 
+
+def chest():
+    """A merchant's strongbox, for the empty states. Smooth vector, 56x50 cells at 4x."""
+    c = Canvas(56, 50)
+    c.oval(28, 46, 24, 4, (0, 0, 0, 70))
+    c.rect(6, 22, 44, 24, "#8B5A2B", INK, 1.6, 2)                      # body
+    for x in (16, 28, 40):
+        c.line([(x, 23), (x, 45)], "#6B4226", 1.2)                      # planks
+    c.poly([(6, 22), (6, 14), (14, 6), (42, 6), (50, 14), (50, 22)], "#A8682E", INK, 1.6)  # lid
+    c.line([(10, 14), (46, 14)], "#C98A4A", 1.4)
+    for x in (6, 49):
+        c.rect(x - 1.5, 6, 4, 40, "#C5A059", INK, 1.2, 1)               # gold straps
+    c.rect(2, 20, 52, 4, "#C5A059", INK, 1.2, 1)
+    c.rect(24, 20, 8, 11, "#F3E9D2", INK, 1.3, 2)                       # lock plate
+    c.oval(28, 24.5, 1.8, 1.8, "#4A2E12")
+    c.rect(27.2, 25, 1.6, 4, "#4A2E12")
+    for x, y in ((9, 26), (47, 26), (9, 42), (47, 42)):
+        c.oval(x, y, 1.1, 1.1, "#F3E9D2")                               # rivets
+    return c.save("tile_chest")
+
 def main():
     made = [f() for f in (floor_wood, wall_paper, wall_base, wall_brick, sky, hedge, door, carpet, carpet_edge, rug,
-                          counter_front, shelf_wood, umbrella_table, tree, window, pillar, ledger_table, cloud, workbench)]
+                          counter_front, shelf_wood, umbrella_table, tree, window, pillar, ledger_table, cloud, workbench, chest)]
     print(f"wrote {len(made)} tiles to {OUT.relative_to(ROOT)}: {', '.join(made)}")
     return 0
 

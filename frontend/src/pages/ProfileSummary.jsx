@@ -32,22 +32,24 @@ import { getUserAvatarUrl, builtInAvatarOptions } from '../utils/avatarHelper';
 import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { useTranslation } from '../i18n';
 import { useOnDataMutated } from '../utils/dataSyncBus';
+import { FantasyPage, PlaqueTitle, FantasyCard } from '../components/ui/FantasyKit';
 
 const StatTile = ({ icon: Icon, label, value, tone = 'neutral', sublabel }) => {
-  const tones = {
-    neutral: 'bg-gray-50 text-gray-700 border-gray-100',
-    income: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    expense: 'bg-rose-50 text-rose-700 border-rose-100',
-    primary: 'bg-primary-50 text-primary-700 border-primary-100',
+  // Every tile is a piece of parchment; the tone is a coloured seal on it.
+  const seals = {
+    neutral: '#8b5a2b',
+    income: '#1f6b3a',
+    expense: '#9b2c1f',
+    primary: '#9a6d14',
   };
   return (
-    <div className={`rounded-xl border p-3 ${tones[tone]}`}>
-      <div className="flex items-center gap-1.5 text-xs opacity-80">
+    <div className="parchment-scroll fantasy-keep rounded-xl p-3" style={{ borderColor: seals[tone] || seals.neutral }}>
+      <div className="flex items-center gap-1.5 text-xs" style={{ color: seals[tone] || seals.neutral }}>
         <Icon className="w-3.5 h-3.5" />
-        <span>{label}</span>
+        <span className="font-semibold">{label}</span>
       </div>
-      <p className="text-lg font-bold mt-1 break-words">{value}</p>
-      {sublabel && <p className="text-xs opacity-70 mt-0.5">{sublabel}</p>}
+      <p className="text-lg font-extrabold mt-1 break-words" style={{ color: '#2c1d0c' }}>{value}</p>
+      {sublabel && <p className="text-xs mt-0.5" style={{ color: '#6b4a2e' }}>{sublabel}</p>}
     </div>
   );
 };
@@ -152,9 +154,9 @@ const ProfileSummary = () => {
   const { identity, stats, history, recent_transactions, login_history } = data;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
+    <FantasyPage className="min-h-screen pb-24" data-testid="guild-profile">
       {/* Header */}
-      <div className="bg-primary-700 text-white px-4 py-4 sticky top-0 z-10 shadow-sm">
+      <div className="fantasy-keep px-4 py-4 sticky top-0 z-10" style={{ background: "linear-gradient(180deg,#161b2e,#0b0e18)", borderBottom: "2px solid #c5a059", color: "#f3e9d2" }}>
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -164,15 +166,15 @@ const ProfileSummary = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-lg font-bold leading-tight">{t('profile.summary_title')}</h1>
-            <p className="text-xs text-primary-100">{t('profile.summary_subtitle')}</p>
+            <PlaqueTitle as="h1" className="!text-base !py-1">{t('profile.summary_title')}</PlaqueTitle>
+            <p className="text-xs mt-1" style={{ color: "#c9b88a" }}>{t('profile.summary_subtitle')}</p>
           </div>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto p-4 space-y-4">
         {/* Identity card */}
-        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+        <FantasyCard className="p-5 pt-6" data-testid="adventurer-card">
           <div className="flex items-start gap-4">
             {/* The picture of the reader.
 
@@ -188,7 +190,7 @@ const ProfileSummary = () => {
               <img
                 src={getUserAvatarUrl(identity)}
                 alt={identity.display_name}
-                className="w-16 h-16 rounded-full object-cover border-2 border-primary-100 bg-primary-50"
+                className="w-20 h-20 rounded-full object-cover fantasy-keep" style={{ border: "3px solid #c5a059", background: "#f3e9d2", boxShadow: "0 0 0 3px #0b0e18, 0 0 14px rgba(197,160,89,.55)" }}
                 onError={(e) => {
                   // The drawn picture is the last line of defence: if
                   // even that fails, the initials are shown.
@@ -213,7 +215,7 @@ const ProfileSummary = () => {
                 type="button"
                 onClick={() => setShowAvatarPicker((v) => !v)}
                 aria-expanded={showAvatarPicker}
-                className="text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline inline-flex items-center gap-1 whitespace-nowrap"
+                className="guild-badge !normal-case hover:brightness-110 whitespace-nowrap"
               >
                 <Palette className="w-3.5 h-3.5" aria-hidden="true" />
                 {t('profile.change_avatar', 'Ubah Ikon Avatar')}
@@ -222,9 +224,10 @@ const ProfileSummary = () => {
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="font-bold text-gray-900 dark:text-white truncate">
+                <h2 className="font-extrabold truncate tracking-wide">
                   {identity.display_name}
                 </h2>
+                <span className="guild-badge" data-testid="guild-rank">{'\u2756'} {identity.is_verified ? 'Verified Adventurer' : 'Novice Adventurer'}</span>
                 {identity.is_verified && (
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                 )}
@@ -265,8 +268,8 @@ const ProfileSummary = () => {
                       aria-pressed={chosen}
                       className={`w-12 h-12 rounded-full overflow-hidden ring-2 transition-[box-shadow,border-color,opacity] duration-150 disabled:opacity-50 ${
                         chosen
-                          ? 'ring-primary-500 ring-offset-2 dark:ring-offset-gray-800'
-                          : 'ring-transparent hover:ring-primary-300'
+                          ? 'ring-[#c5a059] ring-offset-2 ring-offset-[#0b0e18]'
+                          : 'ring-transparent hover:ring-[#c5a059]/60'
                       }`}
                     >
                       <img
@@ -310,7 +313,7 @@ const ProfileSummary = () => {
               </div>
             )}
           </div>
-        </section>
+        </FantasyCard>
 
         {/* Stats */}
         <section className="grid grid-cols-2 gap-3">
@@ -354,7 +357,7 @@ const ProfileSummary = () => {
         </section>
 
         {/* Activity history */}
-        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <section className="fantasy-card overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
             <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <History className="w-4 h-4 text-gray-400" />
@@ -414,7 +417,7 @@ const ProfileSummary = () => {
 
         {/* Recent transactions */}
         {recent_transactions?.length > 0 && (
-          <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <section className="fantasy-card overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
               <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-gray-400" />
@@ -459,7 +462,7 @@ const ProfileSummary = () => {
 
         {/* Login history */}
         {login_history?.length > 0 && (
-          <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <section className="fantasy-card overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
               <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <Camera className="w-4 h-4 text-gray-400" />
@@ -487,15 +490,15 @@ const ProfileSummary = () => {
         {/* Action */}
         <button
           onClick={() => navigate('/settings/profile')}
-          className="w-full flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700"
+          className="fantasy-btn w-full !justify-between !py-3.5"
         >
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+          <span className="text-sm">
             {t('profile.edit_profile')}
           </span>
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </button>
       </div>
-    </div>
+    </FantasyPage>
   );
 };
 

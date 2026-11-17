@@ -31,6 +31,7 @@ import { useTranslation } from '../../i18n';
 import FinBuddyMascot from './FinBuddyMascot';
 import RiggedSvgMascot from '../mascot/RiggedSvgMascot';
 import { getVariant, readerKey } from '../../utils/abTesting';
+import { MerchantChest } from '../ui/FantasyKit';
 
 /**
  * The keys the component needs.
@@ -66,6 +67,9 @@ export default function HonestEmptyState({
   // other botanical surface uses.
   mascot = 'rigged',
   secondary = true,
+  // A guild-hall page shows a strongbox instead of a face.
+  chest = false,
+  chestGem = 'ruby',
   className = '',
 }) {
   const { t } = useTranslation();
@@ -97,6 +101,19 @@ export default function HonestEmptyState({
   // version keeps seeing it and the comparison means something.
   const [version] = useState(() => getVariant('exp_empty_state', readerKey()));
   const plain = version === 'control';
+
+  if (chest) {
+    return (
+      <div className={`honest-empty honest-empty--chest ${className}`.trim()} data-testid="honest-empty-chest">
+        <MerchantChest
+          title={titleText}
+          hint={[descriptionText, hintText].filter(Boolean).join(' ')}
+          gem={chestGem}
+          action={onPrimary ? <button type="button" onClick={onPrimary} className="fantasy-btn mt-2">{primaryText}</button> : null}
+        />
+      </div>
+    );
+  }
 
   // The plain version: the words and one action, and no picture. It is
   // the version that was already there, and it is here so the two can

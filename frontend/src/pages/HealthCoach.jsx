@@ -6,6 +6,7 @@ import { useOnDataMutated } from '../utils/dataSyncBus';
 import { useCurrency } from '../utils/currency';
 import { buildFlag } from '../utils/featureFlags';
 import CuteWellnessBento from '../components/health/CuteWellnessBento';
+import { FantasyPage, PlaqueTitle } from '../components/ui/FantasyKit';
 
 const HealthCoach = () => {
   const { t } = useTranslation();
@@ -110,15 +111,9 @@ const HealthCoach = () => {
   const dsrRatio = healthData?.dsr_ratio || null;
 
   return (
-    <div
-      className="kakeibo-dot-canvas -m-4 min-h-full p-4 pb-20 sm:-m-6 sm:p-6"
-      data-testid="health-coach-studio"
-    >
+    <FantasyPage className="min-h-full pb-20" data-testid="health-coach-studio">
       <div className="max-w-6xl mx-auto">
-      <h1 className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-[#4A3540] bg-[#FFF6D6] px-5 py-1.5 text-xl font-extrabold font-sans text-[#2C221E] shadow-[0_4px_0_#4A3540]">
-        <span aria-hidden="true" className="campus-star">✦</span>
-        {t('nav.healthCoach')}
-      </h1>
+      <PlaqueTitle className="mb-6">{t('nav.healthCoach')}</PlaqueTitle>
 
       {/* The bento.
 
@@ -142,7 +137,7 @@ const HealthCoach = () => {
         polished={polished}
       />
       </div>
-    </div>
+    </FantasyPage>
   );
 };
 

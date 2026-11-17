@@ -1575,7 +1575,7 @@ export default {
     plan_title: "Plan for Next Month",
     tips_title: "Financial Tips",
     improvement_tips: "Improvement Tips:",
-    refresh_data: "🔄 Refresh Data",
+    refresh_data: "Refresh Data",
     ratio_emergency_months: "Emergency Fund (Months)",
     ratio_emergency_months_desc: "Your emergency fund covers {months} months of spending",
     ratio_savings_ratio: "Savings Ratio",

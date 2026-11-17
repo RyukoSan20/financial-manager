@@ -7,6 +7,7 @@ import { formatCurrency } from '../utils/format';
 import { useTranslation } from '../i18n';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
+import { FantasyPage, PlaqueTitle, FantasyCard, MerchantChest } from '../components/ui/FantasyKit';
 
 const MerchantManager = () => {
   // The number at the top of the page is the day's takings. It has to
@@ -105,16 +106,16 @@ const MerchantManager = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+    <FantasyPage className="min-h-screen" data-testid="merchant-guild">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <ShoppingBag className="w-8 h-8 text-primary-600" />
-          <h1 className="text-2xl font-bold">{t('nav.merchant')}</h1>
+          <PlaqueTitle icon={<ShoppingBag className="w-6 h-6" />}>{t('nav.merchant')}</PlaqueTitle>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="fantasy-btn"
+          data-testid="merchant-add"
         >
           <Plus size={20} />
           <span>{t('merchant_manager.add_store')}</span>
@@ -123,17 +124,18 @@ const MerchantManager = () => {
 
       {merchants.length === 0 ? (
         // Empty State
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-8 text-center">
-          <ShoppingBag className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h2 className="text-xl font-semibold mb-2">{t('merchant_manager.empty_title')}</h2>
-          <p className="text-gray-500 mb-4">{t('merchant_manager.empty_desc')}</p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-          >
-            + {t('merchant_manager.add_store')}
-          </button>
-        </div>
+        <FantasyCard className="p-8 text-center">
+          <MerchantChest
+            title={t('merchant_manager.empty_title')}
+            hint={t('merchant_manager.empty_desc')}
+            gem="gold"
+            action={(
+              <button onClick={() => setShowCreateModal(true)} className="fantasy-btn fantasy-btn--glow mt-2">
+                + {t('merchant_manager.add_store')}
+              </button>
+            )}
+          />
+        </FantasyCard>
       ) : (
         // Merchant List & Dashboard
         <div className="space-y-6">
@@ -333,7 +335,7 @@ const MerchantManager = () => {
           </div>
         </div>
       )}
-    </div>
+    </FantasyPage>
   );
 };
 
