@@ -15,11 +15,14 @@ import db from '../data/database.js';
 export const SAVE_KEY = 'fm_koban_co_save_v1';
 export const SAVE_VERSION = 1;
 
-const SHELF_IDS = ['glass_case', 'wood_rack', 'vip_umbrella_table'];
+// The four slots of the display counter, left to right. The first
+// three keep the ids the save files already use.
+const SHELF_IDS = ['glass_case', 'wood_rack', 'vip_umbrella_table', 'counter_slot_4'];
 export const SHELVES = [
-  { id: 'glass_case', name: 'Etalase Kaca', xPercent: 36, yPercent: 72, capacity: 12 },
-  { id: 'wood_rack', name: 'Rak Kayu', xPercent: 60, yPercent: 44, capacity: 20 },
-  { id: 'vip_umbrella_table', name: 'Meja Payung VIP', xPercent: 82, yPercent: 68, capacity: 6 },
+  { id: 'glass_case', name: 'Slot 1', xPercent: 33.5, yPercent: 65, capacity: 12 },
+  { id: 'wood_rack', name: 'Slot 2', xPercent: 44.5, yPercent: 65, capacity: 20 },
+  { id: 'vip_umbrella_table', name: 'Slot VIP', xPercent: 55.5, yPercent: 65, capacity: 6 },
+  { id: 'counter_slot_4', name: 'Slot 4', xPercent: 66.5, yPercent: 65, capacity: 12 },
 ];
 
 export const BASE_SALE_INTERVAL_SEC = 45;
@@ -27,6 +30,13 @@ export const BELL_SALE_INTERVAL_SEC = 15;
 export const FEVER_MULTIPLIER = 2.0;
 export const FEVER_DURATION_SEC = 90;
 export const GAUGE_PER_SALE = 5;
+export const STAMINA_REGEN_SEC = 480;
+// The live shop floor (a customer walking up and buying).
+export const LIVE_GAUGE_PER_SALE = 8;
+export const LIVE_FEVER_GOLD = 1.5;
+export const LIVE_FEVER_SEC = 30;
+export const LIVE_FEVER_SPEED = 3;
+export const POP_PER_SALE = 5;
 
 const byId = (list) => Object.fromEntries(list.map((x) => [x.id, x]));
 export const ITEMS = byId(db.items);
@@ -68,7 +78,20 @@ export function initialState(nowMs = Date.now()) {
     rawInventory: starterRaw,
     inventory,
     knownRecipes: starterRecipes,
-    shelves: SHELF_IDS.map((id) => ({ id, itemId: null, qty: 0, unitPrice: 0 })),
+    // The counter opens with two slots already dressed, so the first
+    // thing a new shopkeeper sees is a shop that is selling.
+    shelves: SHELF_IDS.map((id, i) => {
+      const rid = i >= 2 ? starterRecipes[i - 1] : null;
+      const item = rid ? ITEMS[RECIPES[rid].outputItemId] : null;
+      return item
+        ? { id, itemId: item.id, qty: 3, unitPrice: Math.round(item.sellPrice * (id === 'vip_umbrella_table' ? 1.25 : 1)) }
+        : { id, itemId: null, qty: 0, unitPrice: 0 };
+    }),
+    popularity: 0,
+    soldiers: { fencer: 1, wizard: 1, archer: 1 },
+    affinity: {},
+    badges: {},
+    staminaRegenAt: nowMs,
     skills: Object.fromEntries(db.characters.map((c) => [c.id, { cooldownUntilMs: 0, activeUntilMs: 0 }])),
     activeBuffs: { konekoBellUntil: 0, minoriHarvestUntil: 0, zenimaruChargeUntil: 0, kaneruDiscountPending: false },
     expeditions: [],
@@ -148,8 +171,24 @@ export function reconcileOfflineAndElapsedState(state, nowMs = Date.now()) {
     exp.status === 'running' && nowMs >= exp.endTimeMs ? { ...exp, status: 'ready_to_claim' } : exp
   );
 
+  // Action stamina comes back on its own: one point per interval.
+  let stamina = state.stamina;
+  let staminaRegenAt = state.staminaRegenAt || state.lastTickAt;
+  const regenMs = STAMINA_REGEN_SEC * 1000;
+  if (stamina >= state.staminaMax) {
+    staminaRegenAt = nowMs;
+  } else {
+    const points = Math.floor((nowMs - staminaRegenAt) / regenMs);
+    if (points > 0) {
+      stamina = Math.min(state.staminaMax, stamina + points);
+      staminaRegenAt = stamina >= state.staminaMax ? nowMs : staminaRegenAt + points * regenMs;
+    }
+  }
+
   return {
     ...state,
+    stamina,
+    staminaRegenAt,
     koban: state.koban + earnedKoban,
     kingVisitGauge: gauge,
     feverModeUntil,
@@ -189,6 +228,17 @@ export function restockShelf(state, shelfId, itemId, qty, nowMs = Date.now()) {
         : s
     ),
   }, `Koneko menata ${moved}× ${item.name} di ${shelf.name}.`, nowMs);
+}
+
+/** Take what is on a slot back into the storeroom, so it can be re-dressed. */
+export function clearShelf(state, shelfId) {
+  const slot = state.shelves.find((x) => x.id === shelfId);
+  if (!slot || !slot.itemId) return state;
+  return {
+    ...state,
+    inventory: { ...state.inventory, [slot.itemId]: (state.inventory[slot.itemId] || 0) + slot.qty },
+    shelves: state.shelves.map((x) => (x.id === shelfId ? { id: x.id, itemId: null, qty: 0, unitPrice: 0 } : x)),
+  };
 }
 
 /* ---------------------------------------------------------------------------
@@ -505,8 +555,266 @@ export function deserialize(text, nowMs = Date.now()) {
     const parsed = JSON.parse(text);
     if (parsed.version !== SAVE_VERSION) return initialState(nowMs);
     // Fill any field a newer build added.
-    return { ...initialState(nowMs), ...parsed, lastTickAt: parsed.lastTickAt || nowMs };
+    const fresh = initialState(nowMs);
+    const merged = { ...fresh, ...parsed, lastTickAt: parsed.lastTickAt || nowMs };
+    // A save from before the fourth slot has three shelves.
+    const saved = Array.isArray(parsed.shelves) ? parsed.shelves : [];
+    merged.shelves = SHELF_IDS.map((id) => saved.find((x) => x && x.id === id) || { id, itemId: null, qty: 0, unitPrice: 0 });
+    merged.soldiers = { ...fresh.soldiers, ...(parsed.soldiers || {}) };
+    return merged;
   } catch {
     return initialState(nowMs);
   }
+}
+
+/* ---------------------------------------------------------------------------
+   The live shop floor
+   --------------------------------------------------------------------------- */
+
+const hashOf = (text) => { let h = 0; for (let i = 0; i < text.length; i += 1) h = (h * 31 + text.charCodeAt(i)) >>> 0; return h; };
+
+/** How much the town wants an item: 1 (low) .. 3 (high). Stable per item. */
+export function itemPopularity(itemId) {
+  const item = ITEMS[itemId];
+  if (!item) return 1;
+  return 1 + ((hashOf(item.id) + item.tier) % 3);
+}
+export const POPULARITY_LABEL = { 1: 'Low', 2: 'Mid', 3: 'High' };
+
+/** The catalogue number of an item, 1-based, as the encyclopedia lists it. */
+export const ITEM_NUMBER = Object.fromEntries(db.items.map((it, i) => [it.id, i + 1]));
+
+/** What an item does for the party when it has been sold often. */
+export function itemBonus(itemId) {
+  const item = ITEMS[itemId];
+  if (!item) return '';
+  const n = 2 + item.tier * 3;
+  if (item.facility === 'blacksmith') return `Fencer ATK +${n}`;
+  if (item.facility === 'seamstress') return `Archer HP +${n}`;
+  if (item.facility === 'wizardry') return `Wizard ATK +${n}`;
+  return `Soldier HP +${n}`;
+}
+
+/**
+ * One customer buys from one slot, right now.
+ *
+ * This is the live counterpart of the idle sale in the reconcile: the
+ * reconcile settles the time the shop was left alone, this settles a
+ * customer who walked up while the reader was watching.
+ */
+export function sellToCustomer(state, shelfId, nowMs = Date.now(), rng = Math.random) {
+  const slot = state.shelves.find((x) => x.id === shelfId);
+  if (!slot || !slot.itemId || slot.qty <= 0) return { state, sale: null };
+  const fever = state.feverModeUntil > nowMs;
+  const qty = Math.min(slot.qty, fever ? 2 + (rng() < 0.5 ? 1 : 0) : 1);
+  const abacus = state.badges && state.badges.golden_abacus ? 1.1 : 1;
+  const gold = Math.round(slot.unitPrice * qty * (fever ? LIVE_FEVER_GOLD : 1) * abacus);
+  const pop = POP_PER_SALE * qty;
+
+  let gauge = state.kingVisitGauge;
+  let feverModeUntil = state.feverModeUntil;
+  let feverStarted = false;
+  if (!fever) {
+    gauge = Math.min(100, gauge + LIVE_GAUGE_PER_SALE + itemPopularity(slot.itemId) * 2);
+    if (gauge >= 100) { gauge = 0; feverModeUntil = nowMs + LIVE_FEVER_SEC * 1000; feverStarted = true; }
+  }
+
+  let next = {
+    ...state,
+    koban: state.koban + gold,
+    popularity: (state.popularity || 0) + pop,
+    kingVisitGauge: gauge,
+    feverModeUntil,
+    shelves: state.shelves.map((x) => (x.id === shelfId ? { ...x, qty: x.qty - qty } : x)),
+    mastery: { ...(state.mastery || {}), [slot.itemId]: ((state.mastery || {})[slot.itemId] || 0) + qty },
+    stats: { ...state.stats, totalEarned: state.stats.totalEarned + gold, itemsSold: state.stats.itemsSold + qty },
+  };
+  if (feverStarted) next = pushLog(next, 'Shop Bonus Chance! Toko sedang ramai-ramainya.', nowMs);
+  return { state: next, sale: { itemId: slot.itemId, qty, gold, pop, fever, feverStarted } };
+}
+
+/* ---------------------------------------------------------------------------
+   Badges
+   --------------------------------------------------------------------------- */
+
+export const BADGES = [
+  { id: 'stamina_flask', name: 'Lencana Botol Semangat', desc: 'Stamina maksimum +2.', cost: 800 },
+  { id: 'golden_abacus', name: 'Lencana Sempoa Emas', desc: 'Harga jual di meja pajang +10%.', cost: 1500 },
+  { id: 'welcome_bell', name: 'Lencana Lonceng Sambut', desc: 'Pelanggan datang 25% lebih sering.', cost: 1200 },
+  { id: 'guild_banner', name: 'Lencana Panji Guild', desc: 'Semua prajurit ATK +10%.', cost: 2400 },
+];
+
+export function buyBadge(state, badgeId, nowMs = Date.now()) {
+  const badge = BADGES.find((b) => b.id === badgeId);
+  if (!badge || (state.badges || {})[badgeId] || state.koban < badge.cost) return state;
+  const next = { ...state, koban: state.koban - badge.cost, badges: { ...(state.badges || {}), [badgeId]: true } };
+  if (badgeId === 'stamina_flask') { next.staminaMax = state.staminaMax + 2; next.stamina = state.stamina + 2; }
+  return pushLog(next, `${badge.name} terpasang di dinding toko.`, nowMs);
+}
+
+/* ---------------------------------------------------------------------------
+   Recipes bought from a craftsperson, and their affinity
+   --------------------------------------------------------------------------- */
+
+export const FACILITY_KEEPER = { restaurant: 'minori', wizardry: 'mone', blacksmith: 'zenimaru', seamstress: 'kogane' };
+
+const facilityRecipes = (facility) => db.recipes.filter((r) => r.facility === facility);
+
+export function recipeProgress(state, facility) {
+  const all = facilityRecipes(facility);
+  const cap = Math.min(all.length, 20);
+  const known = all.filter((r) => state.knownRecipes.includes(r.id)).length;
+  return { known: Math.min(known, all.length), total: Math.max(cap, Math.min(all.length, known)) , all: all.length };
+}
+
+export function recipePurchaseCost(state, facility) {
+  return 150 + 70 * ((state.affinity || {})[facility] || 0);
+}
+
+export function affinityHearts(state, facility) {
+  return Math.min(4, 1 + Math.floor(((state.affinity || {})[facility] || 0) / 3));
+}
+
+export function purchaseRecipe(state, facility, nowMs = Date.now()) {
+  const cost = recipePurchaseCost(state, facility);
+  const next = facilityRecipes(facility)
+    .filter((r) => !state.knownRecipes.includes(r.id))
+    .sort((a, b) => a.tier - b.tier)[0];
+  if (!next || state.koban < cost) return { state, recipe: null };
+  const item = ITEMS[next.outputItemId];
+  const out = pushLog({
+    ...state,
+    koban: state.koban - cost,
+    knownRecipes: [...state.knownRecipes, next.id],
+    affinity: { ...(state.affinity || {}), [facility]: ((state.affinity || {})[facility] || 0) + 1 },
+  }, `Resep baru dibeli: ${item ? item.name : next.id}.`, nowMs);
+  return { state: out, recipe: next };
+}
+
+/* ---------------------------------------------------------------------------
+   Soldiers and the live battle
+   --------------------------------------------------------------------------- */
+
+export const SOLDIER_CLASSES = [
+  { id: 'fencer', name: 'Fencer', who: 'zenimaru', whoLabel: 'Zenimaru', baseHp: 130, hpPer: 16, baseAtk: 14, atkPer: 3, range: 'melee' },
+  { id: 'wizard', name: 'Wizard', who: 'mone', whoLabel: 'Mone / Minori', baseHp: 85, hpPer: 10, baseAtk: 21, atkPer: 4, range: 'magic' },
+  { id: 'archer', name: 'Archer', who: 'kaneru', whoLabel: 'Kaneru / Kogane', baseHp: 100, hpPer: 12, baseAtk: 17, atkPer: 3, range: 'ranged' },
+];
+
+export function soldierStats(state, classId) {
+  const c = SOLDIER_CLASSES.find((x) => x.id === classId);
+  const lv = Math.max(1, (state.soldiers || {})[classId] || 1);
+  const banner = state.badges && state.badges.guild_banner ? 1.1 : 1;
+  return { lv, hp: c.baseHp + c.hpPer * (lv - 1), atk: Math.round((c.baseAtk + c.atkPer * (lv - 1)) * banner) };
+}
+
+export function soldierLevelCost(lv) {
+  return Math.round((90 * Math.pow(1.14, lv - 1)) / 10) * 10;
+}
+
+export function levelUpSoldier(state, classId, nowMs = Date.now()) {
+  if (!SOLDIER_CLASSES.some((c) => c.id === classId)) return state;
+  const lv = Math.max(1, (state.soldiers || {})[classId] || 1);
+  const cost = soldierLevelCost(lv);
+  if (state.koban < cost || lv >= 99) return state;
+  return pushLog({ ...state, koban: state.koban - cost, soldiers: { ...state.soldiers, [classId]: lv + 1 } },
+    `${classId} naik ke Lv.${lv + 1}.`, nowMs);
+}
+
+export function partyLevel(state) {
+  const s = state.soldiers || {};
+  return Math.round(((s.fencer || 1) + (s.wizard || 1) + (s.archer || 1)) / 3);
+}
+
+/**
+ * The five stages of the world map, laid over the five dungeons of the
+ * database. The database keeps the loot and the monsters; this keeps
+ * what the map shows.
+ */
+export const STAGES = [
+  { dungeonId: 'whispering_woods', name: 'Whispering Plains', stars: 1, level: 1, x: 24, y: 70, scene: 'plains' },
+  { dungeonId: 'ember_cavern', name: 'Emerald Woods', stars: 2, level: 5, x: 40, y: 44, scene: 'woods' },
+  { dungeonId: 'crystal_grotto', name: 'Pistachio Falls', stars: 3, level: 15, x: 62, y: 60, scene: 'falls' },
+  { dungeonId: 'ancient_ruins', name: 'Ember Volcano', stars: 4, level: 25, x: 76, y: 30, scene: 'volcano' },
+  { dungeonId: 'abyssal_rift', name: 'Abyssal Rift', stars: 5, level: 40, x: 52, y: 18, scene: 'rift' },
+];
+
+/** What a party of three does and can take at a level, with no badges. */
+const partyAt = (lv) => {
+  const each = SOLDIER_CLASSES.map((c) => ({ hp: c.baseHp + c.hpPer * (lv - 1), atk: c.baseAtk + c.atkPer * (lv - 1) }));
+  const beat = [1.05, 1.7, 1.3];
+  return { hp: each.reduce((n, e) => n + e.hp, 0), dps: each.reduce((n, e, i) => n + e.atk / beat[i], 0) };
+};
+
+/**
+ * The enemies of a stage: two of the dungeon's monsters and its boss.
+ *
+ * They are sized against a party AT the stage's recommended level: a
+ * fight of about half a minute, which that party wins if the heavy
+ * blows are guarded and may well lose if they are not. A party well
+ * under the level loses; one well over it walks through.
+ */
+export function stageEnemies(dungeonId) {
+  const stage = STAGES.find((x) => x.dungeonId === dungeonId);
+  const d = DUNGEONS[dungeonId];
+  if (!stage || !d) return [];
+  const list = d.monsters.slice(0, 3).map((id) => MONSTERS[id]).filter(Boolean);
+  const ref = partyAt(stage.level);
+  const ease = stage.stars === 1 ? 0.62 : 1;
+  const totalHp = ref.dps * 30 * ease;
+  const bite = (ref.hp / 34) * ease;
+  const share = list.length === 1 ? [1] : list.length === 2 ? [0.35, 0.65] : [0.2, 0.22, 0.58];
+  return list.map((m, i) => {
+    const boss = i === list.length - 1;
+    return {
+      id: `${m.id}_${i}`, name: m.name, icon: m.icon, boss,
+      hp: Math.round(totalHp * share[i]),
+      atk: Math.max(2, Math.round(bite * (boss ? 1.35 : 1))),
+    };
+  });
+}
+
+/** Spend the stamina and go. */
+export function beginBattle(state, dungeonId, nowMs = Date.now()) {
+  if (!DUNGEONS[dungeonId] || state.stamina <= 0) return { state, ok: false };
+  return {
+    state: pushLog({ ...state, stamina: state.stamina - 1, staminaRegenAt: state.stamina >= state.staminaMax ? nowMs : (state.staminaRegenAt || nowMs) },
+      `Pasukan berangkat ke ${STAGES.find((x) => x.dungeonId === dungeonId)?.name || dungeonId}.`, nowMs),
+    ok: true,
+  };
+}
+
+/** The battle is over: bring the loot home, or come home with nothing. */
+export function finishBattle(state, dungeonId, won, nowMs = Date.now(), rng = Math.random) {
+  const d = DUNGEONS[dungeonId];
+  const stage = STAGES.find((x) => x.dungeonId === dungeonId);
+  if (!d || !stage) return { state, loot: [], gold: 0 };
+  const rawInventory = { ...state.rawInventory };
+  const loot = [];
+  let gold = 0;
+  if (won) {
+    const count = 3 + stage.stars + Math.floor(rng() * 3);
+    for (let i = 0; i < count; i += 1) {
+      const id = d.lootTable[Math.floor(rng() * d.lootTable.length)];
+      rawInventory[id] = (rawInventory[id] || 0) + 1;
+      loot.push(id);
+    }
+    gold = 40 * stage.stars + Math.floor(rng() * 30);
+  }
+  const next = pushLog({
+    ...state,
+    koban: state.koban + gold,
+    rawInventory,
+    stats: { ...state.stats, expeditionsWon: state.stats.expeditionsWon + (won ? 1 : 0), expeditionsLost: state.stats.expeditionsLost + (won ? 0 : 1) },
+  }, won ? `Menang di ${stage.name}! ${loot.length} bahan dan ${gold} G dibawa pulang.` : `Pasukan mundur dari ${stage.name}.`, nowMs);
+  return { state: next, loot, gold };
+}
+
+/** A drop is rare when it is of the two highest tiers of its table. */
+export function stageDrops(dungeonId) {
+  const d = DUNGEONS[dungeonId];
+  if (!d) return [];
+  const list = [...new Set(d.lootTable)].map((id) => RAW[id]).filter(Boolean).slice(0, 7);
+  const top = Math.max(...list.map((r) => r.tier), 0);
+  return list.map((r) => ({ ...r, rare: r.tier >= top && list.length > 1 }));
 }

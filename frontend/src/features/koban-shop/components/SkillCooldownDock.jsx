@@ -48,7 +48,7 @@ export default function SkillCooldownDock({ state, nowMs, onActivate }) {
                   'koban-portrait block h-full w-full rounded-full',
                   !ready && 'opacity-60 grayscale'
                 )}
-                style={{ backgroundImage: `url(/koban-assets/sprites/${c.id}_portrait.png)` }}
+                style={{ backgroundImage: `url(/koban-assets/face/${c.id}.webp)` }}
               />
             </span>
             <span className="text-[9.5px] font-extrabold text-[#2C221E]">{c.name.split(' ')[0]}</span>

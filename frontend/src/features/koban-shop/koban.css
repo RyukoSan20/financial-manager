@@ -110,7 +110,8 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 74px;
-  background-image: var(--koban-vault-scene);
+  background-image: url(/koban-assets/tiles/tile_wall_paper.png);
+  background-size: 64px 64px;
   background-size: cover;
   background-position: center;
   opacity: 0.55;

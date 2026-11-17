@@ -87,10 +87,10 @@ export default {
    }
   ],
   "scenes": {
-   "atelier": "/koban-assets/places/atelier.jpg",
-   "workshop": "/koban-assets/places/workshop.jpg",
-   "dungeon": "/koban-assets/places/dungeon_forest.jpg",
-   "vault": "/koban-assets/places/vault_bank.jpg"
+   "atelier": "",
+   "workshop": "",
+   "dungeon": "",
+   "vault": ""
   },
   "svgCount": 530
  },

@@ -4,7 +4,7 @@
  * Checks the things that are easy to break and hard to notice: that
  * the asset pipeline produced real transparent sprites and a complete
  * database, that the engine's rules hold, and that the page still has
- * its five tabs, its portal (the tab bar is fixed to the window, not
+ * its four tabs, its portal (the tab bar is fixed to the window, not
  * to the app's transformed canvas), and its mobile layout.
  *
  *   node src/features/koban-shop/__tests__/kobanShop.test.js
@@ -166,27 +166,28 @@ check('the store persists and wakes up', () => {
 
 const page = read('src/features/koban-shop/KobanShopPage.jsx');
 
-check('the page has all five tabs', () => {
-  ['shop', 'craft', 'dungeon', 'requests', 'ledger'].forEach((id) => {
-    must(page.includes(`id: '${id}'`), `no ${id} tab`);
-    must(page.includes(`panel-${id}`), `no ${id} panel`);
-  });
+check('the page has the four tabs of the reference', () => {
+  ['shop', 'quest', 'synth', 'menu'].forEach((id) => must(page.includes(`id: '${id}'`), `no ${id} tab`));
+  must((page.match(/\{ id: '/g) || []).length === 4, 'not exactly four tabs');
 });
 
-check('the page mounts every subcomponent', () => {
-  ['IsometricAtelierStage', 'SkillCooldownDock', 'HintCraftingModal', 'CustomerDeductionModal', 'DungeonExpeditionTab', 'KakeiboVaultLedgerTab'].forEach((c) => {
+check('the page mounts every screen', () => {
+  ['TopGoldPlaqueHud', 'ParallelShopViewport', 'DisplaySelectModal', 'QuestTab', 'SynthesizingTab', 'MenuTab', 'CustomerDeductionModal'].forEach((c) => {
     must(page.includes(`<${c}`), `${c} is not mounted`);
   });
+  const menu = read('src/features/koban-shop/components/MenuTab.jsx');
+  ['KakeiboVaultLedgerTab', 'SkillCooldownDock', 'RequestCard'].forEach((c) => must(menu.includes(`<${c}`), `${c} is not in the menu`));
+  must(read('src/features/koban-shop/components/SynthesizingTab.jsx').includes('<HintCraftingModal'), 'no crafting in the workshops');
 });
 
-check('the phone tab bar is portalled out of the transformed canvas', () => {
+check('the phone dock is portalled out of the transformed canvas', () => {
   // The app's canvas carries a transform, which makes it the
   // containing block for fixed children - so the bar must go through
   // a portal to document.body.
   must(page.includes("from 'react-dom'"), 'no react-dom import');
   must(page.includes('createPortal('), 'no portal');
   must(page.includes('document.body'), 'the portal does not target the body');
-  must(page.includes('koban-tabs--fixed'), 'no fixed tab bar');
+  must(page.includes('krpg-dock--fixed'), 'no fixed dock');
 });
 
 check('the routes and the navigation entry exist', () => {
@@ -198,17 +199,12 @@ check('the routes and the navigation entry exist', () => {
 });
 
 const css = read('src/features/koban-shop/koban.css');
-check('the tab bar clears the app bottom navigation', () => {
-  must(css.includes('bottom: calc(5rem + env(safe-area-inset-bottom, 0px))'), 'no offset for the app bar');
-  // The Tailwind `bottom-0` on the element would win the cascade
-  // against this stylesheet, so the utility must not be there.
-  must(!page.includes('koban-tabs--fixed fixed inset-x-0 bottom-0'), 'bottom-0 is back');
-});
-
-check('the shelf hotspots move out of the room on a phone', () => {
-  must(css.includes('.koban-shelves'), 'no shelf container');
-  must(css.includes('position: static'), 'the shelf row never leaves the room');
-  must(read('src/features/koban-shop/components/IsometricAtelierStage.jsx').includes('koban-stage-wrap'), 'the stage has no wrapper');
+check('the game dock is the only bar at the bottom of a phone', () => {
+  const ui = read('src/features/koban-shop/koban-rpg-ui.css');
+  must(/\.krpg-dock--fixed \{[^}]*bottom: 0/.test(ui), 'the dock is not at the bottom');
+  must(ui.includes('env(safe-area-inset-bottom'), 'no safe area');
+  const layout = read('src/components/layout/Layout.jsx');
+  must(/startsWith\('\/koban-shop'\) \? null : <BottomNav \/>/.test(layout), 'the app bar still stacks under the dock');
 });
 
 check('the motion is transform-only and stops only for the reader', () => {
@@ -219,7 +215,7 @@ check('the motion is transform-only and stops only for the reader', () => {
 });
 
 check('the assets are copied where the game looks for them', () => {
-  ['chara/koneko.png', 'chara/mone.png', 'face/koneko.jpg', 'places/atelier.jpg', 'places/workshop.jpg'].forEach((p) => {
+  ['chara/koneko.png', 'chara/mone.png', 'face/koneko.jpg', ].forEach((p) => {
     must(fs.existsSync(path.join(FRONT, 'public', 'koban-assets', p)), `missing ${p}`);
   });
 });

@@ -11,11 +11,14 @@
 
 import { useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import { DB, ITEMS, RAW, RECIPES } from '../store/kobanEngine.js';
+import { DB, ITEMS, RAW, RECIPES, FACILITY_KEEPER } from '../store/kobanEngine.js';
+import { facilityMap } from '../store/shopMap.js';
+import IsometricTilemapStage, { Actor } from './IsometricTilemapStage.jsx';
+import ParallelRpgSprite from './ParallelRpgSprite.jsx';
 import { Button, Card, ItemIcon, Pill, SectionTitle, Sheet, fmt } from './ui.jsx';
 
-export default function HintCraftingModal({ state, actions, nowMs, embedded = false, open = true, onClose }) {
-  const [facility, setFacility] = useState('restaurant');
+export default function HintCraftingModal({ state, actions, nowMs, embedded = false, open = true, onClose, initialFacility = 'restaurant' }) {
+  const [facility, setFacility] = useState(initialFacility);
   const [bench, setBench] = useState([]);
   const [flash, setFlash] = useState(null);
 
@@ -54,13 +57,16 @@ export default function HintCraftingModal({ state, actions, nowMs, embedded = fa
 
   const toggleBench = (id) => setBench((b) => (b.includes(id) ? b.filter((x) => x !== id) : b.length < 3 ? [...b, id] : b));
 
+  const craftRoom = useMemo(() => facilityMap(facility), [facility]);
+
   const body = (
     <div data-testid="craft-studio">
-      <div
-        className="relative mb-3 overflow-hidden rounded-[18px] border-2 border-[#4A3540]"
-        style={{ aspectRatio: '21 / 7', backgroundImage: `url(${DB.meta.scenes.workshop})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-      >
-        <img src={DB.characters.find((c) => c.id === 'minori').sprite} alt="Minori" className="koban-chara absolute bottom-0 left-[52%] w-[16%] -translate-x-1/2" />
+      <div className="relative mb-3 overflow-hidden rounded-[18px] border-2 border-[#4A3540]" data-testid="craft-room">
+        <IsometricTilemapStage map={craftRoom} className="krpg-studio__room">
+          <Actor map={craftRoom} x={craftRoom.spots.keeper.x} y={craftRoom.spots.keeper.y}>
+            <ParallelRpgSprite who={FACILITY_KEEPER[facility] || 'minori'} dir="down" state="work" weapon={facility === 'blacksmith' ? 'hammer' : facility === 'wizardry' ? 'staff' : 'none'} size={44} className="krpg-sprite" />
+          </Actor>
+        </IsometricTilemapStage>
         {flash ? (
           <div className={clsx('absolute left-2 top-2 rounded-xl border-2 border-[#4A3540] px-3 py-1 text-[12px] font-extrabold', flash.kind === 'ok' ? 'bg-[#E3F2EA] text-[#1F3A2E]' : 'bg-[#FDE8E4] text-[#9E3B24]')} data-testid="craft-flash">
             {flash.text}

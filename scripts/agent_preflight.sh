@@ -167,7 +167,8 @@ for test_file in \
   src/components/ai/__tests__/topBarPosition.test.js \
   src/features/koban-shop/__tests__/kobanEngine.test.js \
   src/features/koban-shop/__tests__/kobanShop.test.js \
-  src/features/koban-shop/__tests__/kobanSprites.test.js \
+  src/features/koban-shop/__tests__/kobanTilemap.test.js \
+  src/features/koban-shop/__tests__/kobanBattle.test.js \
   src/components/mascot/__tests__/realChibiMascot.test.js
 do
   if [ ! -f "$test_file" ]; then
@@ -212,12 +213,10 @@ else
 fi
 
 echo "--- generated assets -----------------------------------------"
-if "$ROOT/backend/venv/bin/python" "$ROOT/scripts/generate_koban_sprites.py" --check > /tmp/preflight_koban_sprites.log 2>&1; then
-  tail -1 /tmp/preflight_koban_sprites.log
-  echo "  -> koban sprites OK"
+if [ -d "$ROOT/frontend/public/koban-assets/tiles" ] && [ "$(ls "$ROOT/frontend/public/koban-assets/tiles" | wc -l)" -ge 19 ]; then
+  echo "  -> koban tiles OK"
 else
-  tail -20 /tmp/preflight_koban_sprites.log
-  note_failure "koban sprites"
+  note_failure "koban tiles (run scripts/build_koban_tiles.py)"
 fi
 
 if "$ROOT/backend/venv/bin/python" "$ROOT/scripts/generate_assets.py" --check > /tmp/preflight_assets.log 2>&1; then

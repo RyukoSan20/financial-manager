@@ -65,7 +65,8 @@ export const Layout = () => {
       <CompanionCorner />
 
       {/* Mobile Bottom Nav */}
-      <BottomNav />
+      {/* The shop game brings its own dock; two bars would stack. */}
+      {location.pathname.startsWith('/koban-shop') ? null : <BottomNav />}
     </div>
   );
 };
