@@ -287,7 +287,7 @@ html[data-theme-concept='retro_8bit'].dark {
 html[data-theme-concept='cute_sankou'] {
   --concept-canvas: #FFF4F7;
   --concept-ink: #4A3540;
-  --concept-ink-muted: #7A6470;
+  --concept-ink-muted: #6B5561;
   --concept-card: #FFFFFF;
   --concept-card-line: #F0DDE4;
   --concept-card-radius: 18px;
@@ -374,7 +374,7 @@ html[data-theme-concept][data-theme-concept][data-theme-concept] :is(
 }
 
 /* The plain white utility card - the one most pages use. */
-html[data-theme-concept][data-theme-concept][data-theme-concept] :is(.bg-white, .bg-gray-50, .bg-gray-100):not(:where(button, input, select, textarea, .theme-sidebar *, .theme-header *, .theme-bottomnav *, [role='dialog'] *)) {
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(.bg-white, .bg-gray-50, .bg-gray-100):not(:where(button, input, select, textarea, .theme-sidebar, .theme-sidebar *, .theme-header, .theme-header *, .theme-bottomnav, .theme-bottomnav *, [role='dialog'], [role='dialog'] *)) {
   color: var(--concept-ink) !important;
   background-color: var(--concept-card) !important;
   background-image: none !important;
@@ -401,9 +401,22 @@ html[data-theme-concept][data-theme-concept][data-theme-concept] [role='dialog']
 /* 4. THE BADGES, THE BUTTONS, THE FORMS                                   */
 /* ======================================================================== */
 
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(.theme-badge, .hh-badge) :where(*, svg) {
+  color: inherit !important;
+}
+html[data-theme-concept][data-theme-concept][data-theme-concept] .hh-badge {
+  color: var(--concept-badge-ink) !important;
+  background-color: var(--concept-badge-bg) !important;
+  background-image: none !important;
+}
 html[data-theme-concept][data-theme-concept][data-theme-concept] .theme-badge {
   color: var(--concept-badge-ink) !important;
   background-color: var(--concept-badge-bg) !important;
+  /* the app skin paints a gold/emerald GRADIENT on badges with the `background`
+     shorthand, which would survive a background-color override and leave the
+     concept's ink sitting on the skin's gradient. The badge belongs to the
+     concept, so it takes the badge colour whole. */
+  background-image: none !important;
   border-radius: var(--concept-badge-radius) !important;
   border: 1.5px solid transparent;
 }
@@ -441,7 +454,7 @@ html[data-theme-concept][data-theme-concept][data-theme-concept] :is(input, sele
 /* 5. THE TEXT                                                               */
 /* ======================================================================== */
 
-html[data-theme-concept][data-theme-concept][data-theme-concept] :is(.text-gray-900, .text-gray-800, .text-gray-700, .text-slate-900, .text-slate-800, .text-slate-700, .text-black, .text-neutral-900):not(:where(.theme-sidebar *, .theme-header *, .theme-bottomnav *)) {
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(.text-gray-900, .text-gray-800, .text-gray-700, .text-slate-900, .text-slate-800, .text-slate-700, .text-black, .text-neutral-900):not(:where(.theme-sidebar, .theme-sidebar *, .theme-header, .theme-header *, .theme-bottomnav, .theme-bottomnav *)) {
   color: var(--concept-ink) !important;
 }
 html[data-theme-concept][data-theme-concept][data-theme-concept] :is(.text-gray-500, .text-gray-400, .text-gray-300, .text-slate-500, .text-slate-400) {
@@ -655,6 +668,21 @@ html[data-theme-concept='retro_8bit'][data-theme-concept][data-theme-concept] .c
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+/* The tag under a concept's name: same badge tokens as every other badge. */
+.concept-tag-pill {
+  background-color: var(--concept-badge-bg);
+  color: var(--concept-badge-ink);
+}
+html[data-theme-concept][data-theme-concept][data-theme-concept] .concept-tag-pill {
+  color: var(--concept-badge-ink) !important;
+  background-color: var(--concept-badge-bg) !important;
+}
+
+html[data-theme-concept][data-theme-concept][data-theme-concept] .concept-mini__badge {
+  color: var(--concept-badge-ink) !important;
+  background-color: var(--concept-badge-bg) !important;
+}
+
 .concept-mini__mascot {
   position: absolute;
   right: 6px;
@@ -691,6 +719,11 @@ html[data-theme-concept='retro_8bit'][data-theme-concept][data-theme-concept] .c
   text-transform: uppercase;
   white-space: nowrap;
 }
+html[data-theme-concept][data-theme-concept][data-theme-concept] .concept-active-pill {
+  color: var(--concept-accent-ink) !important;
+  background-color: var(--concept-accent) !important;
+}
+
 .concept-idle-pill {
   display: inline-flex;
   align-items: center;
@@ -704,6 +737,12 @@ html[data-theme-concept='retro_8bit'][data-theme-concept][data-theme-concept] .c
   background-color: transparent;
   border: 1.5px solid var(--concept-card-line);
 }
+html[data-theme-concept][data-theme-concept][data-theme-concept] .concept-idle-pill {
+  color: var(--concept-ink-muted) !important;
+  background-color: transparent !important;
+  border: 1.5px solid var(--concept-card-line) !important;
+}
+
 .concept-active-badge {
   display: inline-flex;
   align-items: center;
@@ -715,6 +754,11 @@ html[data-theme-concept='retro_8bit'][data-theme-concept][data-theme-concept] .c
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
+html[data-theme-concept][data-theme-concept][data-theme-concept] .concept-active-badge {
+  color: var(--concept-badge-ink) !important;
+  background-color: var(--concept-badge-bg) !important;
+}
+
 .concept-apply-pill {
   display: inline-flex;
   align-items: center;
@@ -728,6 +772,11 @@ html[data-theme-concept='retro_8bit'][data-theme-concept][data-theme-concept] .c
   background-color: var(--concept-accent);
   white-space: nowrap;
 }
+html[data-theme-concept][data-theme-concept][data-theme-concept] .concept-apply-pill {
+  color: var(--concept-accent-ink) !important;
+  background-color: var(--concept-accent) !important;
+}
+
 
 /* The companion stage: a small stage the reader can play with. */
 .concept-stage {
@@ -755,6 +804,11 @@ html[data-theme-concept='retro_8bit'][data-theme-concept][data-theme-concept] .c
   font-weight: 600;
   line-height: 1.45;
 }
+html[data-theme-concept][data-theme-concept][data-theme-concept] .concept-bubble {
+  color: var(--concept-badge-ink) !important;
+  background-color: var(--concept-badge-bg) !important;
+}
+
 
 /* ======================================================================== */
 /* 9. THE RULES THAT MUST NOT BREAK THE LAYOUT                           */

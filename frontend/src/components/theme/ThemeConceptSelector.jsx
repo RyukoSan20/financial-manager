@@ -77,11 +77,7 @@ const ConceptCard = ({ id, active, onSelect, t, isDark }) => {
             {t(concept.labelKey)}
           </span>
           <span
-            className="mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide"
-            style={{
-              backgroundColor: 'var(--concept-badge-bg)',
-              color: 'var(--concept-badge-ink)',
-            }}
+            className="concept-tag-pill mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide"
           >
             {t(concept.tagKey)}
           </span>

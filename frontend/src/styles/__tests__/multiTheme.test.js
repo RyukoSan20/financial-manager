@@ -290,5 +290,86 @@ check('the active nav item says which page it is on', () => {
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// The concept layer and the skin layer must not fight over the same element.
+// The concept paints the CONTENTS; the skin paints the CHROME. When the
+// concept layer was allowed to repaint the sidebar, the skin's dark nav ink
+// landed on the concept's light sidebar and every label became unreadable.
+// ---------------------------------------------------------------------------
+
+const CONCEPTS = read('src/styles/theme-concepts.css');
+
+check('the concept layer does not repaint the app chrome', () => {
+  // The chrome elements carry bg-white themselves, so excluding only their
+  // DESCENDANTS still lets the concept repaint the panel they sit in. The
+  // exclusion has to name the element itself, not `element *`.
+  const surfaceRule = CONCEPTS.match(
+    /:is\(\.bg-white, \.bg-gray-50, \.bg-gray-100\):not\(:where\(([^)]*)\)\)/);
+  assert.ok(surfaceRule, 'the concept surface rule is gone');
+  const spared = surfaceRule[1].split(',').map((s) => s.trim());
+  for (const chrome of ['.theme-sidebar', '.theme-header', '.theme-bottomnav']) {
+    assert.ok(
+      spared.includes(chrome),
+      `the concept surface rule does not spare ${chrome} itself, so the chrome element is repainted`);
+  }
+});
+
+check('the concept layer does not repaint the chrome ink', () => {
+  const inkRule = CONCEPTS.match(
+    /:is\(\.text-gray-900[^)]*\):not\(:where\(([^)]*)\)\)/);
+  assert.ok(inkRule, 'the concept ink rule is gone');
+  const spared = inkRule[1].split(',').map((s) => s.trim());
+  for (const chrome of ['.theme-sidebar', '.theme-header', '.theme-bottomnav']) {
+    assert.ok(
+      spared.includes(chrome),
+      `the concept ink rule does not spare ${chrome} itself, so the chrome ink is overridden`);
+  }
+});
+
+check('the concept badge takes the badge colour whole', () => {
+  // The skin paints a gold/emerald GRADIENT on badges with the `background`
+  // shorthand. A background-color override does not remove that gradient, so
+  // the concept's ink would end up on the skin's gradient.
+  const badge = CONCEPTS.match(
+    /html\[data-theme-concept\][^{]*\.theme-badge \{([^}]*)\}/);
+  assert.ok(badge, 'the concept badge rule is gone');
+  assert.ok(
+    /background-image:\s*none\s*!important/.test(badge[1]),
+    'the concept badge does not clear the skin gradient, so its ink lands on the gradient');
+  assert.ok(
+    /color:\s*var\(--concept-badge-ink\)\s*!important/.test(badge[1]),
+    'the concept badge does not set its own ink');
+});
+
+check('the concept badge passes its ink to its own children', () => {
+  // The skin forces `color: inherit !important` on the descendants of a
+  // badge. That re-asserts the skin's ink on a glyph inside a concept badge.
+  const descendants = CONCEPTS.match(
+    /html\[data-theme-concept\][^{]*:is\(\.theme-badge, \.hh-badge\) :where\(\*,\s*svg\) \{([^}]*)\}/);
+  assert.ok(descendants, 'the concept badge has no rule for its children');
+  assert.ok(
+    /color:\s*inherit\s*!important/.test(descendants[1]),
+    'the concept badge children do not inherit the concept ink');
+});
+
+check('the concept pills out-rank the skin own ink rules', () => {
+  // The skin writes `color: inherit !important` on neutral surfaces, and
+  // those rules weigh (0,3,1). A bare .concept-pill weighs (0,1,0) and loses
+  // on specificity even with !important, so the concept has to repeat the
+  // attribute three times - the idiom the concept sheet documents.
+  for (const pill of ['concept-apply-pill', 'concept-active-pill', 'concept-idle-pill',
+                      'concept-active-badge', 'concept-tag-pill', 'concept-mini__badge',
+                      'concept-bubble']) {
+    const re = new RegExp(
+      'html\\[data-theme-concept\\]\\[data-theme-concept\\]\\[data-theme-concept\\] \\.' + pill + ' \\{([^}]*)\\}', 's');
+    const m = CONCEPTS.match(re);
+    assert.ok(m, `the concept pill ${pill} does not use the triple-attribute idiom`);
+    assert.ok(
+      /color:[^;]*!important/.test(m[1]),
+      `the concept pill ${pill} does not pin its ink with !important`);
+  }
+});
+
 console.log(`\nmulti theme: ${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

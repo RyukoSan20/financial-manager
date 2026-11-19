@@ -22,6 +22,28 @@
   // a white card is the intended colour of corporate and of jade in light mode
   const whiteCardIsFine = theme === 'corporate' || (theme === 'jade' && !dark);
 
+  // The concept layer paints the CONTENTS (canvas, cards, badges); the app skin
+  // paints the CHROME (sidebar, top bar, mobile dock). When a concept is active
+  // the content surfaces carry the concept's card colour, not the skin's, so the
+  // "white card" judgement has to be made against the concept's own tokens.
+  const concept = document.documentElement.dataset.themeConcept || null;
+  const rootStyle = getComputedStyle(document.documentElement);
+  const conceptCard = concept ? (rootStyle.getPropertyValue('--concept-card') || '').trim() : '';
+  const conceptCanvas = concept ? (rootStyle.getPropertyValue('--concept-canvas') || '').trim() : '';
+  const hexOf = (v) => {
+    const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(v || '');
+    if (!m) return null;
+    let h = m[1];
+    if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  };
+  const conceptCardRgb = hexOf(conceptCard);
+  const conceptCanvasRgb = hexOf(conceptCanvas);
+  const nearConcept = (rgb, ref) => {
+    if (!rgb || !ref) return false;
+    return Math.max(...rgb.map((v, i) => Math.abs(v - ref[i]))) <= 6;
+  };
+
   const bad = []; const seen = new Set(); let total = 0;
   for (const el of root.querySelectorAll('*')) {
     const own = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim()).map((n) => n.textContent.trim()).join(' ');
@@ -56,7 +78,9 @@
     const cs = getComputedStyle(el); const p = parse(cs.backgroundColor);
     if (!p || p.a < 0.9) continue;
     if (Math.min(...p.c) < 248) continue;
-    if (el.closest('.parchment-scroll,[role=dialog],.fantasy-pill,[class*=parchment],.fintech-method,[data-miniature]')) continue;
+    if (el.closest('.parchment-scroll,[role=dialog],.fantasy-pill,[class*=parchment],.fintech-method,[data-miniature],.concept-card,.concept-stage,.concept-mini__card')) continue;
+    // a surface painted by the concept layer is the concept's own business
+    if (concept && (nearConcept(p.c, conceptCardRgb) || nearConcept(p.c, conceptCanvasRgb))) continue;
     const inChromeBox = inChrome(el);
     // a white box in a dark chrome is a bug; elsewhere only when the theme wants no white card
     if (inChromeBox ? !chromeIsDark : whiteCardIsFine) continue;
