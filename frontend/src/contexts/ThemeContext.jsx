@@ -8,6 +8,11 @@ import {
   writeStoredTheme,
   watchSystemTheme,
   readStoredTheme,
+  readThemeConcept,
+  writeThemeConcept,
+  syncThemeConceptToDom,
+  DEFAULT_THEME_CONCEPT,
+  THEME_CONCEPT_IDS,
 } from '../utils/theme';
 import {
   applyAppearance,
@@ -59,6 +64,15 @@ export const ThemeProvider = ({ children }) => {
   const [appTheme, setAppThemeState] = useState(() => getAppTheme());
   const [palette, setPaletteState] = useState(() => getPalette());
 
+  // The visual concept of the app - the canvas, the cards, the borders, the
+  // shadows, the background pattern and the way the numbers are set. It
+  // sits on top of the light/dark mode and the accent colour: those two
+  // are the reader's own choices and they keep working whichever concept
+  // is active.
+  const [themeConcept, setThemeConceptState] = useState(
+    () => readThemeConcept() || DEFAULT_THEME_CONCEPT
+  );
+
   // The revision the server last gave us. It is what tells us whether
   // the settings on the server are newer than the ones we have.
   const [revision, setRevision] = useState(0);
@@ -82,6 +96,16 @@ export const ThemeProvider = ({ children }) => {
     applyTheme(appTheme === 'medieval' ? THEME_LIGHT : theme);
     applyAppTheme({ theme: appTheme, palette });
   }, [theme, appTheme, palette]);
+
+  // The concept is written onto the document - <html> and <body> - and the
+  // canvas and the ink are repainted, because they are inline styles on the
+  // root element and an inline style beats every stylesheet.
+  //
+  // This runs before the appearance below, so the accent foreground is
+  // decided against the concept that is actually showing.
+  useEffect(() => {
+    syncThemeConceptToDom(themeConcept);
+  }, [themeConcept]);
 
   // The look follows the appearance state.
   //
@@ -118,6 +142,9 @@ export const ThemeProvider = ({ children }) => {
       }
       if (event.key === THEME_KEY) setAppThemeState(getAppTheme());
       if (event.key === PALETTE_KEY) setPaletteState(getPalette());
+      if (event.key === 'fm_theme_concept') {
+        setThemeConceptState(readThemeConcept() || DEFAULT_THEME_CONCEPT);
+      }
       if (
         event.key === 'finmanager-scheme' ||
         event.key === 'finmanager-font' ||
@@ -168,6 +195,12 @@ export const ThemeProvider = ({ children }) => {
       const prefs = (data.preferences && typeof data.preferences === 'object') ? data.preferences : {};
       if (APP_THEME_IDS.includes(prefs.ui_theme)) { storeAppTheme(prefs.ui_theme); setAppThemeState(prefs.ui_theme); }
       if (PALETTE_IDS.includes(prefs.ui_palette)) { storePalette(prefs.ui_palette); setPaletteState(prefs.ui_palette); }
+
+      // And so does the concept.
+      if (THEME_CONCEPT_IDS.includes(prefs.ui_concept)) {
+        writeThemeConcept(prefs.ui_concept);
+        setThemeConceptState(prefs.ui_concept);
+      }
 
       // The theme too, but only when the user has not pinned it on
       // this device. A device that was deliberately set to light stays
@@ -303,6 +336,7 @@ export const ThemeProvider = ({ children }) => {
         if (data.preferences && typeof data.preferences === 'object') {
           if (APP_THEME_IDS.includes(data.preferences.ui_theme)) { storeAppTheme(data.preferences.ui_theme); setAppThemeState(data.preferences.ui_theme); }
           if (PALETTE_IDS.includes(data.preferences.ui_palette)) { storePalette(data.preferences.ui_palette); setPaletteState(data.preferences.ui_palette); }
+          if (THEME_CONCEPT_IDS.includes(data.preferences.ui_concept)) { writeThemeConcept(data.preferences.ui_concept); setThemeConceptState(data.preferences.ui_concept); }
         }
         if (typeof data.theme === 'string') {
           writeStoredTheme(data.theme);
@@ -413,6 +447,23 @@ export const ThemeProvider = ({ children }) => {
     [pushToServer]
   );
 
+  /**
+   * Choose the visual concept of the app.
+   *
+   * The choice is kept on the device at once - so the whole app repaints
+   * immediately, on every route - and then sent to the account, so it
+   * follows the reader to another device.
+   */
+  const changeThemeConcept = useCallback(
+    (id) => {
+      const value = writeThemeConcept(id);
+      setThemeConceptState(value);
+      syncThemeConceptToDom(value);
+      pushToServer({ preferences: { ui_concept: value } });
+    },
+    [pushToServer]
+  );
+
   const changeBackgroundStyle = useCallback(
     (id) => {
       const value = setBackgroundStyle(id);
@@ -454,6 +505,9 @@ export const ThemeProvider = ({ children }) => {
         setAppTheme: changeAppTheme,
         cycleAppTheme,
         setPalette: changePalette,
+        // The visual concept of the app.
+        themeConcept,
+        setThemeConcept: changeThemeConcept,
         revision,
         syncFromServer,
         // Legacy aliases kept so existing call sites keep working.

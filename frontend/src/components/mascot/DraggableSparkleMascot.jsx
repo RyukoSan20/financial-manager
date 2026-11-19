@@ -107,6 +107,10 @@ function useParticles() {
  *   draggable   whether the reader can pick it up
  *   hint        the little pill that says so
  *   onTap       called when it is tapped rather than dragged
+ *   celebrateSignal
+ *               bump this number and the figure lets go of a shower of
+ *               confetti wherever it is. It is how a page says "the look
+ *               changed" without needing to know anything about the figure.
  */
 export default function DraggableSparkleMascot({
   persona = 'koneko',
@@ -118,6 +122,7 @@ export default function DraggableSparkleMascot({
   className = '',
   onTap,
   onCelebrate,
+  celebrateSignal = 0,
   ...rest
 }) {
   const [drag, setDrag] = useState(null);
@@ -129,6 +134,7 @@ export default function DraggableSparkleMascot({
   const [activeMood, setActiveMood] = useState(mood);
 
   const pointerRef = useRef(null);
+  const figureRef = useRef(null);
   const originRef = useRef({ x: 0, y: 0 });
   const movedRef = useRef(false);
   const spawnedAt = useRef({ distance: 0 });
@@ -141,6 +147,10 @@ export default function DraggableSparkleMascot({
   // The expression follows the mood, except while a drag is running -
   // a character that changes expression mid-drag looks like it is
   // glitching.
+  //
+  // The celebration also sets the expression, and it must not be undone
+  // by this effect: the effect only runs when the MOOD prop itself
+  // changes, so a celebration that is already running is left alone.
   useEffect(() => {
     if (!drag) setActiveMood(mood);
   }, [mood, drag]);
@@ -174,6 +184,46 @@ export default function DraggableSparkleMascot({
     }, 2300);
     onCelebrate?.();
   }, [onCelebrate]);
+
+  // The celebration itself: the figure bounces, its face changes and it
+  // lets go of a shower of confetti where it stands.
+  const celebrateNow = useCallback(() => {
+    setBouncing(true);
+    setTimeout(() => setBouncing(false), 560);
+    setActiveMood('celebrate');
+    setTimeout(() => setActiveMood(mood), 1400);
+    const box = figureRef.current?.getBoundingClientRect();
+    const x = box ? box.left + box.width / 2 : window.innerWidth / 2;
+    const y = box ? box.top + box.height / 2 : window.innerHeight / 2;
+    burst(x, y);
+  }, [burst, mood]);
+
+  // A bump of the signal means "the look changed": the figure celebrates
+  // where it stands. The first signal is not a change - it is the state
+  // the page was already in - so it is not celebrated.
+  //
+  // This is the belt to the braces of the event below. The event is the
+  // one that always works, because it survives the figure being
+  // replaced - a figure that is swapped for a new persona is a new
+  // component, and a new component starts with nothing in memory, so a
+  // signal it reads for the first time looks like the state it was
+  // already in. The event is delivered to whichever figure is on the page
+  // at that moment, so a swap cannot swallow the celebration.
+  const celebratedRef = useRef(celebrateSignal);
+  useEffect(() => {
+    if (celebrateSignal === celebratedRef.current) return;
+    celebratedRef.current = celebrateSignal;
+    celebrateNow();
+  }, [celebrateSignal, mood, burst, celebrateNow]);
+
+  // The same celebration, but asked for by the page rather than by a
+  // number that changed. The page says "the look changed" and every
+  // figure on the page hears it.
+  useEffect(() => {
+    const onCelebrateEvent = () => celebrateNow();
+    window.addEventListener('koban:celebrate', onCelebrateEvent);
+    return () => window.removeEventListener('koban:celebrate', onCelebrateEvent);
+  }, [celebrateNow]);
 
   const onPointerDown = useCallback(
     (event) => {
@@ -364,6 +414,7 @@ export default function DraggableSparkleMascot({
 
       <button
         type="button"
+        ref={figureRef}
         className={clsx(
           'koban-mascot-figure relative block rounded-2xl border-0 bg-transparent p-0',
           draggable && (drag ? 'cursor-grabbing' : 'cursor-grab'),

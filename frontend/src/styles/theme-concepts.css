@@ -1,0 +1,789 @@
+/*
+ * THE CONCEPT LAYER.
+ *
+ * A concept is the visual identity of the app. It is not a set of
+ * swatches: it decides the canvas and the pattern behind the content, the
+ * way a card is bordered and shadowed, the shape of a badge, the way the
+ * numbers are set, and how the companion reacts.
+ *
+ * The MODE (Terang / Gelap / Ikuti sistem) and the ACCENT (the colour of a
+ * button) are the reader's own choices and they stay exactly where they
+ * were. They are applied on top of whichever concept is active, so a
+ * reader can have the cyberpunk ledger in light mode with the emerald
+ * accent and nothing about that pairing is a special case.
+ *
+ * <html> and <body> carry
+ *     data-theme-concept="kawaii_bento" | "medieval_fantasy" | "cyberpunk"
+ *                          | "corporate" | "retro_8bit" | "cute_sankou"
+ * and .concept-<id>
+ * (utils/theme.js, syncThemeConceptToDom).
+ *
+ * ---------------------------------------------------------------------------
+ * HOW A CONCEPT REACHES EVERY PAGE
+ *
+ *   1. TOKENS: each concept declares the same custom properties on the
+ *      root element. They are the single source of truth for the concept.
+ *   2. SURFACES: the shared rules below read those tokens, so the canvas,
+ *      the cards, the badges, the buttons and the forms of the whole app
+ *      follow the concept with no per-page work.
+ *   3. GEOMETRY: the concept never changes a width, a grid column or a
+ *      breakpoint. The layout is the same in all six, so switching concept
+ *      never causes a jump, never causes an overflow, and never moves a
+ *      button the reader was about to press.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT THE CONCEPT DOES NOT PAINT
+ *
+ * The app skin (multi-theme.css: corporate / Royal Aurelia / Jade) still
+ * paints the CHROME - the sidebar, the top bar and the mobile dock - and
+ * the hero ticket cards. That is the other axis of the same choice: the
+ * skin is the frame of the app, the concept is the identity of its
+ * contents. Overriding the chrome here would make the skin picker a
+ * button that does nothing, which is worse than two axes that each do
+ * one thing well.
+ *
+ * ---------------------------------------------------------------------------
+ * THE SELECTORS
+ *
+ * The attribute is written three times in every selector on purpose. The
+ * app-theme layer writes `html[data-app-theme='x'] :is(...)`, which weighs
+ * (0,2,1); the concept layer has to weigh more than that, or the older
+ * sheet wins the tie on source order. Three attributes weigh (0,3,1) and
+ * always win. It looks strange and it is deliberate.
+ */
+
+:root,
+html[data-theme-concept] {
+  /* The geometry. These are deliberately NOT per-concept: the layout is
+     the same in all six, so a switch never moves anything. */
+  --concept-grid-gap: 12px;
+  --concept-container: 1280px;
+}
+
+/* ======================================================================== */
+/* 1. THE TOKENS                                                             */
+/* ======================================================================== */
+
+/* --- 1. kawaii_bento: soft pastel, warm washi, crisp bento ------------- */
+html[data-theme-concept='kawaii_bento'] {
+  --concept-canvas: #F7F2E7;
+  --concept-ink: #2C221E;
+  --concept-ink-muted: #6B5A52;
+  --concept-card: #FFFDF9;
+  --concept-card-line: #E6DCC7;
+  --concept-card-radius: 14px;
+  --concept-card-shadow: 4px 4px 0 #E9DFC9;
+  --concept-accent: #B8457A;
+  --concept-accent-ink: #FFFDF9;
+  --concept-badge-bg: #F7E6C8;
+  --concept-badge-ink: #6B4A12;
+  --concept-badge-radius: 999px;
+  --concept-rail: #FFFDF9;
+  --concept-rail-line: #E6DCC7;
+  --concept-rail-ink: #4A3540;
+  --concept-rail-active: #F7E6C8;
+  --concept-rail-active-ink: #4A3540;
+  --concept-pattern: radial-gradient(circle at 1px 1px, rgba(74, 53, 64, 0.10) 1px, transparent 0);
+  --concept-pattern-size: 22px 22px;
+  --concept-ornament: none;
+  --concept-num-tracking: 0.01em;
+  --concept-title-tracking: 0.01em;
+}
+html[data-theme-concept='kawaii_bento'].dark {
+  --concept-canvas: #221C1A;
+  --concept-ink: #F4EBE1;
+  --concept-ink-muted: #C6B5A8;
+  --concept-card: #2E2521;
+  --concept-card-line: #473A33;
+  --concept-card-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  --concept-accent: #E889A8;
+  --concept-accent-ink: #2A141C;
+  --concept-badge-bg: #4A3540;
+  --concept-badge-ink: #F7E6C8;
+  --concept-rail: #2E2521;
+  --concept-rail-line: #473A33;
+  --concept-rail-ink: #F0E4DA;
+  --concept-rail-active: #4A3540;
+  --concept-rail-active-ink: #F7E6C8;
+  --concept-pattern: radial-gradient(circle at 1px 1px, rgba(240, 228, 218, 0.10) 1px, transparent 0);
+}
+
+/* --- 2. medieval_fantasy: gold frames, midnight, parchment ------------- */
+html[data-theme-concept='medieval_fantasy'] {
+  --concept-canvas: #F3EADA;
+  --concept-ink: #3E2C1C;
+  --concept-ink-muted: #6B523A;
+  --concept-card: #FBF6E8;
+  --concept-card-line: #C5A059;
+  --concept-card-radius: 6px;
+  --concept-card-shadow: 0 4px 0 #D5C3A1, 0 10px 20px rgba(139, 108, 72, 0.16);
+  --concept-accent: #8A5A12;
+  --concept-accent-ink: #FFF8E7;
+  --concept-badge-bg: #F5D77F;
+  --concept-badge-ink: #2C1D0C;
+  --concept-badge-radius: 4px;
+  --concept-rail: #1A1E31;
+  --concept-rail-line: #C5A059;
+  --concept-rail-ink: #F1E7D2;
+  --concept-rail-active: #F5D77F;
+  --concept-rail-active-ink: #2C1D0C;
+  --concept-pattern: linear-gradient(45deg, rgba(197, 160, 89, 0.16) 25%, transparent 25%), linear-gradient(-45deg, rgba(197, 160, 89, 0.16) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(197, 160, 89, 0.16) 75%), linear-gradient(-45deg, transparent 75%, rgba(197, 160, 89, 0.16) 75%);
+  --concept-pattern-size: 64px 64px;
+  --concept-ornament: '\2756';
+  --concept-num-tracking: 0.02em;
+  --concept-title-tracking: 0.04em;
+}
+html[data-theme-concept='medieval_fantasy'].dark {
+  --concept-canvas: #14121F;
+  --concept-ink: #F1E7D2;
+  --concept-ink-muted: #C4B391;
+  --concept-card: #1E1B2E;
+  --concept-card-line: #C5A059;
+  --concept-card-shadow: 0 4px 0 rgba(0, 0, 0, 0.5), 0 10px 24px rgba(0, 0, 0, 0.4);
+  --concept-accent: #D9B978;
+  --concept-accent-ink: #241A05;
+  --concept-badge-bg: #3A2E12;
+  --concept-badge-ink: #F5D77F;
+  --concept-rail: #0B0E18;
+  --concept-rail-line: #C5A059;
+  --concept-rail-ink: #F1E7D2;
+  --concept-rail-active: #F5D77F;
+  --concept-rail-active-ink: #2C1D0C;
+  --concept-pattern: linear-gradient(45deg, rgba(197, 160, 89, 0.10) 25%, transparent 25%), linear-gradient(-45deg, rgba(197, 160, 89, 0.10) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(197, 160, 89, 0.10) 75%), linear-gradient(-45deg, transparent 75%, rgba(197, 160, 89, 0.10) 75%);
+}
+
+/* --- 3. cyberpunk: neon ledger, dark slate, chamfered ------------------ */
+html[data-theme-concept='cyberpunk'] {
+  --concept-canvas: #E9EDF6;
+  --concept-ink: #101527;
+  --concept-ink-muted: #4A5570;
+  --concept-card: #FFFFFF;
+  --concept-card-line: #C6D0E4;
+  --concept-card-radius: 2px;
+  --concept-card-shadow: 0 0 0 1px rgba(30, 111, 168, 0.18);
+  --concept-accent: #12628F;
+  --concept-accent-ink: #FFFFFF;
+  --concept-badge-bg: #CFF3FB;
+  --concept-badge-ink: #075985;
+  --concept-badge-radius: 2px;
+  --concept-rail: #FFFFFF;
+  --concept-rail-line: #C6D0E4;
+  --concept-rail-ink: #1B2340;
+  --concept-rail-active: #12628F;
+  --concept-rail-active-ink: #FFFFFF;
+  --concept-pattern: linear-gradient(rgba(18, 98, 143, 0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(18, 98, 143, 0.10) 1px, transparent 1px);
+  --concept-pattern-size: 28px 28px;
+  --concept-ornament: none;
+  --concept-num-tracking: 0.06em;
+  --concept-title-tracking: 0.14em;
+}
+html[data-theme-concept='cyberpunk'].dark {
+  --concept-canvas: #070A14;
+  --concept-ink: #E6F0FF;
+  --concept-ink-muted: #8FA3C4;
+  --concept-card: #0F1424;
+  --concept-card-line: #24304C;
+  --concept-card-shadow: 0 0 0 1px rgba(34, 211, 238, 0.22), 0 0 18px rgba(34, 211, 238, 0.10);
+  --concept-accent: #22D3EE;
+  --concept-accent-ink: #04161A;
+  --concept-badge-bg: #22D3EE;
+  --concept-badge-ink: #04161A;
+  --concept-rail: #0B1020;
+  --concept-rail-line: #24304C;
+  --concept-rail-ink: #C8D8F2;
+  --concept-rail-active: #22D3EE;
+  --concept-rail-active-ink: #04161A;
+  --concept-pattern: linear-gradient(rgba(34, 211, 238, 0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(34, 211, 238, 0.14) 1px, transparent 1px);
+}
+
+/* --- 4. corporate: clean SaaS, hairline, quiet elevation --------------- */
+html[data-theme-concept='corporate'] {
+  --concept-canvas: #F6F7F9;
+  --concept-ink: #0F172A;
+  --concept-ink-muted: #4B5563;
+  --concept-card: #FFFFFF;
+  --concept-card-line: #E2E8F0;
+  --concept-card-radius: 12px;
+  --concept-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
+  --concept-accent: #1D4ED8;
+  --concept-accent-ink: #FFFFFF;
+  --concept-badge-bg: #DBEAFE;
+  --concept-badge-ink: #1E3A8A;
+  --concept-badge-radius: 6px;
+  --concept-rail: #FFFFFF;
+  --concept-rail-line: #E2E8F0;
+  --concept-rail-ink: #334155;
+  --concept-rail-active: #DBEAFE;
+  --concept-rail-active-ink: #1E3A8A;
+  --concept-pattern: none;
+  --concept-pattern-size: 32px 32px;
+  --concept-ornament: none;
+  --concept-num-tracking: 0em;
+  --concept-title-tracking: -0.01em;
+}
+html[data-theme-concept='corporate'].dark {
+  --concept-canvas: #0B1120;
+  --concept-ink: #E5E7EB;
+  --concept-ink-muted: #9CA3AF;
+  --concept-card: #131C31;
+  --concept-card-line: #253154;
+  --concept-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.28);
+  --concept-accent: #60A5FA;
+  --concept-accent-ink: #0B1120;
+  --concept-badge-bg: #1E3A8A;
+  --concept-badge-ink: #DBEAFE;
+  --concept-rail: #0F172A;
+  --concept-rail-line: #253154;
+  --concept-rail-ink: #CBD5E1;
+  --concept-rail-active: #1E3A8A;
+  --concept-rail-active-ink: #DBEAFE;
+}
+
+/* --- 5. retro_8bit: stepped pixels, arcade, no blur -------------------- */
+html[data-theme-concept='retro_8bit'] {
+  --concept-canvas: #EDE7D6;
+  --concept-ink: #16202B;
+  --concept-ink-muted: #4A5560;
+  --concept-card: #FFFDF2;
+  --concept-card-line: #16202B;
+  --concept-card-radius: 0px;
+  --concept-card-shadow: 4px 4px 0 #16202B;
+  --concept-accent: #A63513;
+  --concept-accent-ink: #FFFDF2;
+  --concept-badge-bg: #A63513;
+  --concept-badge-ink: #FFFDF2;
+  --concept-badge-radius: 0px;
+  --concept-rail: #16202B;
+  --concept-rail-line: #16202B;
+  --concept-rail-ink: #F2F5E9;
+  --concept-rail-active: #A63513;
+  --concept-rail-active-ink: #FFFDF2;
+  --concept-pattern: linear-gradient(90deg, rgba(22, 32, 43, 0.07) 8px, transparent 8px), linear-gradient(rgba(22, 32, 43, 0.07) 8px, transparent 8px);
+  --concept-pattern-size: 16px 16px;
+  --concept-ornament: none;
+  --concept-num-tracking: 0.04em;
+  --concept-title-tracking: 0.1em;
+}
+html[data-theme-concept='retro_8bit'].dark {
+  --concept-canvas: #101418;
+  --concept-ink: #F2F5E9;
+  --concept-ink-muted: #A9B4C0;
+  --concept-card: #1A2129;
+  --concept-card-line: #3B4753;
+  --concept-card-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6);
+  --concept-accent: #E2703A;
+  --concept-accent-ink: #16181C;
+  --concept-badge-bg: #E2703A;
+  --concept-badge-ink: #16181C;
+  --concept-rail: #0A0D11;
+  --concept-rail-line: #3B4753;
+  --concept-rail-ink: #E6EBD8;
+  --concept-rail-active: #E2703A;
+  --concept-rail-active-ink: #16181C;
+  --concept-pattern: linear-gradient(90deg, rgba(226, 112, 58, 0.08) 8px, transparent 8px), linear-gradient(rgba(226, 112, 58, 0.08) 8px, transparent 8px);
+}
+
+/* --- 6. cute_sankou: pastel editorial, stickers, sparkles --------------- */
+html[data-theme-concept='cute_sankou'] {
+  --concept-canvas: #FFF4F7;
+  --concept-ink: #4A3540;
+  --concept-ink-muted: #7A6470;
+  --concept-card: #FFFFFF;
+  --concept-card-line: #F0DDE4;
+  --concept-card-radius: 18px;
+  --concept-card-shadow: 0 8px 20px rgba(122, 74, 105, 0.12);
+  --concept-accent: #B8457A;
+  --concept-accent-ink: #FFFFFF;
+  --concept-badge-bg: #FFE9A8;
+  --concept-badge-ink: #7A4A12;
+  --concept-badge-radius: 999px;
+  --concept-rail: #FFFFFF;
+  --concept-rail-line: #F0DDE4;
+  --concept-rail-ink: #4A3540;
+  --concept-rail-active: #FFE9A8;
+  --concept-rail-active-ink: #7A4A12;
+  --concept-pattern: radial-gradient(circle at 2px 2px, rgba(184, 69, 122, 0.12) 2px, transparent 0);
+  --concept-pattern-size: 26px 26px;
+  --concept-ornament: none;
+  --concept-num-tracking: 0.01em;
+  --concept-title-tracking: 0.02em;
+}
+html[data-theme-concept='cute_sankou'].dark {
+  --concept-canvas: #241A20;
+  --concept-ink: #F7EAF1;
+  --concept-ink-muted: #CDB3C0;
+  --concept-card: #31232B;
+  --concept-card-line: #4C3742;
+  --concept-card-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --concept-accent: #E58BB4;
+  --concept-accent-ink: #2A1420;
+  --concept-badge-bg: #4A3A22;
+  --concept-badge-ink: #FFE9A8;
+  --concept-rail: #31232B;
+  --concept-rail-line: #4C3742;
+  --concept-rail-ink: #F7EAF1;
+  --concept-rail-active: #4A3A22;
+  --concept-rail-active-ink: #FFE9A8;
+  --concept-pattern: radial-gradient(circle at 2px 2px, rgba(229, 139, 180, 0.14) 2px, transparent 0);
+}
+
+/* ======================================================================== */
+/* 2. THE CANVAS                                                             */
+/* ======================================================================== */
+
+/* The body paints the canvas and the pattern. The inline styles on the root
+   element carry the same canvas, so the two never fight: this rule names
+   the same token. */
+html[data-theme-concept][data-theme-concept][data-theme-concept] body {
+  background-color: var(--concept-canvas) !important;
+  background-image: var(--concept-pattern) !important;
+  background-size: var(--concept-pattern-size) !important;
+  background-attachment: fixed !important;
+  color: var(--concept-ink) !important;
+}
+
+/* The layer that draws the pattern behind the content. It uses the same
+   pattern, so the two do not double up. */
+html[data-theme-concept][data-theme-concept][data-theme-concept] .app-background {
+  background-image: var(--concept-pattern) !important;
+  background-size: var(--concept-pattern-size) !important;
+  background-color: transparent !important;
+}
+
+/* The page shell of a route: the same canvas, never a second colour. */
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(.min-h-screen, .hh-canvas, .aurora-canvas, .cute-canvas, .kakeibo-dot-canvas, .layered-surface) {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* ======================================================================== */
+/* 3. THE CARDS                                                              */
+/* ======================================================================== */
+
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(
+  .theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel,
+  .sb-col, .sb-tabs, .recon, .privacy-item, .cute-card, .fintech-panel,
+  .layered-surface.aurora-panel
+):not(:where(button, input, select, textarea, .theme-sidebar, .theme-header, .theme-bottomnav, [role='dialog'], .hh-card-forest, .forest-ticket, .theme-ticket-card)) {
+  color: var(--concept-ink) !important;
+  background-color: var(--concept-card) !important;
+  background-image: none !important;
+  border: 2px solid var(--concept-card-line) !important;
+  border-radius: var(--concept-card-radius) !important;
+  box-shadow: var(--concept-card-shadow) !important;
+}
+
+/* The plain white utility card - the one most pages use. */
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(.bg-white, .bg-gray-50, .bg-gray-100):not(:where(button, input, select, textarea, .theme-sidebar *, .theme-header *, .theme-bottomnav *, [role='dialog'] *)) {
+  color: var(--concept-ink) !important;
+  background-color: var(--concept-card) !important;
+  background-image: none !important;
+  border-color: var(--concept-card-line) !important;
+}
+
+/* The dialog. */
+html[data-theme-concept][data-theme-concept][data-theme-concept] [role='dialog'] {
+  color: var(--concept-ink) !important;
+  background-color: var(--concept-card) !important;
+  background-image: none !important;
+  border: 2px solid var(--concept-card-line) !important;
+  border-radius: var(--concept-card-radius) !important;
+  box-shadow: var(--concept-card-shadow) !important;
+}
+html[data-theme-concept][data-theme-concept][data-theme-concept] [role='dialog'] :is(h1, h2, h3, h4, p, span, label, li, td, th, dt, dd, small, legend, div):not(:where(button *, .theme-btn-primary *)) {
+  color: var(--concept-ink) !important;
+}
+html[data-theme-concept][data-theme-concept][data-theme-concept] [role='dialog'] :is(.text-gray-500, .text-gray-400, .text-gray-600) {
+  color: var(--concept-ink-muted) !important;
+}
+
+/* ======================================================================== */
+/* 4. THE BADGES, THE BUTTONS, THE FORMS                                   */
+/* ======================================================================== */
+
+html[data-theme-concept][data-theme-concept][data-theme-concept] .theme-badge {
+  color: var(--concept-badge-ink) !important;
+  background-color: var(--concept-badge-bg) !important;
+  border-radius: var(--concept-badge-radius) !important;
+  border: 1.5px solid transparent;
+}
+
+html[data-theme-concept][data-theme-concept][data-theme-concept] .theme-btn-primary {
+  color: var(--concept-accent-ink) !important;
+  background-color: var(--concept-accent) !important;
+  border-radius: var(--concept-badge-radius) !important;
+}
+html[data-theme-concept][data-theme-concept][data-theme-concept] .theme-btn-primary :where(*, svg) {
+  color: var(--concept-accent-ink) !important;
+}
+html[data-theme-concept][data-theme-concept][data-theme-concept] .theme-btn-ghost {
+  color: var(--concept-ink) !important;
+  border-color: var(--concept-card-line) !important;
+  border-radius: var(--concept-badge-radius) !important;
+}
+
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(input, select, textarea):not(:where([type='checkbox'], [type='radio'], [type='range'], [type='color'])) {
+  color: var(--concept-ink) !important;
+  background-color: var(--concept-card) !important;
+  border: 1.5px solid var(--concept-card-line) !important;
+  border-radius: var(--concept-badge-radius) !important;
+}
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(input, textarea)::placeholder {
+  color: var(--concept-ink-muted) !important;
+  opacity: 1;
+}
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(input, select, textarea):focus {
+  outline: 3px solid var(--concept-accent) !important;
+  outline-offset: 1px;
+}
+
+/* ======================================================================== */
+/* 5. THE TEXT                                                               */
+/* ======================================================================== */
+
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(.text-gray-900, .text-gray-800, .text-gray-700, .text-slate-900, .text-slate-800, .text-slate-700, .text-black, .text-neutral-900):not(:where(.theme-sidebar *, .theme-header *, .theme-bottomnav *)) {
+  color: var(--concept-ink) !important;
+}
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(.text-gray-500, .text-gray-400, .text-gray-300, .text-slate-500, .text-slate-400) {
+  color: var(--concept-ink-muted) !important;
+}
+
+/* The way the numbers are set. This is the "typography feel" of the
+   concept: the same figures, read differently. */
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(.font-numeric, .tabular-nums) {
+  letter-spacing: var(--concept-num-tracking);
+}
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(main h1, .botanical-title, .theme-section-title) {
+  letter-spacing: var(--concept-title-tracking);
+}
+
+/* The cyberpunk ledger sets its numbers in a wider, ledger-like rhythm and
+   its titles in the caps of a terminal. */
+html[data-theme-concept='cyberpunk'][data-theme-concept][data-theme-concept] :is(main h1, .botanical-title, .theme-section-title) {
+  text-transform: uppercase;
+  font-weight: 800;
+}
+html[data-theme-concept='retro_8bit'][data-theme-concept][data-theme-concept] :is(main h1, .botanical-title, .theme-section-title) {
+  text-transform: uppercase;
+}
+
+/* ======================================================================== */
+/* 6. THE ORNAMENTS: what makes a concept a concept                       */
+/* ======================================================================== */
+
+/* The medieval quest plaque: a gold frame in a gold frame, and a diamond
+   at the top of the card. */
+html[data-theme-concept='medieval_fantasy'][data-theme-concept][data-theme-concept] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel) {
+  outline: 1px solid rgba(197, 160, 89, 0.7);
+  outline-offset: -7px;
+  position: relative;
+}
+html[data-theme-concept='medieval_fantasy'][data-theme-concept][data-theme-concept] :is(.theme-card, .hh-card, .shape-card)::before {
+  content: var(--concept-ornament);
+  position: absolute;
+  left: 50%;
+  top: -9px;
+  transform: translateX(-50%);
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 1;
+  color: #C5A059;
+  background: var(--concept-card);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* The cyberpunk chamfer: the top-right corner of a card is cut off, and a
+   neon rule runs along the top. */
+html[data-theme-concept='cyberpunk'][data-theme-concept][data-theme-concept] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel) {
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+  border-top: 2px solid var(--concept-accent) !important;
+}
+
+/* The retro arcade: the shadow is stepped and never blurred, and the card
+   corner is not rounded at all. */
+html[data-theme-concept='retro_8bit'][data-theme-concept][data-theme-concept] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel) {
+  box-shadow: var(--concept-card-shadow) !important;
+  border-width: 3px !important;
+}
+
+/* The cute editorial: the card lifts a little when the reader is over it. */
+html[data-theme-concept='cute_sankou'][data-theme-concept][data-theme-concept] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel) {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+html[data-theme-concept='cute_sankou'][data-theme-concept][data-theme-concept] :is(.theme-card, .hh-card, .shape-card):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(122, 74, 105, 0.16) !important;
+}
+
+/* The kawaii bento: a soft offset shadow and a hairline, nothing else. */
+html[data-theme-concept='kawaii_bento'][data-theme-concept][data-theme-concept] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel) {
+  border-width: 1.5px !important;
+}
+
+/* ======================================================================== */
+/* 7. THE COMPANION                                                         */
+/* ======================================================================== */
+
+/* The companion reacts to the concept: the stage is drawn in the concept's
+   own colours, and the cute and the kawaii concepts have a halo of
+   sparkles over it. */
+html[data-theme-concept][data-theme-concept][data-theme-concept] .concept-mascot-stage {
+  position: relative;
+  border-radius: var(--concept-card-radius);
+  background-color: var(--concept-card);
+  border: 2px solid var(--concept-card-line);
+  box-shadow: var(--concept-card-shadow);
+  overflow: hidden;
+}
+html[data-theme-concept='cute_sankou'][data-theme-concept][data-theme-concept] .concept-mascot-stage::after,
+html[data-theme-concept='kawaii_bento'][data-theme-concept][data-theme-concept] .concept-mascot-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(255, 233, 168, 0.55) 0 3px, transparent 4px),
+    radial-gradient(circle at 76% 30%, rgba(184, 69, 122, 0.35) 0 2px, transparent 3px),
+    radial-gradient(circle at 42% 74%, rgba(201, 182, 228, 0.45) 0 3px, transparent 4px);
+  animation: concept-sparkle 3.6s ease-in-out infinite;
+}
+html[data-theme-concept='cyberpunk'][data-theme-concept][data-theme-concept] .concept-mascot-stage {
+  border-color: var(--concept-accent);
+  box-shadow: 0 0 0 1px var(--concept-accent), 0 0 22px rgba(34, 211, 238, 0.28);
+}
+html[data-theme-concept='retro_8bit'][data-theme-concept][data-theme-concept] .concept-mascot-stage {
+  border-width: 3px;
+  box-shadow: var(--concept-card-shadow);
+}
+@keyframes concept-sparkle {
+  0%, 100% { opacity: 0.35; transform: translateY(0); }
+  50% { opacity: 0.9; transform: translateY(-3px); }
+}
+
+/* ======================================================================== */
+/* 8. THE APPEARANCE PAGE ITSELF                                            */
+/* ======================================================================== */
+
+/* The concept grid. The columns are the same in every concept - the
+   concept decides how a card looks, never how many there are. */
+.concept-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--concept-grid-gap);
+}
+@media (min-width: 640px) {
+  .concept-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .concept-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* A concept card in the picker. It is drawn with the CONCEPT's own
+   tokens, so the reader sees the real thing and not a picture of it. */
+.concept-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  padding: 12px;
+  border-radius: var(--concept-card-radius);
+  border: 2px solid var(--concept-card-line);
+  background-color: var(--concept-card);
+  color: var(--concept-ink);
+  box-shadow: var(--concept-card-shadow);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  cursor: pointer;
+}
+.concept-card:hover { transform: translateY(-2px); }
+.concept-card[aria-pressed='true'] {
+  border-color: var(--concept-accent);
+  box-shadow: var(--concept-card-shadow), 0 0 0 2px var(--concept-accent);
+}
+
+/* The mini mockup: a card, a badge and a little figure, drawn in the
+   concept's own colours - which are the custom properties the card in
+   the picker carries, so the drawing is always of the concept it stands
+   for and never of the one that happens to be active. */
+.concept-mini {
+  position: relative;
+  height: 76px;
+  border-radius: calc(var(--concept-card-radius) * 0.7);
+  background-color: var(--concept-canvas);
+  background-image: var(--concept-pattern);
+  background-size: var(--concept-pattern-size);
+  border: 1px solid var(--concept-card-line);
+  overflow: hidden;
+}
+.concept-mini__card {
+  position: absolute;
+  left: 10px;
+  right: 44px;
+  top: 12px;
+  bottom: 12px;
+  border-radius: calc(var(--concept-card-radius) * 0.6);
+  background-color: var(--concept-card);
+  border: 2px solid var(--concept-card-line);
+  box-shadow: var(--concept-card-shadow);
+}
+.concept-mini__bar {
+  position: absolute;
+  left: 18px;
+  top: 20px;
+  height: 5px;
+  border-radius: 999px;
+  background-color: var(--concept-ink);
+  opacity: 0.75;
+}
+.concept-mini__bar--short {
+  width: 34%;
+  top: 31px;
+  opacity: 0.35;
+}
+.concept-mini__badge {
+  position: absolute;
+  left: 18px;
+  bottom: 19px;
+  padding: 1px 7px;
+  border-radius: var(--concept-badge-radius);
+  background-color: var(--concept-badge-bg);
+  color: var(--concept-badge-ink);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.concept-mini__mascot {
+  position: absolute;
+  right: 6px;
+  bottom: 2px;
+  height: 58px;
+  width: auto;
+  object-fit: contain;
+  object-position: 50% 100%;
+}
+
+/* The four-dot palette strip. */
+.concept-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.concept-dots i {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  flex: none;
+}
+
+/* The two pills of the picker: the one that says what is happening, and
+   the one that says which concept is in use. */
+.concept-active-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.concept-idle-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--concept-ink-muted);
+  background-color: transparent;
+  border: 1.5px solid var(--concept-card-line);
+}
+.concept-active-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 45vw;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.concept-apply-pill {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--concept-accent-ink);
+  background-color: var(--concept-accent);
+  white-space: nowrap;
+}
+
+/* The companion stage: a small stage the reader can play with. */
+.concept-stage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--concept-card-radius);
+  background-color: var(--concept-card);
+  border: 2px solid var(--concept-card-line);
+  box-shadow: var(--concept-card-shadow);
+  min-width: 0;
+}
+.concept-stage__body { min-width: 0; flex: 1; }
+
+/* The speech bubble of the companion. */
+.concept-bubble {
+  position: relative;
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: var(--concept-badge-radius);
+  background-color: var(--concept-badge-bg);
+  color: var(--concept-badge-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+/* ======================================================================== */
+/* 9. THE RULES THAT MUST NOT BREAK THE LAYOUT                           */
+/* ======================================================================== */
+
+/* Nothing in the concept layer may change a width, a column count or a
+   breakpoint. These rules are the guarantee: the concept page is capped
+   at the desktop width, and the page never scrolls sideways. */
+.concept-page {
+  width: 100%;
+  max-width: var(--concept-container);
+  margin-left: auto;
+  margin-right: auto;
+}
+html[data-theme-concept][data-theme-concept][data-theme-concept] main {
+  overflow-x: clip;
+}
+.concept-grid > * { min-width: 0; }
+
+/* ======================================================================== */
+/* 10. REDUCED MOTION                                                       */
+/* ======================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme-concept][data-theme-concept][data-theme-concept] .concept-mascot-stage::after {
+    animation: none;
+  }
+  .concept-card, .concept-card:hover {
+    transition: none;
+    transform: none;
+  }
+}

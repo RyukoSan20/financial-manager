@@ -1,4 +1,8 @@
 @import './styles/multi-theme.css';
+/* The concept layer. It must load AFTER the app-theme layer: the concept
+   is the identity of the app's contents and the app theme is the frame of
+   the app, and where the two meet the concept has the last word. */
+@import './styles/theme-concepts.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

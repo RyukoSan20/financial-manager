@@ -7,6 +7,8 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { APP_THEMES, APP_THEME_IDS, PALETTES, PALETTE_IDS } from '../../utils/appTheme';
+import { THEME_CONCEPTS } from '../../utils/theme';
+import ThemeConceptSelector from '../../components/theme/ThemeConceptSelector';
 import {
   COLOR_SCHEMES,
   SCHEME_IDS,
@@ -90,6 +92,8 @@ const Appearance = () => {
     palette,
     setAppTheme,
     setPalette,
+    themeConcept,
+    setThemeConcept,
   } = useTheme();
 
   const [saved, setSaved] = useState(false);
@@ -105,20 +109,62 @@ const Appearance = () => {
     setSaved(true);
   };
 
+  const activeConcept = THEME_CONCEPTS[themeConcept] || null;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
-      <div className="bg-accent text-white p-4 sticky top-0 z-10">
-        <div className="flex items-center justify-between">
+      <div className="concept-header p-4 sticky top-0 z-10">
+        <div className="flex items-center justify-between gap-3">
           <h1 className="text-xl font-bold">{t('appearance.title')}</h1>
-          {saved && (
-            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-              {t('appearance.saved')}
-            </span>
-          )}
+          <div className="flex items-center gap-2 min-w-0">
+            {activeConcept ? (
+              <span
+                className="concept-active-badge truncate"
+                data-testid="active-concept-badge"
+                style={{
+                  backgroundColor: 'var(--concept-badge-bg)',
+                  color: 'var(--concept-badge-ink)',
+                }}
+              >
+                {t(activeConcept.labelKey)}
+              </span>
+            ) : null}
+            {saved && (
+              <span
+                className="text-xs px-2 py-1 rounded-full"
+                style={{
+                  backgroundColor: 'var(--concept-badge-bg)',
+                  color: 'var(--concept-badge-ink)',
+                }}
+              >
+                {t('appearance.saved')}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="p-4 max-w-lg mx-auto space-y-4">
+      <div className="concept-page p-4 mx-auto space-y-4">
+        {/* --- The concept: the visual identity of the whole app --- */}
+        <Section title={t('appearance.concept_section')} hint={t('appearance.concept_section_hint')}>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+              {t('appearance.concept_apply_hint')}
+            </span>
+            <span className="concept-apply-pill" data-testid="concept-apply-status">
+              {t('appearance.concept_apply')}
+            </span>
+          </div>
+          <ThemeConceptSelector
+            concept={themeConcept}
+            isDark={isDarkMode}
+            onSelect={(id) => {
+              setThemeConcept(id);
+              mark();
+            }}
+          />
+        </Section>
+
         {/* --- The design of the whole app: three full skins --- */}
         <Section title={t('appearance.theme_section')} hint={t('appearance.theme_section_hint')}>
           <div className="space-y-3" data-testid="theme-picker">

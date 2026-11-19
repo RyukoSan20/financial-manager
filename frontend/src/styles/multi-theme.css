@@ -595,7 +595,12 @@ html[data-app-theme='medieval'][data-app-theme] .theme-sidebar :is(.theme-cycle-
 html[data-app-theme='medieval'][data-app-theme] .theme-sidebar :is(.theme-cycle-pill, .theme-chip), html[data-app-theme='medieval'][data-app-theme] .theme-sidebar :is(.theme-cycle-pill, .theme-chip) :is(*, span, svg)[class] { color: #4a3525 !important; }
 html[data-app-theme='jade'][data-app-theme] .theme-sidebar :is(.theme-cycle-pill, .theme-chip) { background: #E2F0EA !important; border: 1.5px solid #6EE7B7 !important; }
 html[data-app-theme='jade'][data-app-theme] .theme-sidebar :is(.theme-cycle-pill, .theme-chip), html[data-app-theme='jade'][data-app-theme] .theme-sidebar :is(.theme-cycle-pill, .theme-chip) :is(*, span, svg)[class] { color: #06281E !important; }
+/* The corporate cycle pill. The name is written in the deep forest green
+   on the light side, where it reads. On the dark side the pill sits on a
+   dark panel, so the green has to be the pale one - the deep green on a
+   dark panel was 1.29:1, which is not readable at all. */
 html[data-app-theme='corporate'] .theme-cycle-pill { color: #1F3A2E; }
+html[data-app-theme='corporate'].dark .theme-cycle-pill { color: #C7E9D4; }
 
 
 /* ======================================================================== */
