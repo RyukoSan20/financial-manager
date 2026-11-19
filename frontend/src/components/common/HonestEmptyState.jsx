@@ -109,7 +109,7 @@ export default function HonestEmptyState({
           title={titleText}
           hint={[descriptionText, hintText].filter(Boolean).join(' ')}
           gem={chestGem}
-          action={onPrimary ? <button type="button" onClick={onPrimary} className="fantasy-btn mt-2">{primaryText}</button> : null}
+          action={onPrimary ? <button type="button" onClick={onPrimary} className="theme-btn-primary mt-2">{primaryText}</button> : null}
         />
       </div>
     );

@@ -6,6 +6,7 @@
 // device.
 import { useEffect, useState } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { APP_THEMES, APP_THEME_IDS, PALETTES, PALETTE_IDS } from '../../utils/appTheme';
 import {
   COLOR_SCHEMES,
   SCHEME_IDS,
@@ -46,6 +47,31 @@ const SchemeSwatch = ({ scheme }) => (
   </div>
 );
 
+
+/** A tiny drawing of each design, from its real colours: page, sidebar, card, ticket, button. */
+const ThemeMiniature = ({ id }) => {
+  const m = APP_THEMES[id].mini;
+  return (
+    <div className="flex h-24 overflow-hidden rounded-md border border-black/10" style={{ background: m.page }} aria-hidden="true" data-miniature={id}>
+      <div className="w-[22%]" style={{ background: m.side, borderRight: '2px solid ' + m.sideLine }}>
+        <div className="mx-1.5 mt-2 h-2 rounded-sm" style={{ background: m.active }} />
+        <div className="mx-1.5 mt-1.5 h-1.5 rounded-sm opacity-40" style={{ background: m.row }} />
+        <div className="mx-1.5 mt-1.5 h-1.5 rounded-sm opacity-40" style={{ background: m.row }} />
+      </div>
+      <div className="flex-1 space-y-1.5 p-2">
+        <div className="h-8 p-1" style={{ background: m.card, border: '1.5px solid ' + m.cardLine, borderRadius: m.radius * 2 }}>
+          <div className="h-1.5 w-1/2 rounded-sm" style={{ background: m.ink, opacity: 0.7 }} />
+          <div className="mt-1 h-1.5 w-1/3 rounded-sm" style={{ background: m.ink, opacity: 0.3 }} />
+        </div>
+        <div className="flex gap-1.5">
+          <div className="h-7 flex-1" style={{ background: m.ticket, borderRadius: m.radius * 2 }} />
+          <div className="mt-auto h-4 w-9" style={{ background: m.btn, borderRadius: m.radius * 2 }} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Appearance = () => {
   const { t } = useTranslation();
   const {
@@ -60,6 +86,10 @@ const Appearance = () => {
     isDarkMode,
     mode,
     setTheme,
+    appTheme,
+    palette,
+    setAppTheme,
+    setPalette,
   } = useTheme();
 
   const [saved, setSaved] = useState(false);
@@ -89,6 +119,62 @@ const Appearance = () => {
       </div>
 
       <div className="p-4 max-w-lg mx-auto space-y-4">
+        {/* --- The design of the whole app: three full skins --- */}
+        <Section title={t('appearance.theme_section')} hint={t('appearance.theme_section_hint')}>
+          <div className="space-y-3" data-testid="theme-picker">
+            {APP_THEME_IDS.map((id) => {
+              const th = APP_THEMES[id];
+              const active = appTheme === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => { setAppTheme(id); mark(); }}
+                  aria-pressed={active}
+                  data-testid={`theme-${id}`}
+                  className={`w-full rounded-xl border-2 p-3 text-left transition ${
+                    active ? 'border-accent bg-accent-soft' : 'border-gray-200 dark:border-gray-700'
+                  }`}
+                >
+                  <ThemeMiniature id={id} />
+                  <div className="mt-2 flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-gray-100">
+                    <span aria-hidden="true">{th.emoji}</span>
+                    {t(th.labelKey)}
+                    {active ? <span className="ml-auto text-[10px] font-extrabold uppercase text-accent">{t('appearance.active')}</span> : null}
+                  </div>
+                  <div className="mt-0.5 text-[12px] text-gray-600 dark:text-gray-300">{t(th.descriptionKey)}</div>
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+
+        {/* --- The panel colour of the medieval design: catchy, not black --- */}
+        {appTheme === 'medieval' ? (
+          <Section title={t('appearance.palette')} hint={t('appearance.palette_hint')}>
+            <div className="grid grid-cols-3 gap-2" data-testid="palette-picker">
+              {PALETTE_IDS.map((id) => {
+                const pl = PALETTES[id];
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => { setPalette(id); mark(); }}
+                    aria-pressed={palette === id}
+                    data-testid={`palette-${id}`}
+                    className={`rounded-lg border-2 p-2 text-center transition ${
+                      palette === id ? 'border-accent bg-accent-soft' : 'border-gray-200 dark:border-gray-700'
+                    }`}
+                  >
+                    <span className="block h-9 rounded-md border border-black/10" style={{ background: `linear-gradient(180deg, ${pl.panel[0]}, ${pl.panel[1]})` }} />
+                    <span className="mt-1 block text-[11px] font-semibold text-gray-800 dark:text-gray-100">{t(pl.labelKey)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
+        ) : null}
+
         {/* --- The theme --- */}
         <Section
           title={t('appearance.mode')}

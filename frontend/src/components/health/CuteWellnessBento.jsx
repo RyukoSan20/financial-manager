@@ -33,6 +33,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from '../../i18n';
+import { useTheme } from '../../contexts/ThemeContext';
 import FluidProgressBar from '../ui/FluidProgressBar';
 import AnimatedProgressBar from '../ui/AnimatedProgressBar';
 import CountUpNumber from '../ui/CountUpNumber';
@@ -387,6 +388,7 @@ export default function CuteWellnessBento({
   // because its text colour differs between the two (see
   // ScoreTextColour). The shared context is the one source of truth
   // for that - a private matchMedia here would drift from the toggle.
+  const { isDarkMode } = useTheme();
 
   const numericScore = Number(score || 0);
   const money = moneyLayerOn();
@@ -461,10 +463,8 @@ export default function CuteWellnessBento({
                   // words are the readable one. Using the fill colour
                   // as text on its own 12% wash is what measured
                   // 2.11:1 on the live site.
-                  backgroundColor: `rgba(${ScoreColour(numericScore).replace('rgb(', '').replace(')', '')}, 0.22)`,
-                  // The guild panel is midnight blue in both modes, so the badge always
-                  // asks for the colour that reads on a dark surface.
-                  color: ScoreTextColour(numericScore, true),
+                  backgroundColor: `rgba(${ScoreColour(numericScore).replace('rgb(', '').replace(')', '')}, ${isDarkMode ? 0.22 : 0.12})`,
+                  color: ScoreTextColour(numericScore, isDarkMode),
                   boxShadow: `inset 0 0 0 1px rgba(${ScoreColour(numericScore).replace('rgb(', '').replace(')', '')}, 0.28)`,
                 }}
               >
@@ -512,7 +512,7 @@ export default function CuteWellnessBento({
                 four drawings floating on the wash of the card, and
                 the eye could not tell they were a set. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="bento-cascade parchment-scroll fantasy-keep rounded-xl px-3.5 py-3 transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 0 }}>
+              <div className="bento-cascade rounded-2xl border-2 border-[#4A3540] bg-white dark:bg-white/5 px-3.5 py-3 shadow-[0_3px_0_#4A3540] transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 0 }}>
                 <MiniStat
                   label={t('health_coach.monthly_income')}
                   value={formatCurrency(monthlyIncome)}
@@ -520,7 +520,7 @@ export default function CuteWellnessBento({
                   illustration={<CoinStack tint="#10b981" />}
                 />
               </div>
-              <div className="bento-cascade parchment-scroll fantasy-keep rounded-xl px-3.5 py-3 transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 1 }}>
+              <div className="bento-cascade rounded-2xl border-2 border-[#4A3540] bg-white dark:bg-white/5 px-3.5 py-3 shadow-[0_3px_0_#4A3540] transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 1 }}>
                 <MiniStat
                   label={t('health_coach.monthly_expense')}
                   value={formatCurrency(monthlyExpense)}
@@ -528,7 +528,7 @@ export default function CuteWellnessBento({
                   illustration={<Sprout tint="#f97316" />}
                 />
               </div>
-              <div className="bento-cascade parchment-scroll fantasy-keep rounded-xl px-3.5 py-3 transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 2 }}>
+              <div className="bento-cascade rounded-2xl border-2 border-[#4A3540] bg-white dark:bg-white/5 px-3.5 py-3 shadow-[0_3px_0_#4A3540] transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 2 }}>
                 <MiniStat
                   label={t('health_coach.total_cash')}
                   value={formatCurrency(totalCash)}
@@ -536,7 +536,7 @@ export default function CuteWellnessBento({
                   illustration={<Wallet tint="#8b5cf6" />}
                 />
               </div>
-              <div className="bento-cascade parchment-scroll fantasy-keep rounded-xl px-3.5 py-3 transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 3 }}>
+              <div className="bento-cascade rounded-2xl border-2 border-[#4A3540] bg-white dark:bg-white/5 px-3.5 py-3 shadow-[0_3px_0_#4A3540] transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 3 }}>
                 <MiniStat
                   label={t('health_coach.total_debt')}
                   value={formatCurrency(totalDebt)}
@@ -605,13 +605,8 @@ export default function CuteWellnessBento({
             </p>
 
             {onRefresh ? (
-              <button
-                type="button"
-                onClick={onRefresh}
-                className="fantasy-btn fantasy-btn--glow mt-4 w-full"
-                data-testid="health-refresh"
-              >
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="#1a120b" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 4v7h-7" /></svg>
+              <button type="button" onClick={onRefresh} className="theme-btn-primary mt-4 w-full" data-testid="health-refresh">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 4v7h-7" /></svg>
                 {t('health_coach.refresh_data')}
               </button>
             ) : null}
@@ -643,7 +638,7 @@ export default function CuteWellnessBento({
               (audit.monthly_plan && Object.keys(audit.monthly_plan).length > 0)) && (
               <div className="mt-4 grid grid-cols-1 gap-3">
                 {audit.findings?.length > 0 && (
-                  <section className="parchment-scroll fantasy-keep rounded-xl p-3">
+                  <section className="rounded-2xl border-2 border-dashed border-[#E2B86B] bg-amber-50/70 dark:bg-amber-900/15 p-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
                       {t('health_coach.finding_title')}
                     </h3>
@@ -677,7 +672,7 @@ export default function CuteWellnessBento({
                     not enough recorded yet to tell", which is a very
                     different thing to read. */}
                 {audit.highlights?.length > 0 ? (
-                  <section className="parchment-scroll fantasy-keep rounded-xl p-3">
+                  <section className="rounded-xl bg-emerald-50/70 dark:bg-emerald-900/15 p-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
                       {t('health_coach.strength_title')}
                     </h3>
@@ -693,7 +688,7 @@ export default function CuteWellnessBento({
                     </ul>
                   </section>
                 ) : (
-                  <section className="parchment-scroll fantasy-keep rounded-xl p-3">
+                  <section className="rounded-xl bg-emerald-50/40 dark:bg-emerald-900/10 p-3 border border-dashed border-emerald-200/70 dark:border-emerald-500/20">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-800/80 dark:text-emerald-200/80">
                       {t('health_coach.strength_title')}
                     </h3>
@@ -704,7 +699,7 @@ export default function CuteWellnessBento({
                 )}
 
                 {audit.immediate_actions?.length > 0 && (
-                  <section className="parchment-scroll fantasy-keep rounded-xl p-3">
+                  <section className="rounded-xl bg-sky-50/70 dark:bg-sky-900/15 p-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-200">
                       {t('health_coach.action_title')}
                     </h3>
@@ -740,7 +735,7 @@ export default function CuteWellnessBento({
                 )}
 
                 {audit.recommendations?.length > 0 && (
-                  <section className="parchment-scroll fantasy-keep rounded-xl p-3">
+                  <section className="rounded-xl bg-amber-50/70 dark:bg-amber-900/15 p-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
                       {t('health_coach.improvement_tips')}
                     </h3>
@@ -755,7 +750,7 @@ export default function CuteWellnessBento({
                 )}
 
                 {audit.monthly_plan && Object.keys(audit.monthly_plan).length > 0 && (
-                  <section className="parchment-scroll fantasy-keep rounded-xl p-3">
+                  <section className="rounded-xl bg-violet-50/70 dark:bg-violet-900/15 p-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-violet-800 dark:text-violet-200">
                       {t('health_coach.plan_title')}
                     </h3>

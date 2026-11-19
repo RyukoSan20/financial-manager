@@ -15,7 +15,6 @@ import { useTranslation } from '../i18n';
 import { batch1, fill } from '../i18n/keys_batch1';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
-import { FantasyPage, PlaqueTitle } from '../components/ui/FantasyKit';
 
 // The frequency list is built per language, because the words are read
 // when the screen is drawn and not when the module is loaded.
@@ -236,14 +235,14 @@ export const Recurring = () => {
     }, 0);
 
   return (
-    <FantasyPage className="space-y-6 animate-fadeIn" data-testid="recurring-guild">
+    <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center justify-between">
         <div>
-          <PlaqueTitle>{K.title}</PlaqueTitle>
-          <p className="text-gray-500 mt-3">{fill(K.activeRulesCount, { count: activeRules.length })}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{K.title}</h1>
+          <p className="text-gray-500 mt-1">{fill(K.activeRulesCount, { count: activeRules.length })}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={triggerProcess}>
             <Play className="w-4 h-4 mr-1" /> {K.processNow}
           </Button>
@@ -436,7 +435,7 @@ export const Recurring = () => {
         categories={categories}
         accounts={accounts}
       />
-    </FantasyPage>
+    </div>
   );
 };
 

@@ -45,6 +45,7 @@ import { showNotification } from '../notifications/NotificationHelper';
 import AddTransactionPage from './AddTransactionPage';
 import { UserProfileSection } from './UserProfileSection';
 import { CurrencyBadge } from '../common/CurrencyBadge';
+import ThemeCyclePill from '../ui/ThemeCyclePill';
 import { auroraNavClass } from '../ui/AuroraCard';
 import { moneyLayerOn } from '../../utils/animation';
 import GroupedNav, { buildNavMap, isGroupedNavOn } from './GroupedNav';
@@ -115,7 +116,7 @@ const Sidebar = () => {
   );
 
   return (
-    <aside className="nav-glass hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-30 dark:bg-gray-800 dark:border-gray-700">
+    <aside className="theme-sidebar nav-glass hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-30 dark:bg-gray-800 dark:border-gray-700">
       {/* Logo. The mark is drawn rather than a plain square of colour,
           because a square of colour is the thing every application
           has and this one should not look like every application. */}
@@ -146,6 +147,7 @@ const Sidebar = () => {
             <Link
               key={item.name}
               to={item.href}
+              aria-current={isActive ? 'page' : undefined}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors duration-200 ${auroraNavClass({ active: isActive })}`}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -164,8 +166,9 @@ const Sidebar = () => {
       <div className="p-3 border-t border-gray-100 space-y-1 dark:border-gray-700">
         {/* Interactive profile section - routes to the Profile Summary page */}
         <div className="mb-1">
-          <div className="px-3 pb-3">
+          <div className="px-3 pb-3 space-y-2">
             <CurrencyBadge className="w-full justify-between" />
+            <ThemeCyclePill className="w-full" />
           </div>
 
           <UserProfileSection variant="sidebar" />
@@ -219,7 +222,7 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
 
   return (
     <>
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 z-40 safe-area-top">
+      <header className="theme-header lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 z-40 safe-area-top">
         <div className="flex items-center justify-between h-full px-4">
           {/* Left */}
           <div className="flex items-center gap-3">
@@ -247,6 +250,7 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
           
           {/* Right */}
           <div className="flex items-center gap-1">
+            <ThemeCyclePill compact />
             {/* Theme Toggle.
 
                 Three modes, one button: light, dark, and system. The
@@ -402,7 +406,7 @@ const BottomNav = ({ pendingScanResult }) => {
   return (
     <>
       <nav
-        className={`lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 safe-area-bottom dark:bg-gray-900 dark:border-gray-800 ${
+        className={`theme-bottomnav lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 safe-area-bottom dark:bg-gray-900 dark:border-gray-800 ${
           moneyLayerOn() ? 'money-bottom-nav money-glass' : ''
         }`}
       >

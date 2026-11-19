@@ -24,7 +24,7 @@ import './styles/motion-system.css'
 import './styles/botanical.css'
 // The real chibi artwork and the physics around it.
 import './styles/koban-mascot.css'
-import './styles/fantasy-rpg.css'
+import './styles/multi-theme.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

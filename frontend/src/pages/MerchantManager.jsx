@@ -7,7 +7,7 @@ import { formatCurrency } from '../utils/format';
 import { useTranslation } from '../i18n';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
-import { FantasyPage, PlaqueTitle, FantasyCard, MerchantChest } from '../components/ui/FantasyKit';
+import { MerchantChest } from '../components/ui/FantasyKit';
 
 const MerchantManager = () => {
   // The number at the top of the page is the day's takings. It has to
@@ -106,16 +106,16 @@ const MerchantManager = () => {
   }
 
   return (
-    <FantasyPage className="min-h-screen" data-testid="merchant-guild">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <PlaqueTitle icon={<ShoppingBag className="w-6 h-6" />}>{t('nav.merchant')}</PlaqueTitle>
+          <ShoppingBag className="w-8 h-8 text-primary-600" />
+          <h1 className="text-2xl font-bold">{t('nav.merchant')}</h1>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="fantasy-btn"
-          data-testid="merchant-add"
+          className="theme-btn-primary"
         >
           <Plus size={20} />
           <span>{t('merchant_manager.add_store')}</span>
@@ -124,18 +124,18 @@ const MerchantManager = () => {
 
       {merchants.length === 0 ? (
         // Empty State
-        <FantasyCard className="p-8 text-center">
+        <div className="theme-card p-8 text-center">
           <MerchantChest
             title={t('merchant_manager.empty_title')}
             hint={t('merchant_manager.empty_desc')}
             gem="gold"
             action={(
-              <button onClick={() => setShowCreateModal(true)} className="fantasy-btn fantasy-btn--glow mt-2">
+              <button onClick={() => setShowCreateModal(true)} className="theme-btn-primary mt-2">
                 + {t('merchant_manager.add_store')}
               </button>
             )}
           />
-        </FantasyCard>
+        </div>
       ) : (
         // Merchant List & Dashboard
         <div className="space-y-6">
@@ -335,7 +335,7 @@ const MerchantManager = () => {
           </div>
         </div>
       )}
-    </FantasyPage>
+    </div>
   );
 };
 

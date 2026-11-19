@@ -22,6 +22,10 @@ import {
   DEFAULT_FONT_SCALE,
   DEFAULT_BACKGROUND,
 } from '../utils/appearance';
+import {
+  getAppTheme, getPalette, setAppTheme as storeAppTheme, setPalette as storePalette,
+  nextAppTheme, applyAppTheme, THEME_KEY, PALETTE_KEY, APP_THEME_IDS, PALETTE_IDS,
+} from '../utils/appTheme';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -49,6 +53,12 @@ export const ThemeProvider = ({ children }) => {
   // The look on top of the theme.
   const [appearance, setAppearance] = useState(() => readAppearance());
 
+  // The whole design the app is drawn in (corporate / medieval / jade), and
+  // the panel palette of the medieval one. They live in the account's
+  // `preferences`, beside the rest of the look.
+  const [appTheme, setAppThemeState] = useState(() => getAppTheme());
+  const [palette, setPaletteState] = useState(() => getPalette());
+
   // The revision the server last gave us. It is what tells us whether
   // the settings on the server are newer than the ones we have.
   const [revision, setRevision] = useState(0);
@@ -66,10 +76,12 @@ export const ThemeProvider = ({ children }) => {
 
   const isDarkMode = theme === THEME_DARK;
 
-  // Apply on mount and on every change.
+  // Apply on mount and on every change. The medieval design is a light
+  // parchment design, so it is always drawn on the light side.
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    applyTheme(appTheme === 'medieval' ? THEME_LIGHT : theme);
+    applyAppTheme({ theme: appTheme, palette });
+  }, [theme, appTheme, palette]);
 
   // The look follows the appearance state.
   //
@@ -104,6 +116,8 @@ export const ThemeProvider = ({ children }) => {
         setThemeState(resolveTheme());
         applyTheme(resolveTheme());
       }
+      if (event.key === THEME_KEY) setAppThemeState(getAppTheme());
+      if (event.key === PALETTE_KEY) setPaletteState(getPalette());
       if (
         event.key === 'finmanager-scheme' ||
         event.key === 'finmanager-font' ||
@@ -149,6 +163,11 @@ export const ThemeProvider = ({ children }) => {
       setFontScale(next.font_scale);
       setBackgroundStyle(next.background_style);
       setAppearance(next);
+
+      // The skin and its palette ride in `preferences`.
+      const prefs = (data.preferences && typeof data.preferences === 'object') ? data.preferences : {};
+      if (APP_THEME_IDS.includes(prefs.ui_theme)) { storeAppTheme(prefs.ui_theme); setAppThemeState(prefs.ui_theme); }
+      if (PALETTE_IDS.includes(prefs.ui_palette)) { storePalette(prefs.ui_palette); setPaletteState(prefs.ui_palette); }
 
       // The theme too, but only when the user has not pinned it on
       // this device. A device that was deliberately set to light stays
@@ -243,7 +262,12 @@ export const ThemeProvider = ({ children }) => {
         // Was the change turned away as out of date? The one that
         // matters is the field the change was about.
         const key = Object.keys(patch)[0];
-        if (key && key !== 'base_revision' && data[key] !== patch[key]) {
+        const accepted = key === 'preferences'
+          ? Object.keys(patch.preferences || {}).every(
+              (k) => (data.preferences || {})[k] === patch.preferences[k]
+            )
+          : data[key] === patch[key];
+        if (key && key !== 'base_revision' && !accepted) {
           // The server was holding something different. The change is
           // made again on top of what the server holds now.
           const again = await send(data.revision);
@@ -275,6 +299,10 @@ export const ThemeProvider = ({ children }) => {
             ...prev,
             background_style: data.background_style,
           }));
+        }
+        if (data.preferences && typeof data.preferences === 'object') {
+          if (APP_THEME_IDS.includes(data.preferences.ui_theme)) { storeAppTheme(data.preferences.ui_theme); setAppThemeState(data.preferences.ui_theme); }
+          if (PALETTE_IDS.includes(data.preferences.ui_palette)) { storePalette(data.preferences.ui_palette); setPaletteState(data.preferences.ui_palette); }
         }
         if (typeof data.theme === 'string') {
           writeStoredTheme(data.theme);
@@ -364,6 +392,27 @@ export const ThemeProvider = ({ children }) => {
     [pushToServer]
   );
 
+  const changeAppTheme = useCallback(
+    (id) => {
+      const value = storeAppTheme(id);
+      setAppThemeState(value);
+      pushToServer({ preferences: { ui_theme: value } });
+    },
+    [pushToServer]
+  );
+
+  // One click: the next theme in the cycle.
+  const cycleAppTheme = useCallback(() => changeAppTheme(nextAppTheme(getAppTheme())), [changeAppTheme]);
+
+  const changePalette = useCallback(
+    (id) => {
+      const value = storePalette(id);
+      setPaletteState(value);
+      pushToServer({ preferences: { ui_palette: value } });
+    },
+    [pushToServer]
+  );
+
   const changeBackgroundStyle = useCallback(
     (id) => {
       const value = setBackgroundStyle(id);
@@ -399,6 +448,12 @@ export const ThemeProvider = ({ children }) => {
         setFontFamily: changeFontFamily,
         setFontScale: changeFontScale,
         setBackgroundStyle: changeBackgroundStyle,
+        // The whole design, and the palette of the guild skin.
+        appTheme,
+        palette,
+        setAppTheme: changeAppTheme,
+        cycleAppTheme,
+        setPalette: changePalette,
         revision,
         syncFromServer,
         // Legacy aliases kept so existing call sites keep working.

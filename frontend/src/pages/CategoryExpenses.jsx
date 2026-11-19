@@ -17,7 +17,6 @@ import { pixelIconForCategory } from '../utils/pixelCategoryIcon';
 import { batch3 } from '../i18n/keys_batch3';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
-import { FantasyPage, PlaqueTitle } from '../components/ui/FantasyKit';
 
 // The categories come from the server. A hardcoded list here would
 // fight the server over the same ids and show the wrong category for a
@@ -201,12 +200,14 @@ export const CategoryExpenses = () => {
   }
 
   return (
-    <FantasyPage className="space-y-6 animate-fadeIn" data-testid="category-guild">
+    <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center justify-between">
         <div>
-          <PlaqueTitle>{t('category_expenses.title', 'Expense by Category')}</PlaqueTitle>
-          <p className="text-gray-500 mt-3">
+          <h1 className="text-2xl font-bold text-gray-900">
+            {t('category_expenses.title', 'Expense by Category')}
+          </h1>
+          <p className="text-gray-500 mt-1">
             {new Date(dateRange.start).toLocaleDateString(language === 'id' ? 'id-ID' : language === 'ja' ? 'ja-JP' : 'en-US', { month: 'long', year: 'numeric' })}
           </p>
         </div>
@@ -414,7 +415,7 @@ export const CategoryExpenses = () => {
 
       {/* Edit happens on the Transactions page's rich editor now;
           see handleEdit above. */}
-    </FantasyPage>
+    </div>
   );
 };
 
