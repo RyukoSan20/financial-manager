@@ -251,6 +251,7 @@
 }
 
 .sbg-rail {
+  position: relative;
   display: flex;
   gap: 8px;
   min-width: 0;
@@ -258,6 +259,14 @@
   padding-bottom: 4px;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
+  /* The fade at the right edge says there is more to scroll to. On a
+     phone the categories run off the side of the screen, and without
+     this the reader sees a cut-off card and no sign that it moves. */
+  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+}
+@media (min-width: 1024px) {
+  .sbg-rail { mask-image: none; -webkit-mask-image: none; }
 }
 @media (min-width: 1024px) {
   .sbg-rail {

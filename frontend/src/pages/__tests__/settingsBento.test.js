@@ -240,6 +240,75 @@ check(
   !/font-family\s*:/.test(bentoCss)
 );
 
+/**
+ * The rule for one selector inside one media query.
+ *
+ * The bento sheet writes each rule as a block, so the block is cut out
+ * and the declaration is looked for inside it. Matching the whole file
+ * with one regular expression is not enough, because the same
+ * declaration appears in more than one place - the standard property
+ * and its -webkit- twin - and a rule that is turned off in one place
+ * and on in another is exactly what these checks are for.
+ */
+/**
+ * The blocks that carry a declaration for a selector.
+ *
+ * The bento sheet writes each rule as a block, and the same selector
+ * appears more than once - once at the top level and once inside a
+ * media query. A check that looked at only the first one would miss
+ * the rule it was meant to hold, so every block is found and every
+ * one is asked about.
+ */
+function blocksFor(selector) {
+  const out = [];
+  const re = new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{', 'g');
+  let m;
+  while ((m = re.exec(bentoCss)) !== null) {
+    const open = bentoCss.indexOf('{', m.index);
+    const close = bentoCss.indexOf('}', open);
+    if (open === -1 || close === -1) continue;
+    // The nearest media query before this block.
+    const mediaAt = bentoCss.lastIndexOf('@media', open);
+    const mediaClose = mediaAt === -1 ? -1 : bentoCss.indexOf('}', mediaAt);
+    const inMedia = mediaAt !== -1 && mediaClose > open;
+    out.push({
+      body: bentoCss.slice(open + 1, close),
+      inMedia,
+      media: mediaAt === -1 ? '' : bentoCss.slice(mediaAt, mediaClose),
+    });
+  }
+  return out;
+}
+
+/**
+ * Does a rule for this selector carry this declaration?
+ *
+ * `inside` names the media query the rule has to be in. When it is
+ * empty the rule has to be at the top level - that is, NOT inside any
+ * media query.
+ */
+function ruleIn(selector, declaration, inside = '') {
+  return blocksFor(selector).some((b) => {
+    if (inside) {
+      if (!b.inMedia || !b.media.includes(inside)) return false;
+    } else if (b.inMedia) {
+      return false;
+    }
+    return b.body.includes(declaration);
+  });
+}
+
+check(
+  'the mobile rail fades at its edge, so the reader knows it scrolls',
+  ruleIn('.sbg-rail', 'mask-image: linear-gradient') &&
+    ruleIn('.sbg-rail', 'overflow-x: auto')
+);
+
+check(
+  'the rail fade is turned off on a desktop, where the rail is a column',
+  ruleIn('.sbg-rail', 'mask-image: none', '@media (min-width: 1024px)')
+);
+
 check(
   'the bento is a twelve column grid',
   bentoCss.includes('grid-template-columns: repeat(12, minmax(0, 1fr))')
