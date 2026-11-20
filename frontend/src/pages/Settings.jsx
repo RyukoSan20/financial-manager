@@ -160,7 +160,7 @@ export const Settings = () => {
       {/* The two columns: the categories on the left, the workspace
           on the right. */}
       <div className="sbg-layout">
-        <nav className="sbg-rail-wrap" aria-label={t('settings.bento.category')} data-testid="settings-bento-rail-panel">
+        <nav className="sbg-rail-wrap" aria-label={t('settings.bento.category')} data-testid="settings-bento-navpanel">
           {/* The rail has a heading of its own, because it sits next to
               the app's own navigation and without one the two read as
               a single list. */}
