@@ -160,7 +160,12 @@ export const Settings = () => {
       {/* The two columns: the categories on the left, the workspace
           on the right. */}
       <div className="sbg-layout">
-        <nav className="sbg-rail" aria-label={t('settings.bento.category')} data-testid="settings-bento-rail">
+        <nav className="sbg-rail-wrap" aria-label={t('settings.bento.category')} data-testid="settings-bento-rail-panel">
+          {/* The rail has a heading of its own, because it sits next to
+              the app's own navigation and without one the two read as
+              a single list. */}
+          <h2 className="sbg-rail__heading">{t('settings.bento.category')}</h2>
+          <div className="sbg-rail" data-testid="settings-bento-rail">
           {visibleTabs.map((tab) => (
             <button
               key={tab.id}
@@ -178,6 +183,7 @@ export const Settings = () => {
               <span className="sbg-rail__label">{tab.label}</span>
             </button>
           ))}
+          </div>
         </nav>
 
         <div className="sbg-grid" data-testid="settings-bento-workspace">

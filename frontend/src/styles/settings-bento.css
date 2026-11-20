@@ -231,6 +231,25 @@
  * scrolls; on a desktop they are a column of cards.
  * --------------------------------------------------------------------------- */
 
+/* The wrapper gives the rail a heading and, on a desktop, a panel of
+   its own so it does not read as a continuation of the app's own
+   navigation. */
+.sbg-rail-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.sbg-rail__heading {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--concept-ink-muted);
+}
+
 .sbg-rail {
   display: flex;
   gap: 8px;
@@ -246,6 +265,13 @@
     overflow-x: visible;
     overflow-y: visible;
     padding-bottom: 0;
+  }
+  .sbg-rail-wrap {
+    gap: 10px;
+    padding: 12px;
+    border-radius: var(--concept-card-radius);
+    border: 2px solid var(--concept-card-line);
+    background-color: var(--concept-card);
   }
 }
 

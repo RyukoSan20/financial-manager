@@ -76,6 +76,12 @@ check(
 );
 
 check(
+  'the rail has a heading of its own, so it is not read as more app navigation',
+  settingsJsx.includes('sbg-rail__heading') &&
+    settingsJsx.includes('t(\'settings.bento.category\')')
+);
+
+check(
   'the page renders the workspace',
   settingsJsx.includes('data-testid="settings-bento-workspace"') &&
     settingsJsx.includes('className="sbg-grid"')
