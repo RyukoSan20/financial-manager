@@ -1,15 +1,40 @@
 /**
- * Enhanced Text Parser Modal
- * Supports: SMS bank, QRIS, e-wallet notifications, and manual text
- * Improved parsing with multi-language support
+ * The Smart Text Parser.
+ *
+ * The reader types or pastes a sentence about money, and this screen
+ * works out what it meant. There is no template and no list of forms
+ * to pick from: "beli 2 kopi susu @18rb sama 1 roti bakar 22rb bayar
+ * pakai gopay di blok m" is a perfectly good sentence, and so is
+ * "gajian masuk 8.5jt ke bca" and "transfer 500rb dari bca ke ovo".
+ *
+ * The reading comes back as a transaction with lines: what was bought,
+ * how many of each, for what price, what it all came to, which shop
+ * it was at, which place, which category and which account. Every one
+ * of those can be corrected before it is saved, and the lines can be
+ * added to, taken from or rewritten.
+ *
+ * And there is the companion. Kaneru, the ledger-keeper, sits in the
+ * corner and can be asked to put right what the reading left out.
+ * "Tanya Maskot" runs a refinement pass: it works out the category,
+ * matches the account the reader named, settles the total against the
+ * lines, and says what it did. The pass runs on the server, and when
+ * the server cannot be reached the browser does the same work itself,
+ * so the button always does something.
  */
-import { useState, useEffect, useCallback } from 'react';
-import { Modal, Button, Input, Select } from '../ui';
-import { Camera, FileText, Loader2, Check, Sparkles, AlertCircle, ChevronDown, ChevronUp, Copy, Trash2, Zap, Calendar } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Modal, Button } from '../ui';
+import {
+  Camera, FileText, Loader2, Check, Sparkles, AlertCircle, ChevronDown,
+  ChevronUp, Trash2, Zap, Calendar, Volume2, VolumeX, MapPin, Store,
+} from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 import { useTranslation } from '../../i18n';
 import { batch4 } from '../../i18n/keys_batch4';
+import DraggableSparkleMascot from '../mascot/DraggableSparkleMascot';
+import LineItemEditor, { toLines, fromLines, linesTotal } from '../transactions/LineItemEditor';
+import { readSentence, emptyReading } from '../../features/transactions/nlp/readSentence';
+import { speak, isMuted, setMuted, summaryFor } from '../../utils/mascotVoice';
 
 export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }) => {
   // The messages in this screen used to be written in Indonesian, so
@@ -17,37 +42,25 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
   // from the language the reader picked now.
   const { language } = useTranslation();
   const K = batch4[language]?.text_parser;
+
   const [rawText, setRawText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState([]);
   const [error, setError] = useState('');
-  const [selectedResult, setSelectedResult] = useState(null);
-  const [confirming, setConfirming] = useState(false);
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [step, setStep] = useState('input');
-  const [expandedResult, setExpandedResult] = useState(null);
-  const [parseDetails, setParseDetails] = useState(null);
 
-  // Sample texts for quick testing
-  const sampleTexts = [
-    {
-      label: '🏦 SMS BCA',
-      text: 'Transfer berhasil Rp500.000 dari JOHN DOE ke JANE SMITH. Tanggal: 12/10/2024 14:30. Ref: BC123456'
-    },
-    {
-      label: '📱 GoPay',
-      text: 'GOPAY - Pembayaran GoFood Rp45.000 ke WARUNG IBU. Sisa saldo: Rp125.000. 12 Okt 2024 13:45'
-    },
-    {
-      label: '💳 QRIS',
-      text: 'QRIS - Pembayaran Rp150.000 di TOKO BANGUNAN. Merchant: Toko Material Jaya. 12/10/24 10:00'
-    },
-    {
-      label: '💰 Transfer Masuk',
-      text: 'Anda menerima transfer Rp2.500.000 dari BUDI SANTOSO. Tanggal 12 Oktober 2024 09:15. Saldo: Rp5.750.000'
-    }
-  ];
+  // The reading. It holds everything the screen shows and everything
+  // that is saved.
+  const [reading, setReading] = useState(emptyReading());
+  // The lines, held separately so that editing them does not go
+  // through the whole reading.
+  const [lines, setLines] = useState([]);
+  const [confirming, setConfirming] = useState(false);
+  const [magicWorking, setMagicWorking] = useState(false);
+  const [magicMessage, setMagicMessage] = useState('');
+  const [celebrate, setCelebrate] = useState(0);
+  const [muted, setMutedState] = useState(isMuted());
 
   useEffect(() => {
     if (isOpen) {
@@ -78,181 +91,113 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
     }
   };
 
+  /**
+   * Put the reading into the screen.
+   *
+   * The lines come from the reading, and the total follows them: a
+   * total that disagrees with the lines is a total the reader cannot
+   * trust.
+   */
+  const applyReading = useCallback((next) => {
+    const itemLines = toLines(next.items);
+    setLines(itemLines);
+    // The total follows the lines.
+    //
+    // A total that disagrees with the lines is a total the reader
+    // cannot trust. But when there are no lines at all, the total the
+    // reading came with is the amount: "gajian masuk 8.5jt ke bca" has
+    // no lines and is still worth eight and a half million.
+    setReading({
+      ...next,
+      total_amount: itemLines.length ? linesTotal(itemLines) : next.total_amount || 0,
+      // A transfer names two accounts. The one the money leaves from
+      // is the account the transaction is filed under, so it is put in
+      // the account picker the reader can see.
+      account_id:
+        next.type === 'transfer'
+          ? next.source_account_id || next.account_id || null
+          : next.account_id || null,
+    });
+  }, []);
+
   const handleParse = async () => {
     if (!rawText.trim()) {
       setError(K.empty_text);
       return;
     }
 
-    if (rawText.trim().length < 10) {
-      setError(K.text_too_short);
-      return;
-    }
-
     setLoading(true);
     setError('');
+    setMagicMessage('');
 
     try {
-      const response = await api.request('/parser/parse-text', {
-        method: 'POST',
-        body: JSON.stringify({ raw_text: rawText }),
-      });
-      
-      const parsed = Array.isArray(response) ? response : [];
-      
-      if (parsed.length === 0) {
-        // Try local parsing as fallback
-        const localParsed = localParse(rawText);
-        if (localParsed.length > 0) {
-          setResults(localParsed);
-          setSelectedResult({
-            ...localParsed[0],
-            account_id: accounts[0]?.id || ''
-          });
-          setParseDetails({ method: 'Local Parser', confidence: 0.85 });
-        } else {
-          setError(K.no_transaction);
-        }
+      const result = await readSentence(rawText, { accounts, categories });
+      if (!result.total_amount && !(result.items || []).length) {
+        setError(K.no_transaction);
         return;
       }
-
-      setResults(parsed);
-      setSelectedResult({
-        ...parsed[0],
-        account_id: parsed[0].account_id || accounts[0]?.id || ''
-      });
-      setParseDetails({ method: 'AI Parser', confidence: parsed[0].confidence_score });
+      applyReading(result);
       setStep('preview');
+      speak(summaryFor(result), { language });
     } catch (err) {
       console.error('Parse error:', err);
-      // Fallback to local parsing
-      const localParsed = localParse(rawText);
-      if (localParsed.length > 0) {
-        setResults(localParsed);
-        setSelectedResult({
-          ...localParsed[0],
-          account_id: accounts[0]?.id || ''
-        });
-        setParseDetails({ method: 'Local Parser', confidence: 0.75 });
-        setStep('preview');
-      } else {
-        setError(K.parse_failed + ' ' + (err.message || K.unknown_error));
-      }
+      setError(K.read_failed + ' ' + (err.message || K.unknown_error));
     } finally {
       setLoading(false);
     }
   };
 
-  // Local parsing fallback
-  const localParse = (text) => {
-    const results = [];
-    const upperText = text.toUpperCase();
-    
-    // Amount patterns (IDR with dots, commas, or plain)
-    const amountPatterns = [
-      /Rp\.?\s*([\d.,]+)/i,
-      /([\d.,]+)\s*Rp/i,
-      /(?:total|amount|jumlah|bayar|transfer)\s*:?\s*Rp?\s*([\d.,]+)/i,
-      /Rp\s*([\d.,]+)/i,
-      /(?:^|\s)([\d]{1,3}(?:[.,]\d{3})+)(?:\s|$)/,
-    ];
+  /**
+   * Ask the companion to put the reading right.
+   *
+   * The pass runs on the server. It is the same reading the parser
+   * makes, with the refinement on top: the category is worked out, the
+   * account the reader named is matched against their own accounts, and
+   * the total is settled against the lines.
+   *
+   * When the server cannot be reached, the browser does the same work
+   * from what it already knows, so the button always answers.
+   */
+  const handleAskMascot = async () => {
+    setMagicWorking(true);
+    setMagicMessage('');
+    setCelebrate((n) => n + 1);
 
-    let amount = null;
-    for (const pattern of amountPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        const raw = match[1] || match[2];
-        amount = parseFloat(raw.replace(/[.,]/g, ''));
-        if (!isNaN(amount) && amount > 0) break;
-      }
-    }
+    try {
+      const result = await readSentence(rawText, { accounts, categories });
+      const before = reading;
+      applyReading(result);
 
-    // Type detection
-    let type = 'expense';
-    const incomeKeywords = ['masuk', 'terima', 'dari', 'credit', 'incoming', 'deposit', 'received', 'masukan'];
-    const expenseKeywords = ['bayar', 'keluar', 'ke', 'debit', 'purchase', 'payment', 'transfer', 'beli'];
-    
-    for (const kw of incomeKeywords) {
-      if (upperText.includes(kw.toUpperCase())) {
-        type = 'income';
-        break;
-      }
+      const said = describeFixes(result, before, K);
+      setMagicMessage(said);
+      speak(said, { language });
+    } catch (err) {
+      console.error('The mascot could not read the sentence:', err);
+      setMagicMessage(K.magic_fixed_nothing);
+    } finally {
+      setMagicWorking(false);
     }
-    for (const kw of expenseKeywords) {
-      if (upperText.includes(kw.toUpperCase()) && type === 'income') {
-        // Check if it's actually expense
-        const expensePatterns = ['BAYAR', 'BELI', 'PEMBAYARAN', 'PEMBELIAN'];
-        for (const ep of expensePatterns) {
-          if (upperText.includes(ep)) {
-            type = 'expense';
-            break;
-          }
-        }
-      }
-    }
-
-    // Date extraction
-    const datePatterns = [
-      /(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/,
-      /(\d{4})[-/](\d{1,2})[-/](\d{1,2})/,
-      /(\d{1,2})\s+(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+(\d{4})/i,
-      /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{4})/i,
-    ];
-    
-    let dateStr = null;
-    for (const pattern of datePatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        // Simple date construction
-        if (match[1].length === 4) {
-          dateStr = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
-        } else {
-          const year = match[3].length === 2 ? '20' + match[3] : match[3];
-          dateStr = `${year}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
-        }
-        break;
-      }
-    }
-
-    // Merchant/source extraction
-    let merchant = null;
-    const merchantPatterns = [
-      /(?:di|ke|pada)\s+([A-Z][A-Za-z\s]+?)(?:\.|\s+tanggal|\s+saldo|\s+ref|\s+\d|$)/i,
-      /(?:merchant|toko|tempat)\s*:?\s*([A-Za-z\s]+?)(?:\.|$)/i,
-    ];
-    
-    for (const pattern of merchantPatterns) {
-      const match = text.match(pattern);
-      if (match && match[1] && match[1].length > 2) {
-        merchant = match[1].trim();
-        break;
-      }
-    }
-
-    if (amount) {
-      results.push({
-        amount: amount.toString(),
-        transaction_type: type.toUpperCase(),
-        suggested_type: type,
-        merchant_name: merchant || 'Parsed Transaction',
-        description: merchant || K.from_parsed_text,
-        date: dateStr || new Date().toISOString().split('T')[0],
-        confidence_score: 0.75,
-        detection_type: 'local_parser',
-        raw_text: text,
-      });
-    }
-
-    return results;
   };
 
+  /**
+   * The account the reader named, matched against their own accounts.
+   */
+  const matchedAccount = useMemo(() => {
+    if (reading.account_id) {
+      return accounts.find((a) => a.id === reading.account_id) || null;
+    }
+    return null;
+  }, [reading.account_id, accounts]);
+
   const handleConfirm = async () => {
-    if (!selectedResult) {
+    const total = lines.length ? linesTotal(lines) : Number(reading.total_amount) || 0;
+    if (!total) {
       setError(K.pick_transaction);
       return;
     }
-    
-    if (!selectedResult.account_id) {
+
+    const accountId = reading.account_id || (accounts[0] && accounts[0].id);
+    if (!accountId) {
       setError(K.pick_account);
       return;
     }
@@ -261,23 +206,70 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
     setError('');
 
     try {
-      const amount = parseFloat(selectedResult.amount) || 0;
-      
-      await api.transactions.create({
-        amount: amount,
-        type: selectedResult.suggested_type === 'income' ? 'income' : 'expense',
-        description: selectedResult.description || selectedResult.merchant_name || 'Parsed Transaction',
-        date: selectedResult.date ? selectedResult.date.split('T')[0] : new Date().toISOString().split('T')[0],
-        account_id: parseInt(selectedResult.account_id),
-        category_id: selectedResult.category_id || null,
-        merchant_name: selectedResult.merchant_name,
+      const payload = {
+        amount: total,
+        type: reading.type === 'income' ? 'income' : 'expense',
+        description:
+          reading.description ||
+          reading.merchant ||
+          (lines.length ? lines.map((l) => l.name).join(', ') : K.from_parsed_text),
+        date: new Date().toISOString().split('T')[0],
+        account_id: parseInt(accountId, 10),
+        category_id: reading.category_id || null,
+        merchant_name: reading.merchant || null,
         raw_source_text: rawText,
-        confidence_score: selectedResult.confidence_score,
-        detection_type: selectedResult.detection_type || 'local_parser',
-        latitude: selectedResult.latitude,
-        longitude: selectedResult.longitude,
-      });
+        confidence_score: reading.confidence,
+        detection_type: 'SMART_TEXT',
+        source: 'manual',
+        // The lines of the bill, so the transaction can be opened and
+        // read line by line afterwards.
+        items: fromLines(lines),
+      };
 
+      // A transfer moves money between two of the reader's own
+      // accounts, and it is written through the transfer route so the
+      // two halves stay linked.
+      if (reading.type === 'transfer') {
+        // The reading names both ends. The account the money leaves
+        // from is the source, and it is not the same field as the
+        // account the transaction is filed under.
+        //
+        // The names are matched loosely, the way the server matches
+        // them: the reader says "bca" and the account is called
+        // "BCA", and they are the same account.
+        const matchByName = (name) =>
+          accounts.find(
+            (a) =>
+              name &&
+              String(a.name || '').toLowerCase().includes(
+                String(name).toLowerCase()
+              )
+          );
+
+        const sourceId =
+          reading.source_account_id ||
+          (matchByName(reading.source_account) || {}).id ||
+          accountId;
+        const destinationId =
+          reading.destination_account_id ||
+          (matchByName(reading.destination_account) || {}).id;
+
+        if (sourceId && destinationId && destinationId !== sourceId) {
+          await api.transfers.create({
+            amount: total,
+            from_account_id: parseInt(sourceId, 10),
+            to_account_id: parseInt(destinationId, 10),
+            description: payload.description,
+            date: payload.date,
+          });
+        } else {
+          await api.transactions.create({ ...payload, type: 'expense' });
+        }
+      } else {
+        await api.transactions.create(payload);
+      }
+
+      speak(summaryFor({ ...reading, total_amount: total }, { saved: true }), { language });
       onSuccess?.();
       handleClose();
     } catch (err) {
@@ -290,101 +282,95 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
 
   const handleClose = () => {
     setRawText('');
-    setResults([]);
-    setSelectedResult(null);
+    setReading(emptyReading());
+    setLines([]);
     setError('');
     setStep('input');
-    setParseDetails(null);
-    onClose();
+    setMagicMessage('');
   };
 
-  const applySample = (text) => {
-    setRawText(text);
-  };
-
-  const toggleExpand = (index) => {
-    setExpandedResult(expandedResult === index ? null : index);
+  const toggleMute = () => {
+    const next = setMuted(!muted);
+    setMutedState(next);
   };
 
   const getTypeLabel = (type) => {
-    return type === 'CREDIT' || type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+    if (type === 'income') return K.type_income;
+    if (type === 'transfer') return K.type_transfer;
+    return K.type_expense;
   };
 
   const getTypeColor = (type) => {
-    return type === 'CREDIT' || type === 'income' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50';
+    if (type === 'income') return 'text-green-600 bg-green-50';
+    if (type === 'transfer') return 'text-blue-600 bg-blue-50';
+    return 'text-red-600 bg-red-50';
   };
 
-  const getConfidenceColor = (score) => {
-    if (score >= 0.8) return 'text-green-600';
-    if (score >= 0.6) return 'text-yellow-600';
-    return 'text-red-600';
+  const itemLabels = {
+    title: K.items_label,
+    add: K.add_item,
+    empty: K.no_items,
+    name: K.item_name,
+    qty: K.item_qty,
+    price: K.item_price,
+    remove: K.remove_item,
+    total: K.items_total,
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title="Smart Text Parser"
-      size="lg"
-    >
-      {/* Step 1: Input */}
+    <Modal isOpen={isOpen} onClose={handleClose} title="Smart Text Parser" size="lg">
+      {/* Step 1: the sentence */}
       {step === 'input' && (
         <div className="space-y-4">
-          {/* Quick Samples */}
-          <div className="bg-primary-50 dark:bg-primary-900/30 rounded-lg p-3">
-            <p className="text-sm text-primary-800 dark:text-primary-300 mb-2 font-medium">{K.examples_title}</p>
-            <div className="flex flex-wrap gap-2">
-              {sampleTexts.map((sample, i) => (
-                <button
-                  key={i}
-                  onClick={() => applySample(sample.text)}
-                  className="text-xs px-2 py-1 bg-white dark:bg-gray-700 rounded border border-primary-200 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors"
-                >
-                  {sample.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Text Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {K.input_label}
+              {K.parse_anything}
             </label>
             <textarea
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
               placeholder={K.placeholder}
-              className="w-full h-40 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+              className="w-full h-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                          placeholder-gray-400 dark:placeholder-gray-500 resize-none
                          focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
 
-          {/* Quick Actions */}
+          {/* A few free-form sentences to try. They are not templates:
+              any sentence works, and these are only here to show it. */}
+          <div className="flex flex-wrap gap-2">
+            {[K.example_expense, K.example_income, K.example_transfer].map((example) => (
+              <button
+                key={example}
+                type="button"
+                onClick={() => setRawText(example)}
+                className="text-xs px-2 py-1 bg-white dark:bg-gray-700 rounded border border-primary-200 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors text-left"
+              >
+                {example}
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center justify-between">
             <button
+              type="button"
               onClick={() => setRawText('')}
               className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1"
             >
-              <Trash2 className="w-4 h-4" /> Clear
+              <Trash2 className="w-4 h-4" /> {K.clear}
             </button>
-            
-            <Button
-              onClick={handleParse}
-              disabled={loading || !rawText.trim()}
-              className="flex items-center gap-2"
-            >
+
+            <Button onClick={handleParse} disabled={loading || !rawText.trim()} className="flex items-center gap-2">
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Parsing...
+                  {K.parsing}
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Parse Sekarang
+                  {K.parse_now}
                 </>
               )}
             </Button>
@@ -399,152 +385,200 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
         </div>
       )}
 
-      {/* Step 2: Preview Results */}
-      {step === 'preview' && results.length > 0 && (
+      {/* Step 2: the reading */}
+      {step === 'preview' && (
         <div className="space-y-4">
-          {/* Parse Info */}
-          {parseDetails && (
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
-              <Zap className="w-4 h-4" />
-              <span>Parsed dengan {parseDetails.method}</span>
-              <span>•</span>
-              <span className={getConfidenceColor(parseDetails.confidence)}>
-                {Math.round(parseDetails.confidence * 100)}% confidence
-              </span>
+          {/* What was read. */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <span
+                  className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(reading.type)}`}
+                >
+                  {getTypeLabel(reading.type)}
+                </span>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+                  {formatCurrency(lines.length ? linesTotal(lines) : reading.total_amount || 0)}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {reading.merchant || reading.description || K.from_parsed_text}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {K.confidence_label} {Math.round((reading.confidence || 0) * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  aria-label={muted ? K.mute_off : K.mute_on}
+                  title={muted ? K.mute_off : K.mute_on}
+                  className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
+                >
+                  {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
-          )}
 
-          {/* Results List */}
-          <div className="space-y-3 max-h-80 overflow-y-auto">
-            {results.map((result, index) => (
-              <div
-                key={index}
-                className={`border-2 rounded-lg p-4 cursor-pointer transition-[border-color,background-color,box-shadow] ${
-                  selectedResult === result 
-                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' 
-                    : 'border-gray-200 dark:border-gray-700 hover:border-primary-300'
-                }`}
-                onClick={() => setSelectedResult({ ...result, account_id: result.account_id || accounts[0]?.id || '' })}
+            {/* The shop, the place, the category and the account. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <Field icon={Store} label={K.merchant_label} value={reading.merchant} />
+              <Field icon={MapPin} label={K.location_label} value={reading.location} />
+              <Field
+                icon={FileText}
+                label={K.category_label}
+                value={
+                  reading.category_id
+                    ? (categories.find((c) => c.id === reading.category_id) || {}).name ||
+                      reading.category
+                    : reading.category
+                }
+              />
+              <Field
+                icon={Zap}
+                label={K.account_label}
+                value={matchedAccount ? matchedAccount.name : reading.account_hint}
+              />
+            </div>
+
+            {/* The account picker. It is filled in when the sentence
+                named an account, and it can always be changed. */}
+            <div>
+              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                {K.account_label}
+              </label>
+              <select
+                value={reading.account_id || ''}
+                onChange={(e) =>
+                  setReading({
+                    ...reading,
+                    account_id: e.target.value ? parseInt(e.target.value, 10) : null,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    {/* Type Badge */}
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(result.suggested_type || result.transaction_type)}`}>
-                      {getTypeLabel(result.suggested_type || result.transaction_type)}
-                    </span>
-                    
-                    {/* Amount */}
-                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-2">
-                      {formatCurrency(parseFloat(result.amount) || 0)}
-                    </p>
-                    
-                    {/* Description */}
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {result.merchant_name || result.description || 'Transaction'}
-                    </p>
-                    
-                    {/* Date */}
-                    {result.date && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 inline-flex items-center gap-1">
-                        <Calendar className="w-3 h-3" aria-hidden="true" />
-                        {K.result_date} {result.date}
-                      </p>
-                    )}
-                  </div>
+                <option value="">{K.choose_account}</option>
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name} - {formatCurrency(acc.balance, acc.currency)}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                  {/* Expand Button */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleExpand(index); }}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                  >
-                    {expandedResult === index ? (
-                      <ChevronUp className="w-5 h-5 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-gray-400" />
-                    )}
-                  </button>
-                </div>
+            {/* A transfer has two ends, so it has two pickers.
+                The reader has to be able to see where the money is
+                going, and to correct it when the sentence named the
+                wrong account. */}
+            {reading.type === 'transfer' && (
+              <div>
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  {K.destination_account_label}
+                </label>
+                <select
+                  value={reading.destination_account_id || ''}
+                  onChange={(e) =>
+                    setReading({
+                      ...reading,
+                      destination_account_id: e.target.value
+                        ? parseInt(e.target.value, 10)
+                        : null,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                             bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                >
+                  <option value="">{K.choose_account}</option>
+                  {accounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name} - {formatCurrency(acc.balance, acc.currency)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
-                {/* Expanded Details */}
-                {expandedResult === index && (
-                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2 text-sm">
-                    {result.reference_number && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Reference:</span>
-                        <span className="font-mono">{result.reference_number}</span>
-                      </div>
-                    )}
-                    {result.merchant_address && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Address:</span>
-                        <span>{result.merchant_address}</span>
-                      </div>
-                    )}
-                    {result.account_source && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Source:</span>
-                        <span>{result.account_source}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Confidence:</span>
-                      <span className={getConfidenceColor(result.confidence_score)}>
-                        {Math.round(result.confidence_score * 100)}%
-                      </span>
-                    </div>
+          {/* The lines of the bill. */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <LineItemEditor
+              lines={lines}
+              onChange={setLines}
+              labels={itemLabels}
+              fallbackTotal={reading.total_amount || 0}
+            />
+          </div>
+
+          {/* The companion. */}
+          <div className="relative rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="shrink-0 self-center">
+                <DraggableSparkleMascot
+                  persona="kaneru"
+                  mood={magicWorking ? 'thinking' : 'idle'}
+                  size={96}
+                  hint={K.magic_title}
+                  celebrateSignal={celebrate}
+                />
+              </div>
+              <div className="flex-1 space-y-2">
+                <Button
+                  onClick={handleAskMascot}
+                  disabled={magicWorking}
+                  className="flex items-center gap-2"
+                >
+                  {magicWorking ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {K.magic_working}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      {K.magic_button}
+                    </>
+                  )}
+                </Button>
+                {magicMessage && (
+                  <div className="rounded-lg bg-white dark:bg-gray-800 border border-primary-200 dark:border-primary-700 p-3 text-sm text-gray-700 dark:text-gray-300">
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {K.magic_said}
+                    </span>{' '}
+                    {magicMessage}
                   </div>
                 )}
               </div>
-            ))}
+            </div>
           </div>
 
-          {/* Account Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Akun Tujuan
-            </label>
-            <select
-              value={selectedResult?.account_id || ''}
-              onChange={(e) => setSelectedResult({ ...selectedResult, account_id: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            >
-              <option value="">{K.choose_account}</option>
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.name} - {formatCurrency(acc.balance, acc.currency)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Actions */}
+          {/* The actions. */}
           <div className="flex gap-3 pt-2">
             <Button
               variant="outline"
               onClick={() => {
                 setStep('input');
-                setResults([]);
-                setSelectedResult(null);
+                setReading(emptyReading());
+                setLines([]);
               }}
               className="flex-1"
             >
-              Kembali
+              {K.back || 'Kembali'}
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={confirming || !selectedResult?.account_id}
+              disabled={confirming || (!reading.account_id && !(accounts[0] && accounts[0].id))}
               className="flex-1 flex items-center justify-center gap-2"
             >
               {confirming ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Menyimpan...
+                  {K.saving || 'Menyimpan...'}
                 </>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  Simpan Transaction
+                  {K.save || 'Simpan Transaction'}
                 </>
               )}
             </Button>
@@ -560,6 +594,49 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
       )}
     </Modal>
   );
+};
+
+/**
+ * One field of the reading, with its label.
+ */
+const Field = ({ icon: Icon, label, value }) => (
+  <div className="flex items-start gap-2">
+    {Icon && <Icon className="w-4 h-4 mt-0.5 text-gray-400 shrink-0" aria-hidden="true" />}
+    <div className="min-w-0">
+      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="text-gray-900 dark:text-gray-100 truncate">{value || '-'}</p>
+    </div>
+  </div>
+);
+
+/**
+ * What the companion did, said in words the reader can read.
+ */
+export const describeFixes = (after, before, K) => {
+  const parts = [];
+  const fixes = after.fixes || [];
+
+  for (const fix of fixes) {
+    const [kind, value] = fix.split(':');
+    if (kind === 'category' && value) {
+      parts.push(K.magic_fixed_category.replace('%s', value));
+    } else if (kind === 'account' && value) {
+      parts.push(K.magic_fixed_account.replace('%s', value));
+    } else if (kind === 'total_from_items' || kind === 'total_recalculated') {
+      parts.push(K.magic_fixed_total);
+    }
+  }
+
+  // A category that was worked out but was not listed as a change.
+  if (!parts.length && after.category && !before.category) {
+    parts.push(K.magic_fixed_category.replace('%s', after.category));
+  }
+  if (!parts.length && after.account_id && !before.account_id) {
+    parts.push(K.magic_fixed_account.replace('%s', after.account_hint || ''));
+  }
+
+  if (!parts.length) return K.magic_fixed_nothing;
+  return parts.join(', ') + '.';
 };
 
 export default TextParserModal;

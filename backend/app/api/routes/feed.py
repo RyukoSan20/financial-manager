@@ -1,8 +1,10 @@
 """Enterprise Feed & Review API Routes."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, text
 from typing import List, Optional
 from datetime import datetime, timedelta
 
@@ -23,6 +25,8 @@ from app.schemas.feed import (
     TransactionItemResponse,
 )
 from app.services.receipt_parser import parse_receipt_sync
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="", tags=["Feed & Review"])
 
@@ -47,6 +51,15 @@ async def scan_receipt(
             Account.user_id == current_user.id,
             Account.is_active == True
         ).first()
+        if not account:
+            # A reader with no account has nowhere to put the money.
+            # A guest reader is one, and their scan used to end here:
+            # the receipt was read and then thrown away. The account
+            # is made for them, so the scan has a home and shows up in
+            # the review and in the history.
+            from app.services.account_bootstrap import ensure_account
+
+            account = ensure_account(db, current_user.id)
         if not account:
             raise HTTPException(status_code=400, detail="No active account found")
         account_id = account.id
@@ -361,7 +374,90 @@ def _build_feed_item(transaction: Transaction, db: Session) -> FeedItemResponse:
             category_name=item.category_name,
             created_at=item.created_at
         ))
-    
+
+    # And the lines of the receipt itself.
+    #
+    # A scanned receipt keeps its lines in the receipt, and the receipt
+    # is what holds them. So a receipt that was scanned showed up in
+    # the review with the two vague lines the guesser had put there,
+    # and the reader could not see the coffees and the bread that were
+    # actually on the paper.
+    #
+    # So the lines of the receipt are looked for too, and they are
+    # preferred: they are what was really on the paper.
+    if not items and transaction.receipt_scan_id:
+        from app.models.receipt import ReceiptScan
+
+        # A savepoint, so that a table that is not there does not
+        # undo the reading that was already done.
+        savepoint = "receipt_of_one_transaction"
+        try:
+            db.execute(text(f"SAVEPOINT {savepoint}"))
+            receipt = (
+                db.query(ReceiptScan)
+                .filter(ReceiptScan.id == transaction.receipt_scan_id)
+                .first()
+            )
+            db.execute(text(f"RELEASE SAVEPOINT {savepoint}"))
+        except Exception as exc:  # noqa: BLE001 - the review must not fail over the lines
+            # The table may not be there yet, on a database that was
+            # made before the receipts were kept. A reader is better
+            # served by a review without lines than by an error page.
+            logger.warning("Could not read the receipt of %s: %s", transaction.id, exc)
+            try:
+                db.execute(text(f"ROLLBACK TO SAVEPOINT {savepoint}"))
+                db.execute(text(f"RELEASE SAVEPOINT {savepoint}"))
+            except Exception:  # noqa: BLE001 - the read is what matters
+                db.rollback()
+            receipt = None
+        if receipt and receipt.items:
+            for line in receipt.items:
+                items.append(
+                    TransactionItemResponse(
+                        id=line.id,
+                        transaction_id=transaction.id,
+                        name=line.raw_name or "Item",
+                        quantity=line.quantity or 1,
+                        unit_price=line.price_per_unit,
+                        total_price=line.total_price,
+                        category_name=line.category,
+                        created_at=line.created_at,
+                    )
+                )
+
+    # And the lines that were stored as a breakdown.
+    #
+    # A receipt saved through the transaction endpoint keeps its lines
+    # as a breakdown, not as receipt items. So a scanned receipt that
+    # arrived that way would show up in the review with a total and
+    # nothing else, and the reader would have no idea what they had
+    # actually bought.
+    if not items and transaction.id:
+        from app.models.breakdown_item import BreakdownItem
+
+        breakdown = (
+            db.query(BreakdownItem)
+            .filter(
+                BreakdownItem.parent_type == "transaction",
+                BreakdownItem.parent_id == transaction.id,
+            )
+            .order_by(BreakdownItem.id)
+            .all()
+        )
+        for line in breakdown:
+            items.append(
+                TransactionItemResponse(
+                    id=line.id,
+                    transaction_id=transaction.id,
+                    name=line.name,
+                    quantity=line.quantity,
+                    unit_price=line.unit_price,
+                    total_price=line.total_price,
+                    category_name=line.category,
+                    created_at=line.created_at,
+                )
+            )
+
     return FeedItemResponse(
         id=transaction.id,
         type=transaction.type,

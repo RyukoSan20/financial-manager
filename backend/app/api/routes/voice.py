@@ -449,6 +449,18 @@ class VoiceParseResponse(BaseModel):
     # can show the user exactly what was understood.
     cleaned_text: Optional[str] = None
     missing_fields: List[str] = []
+    # The place the reader was at. "di Kemayoran" is where it happened,
+    # not the name of the shop, so it travels in its own field.
+    location: Optional[str] = None
+    # The account the phrase named, matched against the reader's own
+    # accounts, so the account box is not left empty.
+    account_id: Optional[int] = None
+    # The category the phrase pointed at, matched against the reader's
+    # own categories.
+    category_id: Optional[int] = None
+    # What the refinement pass changed, so the UI can say what was
+    # filled in.
+    fixes: List[str] = []
 
 
 @router.post("/parse", response_model=VoiceParseResponse)
@@ -457,7 +469,24 @@ def parse_voice_text(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Parse a spoken phrase into a structured transaction."""
+    """
+    Read a spoken phrase into a structured transaction.
+
+    The browser does the speech recognition and sends plain text. The
+    reading of that text is the same reading the text parser does, so
+    a sentence that was spoken and a sentence that was typed come out
+    the same way.
+
+    The phrase may be any free form sentence. "beli kopi jago 2
+    harganya Rp15.000 rasa vanila di Kemayoran" is an expense of thirty
+    thousand for two coffees, with the shop, the place and the category
+    all named, and every one of them in its own field.
+    """
+    from app.services.transaction_nlp import (
+        load_reader_context,
+        read_intent,
+        refine_intent,
+    )
     from app.services.voice_cleanup import clean_transcript, clean_transcript_segments
 
     raw = (request.text or request.transcript or "").strip()
@@ -482,11 +511,29 @@ def parse_voice_text(
     if not raw:
         raise HTTPException(status_code=400, detail="Teks kosong")
 
-    # How many, and at what price each.
-    #
-    # This is read first, because when the phrase has a count and a
-    # price of one, the amount of the whole thing is the multiplication
-    # and not the first number that was found.
+    # The reader's own accounts and categories, so "bayar pakai gopay"
+    # lands on their GoPay rather than on nothing.
+    try:
+        context = load_reader_context(db, current_user.id)
+    except Exception as exc:  # noqa: BLE001 - the phrase is still readable
+        logger.warning("Could not load the reader's accounts: %s", exc)
+        context = {"accounts": [], "categories": []}
+
+    intent = read_intent(raw)
+
+    # The refinement pass. It fills in the category, matches the
+    # account, and settles the total against the lines. It is the same
+    # pass "Tanya Maskot" runs in the text parser.
+    intent = refine_intent(
+        intent,
+        accounts=context["accounts"],
+        categories=context["categories"],
+    )
+
+    # The old parser is still here for the one thing it does that the
+    # new one does not: it reads the number words the speech engine
+    # produced. "dua puluh lima ribu" is twenty five thousand, and that
+    # is worth keeping.
     reading = None
     try:
         from app.services.quantity_parser import parse_quantity
@@ -495,65 +542,100 @@ def parse_voice_text(
     except Exception:  # pragma: no cover - a parser must never break a voice note
         reading = None
 
-    if reading is not None:
-        amount = Decimal(reading.total)
-        span = None
-    else:
-        amount, span = find_amount(raw)
-    merchant = extract_merchant(raw, span)
-    tx_type = detect_transaction_type(
-        raw, db=db, user_id=current_user.id if current_user else None
-    )
-    category = suggest_category(raw, merchant)
+    amount = intent.total_amount or 0.0
+    if not amount and reading is not None:
+        amount = float(reading.total)
 
-    # Confidence reflects how much of the transaction we actually resolved.
-    confidence = 0.0
-    if amount is not None and amount > 0:
-        confidence += 0.6
-    if merchant:
-        confidence += 0.25
-    if category:
-        confidence += 0.15
-    confidence = round(min(confidence, 1.0), 2)
+    # The old reader is the fallback for a phrase the new one could
+    # not make sense of, so nothing that used to work stops working.
+    if not amount and not intent.items:
+        legacy_amount, legacy_span = find_amount(raw)
+        if legacy_amount is not None:
+            amount = float(legacy_amount)
+            if not intent.merchant:
+                intent.merchant = extract_merchant(raw, legacy_span)
 
-    missing = []
-    if amount is None or amount <= 0:
-        missing.append("amount")
+    merchant = intent.merchant
     if not merchant:
-        missing.append("merchant_name")
+        merchant = extract_merchant(raw, None)
 
-    logger.info(
-        f"Voice parse: amount={amount} merchant={merchant!r} type={tx_type} conf={confidence} "
-        f"raw={request.text!r} cleaned={raw!r}"
-    )
+    tx_type = intent.type if intent.type in ("expense", "income", "transfer") else "expense"
+    category = intent.category
+    if not category:
+        category = suggest_category(raw, merchant)
 
+    # The lines. The new reader gives them the shape the list of
+    # things uses: a name, a count, a price of one and the sum. The old
+    # reader gives one line, and only when it understood the count.
     items = []
-    if reading is not None:
+    for item in intent.items:
+        items.append(
+            {
+                "name": item.display_name,
+                "quantity": item.quantity,
+                "unit_price": item.unit_price,
+                "total": item.subtotal,
+                "subtotal": item.subtotal,
+                "variant_or_note": item.variant_or_note,
+            }
+        )
+
+    if not items and reading is not None:
         items = [
             {
                 "name": reading.description or merchant or "",
                 "quantity": reading.quantity,
                 "unit_price": float(reading.unit_price),
                 "total": float(reading.total),
+                "subtotal": float(reading.total),
+                "variant_or_note": None,
             }
         ]
 
-    return VoiceParseResponse(
-        amount=float(amount) if amount is not None else None,
-        transaction_type=tx_type,
-        merchant_name=merchant,
-        description=raw[:200],
-        category=category,
-        confidence_score=confidence,
-        raw_text=request.text,
-        cleaned_text=cleaned,
-        missing_fields=missing,
-        quantity=reading.quantity if reading is not None else None,
-        unit_price=float(reading.unit_price) if reading is not None else None,
-        items=items,
+    # Confidence reflects how much of the transaction was resolved.
+    confidence = float(intent.confidence or 0.0)
+    if not confidence:
+        confidence = 0.0
+        if amount > 0:
+            confidence += 0.6
+        if merchant:
+            confidence += 0.25
+        if category:
+            confidence += 0.15
+        confidence = round(min(confidence, 1.0), 2)
+
+    missing = []
+    if not amount or amount <= 0:
+        missing.append("amount")
+    if not merchant:
+        missing.append("merchant_name")
+
+    logger.info(
+        f"Voice parse: amount={amount} merchant={merchant!r} type={tx_type} "
+        f"items={len(items)} location={intent.location!r} conf={confidence} "
+        f"raw={request.text!r} cleaned={raw!r}"
     )
 
-
+    # The place the reader was at. It is not the shop, so it travels in
+    # its own field rather than being folded into the shop's name.
+    return VoiceParseResponse(
+        amount=float(amount) if amount else None,
+        transaction_type=tx_type,
+        merchant_name=merchant,
+        description=intent.description or raw[:200],
+        category=category,
+        category_id=intent.category_id,
+        account_id=intent.account_id,
+        location=intent.location,
+        confidence_score=confidence,
+        raw_text=request.text or "",
+        cleaned_text=cleaned,
+        missing_fields=missing,
+        quantity=int(reading.quantity) if reading is not None else None,
+        unit_price=float(reading.unit_price) if reading is not None else None,
+        items=items,
+        fixes=list(intent.fixes),
+    )
 @router.get("/examples")
 def voice_examples():
     """Example phrases the UI can show the user."""

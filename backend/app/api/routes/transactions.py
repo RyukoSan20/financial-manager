@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
 from typing import List, Optional
 from datetime import date
 from decimal import Decimal
@@ -38,6 +38,42 @@ def balance_delta(tx_type: str, amount) -> float:
 
 
 router = APIRouter()
+
+
+def _has_real_lines(db, user_id: int, transaction_id: int) -> bool:
+    """
+    Whether the transaction already has lines of its own.
+
+    A receipt arrives with the lines that were on the paper: the
+    coffees, the bread, what each one cost. Those are the truth.
+
+    The guesser is a fallback for a transaction that arrived with
+    nothing. So it is only used when there is nothing to replace. When
+    it ran anyway it overwrote a real receipt with two vague lines
+    called "Belanja" and "Lainnya", and the reader was shown a bill
+    that said nothing about what they had actually bought.
+
+    A line that came from the guesser does not count as a real line.
+    It is a guess, and the guesser may well do better the second time.
+    """
+    from app.models.breakdown_item import BreakdownItem
+
+    try:
+        count = (
+            db.query(BreakdownItem)
+            .filter(
+                BreakdownItem.user_id == user_id,
+                BreakdownItem.parent_type == "transaction",
+                BreakdownItem.parent_id == transaction_id,
+                BreakdownItem.source != "template",
+            )
+            .count()
+        )
+    except Exception as exc:  # noqa: BLE001 - the guesser is only a fallback
+        logger.warning("Could not read the lines of %s: %s", transaction_id, exc)
+        db.rollback()
+        return False
+    return count > 0
 
 
 @router.get("/", response_model=List[TransactionWithDetails])
@@ -79,6 +115,44 @@ def list_transactions(
         receipts = db.query(ReceiptScan).options(joinedload(ReceiptScan.items)).filter(ReceiptScan.id.in_(receipt_ids)).all()
         for r in receipts:
             receipts_map[r.id] = r
+
+    # And the lines of the transactions themselves, in one query.
+    #
+    # These are the lines the reader gave, and they are the truest
+    # thing there is, so they are looked for first. They are fetched
+    # together because asking for them one transaction at a time
+    # makes the list slower the longer the history gets.
+    from app.models.transaction_item import TransactionItem
+
+    transaction_ids = [t.id for t in transactions]
+    transaction_lines_map = {}
+    if transaction_ids:
+        # A savepoint, so that a table that is not there does not
+        # undo the reading that was already done. A rollback here
+        # would throw away the work of the whole request.
+        savepoint = "lines_of_transactions"
+        try:
+            db.execute(text(f"SAVEPOINT {savepoint}"))
+            lines = (
+                db.query(TransactionItem)
+                .filter(TransactionItem.transaction_id.in_(transaction_ids))
+                .order_by(TransactionItem.id)
+                .all()
+            )
+            for line in lines:
+                transaction_lines_map.setdefault(line.transaction_id, []).append(line)
+            db.execute(text(f"RELEASE SAVEPOINT {savepoint}"))
+        except Exception as exc:  # noqa: BLE001 - the list must not fail over the lines
+            # The table may not be there yet, on a database that was
+            # made before the lines were kept. A reader is better
+            # served by a history without lines than by an error page.
+            logger.warning("Could not read the lines of the transactions: %s", exc)
+            try:
+                db.execute(text(f"ROLLBACK TO SAVEPOINT {savepoint}"))
+                db.execute(text(f"RELEASE SAVEPOINT {savepoint}"))
+            except Exception:  # noqa: BLE001 - the read is what matters
+                db.rollback()
+            transaction_lines_map = {}
     
     # Enrich with receipt items
     result = []
@@ -130,8 +204,27 @@ def list_transactions(
             "category_system_key": t.category.system_key if t.category else None,
             "items": [],
         }
+        # The lines of the transaction itself.
+        #
+        # A transaction saved with a list of items keeps them in the
+        # transaction, and those are the lines the reader gave. They
+        # come first, because they are the truest thing there is.
+        own_lines = transaction_lines_map.get(t.id) or []
+        if own_lines:
+            data["items"] = [
+                {
+                    "name": item.name,
+                    "quantity": float(item.quantity) if item.quantity else 1,
+                    "unit_price": float(item.unit_price) if item.unit_price else 0,
+                    "price_per_unit": float(item.unit_price) if item.unit_price else 0,
+                    "total_price": float(item.total_price) if item.total_price else 0,
+                    "is_discount": bool(getattr(item, "is_discount", False)),
+                }
+                for item in own_lines
+            ]
+
         # Load receipt items from pre-fetched map
-        if t.receipt_scan_id and t.receipt_scan_id in receipts_map:
+        if not data["items"] and t.receipt_scan_id and t.receipt_scan_id in receipts_map:
             receipt = receipts_map[t.receipt_scan_id]
             logger.info(f"TX {t.id}: Found receipt {receipt.id} with {len(receipt.items) if receipt.items else 0} items")
             if receipt and receipt.items:
@@ -139,12 +232,70 @@ def list_transactions(
                     {
                         "name": item.raw_name or "Item",
                         "quantity": item.quantity or 1,
+                        # Both names for the price of one.
+                        #
+                        # The receipt calls it price_per_unit and the
+                        # breakdown calls it unit_price. A reader that
+                        # asks for one and gets the other sees a price
+                        # of nothing, so both are given.
                         "price_per_unit": float(item.price_per_unit) if item.price_per_unit else 0,
+                        "unit_price": float(item.price_per_unit) if item.price_per_unit else 0,
                         "total_price": float(item.total_price) if item.total_price else 0,
                         "is_discount": getattr(item, 'is_discount', False),
                     }
                     for item in receipt.items
                 ]
+
+        # The lines that were stored as a breakdown.
+        #
+        # A receipt saved through the transaction endpoint keeps its
+        # lines as a breakdown, not as receipt items. So the history
+        # showed the total and nothing else, and the reader could not
+        # see what they had actually bought.
+        if not data["items"]:
+            from app.models.breakdown_item import BreakdownItem
+
+            lines = []
+            # A savepoint, so that a table that is not there does not
+            # undo the reading that was already done.
+            savepoint = "lines_of_one_transaction"
+            try:
+                db.execute(text(f"SAVEPOINT {savepoint}"))
+                lines = (
+                    db.query(BreakdownItem)
+                    .filter(
+                        BreakdownItem.parent_type == "transaction",
+                        BreakdownItem.parent_id == t.id,
+                    )
+                    .order_by(BreakdownItem.id)
+                    .all()
+                )
+                db.execute(text(f"RELEASE SAVEPOINT {savepoint}"))
+            except Exception as exc:  # noqa: BLE001 - the list must not fail over the lines
+                # The table may not be there yet, on a database that
+                # was made before the lines were kept. A reader is
+                # better served by a history without lines than by an
+                # error page.
+                logger.warning("Could not read the lines of %s: %s", t.id, exc)
+                try:
+                    db.execute(text(f"ROLLBACK TO SAVEPOINT {savepoint}"))
+                    db.execute(text(f"RELEASE SAVEPOINT {savepoint}"))
+                except Exception:  # noqa: BLE001 - the read is what matters
+                    db.rollback()
+                lines = []
+            if lines:
+                data["items"] = [
+                    {
+                        "name": line.name,
+                        "quantity": float(line.quantity) if line.quantity else 1,
+                        "price_per_unit": float(line.unit_price) if line.unit_price else 0,
+                        "unit_price": float(line.unit_price) if line.unit_price else 0,
+                        "total_price": float(line.total_price) if line.total_price else 0,
+                        "is_discount": bool(line.is_discount),
+                    }
+                    for line in lines
+                ]
+
         result.append(data)
     
     return result
@@ -271,9 +422,29 @@ def create_transaction(
     
     # Verify account exists and belongs to user
     account = db.query(Account).filter(Account.id == transaction.account_id).first()
-    if not account:
-        raise HTTPException(status_code=404, detail="Account not found")
-    
+
+    # A reader with no account has nowhere to put the money.
+    #
+    # A guest reader - somebody who chose "try it without an account" -
+    # was given a user and nothing else, so their first scan was read,
+    # shown, and then thrown away at the last step because there was no
+    # account to hold it. The transaction did not vanish; it was never
+    # written down.
+    #
+    # So when the account is not there, one is made. The reader's own
+    # accounts are never touched: this only happens when there are
+    # none.
+    if account is None:
+        from app.services.account_bootstrap import ensure_account
+
+        account = ensure_account(db, current_user.id)
+        if account is None:
+            raise HTTPException(
+                status_code=400,
+                detail="No account to hold this transaction. Add an account first.",
+            )
+        transaction.account_id = account.id
+
     # Account ownership check
     if account.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Cannot add transaction to another user's account")
@@ -420,6 +591,7 @@ def create_transaction(
             and transaction.type == "expense"
             and float(transaction.amount or 0) > 0
             and transaction.merchant_name
+            and not _has_real_lines(db, current_user.id, db_transaction.id)
         ):
             from app.services.transaction_breakdown import expand_transaction
             from app.services.instruction_context import transaction_context

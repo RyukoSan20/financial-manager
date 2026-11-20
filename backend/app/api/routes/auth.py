@@ -17,6 +17,9 @@ from app.core.security import (
 from app.models.user import User
 from app.schemas.user import Token, MessageResponse
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Authentication"])
 
@@ -262,6 +265,17 @@ def guest_login(guest_data: GuestLoginRequest, db: Session = Depends(get_db)):
         # Update last login
         existing.last_login = datetime.utcnow()
         db.commit()
+
+        # A guest from before this change has no accounts at all, and
+        # so their next purchase would vanish again. So they are given
+        # the starter accounts now, the first time they come back.
+        try:
+            from app.services.starter_accounts import seed_starter_accounts
+
+            seed_starter_accounts(db, existing.id)
+        except Exception as exc:  # noqa: BLE001 - the guest can still sign in
+            logger.warning("Could not make the starter accounts for a guest: %s", exc)
+
         # The token of a guest is the same every time, so the browser
         # keeps the token it is holding and the account it belongs to.
         access_token = create_access_token(
@@ -291,7 +305,24 @@ def guest_login(guest_data: GuestLoginRequest, db: Session = Depends(get_db)):
     db.add(guest_user)
     db.commit()
     db.refresh(guest_user)
-    
+
+    # The accounts the money goes into.
+    #
+    # A guest was given a user and nothing else, so their very first
+    # purchase had nowhere to go: the receipt was read, the total was
+    # shown, and then the save failed and the transaction was never
+    # written down. The screen said nothing about it.
+    #
+    # So a guest is given the accounts a reader would make for
+    # themselves in the first minute anyway. They can be renamed, they
+    # can be closed, and they can add more.
+    try:
+        from app.services.starter_accounts import seed_starter_accounts
+
+        seed_starter_accounts(db, guest_user.id)
+    except Exception as exc:  # noqa: BLE001 - the guest can still sign in
+        logger.warning("Could not make the starter accounts for a guest: %s", exc)
+
     access_token = create_access_token(
         guest_user.id, expires_at=_guest_token_expiry(guest_user)
     )
