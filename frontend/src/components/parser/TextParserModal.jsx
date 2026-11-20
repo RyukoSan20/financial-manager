@@ -322,6 +322,27 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
       {/* Step 1: the sentence */}
       {step === 'input' && (
         <div className="space-y-4">
+          {/* The companion, welcome from the start.
+              The reader is asked to write a sentence, which is a strange
+              thing to ask. Kaneru says hello and says what it will do
+              with the sentence, so the first screen is not a bare box
+              waiting to be filled in. */}
+          <div className="relative rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="shrink-0 self-center">
+                <DraggableSparkleMascot
+                  persona="kaneru"
+                  mood="idle"
+                  size={72}
+                  hint={K.step1_mascot_hint}
+                />
+              </div>
+              <p className="text-sm text-gray-700 dark:text-gray-300 flex-1">
+                {K.step1_hint}
+              </p>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {K.parse_anything}
@@ -330,22 +351,28 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
               placeholder={K.placeholder}
-              className="w-full h-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+              className="w-full h-32 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-2xl
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                          placeholder-gray-400 dark:placeholder-gray-500 resize-none
+                         box-border
                          focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
 
           {/* A few free-form sentences to try. They are not templates:
               any sentence works, and these are only here to show it. */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
             {[K.example_expense, K.example_income, K.example_transfer].map((example) => (
               <button
                 key={example}
                 type="button"
                 onClick={() => setRawText(example)}
-                className="text-xs px-2 py-1 bg-white dark:bg-gray-700 rounded border border-primary-200 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors text-left"
+                className="text-xs px-3 py-2 bg-white dark:bg-gray-700 rounded-xl border border-primary-200 dark:border-primary-700
+                           hover:bg-primary-100 dark:hover:bg-primary-800 hover:border-primary-400 dark:hover:border-primary-500
+                           active:bg-primary-200 dark:active:bg-primary-900 active:scale-[0.99]
+                           transition-colors duration-150 text-left leading-relaxed
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500
+                           min-w-0 break-words"
               >
                 {example}
               </button>

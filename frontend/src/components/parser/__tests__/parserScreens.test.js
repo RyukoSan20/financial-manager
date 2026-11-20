@@ -214,6 +214,67 @@ function readSource(name) {
 }
 
 // ---------------------------------------------------------------------------
+// The box to write in
+//
+// The text parser asks the reader to write a sentence. The box was
+// given the radius of a badge, and in two of the six themes the radius
+// of a badge is a pill: 999 pixels.
+//
+// A pill that is 32 pixels high has a curve that starts at the very
+// edge, so the first letter of the text is cut off. "Tempel teks SMS
+// bank..." came out as "empel teks SMS bank...".
+//
+// So the textarea has to keep a radius of its own, and the theme
+// stylesheet must not give it the radius of a badge.
+// ---------------------------------------------------------------------------
+
+{
+  const themeCss = readFileSync(
+    resolve(dirname(fileURLToPath(import.meta.url)), '../../../styles/theme-concepts.css'),
+    'utf8'
+  );
+  const parser = readFileSync(
+    resolve(dirname(fileURLToPath(import.meta.url)), '../TextParserModal.jsx'),
+    'utf8'
+  );
+
+  ok(
+    'the concept theme does not give a textarea the radius of a badge',
+    !/:is\(input, select, textarea\)[^{]*\{[^}]*border-radius:\s*var\(--concept-badge-radius\)/s.test(themeCss)
+  );
+
+  ok(
+    'the concept theme gives a textarea a radius of its own',
+    /textarea[^{]*\{[^}]*border-radius:\s*16px/s.test(themeCss)
+  );
+
+  ok(
+    'the concept theme gives a textarea room inside',
+    /textarea[^{]*\{[^}]*padding:\s*0\.75rem 1rem/s.test(themeCss)
+  );
+
+  ok(
+    'the text parser writes the sentence in a rounded box, not a pill',
+    /<textarea[\s\S]{0,400}?rounded-2xl/.test(parser)
+  );
+
+  ok(
+    'the text parser gives the box room on the left',
+    /<textarea[\s\S]{0,400}?px-4 py-3/.test(parser)
+  );
+
+  ok(
+    'the text parser has the companion on the first screen',
+    /step === 'input'[\s\S]{0,2000}?DraggableSparkleMascot/.test(parser)
+  );
+
+  ok(
+    'the first screen says what the companion will do',
+    /step1_hint/.test(parser)
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 if (failed) {
   console.error(`\n${failed} failed, ${passed} passed\n`);

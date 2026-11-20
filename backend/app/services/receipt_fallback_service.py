@@ -78,6 +78,24 @@ def structured_fallback(
             reading["raw_text"] = partial["raw_text"]
 
     shaped = ensure_receipt_shape(reading)
+
+    # One row per product.
+    #
+    # The reading of the receipt and the breakdown of the receipt are
+    # two readings of the same receipt, and each can find the same
+    # purchase: "Kopi Jago vanila 2 x" on the line with the price and
+    # "Kopi Jago vanila" on the line with the name. The lines are
+    # settled here, so that the reader sees one row per product.
+    try:
+        from app.services.receipt_line_items import reconcile_line_items
+
+        shaped["items"] = reconcile_line_items(
+            shaped.get("items") or [],
+            total_amount=shaped.get("total_amount"),
+        )
+    except Exception as exc:  # noqa: BLE001 - the fallback must not fail
+        logger.warning("Could not settle the lines of the receipt: %s", exc)
+
     shaped["fallback_used"] = True
     return shaped
 

@@ -449,6 +449,24 @@ async def create_receipt_scan_job(
         transaction_date = reading.get("date")
         payment_method = reading.get("payment_method")
 
+        # One row per product.
+        #
+        # The receipt is read by more than one reader, and each of them
+        # can find the same purchase: "Kopi Jago vanila 2 x" on the
+        # line with the price, and "Kopi Jago vanila" on the line with
+        # the name. Put together, the reader was charged twice for two
+        # coffees.
+        #
+        # The lines are settled here, once, at the end. Whatever the
+        # readers said, the reader of the app sees one row per
+        # product.
+        try:
+            from app.services.receipt_line_items import reconcile_line_items
+
+            items = reconcile_line_items(items, total_amount=amount)
+        except Exception as exc:  # noqa: BLE001 - the reading is still worth showing
+            logger.warning("Could not settle the lines of the receipt: %s", exc)
+
         payload = {
             "merchant_name": merchant or "Merchant",
             "amount": str(int(amount)) if amount else "0",

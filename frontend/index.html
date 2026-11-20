@@ -147,12 +147,43 @@
     </div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Register service worker
+      // Register the service worker.
+      //
+      // The worker that is already running may be an old one - the
+      // one that answered a dropped connection with a 503, for
+      // instance. A new worker waits by default until every tab of
+      // the reader's is closed, which can be days. So the waiting
+      // worker is told to take over at once, and the page reloads
+      // itself when a new worker has taken over, so the reader is
+      // never left on the old code.
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
-              console.log('SW registered:', registration.scope);
+              // A worker that is already waiting takes over now.
+              if (registration.waiting) {
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+              }
+
+              // And one that arrives later does the same.
+              registration.addEventListener('updatefound', () => {
+                const installing = registration.installing;
+                if (!installing) return;
+                installing.addEventListener('statechange', () => {
+                  if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                    installing.postMessage({ type: 'SKIP_WAITING' });
+                  }
+                });
+              });
+
+              // When the new worker has taken over, the page is loaded
+              // again so that the reader is on the new code.
+              let reloaded = false;
+              navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (reloaded) return;
+                reloaded = true;
+                window.location.reload();
+              });
             })
             .catch((error) => {
               console.log('SW registration failed:', error);

@@ -447,11 +447,35 @@ html[data-theme-concept][data-theme-concept][data-theme-concept] .theme-btn-ghos
   border-radius: var(--concept-badge-radius) !important;
 }
 
-html[data-theme-concept][data-theme-concept][data-theme-concept] :is(input, select, textarea):not(:where([type='checkbox'], [type='radio'], [type='range'], [type='color'])) {
+html[data-theme-concept][data-theme-concept][data-theme-concept] :is(input, select):not(:where([type='checkbox'], [type='radio'], [type='range'], [type='color'])) {
   color: var(--concept-ink) !important;
   background-color: var(--concept-card) !important;
   border: 1.5px solid var(--concept-card-line) !important;
   border-radius: var(--concept-badge-radius) !important;
+}
+
+/*
+ * A textarea is a box to write in, not a pill.
+ *
+ * The badge radius is a pill - 999px in some of the concepts - and it
+ * was given to the textarea as well. On a box that is 32 pixels high
+ * the pill radius is 16 pixels, so the curve starts at the very edge
+ * and the first letter of the text is cut off: "Tempel teks SMS
+ * bank..." came out as "empel teks SMS bank...".
+ *
+ * So the textarea keeps the colour and the border of the concept and
+ * takes a radius of its own, and it is given room inside so that the
+ * first character is never clipped at any width.
+ */
+html[data-theme-concept][data-theme-concept][data-theme-concept] textarea:not(:where([type='checkbox'], [type='radio'], [type='range'], [type='color'])) {
+  color: var(--concept-ink) !important;
+  background-color: var(--concept-card) !important;
+  border: 1.5px solid var(--concept-card-line) !important;
+  border-radius: 16px !important;
+  box-sizing: border-box !important;
+  padding: 0.75rem 1rem !important;
+  /* A pill clips the corners of the text as well as the box. */
+  overflow-wrap: break-word;
 }
 html[data-theme-concept][data-theme-concept][data-theme-concept] :is(input, textarea)::placeholder {
   color: var(--concept-ink-muted) !important;
