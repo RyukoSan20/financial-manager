@@ -170,6 +170,7 @@ for test_file in \
   src/features/koban-shop/__tests__/kobanTilemap.test.js \
   src/styles/__tests__/multiTheme.test.js \
   src/features/koban-shop/__tests__/kobanBattle.test.js \
+  src/pages/__tests__/settingsBento.test.js \
   src/components/mascot/__tests__/realChibiMascot.test.js
 do
   if [ ! -f "$test_file" ]; then

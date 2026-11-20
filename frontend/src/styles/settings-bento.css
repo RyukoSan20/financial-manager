@@ -1,0 +1,769 @@
+/*
+ * THE SETTINGS BENTO.
+ *
+ * The settings page was a plain form: a heading, a search box, a
+ * column of tabs and a white card. It worked, and it said nothing
+ * about the app it was part of.
+ *
+ * This is the same page as a bento grid: a banner across the top, a
+ * rail of category cards down the left, and a workspace of tiles on
+ * the right. The tiles are of different sizes, so the eye is told what
+ * matters - the account status first, then the quick switches, then
+ * the form.
+ *
+ * EVERY colour here is a concept token. There is no hardcoded colour
+ * in this file, and there is no hex at all: the sheet is a set of
+ * rules that reads --concept-* the same way the concept picker does.
+ * So switching concept changes the settings page with the rest of the
+ * app, in all six concepts, in light and dark, with nothing to
+ * re-tune.
+ *
+ * The naming follows the concept sheet: `sbg-` for the settings bento.
+ */
+
+/* ---------------------------------------------------------------------------
+ * 1. THE PAGE SHELL
+ * --------------------------------------------------------------------------- */
+
+.sbg-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--concept-grid-gap);
+  min-width: 0;
+  /* The mobile dock is fixed to the bottom of the window, so the last
+     tile has to be given room to be scrolled clear of it. Every other
+     page does this with pb-20; the bento does it here. */
+  padding-bottom: 5rem;
+  animation: sbg-rise 0.32s ease both;
+}
+@media (min-width: 1024px) {
+  .sbg-shell { padding-bottom: 0; }
+}
+
+@keyframes sbg-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------------------------------------------------------------------------
+ * 2. THE BANNER
+ *
+ * One banner across the top: the category, the title, the filter, the
+ * link to the concept page, and the companion.
+ * --------------------------------------------------------------------------- */
+
+.sbg-banner {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--concept-grid-gap);
+  align-items: center;
+  padding: 16px;
+  border-radius: var(--concept-card-radius);
+  border: 2px solid var(--concept-card-line);
+  background-color: var(--concept-card);
+  background-image: var(--concept-pattern);
+  background-size: var(--concept-pattern-size);
+  color: var(--concept-ink);
+  box-shadow: var(--concept-card-shadow);
+}
+@media (min-width: 1024px) {
+  .sbg-banner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 20px 24px;
+  }
+}
+
+.sbg-banner__main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sbg-banner__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--concept-badge-radius);
+  background-color: var(--concept-badge-bg);
+  color: var(--concept-badge-ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sbg-banner__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: var(--concept-title-tracking);
+  color: var(--concept-ink);
+}
+@media (min-width: 640px) {
+  .sbg-banner__title { font-size: 1.9rem; }
+}
+
+.sbg-banner__subtitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--concept-ink-muted);
+}
+
+.sbg-banner__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+/* The filter box. It is the only field in the banner, so it carries
+   the concept's own border and focus ring. */
+.sbg-search {
+  position: relative;
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 420px;
+}
+.sbg-search__icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
+  pointer-events: none;
+  color: var(--concept-ink-muted);
+}
+.sbg-search__input {
+  width: 100%;
+  padding: 9px 34px 9px 34px;
+  border-radius: calc(var(--concept-card-radius) * 0.6);
+  border: 2px solid var(--concept-card-line);
+  background-color: var(--concept-canvas);
+  color: var(--concept-ink);
+  font-size: 13px;
+  line-height: 1.4;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.sbg-search__input::placeholder { color: var(--concept-ink-muted); }
+.sbg-search__input:focus {
+  outline: none;
+  border-color: var(--concept-accent);
+  box-shadow: 0 0 0 3px var(--concept-accent);
+}
+.sbg-search__clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--concept-ink-muted);
+  cursor: pointer;
+  transition: color 0.14s ease, background-color 0.14s ease;
+}
+.sbg-search__clear:hover {
+  color: var(--concept-ink);
+  background-color: var(--concept-badge-bg);
+}
+
+/* The pill that says where the concept lives. */
+.sbg-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--concept-badge-radius);
+  border: 2px solid var(--concept-accent);
+  background-color: var(--concept-accent);
+  color: var(--concept-accent-ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+.sbg-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px var(--concept-accent);
+}
+.sbg-pill--ghost {
+  background-color: transparent;
+  color: var(--concept-accent);
+}
+.sbg-pill--ghost:hover {
+  background-color: var(--concept-accent);
+  color: var(--concept-accent-ink);
+}
+
+/* ---------------------------------------------------------------------------
+ * 3. THE TWO COLUMNS
+ * --------------------------------------------------------------------------- */
+
+.sbg-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--concept-grid-gap);
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .sbg-layout { grid-template-columns: 268px minmax(0, 1fr); }
+}
+
+/* ---------------------------------------------------------------------------
+ * 4. THE RAIL
+ *
+ * The categories. On a phone they are a horizontal row of pills that
+ * scrolls; on a desktop they are a column of cards.
+ * --------------------------------------------------------------------------- */
+
+.sbg-rail {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 1024px) {
+  .sbg-rail {
+    flex-direction: column;
+    overflow-x: visible;
+    overflow-y: visible;
+    padding-bottom: 0;
+  }
+}
+
+.sbg-rail__card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: calc(var(--concept-card-radius) * 0.7);
+  border: 2px solid var(--concept-rail-line);
+  background-color: var(--concept-rail);
+  color: var(--concept-rail-ink);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background-color 0.14s ease, transform 0.14s ease;
+}
+.sbg-rail__card:hover {
+  transform: translateY(-1px);
+  border-color: var(--concept-accent);
+}
+.sbg-rail__card[aria-current='true'] {
+  background-color: var(--concept-rail-active);
+  border-color: var(--concept-accent);
+  color: var(--concept-rail-active-ink);
+}
+.sbg-rail__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sbg-rail__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: var(--concept-badge-radius);
+  background-color: var(--concept-badge-bg);
+  color: var(--concept-badge-ink);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.sbg-rail__count-label {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sbg-rail__count-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+ * 5. THE WORKSPACE
+ *
+ * Twelve columns. The tiles say how much room they take, and the
+ * columns are the same in every concept - a concept decides how a
+ * tile LOOKS, never how many there are.
+ * --------------------------------------------------------------------------- */
+
+.sbg-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--concept-grid-gap);
+}
+
+.sbg-tile {
+  grid-column: span 12;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: var(--concept-card-radius);
+  border: 2px solid var(--concept-card-line);
+  background-color: var(--concept-card);
+  color: var(--concept-ink);
+  box-shadow: var(--concept-card-shadow);
+}
+@media (min-width: 640px) {
+  .sbg-tile { padding: 18px 20px; }
+}
+@media (min-width: 1024px) {
+  .sbg-tile--4 { grid-column: span 4; }
+  .sbg-tile--5 { grid-column: span 5; }
+  .sbg-tile--6 { grid-column: span 6; }
+  .sbg-tile--7 { grid-column: span 7; }
+  .sbg-tile--8 { grid-column: span 8; }
+  .sbg-tile--12 { grid-column: span 12; }
+}
+
+.sbg-tile__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.sbg-tile__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: var(--concept-title-tracking);
+  color: var(--concept-ink);
+}
+.sbg-tile__sub {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--concept-ink-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * 6. THE ACCOUNT TILE
+ * --------------------------------------------------------------------------- */
+
+.sbg-account {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.sbg-account__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  padding: 4px;
+  border-radius: calc(var(--concept-card-radius) * 0.8);
+  border: 2px solid var(--concept-accent);
+  background-color: var(--concept-canvas);
+  overflow: hidden;
+}
+.sbg-account__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--concept-card-radius) * 0.5);
+}
+.sbg-account__who {
+  min-width: 0;
+  flex: 1;
+}
+.sbg-account__name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--concept-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sbg-account__mail {
+  margin: 0;
+  font-size: 12px;
+  color: var(--concept-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sbg-account__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 2px 9px;
+  border-radius: var(--concept-badge-radius);
+  background-color: var(--concept-badge-bg);
+  color: var(--concept-badge-ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* The onboarding progress. */
+.sbg-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sbg-progress__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--concept-ink-muted);
+}
+.sbg-progress__count {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--concept-ink);
+}
+.sbg-progress__track {
+  height: 8px;
+  border-radius: 999px;
+  background-color: var(--concept-canvas);
+  border: 1px solid var(--concept-card-line);
+  overflow: hidden;
+}
+.sbg-progress__fill {
+  height: 100%;
+  border-radius: 999px;
+  background-color: var(--concept-accent);
+  transition: width 0.5s ease;
+}
+
+/* The four mini stat tiles. */
+.sbg-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (min-width: 640px) {
+  .sbg-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.sbg-stat {
+  padding: 10px 8px;
+  border-radius: calc(var(--concept-card-radius) * 0.6);
+  border: 1px solid var(--concept-card-line);
+  background-color: var(--concept-canvas);
+  text-align: center;
+}
+.sbg-stat__value {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--concept-num-tracking);
+  color: var(--concept-ink);
+}
+.sbg-stat__label {
+  margin: 2px 0 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--concept-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+ * 7. THE TOGGLE ROW
+ * --------------------------------------------------------------------------- */
+
+.sbg-toggles {
+  display: grid;
+  /* The cards are as wide as the tile allows, and as many as fit.
+     A tile that is narrow gets one card per row instead of two
+     squeezed ones, so a label never has to break mid-word. */
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.sbg-toggle {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: calc(var(--concept-card-radius) * 0.7);
+  border: 2px solid var(--concept-card-line);
+  background-color: var(--concept-canvas);
+  color: var(--concept-ink);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background-color 0.14s ease, transform 0.14s ease;
+}
+.sbg-toggle:hover { transform: translateY(-1px); }
+.sbg-toggle[aria-pressed='true'] {
+  border-color: var(--concept-accent);
+  background-color: var(--concept-badge-bg);
+}
+.sbg-toggle__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.sbg-toggle__title {
+  display: block;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--concept-ink);
+}
+.sbg-toggle__desc {
+  display: block;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--concept-ink-muted);
+}
+/* The switch itself: a track and a knob, both of the concept. */
+.sbg-switch {
+  flex: none;
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid var(--concept-card-line);
+  background-color: var(--concept-card);
+  transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+.sbg-switch::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background-color: var(--concept-ink-muted);
+  transition: transform 0.16s ease, background-color 0.16s ease;
+}
+.sbg-toggle[aria-pressed='true'] .sbg-switch {
+  background-color: var(--concept-accent);
+  border-color: var(--concept-accent);
+}
+.sbg-toggle[aria-pressed='true'] .sbg-switch::after {
+  transform: translateX(18px);
+  background-color: var(--concept-accent-ink);
+}
+
+/* ---------------------------------------------------------------------------
+ * 8. THE FORM
+ * --------------------------------------------------------------------------- */
+
+.sbg-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 640px) {
+  .sbg-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sbg-form__wide { grid-column: 1 / -1; }
+}
+
+.sbg-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.sbg-field__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--concept-ink-muted);
+}
+.sbg-field__input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: calc(var(--concept-card-radius) * 0.6);
+  border: 2px solid var(--concept-card-line);
+  background-color: var(--concept-canvas);
+  color: var(--concept-ink);
+  font-size: 14px;
+  line-height: 1.4;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.sbg-field__input::placeholder { color: var(--concept-ink-muted); }
+.sbg-field__input:focus {
+  outline: none;
+  border-color: var(--concept-accent);
+  box-shadow: 0 0 0 3px var(--concept-accent);
+}
+.sbg-field__input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.sbg-field__hint {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--concept-ink-muted);
+}
+
+.sbg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.sbg-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--concept-badge-radius);
+  border: 2px solid var(--concept-accent);
+  background-color: var(--concept-accent);
+  color: var(--concept-accent-ink);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
+}
+.sbg-save:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px var(--concept-accent);
+}
+.sbg-save:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* The badge that says it worked. */
+.sbg-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--concept-badge-radius);
+  background-color: var(--concept-badge-bg);
+  color: var(--concept-badge-ink);
+  font-size: 12px;
+  font-weight: 800;
+  animation: sbg-pop 0.32s ease both;
+}
+@keyframes sbg-pop {
+  from { opacity: 0; transform: scale(0.86); }
+  to { opacity: 1; transform: none; }
+}
+
+.sbg-error {
+  padding: 10px 12px;
+  border-radius: calc(var(--concept-card-radius) * 0.6);
+  border: 2px solid var(--concept-badge-bg);
+  background-color: var(--concept-badge-bg);
+  color: var(--concept-badge-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+/* ---------------------------------------------------------------------------
+ * 9. THE COMPANION
+ *
+ * The figure sits in the banner. It is the app's own artwork, it can
+ * be picked up and dragged, and it lets go in a shower of sparkles.
+ * --------------------------------------------------------------------------- */
+
+.sbg-mascot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.sbg-mascot__figure {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sbg-mascot__bubble {
+  position: relative;
+  padding: 9px 13px;
+  border-radius: var(--concept-badge-radius);
+  border: 2px solid var(--concept-card-line);
+  background-color: var(--concept-canvas);
+  color: var(--concept-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  max-width: 260px;
+}
+.sbg-mascot__hint {
+  margin: 4px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--concept-ink-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * 10. THE EMPTY STATE
+ *
+ * A search that matches nothing should say so, not show an empty page.
+ * --------------------------------------------------------------------------- */
+
+.sbg-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 34px 20px;
+  border-radius: var(--concept-card-radius);
+  border: 2px dashed var(--concept-card-line);
+  background-color: var(--concept-card);
+  color: var(--concept-ink);
+  text-align: center;
+}
+.sbg-empty__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--concept-ink);
+}
+.sbg-empty__text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--concept-ink-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * 11. REDUCED MOTION
+ * --------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sbg-shell { animation: none; }
+  .sbg-saved { animation: none; }
+  .sbg-pill:hover,
+  .sbg-rail__card:hover,
+  .sbg-toggle:hover,
+  .sbg-save:hover:not(:disabled) { transform: none; }
+  .sbg-progress__fill { transition: none; }
+}

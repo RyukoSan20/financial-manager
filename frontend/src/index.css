@@ -3,6 +3,9 @@
    is the identity of the app's contents and the app theme is the frame of
    the app, and where the two meet the concept has the last word. */
 @import './styles/theme-concepts.css';
+/* The settings bento. It reads the concept tokens, so it is imported
+   after the concept sheet and never after nothing. */
+@import './styles/settings-bento.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

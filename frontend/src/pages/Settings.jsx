@@ -1,7 +1,29 @@
-import { useState, useMemo, useEffect } from 'react';
+/**
+ * The settings page, as a bento.
+ *
+ * It used to be a heading, a search box, a column of tabs on the
+ * left, and a white card on the right. That is a form. It works, and
+ * it says nothing about the app it belongs to.
+ *
+ * This is the same page as a bento grid. The banner across the top
+ * says what the page is and gives the reader the filter and the way
+ * to the concept page. The rail down the left is the categories. The
+ * workspace on the right is a set of tiles of different sizes, so the
+ * eye is told what matters: the account first, then the switches that
+ * do the dull work, then the form.
+ *
+ * The two things this refactor must not break are the form state and
+ * the save handlers. Everything below the layout is the same code it
+ * was, with the same keys and the same API calls.
+ *
+ * The colours are all concept tokens, so the page changes with the
+ * concept like everything else does.
+ */
+
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/ui';
-import { User, Lock, Bell, Globe, Download, Trash2, Loader2, LogOut, Palette, Coins, Search, X, ShieldCheck, SlidersHorizontal } from 'lucide-react';
+import { User, Lock, Globe, Download, Trash2, Loader2, Palette, Coins, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -11,7 +33,29 @@ import { getUserAvatarUrl } from '../utils/avatarHelper';
 import ReadinessChecklist from '../components/ReadinessChecklist';
 import DataExportStudio from '../components/settings/DataExportStudio';
 import PrivacyPage from './Settings/PrivacyPage';
+import SettingsBentoHeader from '../components/settings/SettingsBentoHeader';
+import PixelArtBusinessIcon from '../components/ui/PixelArtBusinessIcon';
+import { readerFlag, setReaderFlag } from '../utils/featureFlags';
 import { toast } from '../contexts/ToastContext';
+
+/**
+ * The categories, and the pixel icon that stands for each one.
+ *
+ * The icons are drawn, not borrowed. An operating system emoji would
+ * be drawn by whatever machine the reader happens to be on, so the
+ * same "lock" would be a flat glyph on one phone and a glossy
+ * padlock on another, and neither would match anything else on the
+ * page.
+ */
+const CATEGORY_ICONS = {
+  profile: 'smartphone',
+  appearance: 'clipboard',
+  security: 'briefcase',
+  preferences: 'calculator',
+  data: 'receipt',
+  privacy: 'ewallet',
+  app: 'office',
+};
 
 export const Settings = () => {
   const { user, logout } = useAuth();
@@ -26,6 +70,10 @@ export const Settings = () => {
   // welcome that pushes the form out of sight is a welcome in the
   // wrong place.
   const [checklistDismissed, setChecklistDismissed] = useState(false);
+  // What the companion is saying. It changes when something happens,
+  // and the figure celebrates when it does.
+  const [mascotMessage, setMascotMessage] = useState(() => t('settings.bento.mascot_greeting'));
+  const [celebrate, setCelebrate] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -55,161 +103,357 @@ export const Settings = () => {
     return tabs.filter((tab) => tab.label.toLowerCase().includes(q));
   }, [search, tabs]);
 
+  // A tab that the filter has hidden must not stay selected, or the
+  // workspace would show a card the reader cannot see they chose.
+  useEffect(() => {
+    if (visibleTabs.length && !visibleTabs.some((tab) => tab.id === activeTab)) {
+      setActiveTab(visibleTabs[0].id);
+    }
+  }, [visibleTabs, activeTab]);
+
+  /**
+   * Say something to the companion, and let it celebrate.
+   *
+   * The page never touches the figure directly. It says what
+   * happened, and the companion decides how to look about it. That
+   * keeps the celebration in one place.
+   */
+  const speak = useCallback((messageKey) => {
+    setMascotMessage(t(messageKey));
+    setCelebrate((n) => n + 1);
+  }, [t]);
+
+  const isGuest = Boolean(user?.is_guest);
+  const stats = [
+    { key: 'accounts', value: passport?.counts?.accounts },
+    { key: 'transactions', value: passport?.counts?.transactions },
+    { key: 'goals', value: passport?.counts?.goals },
+    { key: 'budgets', value: passport?.counts?.budgets },
+  ];
+
+  const hasResults = visibleTabs.length > 0;
+
   return (
-    <div className="space-y-6 animate-fadeIn">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('settings.title')}</h1>
-          <p className="text-gray-500 mt-1">{t('settings.subtitle')}</p>
-        </div>
-        <Button 
-          variant="secondary" 
-          onClick={() => {
-            localStorage.clear();
-            logout();
-          }}
-          className="flex items-center gap-2"
-        >
-          <LogOut className="w-4 h-4" />
-          {t('settings.sign_out')}
-        </Button>
-      </div>
+    <div className="sbg-shell" data-testid="settings-bento">
+      <SettingsBentoHeader
+        eyebrow={t('settings.bento.eyebrow')}
+        title={t('settings.title')}
+        subtitle={t('settings.subtitle')}
+        query={search}
+        onQueryChange={setSearch}
+        searchPlaceholder={t('settings.search_placeholder')}
+        appearanceLabel={t('settings.bento.appearance_link')}
+        categoryLabel={t('settings.bento.category')}
+        signOutLabel={t('settings.sign_out')}
+        onSignOut={() => {
+          localStorage.clear();
+          logout();
+        }}
+        mascotPersona="kaneru"
+        mascotMessage={mascotMessage}
+        mascotHint={t('settings.bento.mascot_hint')}
+        celebrateSignal={celebrate}
+        resultCount={visibleTabs.length}
+        totalCount={tabs.length}
+      />
 
-      {/* The search box. It filters the settings rows below, so a
-          reader who knows what they want does not have to know which
-          tab holds it. */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-        <Input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('settings.search_placeholder')}
-          className="pl-9 pr-9"
-        />
-        {search && (
-          <button
-            onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            aria-label={t('settings.search_clear')}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
+      {/* The two columns: the categories on the left, the workspace
+          on the right. */}
+      <div className="sbg-layout">
+        <nav className="sbg-rail" aria-label={t('settings.bento.category')} data-testid="settings-bento-rail">
+          {visibleTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              aria-current={activeTab === tab.id}
+              className="sbg-rail__card"
+              data-testid={`settings-bento-rail-${tab.id}`}
+            >
+              <PixelArtBusinessIcon
+                name={CATEGORY_ICONS[tab.id] || 'coin'}
+                size={26}
+                badge={false}
+              />
+              <span className="sbg-rail__label">{tab.label}</span>
+            </button>
+          ))}
+        </nav>
 
-      {/* The setup list, as a banner.
-
-          It was in the narrow left column, above the navigation and
-          the form, so it pushed the form the reader came for below
-          the fold. It is a welcome, not the page, so it now sits
-          across the top and can be put away. */}
-      {!checklistDismissed && (
-        <ReadinessChecklist onDismiss={() => setChecklistDismissed(true)} />
-      )}
-
-      {/* The two columns: the navigation on the left, the settings
-          themselves on the right, at the top of the page.
-
-          This was one narrow column with the checklist, the identity
-          card and the navigation stacked in it, and the whole right
-          side of the screen empty. The form the reader came for was
-          pushed below the fold. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 items-start">
-        {/* The navigation column. */}
-        <div className="lg:w-64 shrink-0 space-y-4">
-          {/* Passport card: who the reader is and how far along they
-              are, in one glance. */}
-          {passport && (
-            <Card className="p-4 settings-glass">
-              <div className="flex items-center gap-3">
-                {/* The picture of the reader.
-
-                    It is always one of ours - never the Google
-                    photo the reader signed in with. */}
-                <img
-                  src={getUserAvatarUrl(passport)}
-                  alt=""
-                  className="w-11 h-11 rounded-xl object-cover bg-emerald-50"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                    {passport.name}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {passport.email}
-                  </p>
+        <div className="sbg-grid" data-testid="settings-bento-workspace">
+          {hasResults ? (
+            <>
+              {/* The account tile. Who the reader is, how far along
+                  they are, and the four numbers that say how much is
+                  in here. */}
+              <section className="sbg-tile sbg-tile--7" data-testid="settings-bento-account">
+                <div className="sbg-tile__head">
+                  <h2 className="sbg-tile__title">{t('settings.bento.account_title')}</h2>
                 </div>
-              </div>
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-gray-500 dark:text-gray-400">
-                    {t('readiness.title')}
-                  </span>
-                  <span className="font-medium text-gray-700 dark:text-gray-300 tabular-nums">
-                    {passport.readiness_done}/{passport.readiness_total}
-                  </span>
+
+                {passport ? (
+                  <>
+                    <div className="sbg-account">
+                      {/* The picture of the reader.
+
+                          It is always one of ours - never the Google
+                          photo the reader signed in with. */}
+                      <span className="sbg-account__avatar">
+                        <img
+                          src={getUserAvatarUrl(passport)}
+                          alt=""
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </span>
+                      <span className="sbg-account__who">
+                        <p className="sbg-account__name">{passport.name}</p>
+                        <p className="sbg-account__mail">{passport.email}</p>
+                        <span className="sbg-account__status">
+                          {isGuest ? t('settings.bento.guest') : t('settings.bento.member')}
+                        </span>
+                      </span>
+                    </div>
+
+                    <div className="sbg-progress">
+                      <div className="sbg-progress__row">
+                        <span>{t('settings.bento.onboarding')}</span>
+                        <span className="sbg-progress__count">
+                          {passport.readiness_done}/{passport.readiness_total}
+                        </span>
+                      </div>
+                      <div
+                        className="sbg-progress__track"
+                        role="progressbar"
+                        aria-valuenow={passport.readiness_done}
+                        aria-valuemin={0}
+                        aria-valuemax={passport.readiness_total}
+                        aria-label={t('settings.bento.onboarding')}
+                      >
+                        <div
+                          className="sbg-progress__fill"
+                          style={{ width: `${passport.readiness_score}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sbg-stats" data-testid="settings-bento-stats">
+                      {stats.map(({ key, value }) => (
+                        <div key={key} className="sbg-stat">
+                          <p className="sbg-stat__value">{value ?? 0}</p>
+                          <p className="sbg-stat__label">{t(`passport.count.${key}`)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+              </section>
+
+              {/* The switches that do the dull work. */}
+              <section className="sbg-tile sbg-tile--5" data-testid="settings-bento-automation">
+                <div className="sbg-tile__head">
+                  <h2 className="sbg-tile__title">{t('settings.bento.automation_title')}</h2>
                 </div>
-                <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-emerald-500 transition-[width] duration-500"
-                    style={{ width: `${passport.readiness_score}%` }}
+                <p className="sbg-tile__sub">{t('settings.bento.automation_desc')}</p>
+                <div className="sbg-toggles">
+                  <AutomationToggle
+                    flag="REMINDERS"
+                    title={t('settings.bento.toggle_reminders')}
+                    description={t('settings.bento.toggle_reminders_desc')}
+                    onChange={() => speak('settings.bento.mascot_toggled')}
+                  />
+                  <AutomationToggle
+                    flag="SMART_SPLIT_BILL"
+                    title={t('settings.bento.toggle_recurring')}
+                    description={t('settings.bento.toggle_recurring_desc')}
+                    onChange={() => speak('settings.bento.mascot_toggled')}
                   />
                 </div>
-              </div>
-              <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-                {[
-                  ['accounts', passport.counts?.accounts],
-                  ['transactions', passport.counts?.transactions],
-                  ['goals', passport.counts?.goals],
-                  ['budgets', passport.counts?.budgets],
-                ].map(([k, v]) => (
-                  <div key={k} className="rounded-lg bg-gray-50 dark:bg-gray-800/60 py-2">
-                    <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm tabular-nums">
-                      {v ?? 0}
-                    </p>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                      {t(`passport.count.${k}`)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </Card>
+              </section>
+
+              {/* The form. The account name and the email, in the
+                  concept's own inputs. */}
+              <section className="sbg-tile sbg-tile--12" data-testid="settings-bento-form">
+                <div className="sbg-tile__head">
+                  <h2 className="sbg-tile__title">{t('settings.bento.form_title')}</h2>
+                </div>
+                <p className="sbg-tile__sub">{t('settings.bento.form_desc')}</p>
+                <ProfileForm user={user} onSaved={() => speak('settings.bento.mascot_saved')} />
+              </section>
+
+              {/* The panel the reader actually chose. It sits below
+                  the tiles so the account and the switches are the
+                  first thing read, and it keeps every panel that was
+                  here before. */}
+              <section className="sbg-tile sbg-tile--12" data-testid="settings-bento-panel">
+                {activeTab === 'profile' && <ProfileTab user={user} />}
+                {activeTab === 'appearance' && <AppearanceTab />}
+                {activeTab === 'security' && <SecurityTab />}
+                {activeTab === 'preferences' && <PreferencesTab user={user} />}
+                {activeTab === 'data' && <DataTab logout={logout} />}
+                {activeTab === 'privacy' && <PrivacyPage />}
+                {activeTab === 'app' && <AppFeaturesTab />}
+              </section>
+
+              {/* The setup list. It was in the narrow left column,
+                  above the navigation and the form, so it pushed the
+                  form the reader came for below the fold. It is a
+                  welcome, not the page, so it can be put away. */}
+              {!checklistDismissed && (
+                <section className="sbg-tile sbg-tile--12" data-testid="settings-bento-checklist">
+                  <ReadinessChecklist onDismiss={() => setChecklistDismissed(true)} />
+                </section>
+              )}
+            </>
+          ) : (
+            <div className="sbg-empty" data-testid="settings-bento-empty">
+              <h2 className="sbg-empty__title">{t('settings.bento.filter_empty')}</h2>
+              <p className="sbg-empty__text">{t('settings.bento.filter_empty_hint')}</p>
+            </div>
           )}
-
-          <Card className="p-2 settings-glass">
-            {visibleTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors settings-tab ${
-                  activeTab === tab.id
-                    ? 'bg-primary-50 text-primary-600'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <tab.icon className="w-5 h-5" />
-                {tab.label}
-              </button>
-            ))}
-          </Card>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1">
-          {activeTab === 'profile' && <ProfileTab user={user} />}
-          {activeTab === 'appearance' && <AppearanceTab />}
-          {activeTab === 'security' && <SecurityTab />}
-          {activeTab === 'preferences' && <PreferencesTab user={user} />}
-          {activeTab === 'data' && <DataTab logout={logout} />}
-          {activeTab === 'privacy' && <PrivacyPage />}
-          {activeTab === 'app' && <AppFeaturesTab />}
         </div>
       </div>
     </div>
+  );
+};
+
+/**
+ * One switch, as a card you press.
+ *
+ * It is a button rather than a checkbox because a checkbox is a small
+ * target on a phone, and a card that says what the switch does is
+ * clearer than a box with a label beside it.
+ */
+const AutomationToggle = ({ flag, title, description, onChange }) => {
+  const [on, setOn] = useState(() => readerFlag(flag));
+
+  return (
+    <button
+      type="button"
+      className="sbg-toggle"
+      aria-pressed={on}
+      data-testid={`settings-bento-toggle-${flag}`}
+      onClick={() => {
+        const next = !on;
+        setOn(next);
+        setReaderFlag(flag, next);
+        onChange?.(next);
+      }}
+    >
+      <span className="sbg-toggle__body">
+        <span className="sbg-toggle__title">{title}</span>
+        <span className="sbg-toggle__desc">{description}</span>
+      </span>
+      <span className="sbg-switch" aria-hidden="true" />
+    </button>
+  );
+};
+
+/**
+ * The account form, in the concept's own inputs.
+ *
+ * This is the form that was in the profile tab, with the same state
+ * and the same request. Only the markup around it changed.
+ */
+const ProfileForm = ({ user, onSaved }) => {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({
+    email: user?.email || '',
+    username: user?.username || '',
+    full_name: user?.full_name || '',
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setSaved(false);
+    setError('');
+
+    try {
+      const response = await api.request('/me', {
+        method: 'PUT',
+        body: JSON.stringify({
+          full_name: form.full_name,
+          username: form.username,
+        }),
+      });
+
+      if (response) {
+        setSaved(true);
+        // Update localStorage with new user data
+        const updatedUser = { ...user, ...form };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        onSaved?.();
+      }
+    } catch (err) {
+      setError(t('settings.profile.failed') + ': ' + (err.message || t('settings.profile.unknown_error')));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="sbg-form" data-testid="settings-bento-profile-form">
+      <div className="sbg-field">
+        <label className="sbg-field__label" htmlFor="sbg-email">
+          {t('settings.profile.email')}
+        </label>
+        <input
+          id="sbg-email"
+          className="sbg-field__input"
+          type="email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          disabled
+        />
+      </div>
+
+      <div className="sbg-field">
+        <label className="sbg-field__label" htmlFor="sbg-username">
+          {t('settings.profile.username')}
+        </label>
+        <input
+          id="sbg-username"
+          className="sbg-field__input"
+          value={form.username}
+          onChange={(e) => setForm({ ...form, username: e.target.value })}
+        />
+      </div>
+
+      <div className="sbg-field sbg-form__wide">
+        <label className="sbg-field__label" htmlFor="sbg-full-name">
+          {t('settings.profile.full_name')}
+        </label>
+        <input
+          id="sbg-full-name"
+          className="sbg-field__input"
+          value={form.full_name}
+          onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+        />
+      </div>
+
+      <div className="sbg-actions sbg-form__wide">
+        <button type="submit" className="sbg-save" disabled={loading} data-testid="settings-bento-save">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {t('settings.profile.save')}
+        </button>
+        {saved ? (
+          <span className="sbg-saved" data-testid="settings-bento-saved">
+            {t('settings.bento.save_done')}
+          </span>
+        ) : null}
+      </div>
+
+      {error ? (
+        <div className="sbg-error sbg-form__wide" data-testid="settings-bento-error">
+          {error}
+        </div>
+      ) : null}
+    </form>
   );
 };
 
@@ -287,7 +531,7 @@ const ProfileTab = ({ user }) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
-    
+
     try {
       const response = await api.request('/me', {
         method: 'PUT',
@@ -296,7 +540,7 @@ const ProfileTab = ({ user }) => {
           username: form.username,
         }),
       });
-      
+
       if (response) {
         setMessage(t('settings.profile.saved'));
         // Update localStorage with new user data
@@ -358,12 +602,12 @@ const SecurityTab = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (form.new_password !== form.confirm_password) {
       setMessage(t('settings.security.mismatch'));
       return;
     }
-    
+
     if (form.new_password.length < 6) {
       setMessage(t('settings.security.too_short'));
       return;
@@ -380,7 +624,7 @@ const SecurityTab = () => {
           new_password: form.new_password,
         }),
       });
-      
+
       if (response) {
         setMessage(t('settings.security.saved'));
         setForm({ current_password: '', new_password: '', confirm_password: '' });
@@ -558,7 +802,7 @@ const DataTab = ({ logout }) => {
 
     try {
       const data = await api.data.export();
-      
+
       // Create downloadable JSON file
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -569,7 +813,7 @@ const DataTab = ({ logout }) => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       setMessage(t('settings.data.exported'));
     } catch (error) {
       console.error('Export error:', error);
@@ -585,7 +829,7 @@ const DataTab = ({ logout }) => {
 
     try {
       const data = await api.data.exportCsv();
-      
+
       // Create downloadable CSV file
       const blob = new Blob([data.content], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
@@ -596,7 +840,7 @@ const DataTab = ({ logout }) => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       setMessage(t('settings.data.transactions_exported'));
     } catch (error) {
       console.error('CSV export error:', error);
@@ -633,7 +877,7 @@ const DataTab = ({ logout }) => {
     try {
       await api.data.deleteAll(word);
       setMessage(t('settings.data.deleted'));
-      
+
       // Show notification
       window.dispatchEvent(new CustomEvent('app-notification', {
         detail: {
@@ -642,10 +886,10 @@ const DataTab = ({ logout }) => {
           message: t('settings.data.deleted_message')
         }
       }));
-      
+
       // Clear local storage and logout
       localStorage.clear();
-      
+
       // Redirect to login
       setTimeout(() => {
         window.location.href = '/login';
@@ -654,7 +898,7 @@ const DataTab = ({ logout }) => {
       console.error('Delete error:', error);
       const errorMsg = error.message || t('settings.data.delete_failed');
       setMessage(t('settings.data.delete_failed') + ': ' + errorMsg);
-      
+
       // Show notification
       window.dispatchEvent(new CustomEvent('app-notification', {
         detail: {
