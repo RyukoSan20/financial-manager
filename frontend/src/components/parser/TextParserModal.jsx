@@ -287,6 +287,13 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
     setError('');
     setStep('input');
     setMagicMessage('');
+    // The panel has to actually go away.
+    //
+    // It used to only put the state back the way it was, which looked
+    // like the close button did nothing at all: the panel stayed on
+    // the screen with an empty box in it, and the reader had no way
+    // out of it.
+    onClose();
   };
 
   const toggleMute = () => {
@@ -318,7 +325,70 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Smart Text Parser" size="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Smart Text Parser"
+      size="lg"
+      footer={
+        step === 'input' ? (
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setRawText('')}
+              className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 flex-shrink-0"
+            >
+              <Trash2 className="w-4 h-4" /> {K.clear}
+            </button>
+
+            <Button onClick={handleParse} disabled={loading || !rawText.trim()} className="flex items-center gap-2">
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {K.parsing}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  {K.parse_now}
+                </>
+              )}
+            </Button>
+          </div>
+        ) : step === 'preview' ? (
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setStep('input');
+                setReading(emptyReading());
+                setLines([]);
+              }}
+              className="flex-1"
+            >
+              {K.back || 'Kembali'}
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={confirming || (!reading.account_id && !(accounts[0] && accounts[0].id))}
+              className="flex-1 flex items-center justify-center gap-2"
+            >
+              {confirming ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {K.saving || 'Menyimpan...'}
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  {K.save || 'Simpan Transaction'}
+                </>
+              )}
+            </Button>
+          </div>
+        ) : null
+      }
+    >
       {/* Step 1: the sentence */}
       {step === 'input' && (
         <div className="space-y-4">
@@ -377,30 +447,6 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
                 {example}
               </button>
             ))}
-          </div>
-
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setRawText('')}
-              className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1"
-            >
-              <Trash2 className="w-4 h-4" /> {K.clear}
-            </button>
-
-            <Button onClick={handleParse} disabled={loading || !rawText.trim()} className="flex items-center gap-2">
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {K.parsing}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  {K.parse_now}
-                </>
-              )}
-            </Button>
           </div>
 
           {error && (
@@ -577,38 +623,6 @@ export const TextParserModal = ({ isOpen, onClose, onSuccess, initialText = '' }
                 )}
               </div>
             </div>
-          </div>
-
-          {/* The actions. */}
-          <div className="flex gap-3 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setStep('input');
-                setReading(emptyReading());
-                setLines([]);
-              }}
-              className="flex-1"
-            >
-              {K.back || 'Kembali'}
-            </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={confirming || (!reading.account_id && !(accounts[0] && accounts[0].id))}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              {confirming ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {K.saving || 'Menyimpan...'}
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  {K.save || 'Simpan Transaction'}
-                </>
-              )}
-            </Button>
           </div>
 
           {error && (

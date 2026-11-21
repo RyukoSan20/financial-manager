@@ -375,7 +375,36 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave, onReview }) => 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={K.title} size="md">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={K.title}
+      size="md"
+      footer={
+        <div className="flex justify-end gap-2 flex-wrap">
+          {parsed && (
+            <Button variant="outline" onClick={() => setParsed(null)}>
+              <RotateCcw className="w-4 h-4 mr-1" />
+              {K.retry}
+            </Button>
+          )}
+          {listening && (
+            <Button variant="outline" onClick={stopListening}>
+              <X className="w-4 h-4 mr-1" />
+              {K.stop}
+            </Button>
+          )}
+          {parsed && (
+            <Button onClick={handleSave} disabled={saved}>
+              {saved ? K.saved : K.save}
+            </Button>
+          )}
+          <Button variant="secondary" onClick={handleClose}>
+            {K.cancel}
+          </Button>
+        </div>
+      }
+    >
       <div className="space-y-4">
         {/* The companion, and the button that listens. */}
         <div className="relative flex flex-col items-center justify-center py-4">
@@ -622,29 +651,6 @@ export const VoiceTransactionModal = ({ isOpen, onClose, onSave, onReview }) => 
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex justify-end gap-2 flex-wrap">
-          {parsed && (
-            <Button variant="outline" onClick={() => setParsed(null)}>
-              <RotateCcw className="w-4 h-4 mr-1" />
-              {K.retry}
-            </Button>
-          )}
-          {listening && (
-            <Button variant="outline" onClick={stopListening}>
-              <X className="w-4 h-4 mr-1" />
-              {K.stop}
-            </Button>
-          )}
-          {parsed && (
-            <Button onClick={handleSave} disabled={saved}>
-              {saved ? K.saved : K.save}
-            </Button>
-          )}
-          <Button variant="secondary" onClick={handleClose}>
-            {K.cancel}
-          </Button>
-        </div>
       </div>
     </Modal>
   );

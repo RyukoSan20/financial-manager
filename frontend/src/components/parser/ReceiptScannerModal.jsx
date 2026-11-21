@@ -695,6 +695,55 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
       onClose={() => { handleReset(); onClose(); }}
       title={K.title}
       size="lg"
+      footer={
+        step === 'upload' ? (
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={handleReset}
+              className="flex-1"
+            >
+              {K.cancel}
+            </Button>
+            <Button
+              onClick={processReceipt}
+              disabled={loading}
+              className="flex-1 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : backgroundMode ? (
+                <Upload className="w-4 h-4" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              {backgroundMode ? K.scanInBackground : K.scanReceipt}
+            </Button>
+          </div>
+        ) : step === 'preview' ? (
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setStep('preview')}
+              className="flex-1"
+            >
+              {K.back}
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={loading || !selectedAccount || !amount}
+              className="flex-1 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              {K.save}
+            </Button>
+          </div>
+        ) : null
+      }
     >
       {/* Step 1: Upload */}
       {step === 'upload' && (
@@ -880,31 +929,6 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handleReset}
-              className="flex-1"
-            >
-              {K.cancel}
-            </Button>
-            <Button
-              onClick={processReceipt}
-              disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : backgroundMode ? (
-                <Upload className="w-4 h-4" />
-              ) : (
-                <Sparkles className="w-4 h-4" />
-              )}
-              {backgroundMode ? K.scanInBackground : K.scanReceipt}
-            </Button>
-          </div>
-
           {/* The user can wait for the result here, or let it run in the
               background. The background mode is off by default now,
               because the reader needs to see the lines of the bill
@@ -1082,29 +1106,6 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
                 ))}
               </select>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setStep('preview')}
-              className="flex-1"
-            >
-              {K.back}
-            </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={loading || !selectedAccount || !amount}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Check className="w-4 h-4" />
-              )}
-              {K.save}
-            </Button>
           </div>
 
           {error && (
