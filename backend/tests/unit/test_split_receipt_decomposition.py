@@ -44,6 +44,59 @@ def test_a_line_without_a_quantity_is_one_of_it():
     assert read_quantity("Steak") == Decimal("1")
 
 
+def test_the_quantity_can_follow_the_name():
+    """
+    A receipt also writes the count after the dish, right before its
+    price: "Nasi Goreng 2x 30.000" is two nasi goreng. This is the
+    form the app's own example shows the reader, so it has to read.
+    """
+    from app.services.split_receipt_decomposition import read_quantity
+
+    assert read_quantity("Nasi Goreng 2x 30.000") == Decimal("2")
+    assert read_quantity("Es Teh 4x 8.000") == Decimal("4")
+    assert read_quantity("Ayam Bakar 2 x 25.000") == Decimal("2")
+
+
+def test_a_receipt_with_the_quantity_after_the_name_adds_up():
+    """
+    "Nasi Goreng 2x 30.000" is two at Rp30.000, which is Rp60.000.
+    The price written after "2x" is the price of one, so the line
+    total is the price times the count, not the price alone.
+    """
+    from app.services.split_receipt_decomposition import read_receipt
+
+    receipt = read_receipt(
+        [
+            "Nasi Goreng 2x 30.000",
+            "Es Teh 3x 8.000",
+            "Ayam Bakar 45.000",
+        ]
+    )
+
+    assert len(receipt.items) == 3
+    assert receipt.items[0].quantity == Decimal("2")
+    assert receipt.items[0].unit_price == Decimal("30000.00")
+    assert receipt.items[0].total_price == Decimal("60000.00")
+    assert receipt.items[1].quantity == Decimal("3")
+    assert receipt.items[1].total_price == Decimal("24000.00")
+    assert receipt.items[2].quantity == Decimal("1")
+    assert receipt.items[2].total_price == Decimal("45000.00")
+    # 60.000 + 24.000 + 45.000
+    assert receipt.subtotal == Decimal("129000.00")
+
+
+def test_the_name_drops_the_trailing_count_and_price():
+    """
+    When the count follows the name, the name is just the dish:
+    "Nasi Goreng 2x 30.000" is "Nasi Goreng", not the whole line.
+    """
+    from app.services.split_receipt_decomposition import read_receipt
+
+    receipt = read_receipt(["Nasi Goreng Spesial 2x 30.000"])
+
+    assert receipt.items[0].name == "Nasi Goreng Spesial"
+
+
 def test_the_price_of_a_line_is_the_price_of_one_of_it():
     """
     The line says Rp56.000 for two coffees, so one coffee is

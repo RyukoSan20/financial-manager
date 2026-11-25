@@ -146,6 +146,15 @@ _QUANTITY_PATTERN = re.compile(
 # A quantity written as a plain number: "4 Es Teh".
 _PLAIN_QUANTITY_PATTERN = re.compile(r"^\s*(\d+)\s+(\D.*)$")
 
+# A quantity written after the name, right before the price:
+# "Nasi Goreng 2x 30.000", "Es Teh 4x 8.000", "Ayam Bakar 2 x 25.000".
+# This is the form the app's own example shows the reader. The name is
+# everything before the count; the price after the count is the price
+# of ONE of the thing, not the total of the line.
+_INLINE_QUANTITY_PATTERN = re.compile(
+    r"^(?P<name>.*?\S)\s+(?P<qty>\d+)\s*[xX×]\s*(?P<price>(?:rp\s*)?\d[\d.,]*)\s*$"
+)
+
 # An amount at the end of a line: "35.000", "Rp35.000", "35.000,50".
 _AMOUNT_PATTERN = re.compile(
     r"(?:rp\s*)?(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*$"
@@ -245,6 +254,10 @@ def read_quantity(text: str) -> Decimal:
     if match:
         return Decimal(match.group(1))
 
+    match = _INLINE_QUANTITY_PATTERN.match(cleaned)
+    if match:
+        return Decimal(match.group("qty"))
+
     return Decimal("1")
 
 
@@ -263,6 +276,10 @@ def strip_quantity(text: str) -> str:
     match = _PLAIN_QUANTITY_PATTERN.match(cleaned)
     if match:
         return match.group(2).strip()
+
+    match = _INLINE_QUANTITY_PATTERN.match(cleaned)
+    if match:
+        return match.group("name").strip()
 
     return cleaned
 
@@ -432,8 +449,17 @@ def read_receipt(lines: List[str]) -> ReadReceipt:
         if kind == ITEM:
             name = strip_quantity(text)
             quantity = read_quantity(text)
-            total = amount if amount is not None else ZERO
-            single = total / quantity if quantity else total
+            # The inline form "Nasi Goreng 2x 30.000" writes the price
+            # of ONE, so the line total is that price times the count.
+            # The front form "2x Nasi Goreng 60.000" writes the total
+            # of the line, so the price of one is worked out from it.
+            inline = _INLINE_QUANTITY_PATTERN.match(text)
+            if inline and amount is not None:
+                single = amount
+                total = amount * quantity
+            else:
+                total = amount if amount is not None else ZERO
+                single = total / quantity if quantity else total
             receipt.items.append(
                 DecomposedItem(
                     name=expand_shorthand(name),
