@@ -198,9 +198,11 @@ export default function FinBuddyMascot({
   // one has more in it, so it is worth the file, but it does not
   // follow the theme colour.
   //
-  // The default is `inline`, because a mascot that is missing for a
-  // moment is worse than a mascot that is plain.
-  variant = 'auto',
+  // `real` (the default now) is the real chibi artwork of one of the
+  // six from Koban & Co. - the motion-sheet pose for the mood. The
+  // drawn blob is still reachable as `inline`.
+  variant = 'real',
+  persona = 'koneko',
 }) {
   // An unknown mood is treated as `idle` rather than crashing the page.
   const safeMood = MOODS.includes(mood) ? mood : 'idle';
@@ -211,6 +213,40 @@ export default function FinBuddyMascot({
   const useGenerated =
     variant === 'generated' ||
     (variant === 'auto' && readerFlag('MASCOT_ART'));
+
+  if (variant === 'real') {
+    const pose =
+      safeMood === 'celebrating' || safeMood === 'happy' || safeMood === 'idle'
+        ? 'happy'
+        : safeMood === 'worried' || safeMood === 'sad' || safeMood === 'alert'
+        ? 'sweating'
+        : safeMood === 'scanning'
+        ? 'walking'
+        : 'thinking';
+    return (
+      <span
+        className={`finbuddy finbuddy-real inline-flex items-end justify-center ${className}`.trim()}
+        style={{ width: size, height: size }}
+        role="img"
+        aria-label={title || 'FinBuddy'}
+        data-mood={safeMood}
+        data-testid="finbuddy-real"
+      >
+        <img
+          src={`/koban-assets/motion/${persona}_${pose}.webp`}
+          alt=""
+          aria-hidden="true"
+          className="h-full w-full object-contain"
+          loading="lazy"
+          draggable="false"
+          onError={(event) => {
+            const fallback = `/koban-assets/face/${persona}.webp`;
+            if (!event.currentTarget.src.endsWith(fallback)) event.currentTarget.src = fallback;
+          }}
+        />
+      </span>
+    );
+  }
 
   if (useGenerated) {
     return (

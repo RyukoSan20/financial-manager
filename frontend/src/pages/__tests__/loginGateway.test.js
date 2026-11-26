@@ -64,15 +64,18 @@ const source = read(PAGE);
 // The page exists in two columns
 // ---------------------------------------------------------------------------
 
-check('the login page has a column for the form and a column for the preview', () => {
+check('the login page is a stack of campus sections', () => {
   assert.ok(
     /login-gateway/.test(source),
     'the page does not name its own layout'
   );
-  assert.ok(
-    /login-gateway__form/.test(source) && /login-gateway__preview/.test(source),
-    'the two columns are not both there'
-  );
+  // The two-column gateway became a long-scroll page: the form and
+  // the first photograph share section one, and the preview moved
+  // down into its own simulator section.
+  assert.ok(/campus-page/.test(source), 'the page is not a campus page');
+  assert.ok(/<CampusPillNav/.test(source), 'the sticky pill navbar is missing');
+  assert.ok(/<LoginPreview/.test(source), 'the live preview is missing');
+  assert.ok(/testId="hero-polaroid"/.test(source), 'the above-the-fold photograph is missing');
 });
 
 check('the page reads the flag that decides whether it shows the new shape', () => {

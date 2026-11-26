@@ -1,0 +1,202 @@
+/*
+ * The RPG layer of Koban & Co.: the overworld sprite, the portrait
+ * puppet, and the three scenes (shop floor, town, world map / battle).
+ *
+ * Everything that moves here moves by transform or opacity. Positions
+ * of walking figures are written to `transform` by the simulation
+ * loop, never to left/top, so sixty updates a second cost no layout.
+ */
+
+/* ===================================================================
+   1. The overworld sprite
+   =================================================================== */
+
+.prs {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  flex: none;
+  pointer-events: none;
+}
+.prs > svg {
+  position: absolute;
+  inset: 0;
+  display: none;
+  overflow: visible;
+}
+.prs[data-dir='down'] > svg[data-view='front'],
+.prs[data-dir='up'] > svg[data-view='back'],
+.prs[data-dir='left'] > svg[data-view='side'],
+.prs[data-dir='right'] > svg[data-view='side'] { display: block; }
+.prs[data-dir='left'] > svg[data-view='side'] { transform: scaleX(-1); }
+
+.prs-part { transform-box: fill-box; }
+.prs-leg { transform-origin: 50% 6%; }
+.prs-arm { transform-origin: 50% 10%; }
+.prs-head { transform-origin: 50% 92%; }
+.prs-tail { transform-origin: 0% 80%; animation: prs-tail 1.6s ease-in-out infinite; }
+.prs-tool > g { display: none; }
+.prs[data-weapon='hammer'] .prs-tool--hammer,
+.prs[data-weapon='sword'] .prs-tool--sword,
+.prs[data-weapon='staff'] .prs-tool--staff,
+.prs[data-weapon='bow'] .prs-tool--bow { display: block; }
+
+@keyframes prs-tail { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(8deg); } }
+@keyframes prs-bob { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -1.6px, 0); } }
+@keyframes prs-step { 0%, 100% { transform: translate3d(0, 0, 0); } 25%, 75% { transform: translate3d(0, -2.2px, 0); } }
+@keyframes prs-lift-a { 0%, 50%, 100% { transform: translate3d(0, 0, 0); } 25% { transform: translate3d(0, -3.4px, 0); } }
+@keyframes prs-lift-b { 0%, 50%, 100% { transform: translate3d(0, 0, 0); } 75% { transform: translate3d(0, -3.4px, 0); } }
+@keyframes prs-swing-a { 0%, 100% { transform: rotate(26deg); } 50% { transform: rotate(-26deg); } }
+@keyframes prs-swing-b { 0%, 100% { transform: rotate(-26deg); } 50% { transform: rotate(26deg); } }
+@keyframes prs-sway-a { 0%, 100% { transform: rotate(7deg); } 50% { transform: rotate(-7deg); } }
+@keyframes prs-sway-b { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+@keyframes prs-shadow { 0%, 100% { transform: scaleX(1); } 25%, 75% { transform: scaleX(0.86); } }
+@keyframes prs-hammer { 0%, 100% { transform: rotate(-128deg); } 45% { transform: rotate(-22deg); } 60% { transform: rotate(-30deg); } }
+@keyframes prs-slash { 0% { transform: rotate(-150deg); } 45% { transform: rotate(10deg); } 100% { transform: rotate(-150deg); } }
+@keyframes prs-lunge { 0%, 100% { transform: translate3d(0, 0, 0); } 40% { transform: translate3d(9px, -1px, 0); } }
+@keyframes prs-hit { 0% { transform: translate3d(0, 0, 0); filter: brightness(3) saturate(0); } 35% { transform: translate3d(-7px, 0, 0); filter: brightness(2.2) saturate(0.2); } 100% { transform: translate3d(0, 0, 0); filter: none; } }
+@keyframes prs-aura { 0%, 100% { opacity: 0.34; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.05); } }
+@keyframes prs-cheer { 0%, 100% { transform: rotate(-150deg); } 50% { transform: rotate(-120deg); } }
+
+.prs-shadow, .prs-aura { transform-box: fill-box; transform-origin: 50% 50%; }
+
+.prs[data-state='idle'] .prs-bob { animation: prs-bob 1.3s ease-in-out infinite; }
+
+.prs[data-state='walk'] .prs-bob { animation: prs-step 0.56s ease-in-out infinite; }
+.prs[data-state='walk'] .prs-shadow { animation: prs-shadow 0.56s ease-in-out infinite; }
+.prs[data-state='walk'] svg[data-view='side'] .prs-leg-l { animation: prs-swing-a 0.56s ease-in-out infinite; }
+.prs[data-state='walk'] svg[data-view='side'] .prs-leg-r { animation: prs-swing-b 0.56s ease-in-out infinite; }
+.prs[data-state='walk'] svg[data-view='side'] .prs-arm-l { animation: prs-swing-b 0.56s ease-in-out infinite; }
+.prs[data-state='walk'] svg[data-view='side'] .prs-arm-r { animation: prs-swing-a 0.56s ease-in-out infinite; }
+.prs[data-state='walk'] svg:not([data-view='side']) .prs-leg-l { animation: prs-lift-a 0.56s ease-in-out infinite; }
+.prs[data-state='walk'] svg:not([data-view='side']) .prs-leg-r { animation: prs-lift-b 0.56s ease-in-out infinite; }
+.prs[data-state='walk'] svg:not([data-view='side']) .prs-arm-l { animation: prs-sway-a 0.56s ease-in-out infinite; }
+.prs[data-state='walk'] svg:not([data-view='side']) .prs-arm-r { animation: prs-sway-b 0.56s ease-in-out infinite; }
+
+.prs[data-state='work'] .prs-bob { animation: prs-bob 0.62s ease-in-out infinite; }
+.prs[data-state='work'] .prs-arm-r { animation: prs-hammer 0.62s cubic-bezier(0.5, 0, 0.3, 1) infinite; }
+
+.prs[data-state='cheer'] .prs-bob { animation: prs-step 0.5s ease-in-out infinite; }
+.prs[data-state='cheer'] .prs-arm-r,
+.prs[data-state='cheer'] .prs-arm-l { animation: prs-cheer 0.5s ease-in-out infinite; }
+.prs[data-state='cheer'] svg[data-view='front'] .prs-arm-l,
+.prs[data-state='cheer'] svg[data-view='back'] .prs-arm-l { animation-name: prs-cheer-l; }
+@keyframes prs-cheer-l { 0%, 100% { transform: rotate(150deg); } 50% { transform: rotate(120deg); } }
+
+.prs[data-state='attack'] .prs-all { animation: prs-lunge 0.46s ease-out infinite; }
+.prs[data-state='attack'] .prs-arm-r { animation: prs-slash 0.46s ease-in-out infinite; }
+
+.prs[data-state='guard'] .prs-aura { animation: prs-aura 0.7s ease-in-out infinite; }
+.prs[data-state='guard'] .prs-arm-r { transform: rotate(-95deg); }
+
+.prs[data-state='hit'] .prs-all { animation: prs-hit 0.34s ease-out both; }
+
+/* ===================================================================
+   2. The portrait puppet
+   =================================================================== */
+
+.rcp {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.rcp.is-draggable { cursor: grab; }
+.rcp.is-held { cursor: grabbing; transition: none; }
+
+.rcp-shadow {
+  position: absolute;
+  left: 18%; right: 18%; bottom: -1.5%;
+  height: 5%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(44, 27, 18, 0.28), rgba(44, 27, 18, 0));
+}
+.rcp-rig { position: absolute; inset: 0; transition: opacity 0.35s ease; }
+.rcp-rig.is-hidden { opacity: 0; }
+.rcp-layer {
+  position: absolute;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Channel 1: the chest rises. */
+@keyframes rcp-breathe { 0%, 100% { transform: scale3d(1, 1, 1); } 50% { transform: scale3d(1, 1.025, 1); } }
+.rcp-torso { animation: rcp-breathe 2.8s ease-in-out infinite; }
+
+/* Channel 2: the head, hinged at the neck, a beat behind the chest. */
+@keyframes rcp-tilt {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-3.5deg); }
+  25% { transform: translate3d(0, -0.9%, 0) rotate(0deg); }
+  50% { transform: translate3d(0, 0, 0) rotate(3.5deg); }
+  75% { transform: translate3d(0, -0.9%, 0) rotate(0deg); }
+}
+.rcp-head { animation: rcp-tilt 5.6s ease-in-out 0.35s infinite; }
+
+/* Channel 3: a double blink every 3.6s, 120ms closed each time. */
+.rcp-eye { position: absolute; pointer-events: none; }
+.rcp-lid { position: absolute; inset: -10% -7%; width: 114%; height: 120%; opacity: 0; animation: rcp-blink 3.6s steps(1, end) infinite; }
+@keyframes rcp-blink {
+  0% { opacity: 1; }
+  3.34% { opacity: 0; }
+  7.5% { opacity: 1; }
+  10.84% { opacity: 0; }
+  100% { opacity: 0; }
+}
+.rcp-twinkle { position: absolute; right: 12%; top: 6%; width: 26%; height: auto; aspect-ratio: 1; animation: rcp-twinkle 1.9s ease-in-out infinite; transform-origin: 50% 50%; }
+.rcp-eye:nth-of-type(2) .rcp-twinkle { animation-delay: 0.5s; }
+@keyframes rcp-twinkle { 0%, 100% { transform: scale(0.35) rotate(0deg); opacity: 0.25; } 50% { transform: scale(1) rotate(45deg); opacity: 1; } }
+
+/* Channel 4: the mouth. Drawn only while the character speaks, so at
+   rest the painted mouth is the one that shows. */
+.rcp-mouth { position: absolute; opacity: 0; pointer-events: none; }
+.rcp[data-talking='true'] .rcp-mouth { opacity: 1; }
+.rcp-viseme { display: none; }
+.rcp[data-viseme='closed'] .rcp-viseme--closed,
+.rcp[data-viseme='half'] .rcp-viseme--half,
+.rcp[data-viseme='open'] .rcp-viseme--open { display: inline; }
+
+/* Channel 5: moods. */
+@keyframes rcp-leg-a { 0%, 100% { transform: rotate(var(--rcp-swing, 18deg)); } 50% { transform: rotate(calc(var(--rcp-swing, 18deg) * -1)); } }
+@keyframes rcp-leg-b { 0%, 100% { transform: rotate(calc(var(--rcp-swing, 18deg) * -1)); } 50% { transform: rotate(var(--rcp-swing, 18deg)); } }
+@keyframes rcp-stride { 0%, 100% { transform: translate3d(0, 0, 0); } 25%, 75% { transform: translate3d(0, -2.4%, 0); } }
+.rcp[data-mood='walk'] .rcp-rig { animation: rcp-stride 0.6s ease-in-out infinite; }
+.rcp[data-mood='walk'] .rcp-leg-l { animation: rcp-leg-a 0.6s ease-in-out infinite; }
+.rcp[data-mood='walk'] .rcp-leg-r { animation: rcp-leg-b 0.6s ease-in-out infinite; }
+
+.rcp-pose {
+  position: absolute;
+  top: 0; bottom: 0; left: 50%;
+  aspect-ratio: 1;
+  transform: translate3d(-50%, 0, 0);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: 50% 100%;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.rcp-pose.is-on { opacity: 1; }
+@keyframes rcp-tremble { 0%, 100% { transform: translate3d(-50%, 0, 0); } 25% { transform: translate3d(calc(-50% - 1.2px), 0.6px, 0); } 75% { transform: translate3d(calc(-50% + 1.2px), -0.6px, 0); } }
+@keyframes rcp-ponder { 0%, 100% { transform: translate3d(-50%, 0, 0) rotate(-2.5deg); } 50% { transform: translate3d(-50%, 0, 0) rotate(2.5deg); } }
+.rcp[data-mood='sweat'] .rcp-pose.is-on { animation: rcp-tremble 0.16s linear infinite; }
+.rcp[data-mood='think'] .rcp-pose.is-on { animation: rcp-ponder 2.6s ease-in-out infinite; transform-origin: 50% 100%; }
+
+.rcp-fx { position: absolute; inset: 0; pointer-events: none; }
+.rcp-petal { position: absolute; width: 9%; aspect-ratio: 1; opacity: 0; animation: rcp-petal 3.2s ease-in-out infinite; }
+.rcp-petal--0 { left: 2%; top: 30%; }
+.rcp-petal--1 { right: 0%; top: 16%; animation-delay: 1.1s; width: 7%; }
+.rcp-petal--2 { right: 8%; top: 44%; animation-delay: 2.1s; }
+@keyframes rcp-petal { 0% { opacity: 0; transform: translate3d(0, 10px, 0) rotate(0deg) scale(0.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate3d(6px, -34px, 0) rotate(160deg) scale(1); } }
+
+.rcp-drop { position: absolute; right: 12%; top: 16%; width: 9%; animation: rcp-drop 1.3s ease-in infinite; }
+@keyframes rcp-drop { 0% { opacity: 0; transform: translate3d(0, -6px, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate3d(0, 34px, 0); } }
+.rcp-bulb { position: absolute; right: -4%; top: 0; width: 22%; animation: prs-bob 1.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .prs *, .rcp *, .rcp { animation: none !important; transition: none !important; }
+  .rcp-lid { opacity: 0 !important; }
+}

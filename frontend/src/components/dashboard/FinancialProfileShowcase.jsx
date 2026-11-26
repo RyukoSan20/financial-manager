@@ -38,7 +38,6 @@ import {
   chapterHeadline,
   chapterLink,
   timelinePoints,
-  timelineTodayPosition,
 } from '../../utils/financialProfile';
 
 /**
@@ -106,9 +105,12 @@ function TimelinePoint({ point, selected, onSelect, t }) {
       onClick={() => onSelect(point)}
       aria-pressed={selected}
       title={`${kindLabel} · ${point.label}`}
-      className="absolute -translate-x-1/2 flex flex-col items-center gap-1 group"
-      style={{ left: `${point.position * 100}%` }}
+      className="relative flex min-w-[68px] shrink-0 flex-col items-center group"
+      data-testid="timeline-node"
     >
+      {/* The same empty slot the today node's mascot sits in, so
+          every dot lands on the same line. */}
+      <span className="h-8 w-full" aria-hidden="true" />
       {selected ? (
         <span className="absolute -top-7 whitespace-nowrap rounded-lg bg-slate-900/90 px-2 py-1 text-[10px] font-medium text-white shadow-sm dark:bg-white/90 dark:text-slate-900 z-10">
           {kindLabel} · {point.label}
@@ -120,6 +122,7 @@ function TimelinePoint({ point, selected, onSelect, t }) {
           kindColor,
           selected ? 'scale-125' : 'group-hover:scale-110'
         )}
+        style={{ marginTop: '-6px' }}
       />
       <span className="text-[9px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
         {shortDate(point.date)}
@@ -144,7 +147,18 @@ function ThirtyDayRoad({ timeline, t, onRecord }) {
   );
 
   const today = new Date();
-  const todayPosition = timelineTodayPosition();
+
+  // Today is a node in the sequence, placed by date rather than by a
+  // percentage, so the stepper stays in chronological order.
+  const nodes = useMemo(() => {
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const list = points.map((point) => ({ isToday: false, point, date: point.date }));
+    const atToday = list.findIndex((n) => String(n.date).slice(0, 10) >= todayKey);
+    const todayNode = { isToday: true, point: null, date: todayKey };
+    if (atToday === -1) list.push(todayNode);
+    else list.splice(atToday, 0, todayNode);
+    return list;
+  }, [points]);
 
   return (
     <div className="rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] p-3">
@@ -162,34 +176,53 @@ function ThirtyDayRoad({ timeline, t, onRecord }) {
           {t('financial_profile.no_data')}
         </p>
       ) : (
-        <div className="relative h-20 pt-6">
-          {/* The line. */}
-          <div className="absolute left-0 right-0 top-9 h-px bg-slate-200 dark:bg-white/15" />
-
-          {/* Today, with the mascot on it. */}
+        /* A flex stepper, not percentage coordinates. Every node holds
+           at least 68px of its own, so two dates one day apart can no
+           longer stack into "11Nov12Nov". It scrolls instead. */
+        <div className="relative">
+          {/* The connector. It runs through the centre of the dots.
+              It used to sit at a fixed 52px, which was above the
+              dots of every date except today - and today has the
+              mascot above its dot, so its dot sat lower than the
+              rest. The line therefore floated in the gap between
+              two rows of dots rather than joining them. */}
           <div
-            className="absolute -translate-x-1/2 flex flex-col items-center"
-            style={{ left: `${todayPosition * 100}%` }}
+            className="pointer-events-none absolute left-0 right-0 top-[46px] h-px bg-[#EAE3D5] dark:bg-white/15"
+            aria-hidden="true"
+          />
+          <div
+            className="no-scrollbar relative flex items-start justify-between gap-5 overflow-x-auto py-3 px-2"
+            data-testid="timeline-stepper"
           >
-            <div className="mb-0.5 -mt-7">
-              <RiggedSvgMascot state="happy" size={30} label={t('financial_profile.today')} />
-            </div>
-            <span className="h-2.5 w-2.5 rounded-full bg-[#2F4842] ring-4 ring-[#D8F3DC]" />
-            <span className="mt-1 text-[9px] font-bold text-[#2F4842] dark:text-[#D8F3DC] whitespace-nowrap">
-              {t('financial_profile.today')}
-            </span>
+            {nodes.map((node) =>
+              node.isToday ? (
+                <div
+                  key="today"
+                  className="relative flex min-w-[68px] shrink-0 flex-col items-center"
+                  data-testid="timeline-node"
+                >
+                  {/* The mascot sits in a slot of the same height as
+                      the one every other node's empty slot has, so
+                      the dots all land on one line. */}
+                  <span className="flex h-8 items-end justify-center">
+                    <RiggedSvgMascot state="happy" size={30} label={t('financial_profile.today')} />
+                  </span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#2F4842] ring-4 ring-[#D8F3DC]" />
+                  <span className="mt-1 text-[9px] font-bold text-[#2F4842] dark:text-[#D8F3DC] whitespace-nowrap">
+                    {t('financial_profile.today')}
+                  </span>
+                </div>
+              ) : (
+                <TimelinePoint
+                  key={`${node.point.kind}-${node.point.date}-${node.point.label}`}
+                  point={node.point}
+                  selected={selected === node.point}
+                  onSelect={(p) => setSelected(selected === p ? null : p)}
+                  t={t}
+                />
+              )
+            )}
           </div>
-
-          {/* The points. */}
-          {points.map((point) => (
-            <TimelinePoint
-              key={`${point.kind}-${point.date}-${point.label}`}
-              point={point}
-              selected={selected === point}
-              onSelect={(p) => setSelected(selected === p ? null : p)}
-              t={t}
-            />
-          ))}
         </div>
       )}
 
@@ -321,7 +354,7 @@ export default function FinancialProfileShowcase({ profile, onRecord }) {
 
         {/* --- the chapters ---------------------------------------------- */}
         <div
-          className="flex gap-1.5 overflow-x-auto pb-2 mb-4 -mx-1 px-1 scrollbar-none"
+          className="flex gap-1.5 overflow-x-auto pb-2 mb-4 -mx-1 px-1 no-scrollbar"
           role="tablist"
           aria-label={t('financial_profile.title')}
         >

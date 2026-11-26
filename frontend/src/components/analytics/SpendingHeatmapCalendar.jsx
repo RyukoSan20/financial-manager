@@ -20,7 +20,8 @@
  */
 
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Flame, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, ChevronLeft, ChevronRight, Flame, X } from 'lucide-react';
 
 /**
  * A rupiah amount, shortened to fit inside a day cell.
@@ -240,7 +241,7 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect, on
               data-testid={`heatmap-day-${day.day}`}
               data-level={level}
               aria-label={`${day.date}: ${rupiah.format(day.total)}`}
-              className={`relative h-14 sm:h-16 rounded-xl p-1.5 flex flex-col justify-between transition-[transform,box-shadow] duration-150 hover:scale-[1.03] hover:shadow-md ${HEAT_CLASSES[level]} ${
+              className={`relative min-h-[54px] rounded-xl p-1.5 sm:p-2 flex flex-col justify-between transition-[transform,box-shadow] duration-150 hover:scale-[1.03] hover:shadow-md ${HEAT_CLASSES[level]} ${
                 selected === day.date ? 'ring-2 ring-[#2F4842]' : ''
               }`}
             >
@@ -251,7 +252,7 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect, on
                 ) : null}
               </span>
               {day.hasSpending && day.total > 0 ? (
-                <span className="text-[10px] font-semibold leading-none tabular-nums self-start" data-testid={`heatmap-amount-${day.day}`}>
+                <span className="text-[10px] font-bold leading-none pb-0.5 truncate tabular-nums self-start max-w-full" data-testid={`heatmap-amount-${day.day}`}>
                   {compactRupiah(day.total)}
                 </span>
               ) : null}
@@ -302,6 +303,42 @@ export default function SpendingHeatmapCalendar({ days = [], month, onSelect, on
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {t('heatmap.transaction_count', '', { count: selectedEntry?.count || 0 })}
           </p>
+
+          {/* What the money went on, by name. A total with no names
+              cannot be recognised. */}
+          {selectedEntry?.transactions?.length ? (
+            <ul className="mt-2 space-y-1.5" data-testid="heatmap-day-transactions">
+              {selectedEntry.transactions.map((tx, idx) => (
+                <li
+                  key={tx.id ?? idx}
+                  className="flex items-center justify-between gap-2 text-xs"
+                >
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="font-medium text-gray-800 dark:text-gray-200 truncate">
+                      {tx.description || tx.category || t('heatmap.untitled', 'Transaksi')}
+                    </span>
+                    {tx.category ? (
+                      <span className="shrink-0 rounded bg-[#F4F1EA] dark:bg-white/10 px-1.5 py-0.5 text-[10px] text-[#5C6460] dark:text-gray-300">
+                        {tx.category}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="shrink-0 font-semibold tabular-nums text-gray-700 dark:text-gray-300">
+                    -{rupiah.format(Math.abs(tx.amount || 0))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          <Link
+            to={`/transactions?date=${selected}`}
+            className="mt-2.5 inline-flex items-center gap-1 text-xs font-semibold text-[#2F4842] dark:text-[#D8F3DC] hover:underline"
+            data-testid="heatmap-see-in-transactions"
+          >
+            {t('heatmap.see_in_transactions', 'Lihat di Transaksi')}
+            <ArrowRight className="w-3 h-3" aria-hidden="true" />
+          </Link>
         </div>
       ) : null}
     </div>

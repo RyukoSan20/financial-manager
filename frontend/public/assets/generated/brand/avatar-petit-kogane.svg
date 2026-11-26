@@ -1,0 +1,15 @@
+<!-- kogane avatar -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="kogane avatar">
+  <title>kogane avatar</title>
+  <circle cx="64" cy="64" r="60" fill="#FFFDF5"/>
+  <path d="M64 20 C96 20 112 42 109 64 C106 88 88 106 64 106
+           C40 106 22 88 19 64 C16 42 32 20 64 20 Z"
+        fill="#FBE6DA" stroke="#B8864B" stroke-width="3.2" stroke-linejoin="round"/>
+  <path d="M64 17 C32 17 16 42 19 67 C30 48 44 40 60 40
+           C82 40 103 48 109 67 C112 42 96 17 64 17 Z" fill="#B8864B"/>
+  <circle cx="48" cy="70" r="9" fill="#C9A227"/>
+  <circle cx="80" cy="70" r="9" fill="#C9A227"/>
+  <circle cx="45" cy="67" r="3.2" fill="#FFFFFF"/>
+  <circle cx="77" cy="67" r="3.2" fill="#FFFFFF"/>
+  <path d="M58 86 Q64 92 70 86" stroke="#4A3540" stroke-width="2.6"
+        fill="none" stroke-linecap="round"/></svg>

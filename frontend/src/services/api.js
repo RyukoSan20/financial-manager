@@ -152,7 +152,13 @@ export const api = {
       // arrives as "". The backend cannot parse that as a date, and the
       // whole request fails with a 422. Cleaning the payload here means
       // every page is covered, not just the one that was reported.
-      const finalOptions = { ...options };
+      // Some pages pass the payload as `data` (the axios name). fetch
+      // only reads `body`, so a `data` payload was silently dropped:
+      // the shopping board's move, add and edit all went out empty.
+      const { data: axiosPayload, ...finalOptions } = options;
+      if (axiosPayload !== undefined && finalOptions.body === undefined) {
+        finalOptions.body = axiosPayload;
+      }
       if (
         finalOptions.body &&
         finalOptions.method &&

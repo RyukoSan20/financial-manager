@@ -33,6 +33,8 @@ import {
   Mail, Package,
   Users,
   Home,
+  MonitorSmartphone,
+  Store,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -43,6 +45,7 @@ import { showNotification } from '../notifications/NotificationHelper';
 import AddTransactionPage from './AddTransactionPage';
 import { UserProfileSection } from './UserProfileSection';
 import { CurrencyBadge } from '../common/CurrencyBadge';
+import ThemeCyclePill from '../ui/ThemeCyclePill';
 import { auroraNavClass } from '../ui/AuroraCard';
 import { moneyLayerOn } from '../../utils/animation';
 import GroupedNav, { buildNavMap, isGroupedNavOn } from './GroupedNav';
@@ -66,6 +69,7 @@ const navItems = (t) => [
   { name: t('nav.budgets'), href: '/budgets', icon: PiggyBank },
   { name: t('nav.recurring'), href: '/recurring', icon: Repeat },
   { name: t('nav.goals'), href: '/goals', icon: Target },
+  { name: t('nav.kobanShop'), href: '/koban-shop', icon: Store },
   { name: t('nav.debts'), href: '/debts', icon: CreditCard },
   // The shared bill. It is behind a switch, so it is not in the menu
   // until the reader has asked for it. Without this the flat menu
@@ -112,7 +116,7 @@ const Sidebar = () => {
   );
 
   return (
-    <aside className="nav-glass hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-30 dark:bg-gray-800 dark:border-gray-700">
+    <aside className="theme-sidebar nav-glass hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-30 dark:bg-gray-800 dark:border-gray-700">
       {/* Logo. The mark is drawn rather than a plain square of colour,
           because a square of colour is the thing every application
           has and this one should not look like every application. */}
@@ -143,6 +147,7 @@ const Sidebar = () => {
             <Link
               key={item.name}
               to={item.href}
+              aria-current={isActive ? 'page' : undefined}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors duration-200 ${auroraNavClass({ active: isActive })}`}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -161,8 +166,9 @@ const Sidebar = () => {
       <div className="p-3 border-t border-gray-100 space-y-1 dark:border-gray-700">
         {/* Interactive profile section - routes to the Profile Summary page */}
         <div className="mb-1">
-          <div className="px-3 pb-3">
+          <div className="px-3 pb-3 space-y-2">
             <CurrencyBadge className="w-full justify-between" />
+            <ThemeCyclePill className="w-full" />
           </div>
 
           <UserProfileSection variant="sidebar" />
@@ -187,7 +193,24 @@ const Sidebar = () => {
 const MobileHeader = ({ title, showBack = false, onBack }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-  const { isDarkMode, toggleTheme } = useTheme();
+  const { isDarkMode, themeMode, setThemeMode } = useTheme();
+
+  // The three modes, in the order the button cycles through them.
+  //
+  // The reader's choice is what is stored, and 'system' is a real
+  // choice: it means "follow the device", and it was unreachable from
+  // the interface until now. The label says which mode the click will
+  // move to, so the button never surprises anybody.
+  const THEME_CYCLE = ['light', 'dark', 'system'];
+  const THEME_LABEL = {
+    light: 'Light mode',
+    dark: 'Dark mode',
+    system: 'System mode (follow the device)',
+  };
+  const currentMode = THEME_CYCLE.includes(themeMode) ? themeMode : 'light';
+  const nextMode = THEME_CYCLE[(THEME_CYCLE.indexOf(currentMode) + 1) % THEME_CYCLE.length];
+  const themeModeLabel = `${THEME_LABEL[currentMode]} - click for ${THEME_LABEL[nextMode].toLowerCase()}`;
+  const cycleTheme = () => setThemeMode(nextMode);
   const { t , language } = useTranslation();
   const K = batch3[language]?.navigation;
   // The mobile menu leaves out the entries whose switch is off, the
@@ -199,7 +222,7 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
 
   return (
     <>
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 z-40 safe-area-top">
+      <header className="theme-header lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 z-40 safe-area-top">
         <div className="flex items-center justify-between h-full px-4">
           {/* Left */}
           <div className="flex items-center gap-3">
@@ -227,15 +250,36 @@ const MobileHeader = ({ title, showBack = false, onBack }) => {
           
           {/* Right */}
           <div className="flex items-center gap-1">
-            {/* Theme Toggle */}
-            <button 
-              onClick={toggleTheme}
+            <ThemeCyclePill compact />
+            {/* Theme Toggle.
+
+                Three modes, one button: light, dark, and system. The
+                system mode existed in the code from the start - the
+                context stored it, the server kept it, and the watcher
+                followed the OS - but no control could ever reach it,
+                so a reader who wanted the app to follow their phone
+                had no way to say so.
+
+                Clicking cycles: light -> dark -> system -> light. The
+                label says which mode comes next, and the icon says
+                which mode is on now, so the button is never a guess:
+                in the system mode the icon is the device, because that
+                is what is deciding. */}
+            <button
+              onClick={cycleTheme}
               data-testid="theme-toggle"
-              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              data-theme-mode={themeMode}
+              aria-label={themeModeLabel}
+              title={themeModeLabel}
               className="p-2.5 text-gray-600 dark:text-gray-300 active:bg-gray-100 dark:active:bg-gray-800 rounded-lg"
-              title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
             >
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {themeMode === 'system' ? (
+                <MonitorSmartphone className="w-5 h-5" />
+              ) : isDarkMode ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
             </button>
             <NotificationBell />
             <button 
@@ -362,7 +406,7 @@ const BottomNav = ({ pendingScanResult }) => {
   return (
     <>
       <nav
-        className={`lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 safe-area-bottom dark:bg-gray-900 dark:border-gray-800 ${
+        className={`theme-bottomnav lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 safe-area-bottom dark:bg-gray-900 dark:border-gray-800 ${
           moneyLayerOn() ? 'money-bottom-nav money-glass' : ''
         }`}
       >

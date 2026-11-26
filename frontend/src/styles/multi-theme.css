@@ -1,0 +1,839 @@
+/*
+ * The three app themes.  <html> and <body> carry
+ *   data-app-theme="corporate" | "medieval" | "jade"   and   .theme-<id>
+ * (utils/appTheme.js).
+ *
+ *   corporate  Korporat Catchy - warm alabaster, white cards, forest-green tickets. DEFAULT.
+ *   medieval   Royal Aurelia   - argyle parchment, midnight guild panels, gold plaques.
+ *   jade       Jade Sovereign  - emerald fintech terminal, light and dark.
+ *
+ * How a theme reaches every page:
+ *   1. TOKENS: each theme sets the same custom properties.
+ *   2. SEMANTIC CLASSES (.theme-card, .theme-ticket-card, .theme-stat-box,
+ *      .theme-badge, .theme-btn-primary, .theme-sidebar ...) are drawn from the
+ *      tokens, so a page that uses them follows the theme with no extra CSS.
+ *   3. BRIDGES: the pages written before the themes carry their look in utility
+ *      classes (bg-white, bg-gray-50, text-gray-500, bg-primary-600, shape-card,
+ *      hh-card ...). Each non-default theme translates those, by surface, so no
+ *      page is left half-styled. `corporate` is the design those classes already
+ *      draw, so it needs only its tokens.
+ *
+ * Every surface names its text colour next to its background, as a pair.
+ */
+
+/* ======================================================================== */
+/* 1. TOKENS                                                                */
+/* ======================================================================== */
+
+:root,
+html[data-app-theme='corporate'] {
+  --app-bg: #F7F6F2;
+  --sidebar-bg: #FFFFFF;
+  --sidebar-border: #E6E4DD;
+  --sidebar-text: #334155;
+  --sidebar-active-bg: #EAF3EE;
+  --sidebar-active-text: #1F3A2E;
+  --card-bg: #FFFFFF;
+  --card-border: 1.5px solid #E5E7EB;
+  --card-radius: 20px;
+  --card-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  --card-text: #111827;
+  --ticket-bg: #1F3A2E;
+  --ticket-text: #FFFDF9;
+  --ticket-line: 1.5px dashed rgba(255, 255, 255, 0.28);
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #6B7280;
+  --btn-primary-bg: #1F3A2E;
+  --btn-primary-text: #FFFFFF;
+  --btn-primary-radius: 9999px;
+  --stat-income-bg: #ECFDF5;
+  --stat-income-text: #065F46;
+  --stat-expense-bg: #FEF2F2;
+  --stat-expense-text: #991B1B;
+  --stat-neutral-bg: #F4F1EA;
+  --stat-neutral-text: #374151;
+  --badge-bg: #D8F3DC;
+  --badge-text: #1B3B32;
+  --input-bg: #FFFFFF;
+  --input-text: #111827;
+  --input-border: #D1D5DB;
+}
+
+/* the corporate design on the dark side of the app's light/dark preference */
+html[data-app-theme='corporate'].dark {
+  --app-bg: #12160F;
+  --sidebar-bg: #16201A;
+  --sidebar-border: #2A3A31;
+  --sidebar-text: #D8E3DC;
+  --sidebar-active-bg: #1F3A2E;
+  --sidebar-active-text: #EAF3EE;
+  --card-bg: #1A241E;
+  --card-border: 1.5px solid #2E3F36;
+  --card-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --card-text: #E8EFEA;
+  --text-primary: #E8EFEA;
+  --text-secondary: #B9C7BF;
+  --text-muted: #94A69C;
+  --btn-primary-bg: #1F3A2E;
+  --btn-primary-text: #FFFFFF;
+  --stat-income-bg: #10281D;
+  --stat-income-text: #86EFAC;
+  --stat-expense-bg: #2A1414;
+  --stat-expense-text: #FCA5A5;
+  --stat-neutral-bg: #1E2723;
+  --stat-neutral-text: #D8E3DC;
+  --badge-bg: #1E3A2E;
+  --badge-text: #C7E9D4;
+  --input-bg: #16201A;
+  --input-text: #E8EFEA;
+  --input-border: #33473C;
+}
+
+html[data-app-theme='medieval'] {
+  --app-bg: #f6eed9;
+  --m-panel-1: #161b2e;
+  --m-panel-2: #0b0e18;
+  --sidebar-bg: linear-gradient(180deg, var(--m-panel-1) 0%, var(--m-panel-2) 100%);
+  --sidebar-border: #c5a059;
+  --sidebar-text: #f3e9d2;
+  --sidebar-active-bg: linear-gradient(180deg, #d4af37 0%, #aa771c 100%);
+  --sidebar-active-text: #1a120b;
+  --card-bg: #fbf6e8;
+  --card-border: 2px solid #b59b72;
+  --card-radius: 16px;
+  --card-shadow: 0 6px 0 #d5c3a1, 0 10px 20px rgba(139, 108, 72, 0.15);
+  --card-text: #4a3525;
+  --ticket-bg: linear-gradient(180deg, var(--m-panel-1) 0%, var(--m-panel-2) 100%);
+  --ticket-text: #f3e9d2;
+  --ticket-line: 1.5px dashed rgba(197, 160, 89, 0.6);
+  --text-primary: #4a3525;
+  --text-secondary: #5c4332;
+  --text-muted: #7a6249;
+  --btn-primary-bg: linear-gradient(180deg, #f5d77f 0%, #c59b27 100%);
+  --btn-primary-text: #2c1d0c;
+  --btn-primary-radius: 12px;
+  --stat-income-bg: #eef3d6;
+  --stat-income-text: #3b5a1c;
+  --stat-expense-bg: #f6e0d4;
+  --stat-expense-text: #8a3a1f;
+  --stat-neutral-bg: #f3e9cc;
+  --stat-neutral-text: #4a3525;
+  --badge-bg: linear-gradient(180deg, #f5d77f, #c59b27);
+  --badge-text: #2c1d0c;
+  --input-bg: #fffaf0;
+  --input-text: #2c1d0c;
+  --input-border: #b59b72;
+}
+/* medieval panel palettes: catchy jewel tones instead of near-black */
+html[data-app-theme='medieval'][data-app-palette='aurora'] { --m-panel-1: #5a2d9c; --m-panel-2: #2f1a74; }
+html[data-app-theme='medieval'][data-app-palette='sakura'] { --m-panel-1: #a3285f; --m-panel-2: #5e1d52; }
+html[data-app-theme='medieval'][data-app-palette='ocean']  { --m-panel-1: #0b6b78; --m-panel-2: #0a3f6e; }
+html[data-app-theme='medieval'][data-app-palette='ember']  { --m-panel-1: #a23d1b; --m-panel-2: #5e1c3a; }
+html[data-app-theme='medieval'][data-app-palette='forest'] { --m-panel-1: #17693f; --m-panel-2: #0c3d4a; }
+
+html[data-app-theme='jade'] {
+  --app-bg: #ECF4F0;
+  --sidebar-bg: #0F2922;
+  --sidebar-border: #1E463B;
+  --sidebar-text: #D1FAE5;
+  --sidebar-active-bg: #10B981;
+  --sidebar-active-text: #052E16;
+  --card-bg: #FFFFFF;
+  --card-border: 1.5px solid #A7F3D0;
+  --card-radius: 14px;
+  --card-shadow: 0 8px 20px rgba(6, 78, 59, 0.07);
+  --card-text: #06281E;
+  --ticket-bg: linear-gradient(135deg, #064E3B 0%, #0F2922 100%);
+  --ticket-text: #ECFDF5;
+  --ticket-line: 1.5px dashed rgba(167, 243, 208, 0.4);
+  --text-primary: #06281E;
+  --text-secondary: #134E3F;
+  --text-muted: #3F6B5D;
+  --btn-primary-bg: linear-gradient(135deg, #07805A 0%, #065F46 100%);
+  --btn-primary-text: #FFFFFF;
+  --btn-primary-radius: 10px;
+  --stat-income-bg: #D1FAE5;
+  --stat-income-text: #065F46;
+  --stat-expense-bg: #FFE4E6;
+  --stat-expense-text: #9F1239;
+  --stat-neutral-bg: #E2F0EA;
+  --stat-neutral-text: #134E3F;
+  --badge-bg: #A7F3D0;
+  --badge-text: #064E3B;
+  --input-bg: #FFFFFF;
+  --input-text: #06281E;
+  --input-border: #6EE7B7;
+}
+html[data-app-theme='jade'].dark {
+  --app-bg: #0B1915;
+  --card-bg: #122B24;
+  --card-border: 1.5px solid #1E4D3F;
+  --card-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  --card-text: #ECFDF5;
+  --text-primary: #ECFDF5;
+  --text-secondary: #A7F3D0;
+  --text-muted: #7FC8AE;
+  --stat-income-bg: #0F3D2E;
+  --stat-income-text: #86EFAC;
+  --stat-expense-bg: #3B1520;
+  --stat-expense-text: #FDA4AF;
+  --stat-neutral-bg: #17352C;
+  --stat-neutral-text: #CFEFE2;
+  --input-bg: #0F2922;
+  --input-text: #ECFDF5;
+  --input-border: #1E4D3F;
+}
+
+/* ======================================================================== */
+/* 2. SEMANTIC CLASSES, drawn from the tokens                               */
+/* ======================================================================== */
+
+.theme-page-shell { color: var(--text-primary); }
+
+.theme-card {
+  position: relative;
+  color: var(--card-text);
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+
+.theme-ticket-card {
+  position: relative;
+  color: var(--ticket-text);
+  background: var(--ticket-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  box-shadow: 0 8px 24px -4px rgba(15, 41, 34, 0.25);
+}
+.theme-ticket-card .hh-ticket,
+.theme-ticket-card .theme-ticket-inner { border: var(--ticket-line); border-radius: 18px; }
+
+.theme-stat-box {
+  border-radius: 16px;
+  padding: 12px;
+  color: var(--stat-neutral-text);
+  background: var(--stat-neutral-bg);
+  border: 1.5px solid rgba(0, 0, 0, 0.06);
+}
+.theme-stat-box--income { color: var(--stat-income-text); background: var(--stat-income-bg); }
+.theme-stat-box--expense { color: var(--stat-expense-text); background: var(--stat-expense-bg); }
+
+.theme-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--badge-text); background: var(--badge-bg); border-radius: 999px;
+}
+
+.theme-btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 20px; font-weight: 700; font-size: 14px;
+  color: var(--btn-primary-text); background: var(--btn-primary-bg);
+  border: 0; border-radius: var(--btn-primary-radius);
+  transition: transform 0.08s ease, filter 0.15s ease;
+  cursor: pointer;
+}
+.theme-btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+.theme-btn-primary:active:not(:disabled) { transform: translateY(2px); }
+.theme-btn-primary:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+.theme-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+.theme-btn-primary svg { color: inherit; }
+.theme-btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 18px; font-weight: 700; font-size: 13px;
+  color: var(--text-primary); background: transparent; border: 1.5px solid currentColor; border-radius: var(--btn-primary-radius);
+}
+
+.theme-chest { display: grid; justify-items: center; gap: 6px; padding: 18px 10px; text-align: center; color: inherit; }
+.theme-chest__art { position: relative; width: 112px; height: 100px; }
+.theme-chest__art > img:first-child { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.35)); }
+.theme-chest__gem { position: absolute; left: 50%; top: -6px; width: 34px; height: 34px; transform: translateX(-50%); animation: theme-float 2.4s ease-in-out infinite; }
+@keyframes theme-float { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -5px); } }
+.theme-chest__title { font-size: 15px; font-weight: 800; }
+.theme-chest__hint { max-width: 30ch; font-size: 12px; opacity: 0.8; }
+
+/* the one-click theme pill */
+.theme-cycle-pill {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px;
+  font-size: 12px; font-weight: 800; color: var(--text-primary);
+  background: var(--card-bg); border: 1.5px solid currentColor; border-radius: 999px; cursor: pointer;
+}
+.theme-cycle-pill--compact { padding: 6px 8px; }
+.theme-cycle-pill__dots { display: inline-flex; }
+.theme-cycle-pill__dots i { width: 12px; height: 12px; margin-left: -3px; border: 1.5px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); }
+.theme-cycle-pill__dots i:first-child { margin-left: 0; }
+.theme-cycle-pill:active { transform: scale(0.96); }
+
+/* ======================================================================== */
+/* 3. CORPORATE: the design the legacy classes already draw. Tokens only,   */
+/*    plus the household's ticket green and the active sidebar tint.        */
+/* ======================================================================== */
+
+html[data-app-theme='corporate'] .hh-card-forest,
+html[data-app-theme='corporate'] .forest-ticket,
+html[data-app-theme='corporate'] [data-forest-ticket] { background: var(--ticket-bg) !important; border-color: rgba(255, 255, 255, 0.1) !important; }
+html[data-app-theme='corporate'] .theme-sidebar a[aria-current='page'] { background: var(--sidebar-active-bg); color: var(--sidebar-active-text); }
+
+/* every card the app draws - the semantic .theme-card and the older .hh-card
+   family - is painted from the same tokens, so a page that uses one looks
+   exactly like a page that uses the other. */
+html[data-app-theme='corporate'] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel, .sb-col, .sb-tabs, .recon, .privacy-item) {
+  color: var(--card-text);
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+html[data-app-theme='corporate']:not(.dark) .theme-sidebar { border-color: var(--sidebar-border); }
+
+/* ======================================================================== */
+/* 4. MEDIEVAL - Royal Aurelia                                              */
+/* ======================================================================== */
+
+html[data-app-theme='medieval'] { --th-ink: #4a3525; --th-gold: #c5a059; --th-wood: #b59b72; --th-cream: #f3e9d2; color-scheme: light; }
+
+/* canvas: the warm off-white the corporate design is drawn on.
+   The app also has a light/dark preference that paints the body, so the
+   theme has to state the canvas itself - otherwise the two fight and the
+   warm canvas never shows. */
+html[data-app-theme='corporate'][data-app-theme],
+html[data-app-theme='corporate'][data-app-theme] body {
+  color: var(--text-primary);
+  background-color: var(--app-bg) !important;
+  background-image: none !important;
+}
+
+/* canvas: argyle diamonds on warm parchment */
+html[data-app-theme='medieval'],
+html[data-app-theme='medieval'] body {
+  color: var(--th-ink);
+  background-color: #f6eed9 !important;
+  background-image:
+    linear-gradient(45deg, #efe3c8 25%, transparent 25%),
+    linear-gradient(-45deg, #efe3c8 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #efe3c8 75%),
+    linear-gradient(-45deg, transparent 75%, #efe3c8 75%) !important;
+  background-size: 64px 64px !important;
+  background-position: 0 0, 0 32px, 32px -32px, -32px 0 !important;
+  background-attachment: fixed !important;
+}
+html[data-app-theme='medieval'] :is(.app-background, .aurora-blob--one, .aurora-blob--two, .aurora-blob--three, .aurora-blob--four, .aurora-bg) { display: none !important; }
+html[data-app-theme='medieval'] :is(.aurora-background, .aurora-canvas, .cute-canvas, .kakeibo-dot-canvas, .hh-canvas, .layered-surface, .min-h-screen) { background: transparent !important; background-image: none !important; }
+
+/* sidebar, top bar, bottom dock: royal panel, gold rule, gold-plaque active item */
+html[data-app-theme='medieval'] :is(.theme-sidebar, .theme-header, .theme-bottomnav) {
+  color: var(--sidebar-text) !important;
+  background: var(--sidebar-bg) !important;
+  border-color: var(--sidebar-border) !important;
+  backdrop-filter: none !important;
+  outline: 1px solid rgba(197, 160, 89, 0.45);
+  outline-offset: -5px;
+  box-shadow: 0 0 22px rgba(11, 14, 24, 0.35);
+}
+html[data-app-theme='medieval'] .theme-sidebar { border-right-width: 2px; }
+html[data-app-theme='medieval'] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(a, button, span, p, h1, h2, h3, div, svg, label) { color: var(--sidebar-text) !important; }
+html[data-app-theme='medieval'] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(.text-gray-400, .text-gray-300, .text-gray-500) { color: #d9cba6 !important; }
+html[data-app-theme='medieval'] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(.border-b, .border-t, .border-gray-100, .border-gray-200, .border-gray-700) { border-color: rgba(197, 160, 89, 0.45) !important; }
+html[data-app-theme='medieval'] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(.bg-white, .bg-gray-50, .bg-gray-100, .bg-gray-800, .bg-primary-50) { background: rgba(243, 233, 210, 0.12) !important; }
+html[data-app-theme='medieval'] :is(.theme-sidebar, .theme-bottomnav) :is(a, button)[aria-current='page'] {
+  background: var(--sidebar-active-bg) !important;
+  border: 2px solid #f3e9d2; font-weight: 800;
+  box-shadow: 0 2px 0 #6b4a12, 0 0 12px rgba(240, 216, 120, 0.4);
+}
+html[data-app-theme='medieval'] :is(.theme-sidebar, .theme-bottomnav) :is(a, button)[aria-current='page'] :where(*, svg) { color: var(--sidebar-active-text) !important; }
+html[data-app-theme='medieval'] .theme-sidebar .aurora-nav-item--active::before { display: none; }
+html[data-app-theme='medieval'] .theme-bottomnav a[href='/add'] > div > div { background: linear-gradient(180deg, #f5d77f, #c59b27) !important; border: 2px solid #5c4332; box-shadow: 0 3px 0 #5c4332 !important; }
+html[data-app-theme='medieval'] .theme-bottomnav a[href='/add'] :is(svg, span) { color: #2c1d0c !important; }
+
+/* content cards, stat boxes, tables: shoujo-castle parchment with scalloped fan corners */
+html[data-app-theme='medieval'] :is(.theme-card, .shape-card, .aurora-card, .hh-card, .insight-card, .insights-panel, .layered-surface.aurora-panel, .sb-col, .sb-tabs, .recon, .privacy-item, .cute-card, .fintech-panel, .bg-white, .bg-gray-800, .bg-gray-900, .bg-slate-800, .bg-\[\#FFFDF9\], .bg-\[\#FFFDF7\], .bg-\[\#FAF9F6\], .bg-white\/70, .bg-white\/80):not(:where(button, input, select, textarea, .hh-card-forest, .theme-ticket-card, .fantasy-guild-card, .theme-sidebar, .theme-header, .theme-bottomnav, [role='dialog'], .fantasy-keep, .theme-keep)) {
+  position: relative;
+  color: var(--th-ink) !important;
+  background-color: #fbf6e8 !important;
+  background-image: none !important;
+  border: 2px solid var(--th-wood) !important;
+  border-radius: 16px !important;
+  outline: 1.5px solid #cbb48e;
+  outline-offset: -7px;
+  box-shadow: 0 6px 0 #d5c3a1, 0 10px 20px rgba(139, 108, 72, 0.15) !important;
+}
+/* the four scalloped fan corners, on the cards big enough to carry them */
+html[data-app-theme='medieval'] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel, .privacy-item)::before,
+html[data-app-theme='medieval'] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel, .privacy-item)::after {
+  content: ''; position: absolute; width: 20px; height: 20px; pointer-events: none; z-index: 1;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M1 1h18a18 18 0 0 1-18 18z' fill='%23f6eed9' stroke='%23b59b72' stroke-width='1.2'/%3E%3Cpath d='M1 7a6 6 0 0 0 6-6M1 12a11 11 0 0 0 11-11M1 17a16 16 0 0 0 16-16' fill='none' stroke='%23b59b72' stroke-width='.9'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+html[data-app-theme='medieval'] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel, .privacy-item)::before { top: 3px; left: 3px; }
+html[data-app-theme='medieval'] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel, .privacy-item)::after { top: 3px; right: 3px; transform: scaleX(-1); }
+html[data-app-theme='medieval'] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel, .privacy-item) > :first-child::before { content: none; }
+html[data-app-theme='medieval'] .shoujo-castle-card::before { top: 3px; left: 3px; }
+/* bottom corners via two extra backgrounds on the card itself */
+html[data-app-theme='medieval'] :is(.theme-card, .hh-card, .shape-card, .aurora-card, .insight-card, .insights-panel, .privacy-item) {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cg transform='translate(0 20) scale(1 -1)'%3E%3Cpath d='M1 1h18a18 18 0 0 1-18 18z' fill='%23f6eed9' stroke='%23b59b72' stroke-width='1.2'/%3E%3Cpath d='M1 7a6 6 0 0 0 6-6M1 12a11 11 0 0 0 11-11M1 17a16 16 0 0 0 16-16' fill='none' stroke='%23b59b72' stroke-width='.9'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cg transform='translate(20 20) scale(-1 -1)'%3E%3Cpath d='M1 1h18a18 18 0 0 1-18 18z' fill='%23f6eed9' stroke='%23b59b72' stroke-width='1.2'/%3E%3Cpath d='M1 7a6 6 0 0 0 6-6M1 12a11 11 0 0 0 11-11M1 17a16 16 0 0 0 16-16' fill='none' stroke='%23b59b72' stroke-width='.9'/%3E%3C/g%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-size: 20px 20px !important;
+  background-position: left 3px bottom 3px, right 3px bottom 3px !important;
+}
+
+/* primary feature cards and hero tickets: the midnight guild frame with diamond ornaments */
+html[data-app-theme='medieval'] :is(.hh-card-forest, .forest-ticket, [data-forest-ticket], .theme-ticket-card, .fantasy-guild-card) {
+  position: relative;
+  color: var(--th-cream) !important;
+  background: linear-gradient(180deg, var(--m-panel-1) 0%, var(--m-panel-2) 100%) !important;
+  border: 2px solid #c5a059 !important;
+  border-radius: 8px !important;
+  outline: 1px solid rgba(197, 160, 89, 0.5);
+  outline-offset: -6px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45), inset 0 0 20px rgba(197, 160, 89, 0.15) !important;
+}
+html[data-app-theme='medieval'] :is(.hh-card-forest, .forest-ticket, [data-forest-ticket], .theme-ticket-card, .fantasy-guild-card)::before,
+html[data-app-theme='medieval'] :is(.hh-card-forest, .forest-ticket, [data-forest-ticket], .theme-ticket-card, .fantasy-guild-card)::after {
+  content: '\2756'; position: absolute; left: 50%; z-index: 2; padding: 0 6px; font-size: 13px; line-height: 1;
+  color: #c5a059; background: var(--m-panel-1); transform: translate(-50%, -52%); pointer-events: none;
+  width: auto; height: auto; top: 0;
+}
+html[data-app-theme='medieval'] :is(.hh-card-forest, .forest-ticket, [data-forest-ticket], .theme-ticket-card, .fantasy-guild-card)::after { top: 100%; background: var(--m-panel-2); }
+html[data-app-theme='medieval'] :is(.hh-card-forest, .forest-ticket, [data-forest-ticket], .theme-ticket-card, .fantasy-guild-card) :is(h1, h2, h3, h4, p, span, li, label, dt, dd, small, strong, div):not(:where(button *, .hh-badge, .theme-badge)) { color: var(--th-cream); }
+html[data-app-theme='medieval'] :is(.hh-card-forest, .theme-ticket-card) .hh-ticket { border: 1.5px dashed rgba(197, 160, 89, 0.6) !important; }
+
+/* chips, stat boxes, pale tints: lighter parchment */
+html[data-app-theme='medieval'] :is(.theme-stat-box, .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-green-50, .bg-green-100, .bg-success-50, .bg-success-100, .bg-rose-50, .bg-rose-100, .bg-red-50, .bg-red-100, .bg-danger-100, .bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-yellow-100, .bg-blue-50, .bg-blue-100, .bg-purple-50, .bg-purple-100, .bg-orange-50, .bg-sky-50, .bg-slate-50, .bg-slate-100, .bg-accent-soft, .bg-gray-50\/60, .bg-slate-50\/70, .bg-slate-100\/80, .bg-primary-50\/70, [class*='bg-[#F'], [class*='bg-[#E'], .fintech-method, .botanical-pill, .kakeibo-bookkeeper-card, .kakeibo-desk__bar):not(:where(button.theme-btn-primary, .fantasy-keep, .theme-sidebar *, .theme-header *, .theme-bottomnav *, button[class~='bg-gradient-to-r'], a[class~='bg-gradient-to-r'], button[class~='bg-gradient-to-br'], a[class~='bg-gradient-to-br'], button[class~='bg-gradient-to-b'], a[class~='bg-gradient-to-b'], button[class~='bg-gradient-to-l'], a[class~='bg-gradient-to-l'], button[class~='bg-gradient-to-t'], a[class~='bg-gradient-to-t'], button[class~='bg-gradient-to-tr'], a[class~='bg-gradient-to-tr'], button[class~='bg-gradient-to-tl'], a[class~='bg-gradient-to-tl'], button[class~='bg-gradient-to-bl'], a[class~='bg-gradient-to-bl'], .hh-card-forest *)) {
+  color: var(--th-ink) !important;
+  background-color: #f3e9cc !important;
+  background-image: none !important;
+  border-color: #b59b72 !important;}
+html[data-app-theme='medieval'] :is(.theme-stat-box, .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-primary-50, .bg-emerald-50, .bg-green-50, .bg-rose-50, .bg-red-50, .bg-amber-50, .bg-yellow-50, .bg-blue-50, .bg-purple-50, .bg-orange-50, .bg-sky-50, .bg-slate-50, .bg-slate-100, .bg-accent-soft, .fintech-method, .botanical-pill) :where(*, svg):not(:where(.hh-card-forest *, .theme-btn-primary, .theme-btn-primary *, .hh-button, .hh-button *, .hh-badge, .hh-badge *, button[class~='bg-primary-50'], [class~='bg-primary-100'], [class~='bg-primary-500'], [class~='bg-primary-600'], [class~='bg-primary-700'], [class~='bg-primary-800'], [class~='bg-primary-900'], button[class~='bg-primary-50'], [class~='bg-primary-100'], [class~='bg-primary-500'], [class~='bg-primary-600'], [class~='bg-primary-700'], [class~='bg-primary-800'], [class~='bg-primary-900'] *, button[class~='bg-emerald-50'], [class~='bg-emerald-100'], [class~='bg-emerald-200'], [class~='bg-emerald-500'], [class~='bg-emerald-600'], [class~='bg-emerald-700'], [class~='bg-emerald-800'], [class~='bg-emerald-900'], button[class~='bg-emerald-50'], [class~='bg-emerald-100'], [class~='bg-emerald-200'], [class~='bg-emerald-500'], [class~='bg-emerald-600'], [class~='bg-emerald-700'], [class~='bg-emerald-800'], [class~='bg-emerald-900'] *, button[class~='bg-green-50'], [class~='bg-green-100'], [class~='bg-green-200'], [class~='bg-green-500'], [class~='bg-green-600'], [class~='bg-green-700'], [class~='bg-green-800'], [class~='bg-green-900'], button[class~='bg-green-50'], [class~='bg-green-100'], [class~='bg-green-200'], [class~='bg-green-500'], [class~='bg-green-600'], [class~='bg-green-700'], [class~='bg-green-800'], [class~='bg-green-900'] *, button[class~='bg-accent'], [class~='bg-accent-soft'], [class~='bg-accent-600'], [class~='bg-accent-500'], button[class~='bg-accent'], [class~='bg-accent-soft'], [class~='bg-accent-600'], [class~='bg-accent-500'] *, button[class~='bg-gradient-to-r'], button[class~='bg-gradient-to-br'], a[class~='bg-gradient-to-br'], button[class~='bg-gradient-to-b'], a[class~='bg-gradient-to-b'], button[class~='bg-gradient-to-l'], a[class~='bg-gradient-to-l'], button[class~='bg-gradient-to-t'], a[class~='bg-gradient-to-t'], button[class~='bg-gradient-to-tr'], a[class~='bg-gradient-to-tr'], button[class~='bg-gradient-to-tl'], a[class~='bg-gradient-to-tl'], button[class~='bg-gradient-to-bl'], a[class~='bg-gradient-to-bl'], button[class~='bg-gradient-to-r'], button[class~='bg-gradient-to-br'], a[class~='bg-gradient-to-br'], button[class~='bg-gradient-to-b'], a[class~='bg-gradient-to-b'], button[class~='bg-gradient-to-l'], a[class~='bg-gradient-to-l'], button[class~='bg-gradient-to-t'], a[class~='bg-gradient-to-t'], button[class~='bg-gradient-to-tr'], a[class~='bg-gradient-to-tr'], button[class~='bg-gradient-to-tl'], a[class~='bg-gradient-to-tl'], button[class~='bg-gradient-to-bl'], a[class~='bg-gradient-to-bl'] *, .krpg-page *)) { color: inherit !important; }
+html[data-app-theme='medieval'] .theme-stat-box--income { background-color: #eef3d6 !important; color: #3b5a1c !important; }
+html[data-app-theme='medieval'] .theme-stat-box--expense { background-color: #f6e0d4 !important; color: #8a3a1f !important; }
+html[data-app-theme='medieval'] .botanical-pill:is([aria-pressed='true'], [aria-selected='true'], .is-active) {
+  background-color: #f5d77f !important; background-image: linear-gradient(180deg, #f5d77f, #c59b27) !important; box-shadow: 0 3px 0 #5c4332;
+}
+html[data-app-theme='medieval'] .fintech-method.is-active { outline: 3px solid #c5a059; outline-offset: 1px; }
+
+/* text on the parchment canvas and cards */
+html[data-app-theme='medieval'] :is(.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-black, .text-neutral-900, .text-neutral-700, .text-primary-900, .text-primary-800, .text-primary-700, .text-emerald-900, .text-emerald-800, [class*='text-[#2'], [class*='text-[#1'], [class*='text-[#3'], [class*='text-[#4'], [class*='text-[#0']):not(:where(.theme-sidebar *, .theme-header *, .theme-bottomnav *, .hh-card-forest *, .theme-ticket-card *, .fantasy-guild-card *, .theme-btn-primary, .theme-btn-primary *, .hh-button, .hh-button *)) { color: var(--th-ink) !important; }
+html[data-app-theme='medieval'] :is(.text-gray-500, .text-gray-400, .text-gray-300, .text-slate-500, .text-slate-400, .hh-muted, [class*='text-[#5'], [class*='text-[#6'], [class*='text-[#7'], [class*='text-[#8'], [class*='text-[#9']):not(:where(.theme-sidebar *, .theme-header *, .theme-bottomnav *, .hh-card-forest *, .theme-ticket-card *)) { color: #6b4a2e !important; }
+html[data-app-theme='medieval'] :is(.text-danger-600, .text-danger-500, .text-danger-700, .text-red-600, .text-red-700, .text-rose-600, .text-rose-700):not(:where(.hh-card-forest *, .theme-sidebar *)) { color: #9b2c1f !important; }
+html[data-app-theme='medieval'] :is(.text-success-600, .text-success-700, .text-emerald-600, .text-emerald-700, .text-green-600, .text-green-700):not(:where(.hh-card-forest *, .theme-sidebar *)) { color: #2f6b2a !important; }
+html[data-app-theme='medieval'] :is(.text-primary-600, .text-primary-500, .text-blue-600, .text-blue-700, .text-purple-600, .text-purple-700, .text-indigo-600):not(:where(.hh-card-forest *, .theme-sidebar *, .theme-btn-primary *)) { color: #7a4a14 !important; }
+html[data-app-theme='medieval'] :is(.hh-card-forest, .theme-ticket-card) :is(.text-gray-500, .text-gray-400, .hh-muted) { color: #eadfbd !important; }
+
+/* RPG outlined titles inside golden ribbon plaques */
+html[data-app-theme='medieval'] :is(main h1, .botanical-title, .theme-section-title) {
+  display: inline-block; padding: 6px 26px; font-weight: 900; letter-spacing: 0.04em;
+  color: #fffdf7 !important;
+  text-shadow: -1.5px -1.5px 0 #5c4332, 1.5px -1.5px 0 #5c4332, -1.5px 1.5px 0 #5c4332, 1.5px 1.5px 0 #5c4332, 0 2.5px 0 #5c4332;
+  background: linear-gradient(180deg, #f5d77f 0%, #c59b27 100%) !important;
+  border: 2px solid #5c4332 !important; border-radius: 6px !important; box-shadow: 0 3px 0 #5c4332 !important;
+}
+html[data-app-theme='medieval'] .botanical-title { background: linear-gradient(180deg, #f5d77f 0%, #c59b27 100%) !important; }
+html[data-app-theme='medieval'] .botanical-title, html[data-app-theme='medieval'] main h1 { text-shadow: -1.5px -1.5px 0 #5c4332, 1.5px -1.5px 0 #5c4332, -1.5px 1.5px 0 #5c4332, 1.5px 1.5px 0 #5c4332, 0 2.5px 0 #5c4332 !important; }
+html[data-app-theme='medieval'] .hh-card-forest :is(h1, h2, h3), html[data-app-theme='medieval'] .theme-ticket-card :is(h1, h2, h3) { text-shadow: none; }
+
+/* buttons: beveled gold & bronze */
+html[data-app-theme='medieval'] :is(.theme-btn-primary, .hh-button:not(.hh-button-ghost), .hh-badge, button.bg-primary-500, button.bg-primary-600, button.bg-primary-700, a.bg-primary-600, button.bg-emerald-500, button.bg-emerald-600, button.bg-green-500, button.bg-green-600, button.bg-success-600, button.bg-blue-600, button.bg-purple-600, button.bg-teal-600, button.bg-\[\#2F4842\], button.money-fab) {
+  color: #2c1d0c !important; font-weight: 800; letter-spacing: 0.03em;
+  background: linear-gradient(180deg, #f5d77f 0%, #c59b27 100%) !important;
+  border: 2px solid #5c4332 !important; border-radius: 12px !important;
+  box-shadow: 0 3px 0 #5c4332 !important; text-shadow: 0 1px 0 rgba(255, 238, 180, 0.6);
+}
+html[data-app-theme='medieval'] :is(.theme-btn-primary, .hh-button:not(.hh-button-ghost), .hh-badge, button.bg-primary-600, button.bg-emerald-600, button.bg-green-600, button.bg-success-600, button.bg-purple-600) :where(*, svg) { color: #2c1d0c !important; }
+html[data-app-theme='medieval'] :is(.theme-btn-primary, .hh-button, button.bg-primary-600):active:not(:disabled) { transform: translateY(3px); box-shadow: 0 0 0 #5c4332 !important; }
+html[data-app-theme='medieval'] :is(.hh-card-forest, .theme-ticket-card) .hh-badge { background: linear-gradient(180deg, #f5d77f, #c59b27) !important; color: #2c1d0c !important; }
+html[data-app-theme='medieval'] :is(button.bg-danger-600, button.bg-red-600, button.bg-rose-600) { color: #fff !important; background: linear-gradient(180deg, #c8553f, #8a2c1c) !important; border: 2px solid #5c4332 !important; box-shadow: 0 3px 0 #5c4332 !important; }
+html[data-app-theme='medieval'] :is(.theme-btn-ghost, .hh-button-ghost) { color: #4a3525 !important; background: #fbf6e8 !important; border: 2px solid #b59b72 !important; }
+html[data-app-theme='medieval'] :is(.bg-accent) { color: #2c1d0c !important; background: linear-gradient(180deg, #f5d77f, #c59b27) !important; border-bottom: 2px solid #5c4332; }
+html[data-app-theme='medieval'] :is(.bg-accent) :is(*, span) { color: #2c1d0c !important; }
+/* white pill buttons are paper to press */
+html[data-app-theme='medieval'] button:is(.bg-white, .bg-gray-100, .bg-gray-50, .bg-primary-50, .bg-\[\#FFF6D6\], .bg-\[\#FFFDF9\], .shape-card, .botanical-pill):not(:where(.theme-btn-primary, .theme-sidebar *, .fantasy-keep)) {
+  color: #4a3525 !important; background-color: #fbf6e8 !important; background-image: none !important; border: 2px solid #b59b72 !important; box-shadow: 0 3px 0 #d5c3a1 !important;
+}
+
+/* forms: paper to write on */
+html[data-app-theme='medieval'] :is(input, select, textarea):not(:where([type='checkbox'], [type='radio'], [type='range'], [type='color'])) {
+  color: var(--input-text) !important; background: var(--input-bg) !important; border: 2px solid var(--input-border) !important; border-radius: 10px;
+  box-shadow: inset 0 2px 4px rgba(139, 108, 72, 0.25);
+}
+html[data-app-theme='medieval'] :is(input, textarea)::placeholder { color: #8b6b43 !important; opacity: 1; }
+html[data-app-theme='medieval'] :is(input, select, textarea):focus { outline: 3px solid rgba(197, 160, 89, 0.85); outline-offset: 1px; }
+html[data-app-theme='medieval'] label { color: var(--th-ink); }
+
+/* tables */
+html[data-app-theme='medieval'] table { color: var(--th-ink); }
+html[data-app-theme='medieval'] thead :is(th, tr) { color: #2c1d0c !important; background: #efe3c8 !important; }
+html[data-app-theme='medieval'] :is(tbody tr, .divide-y > *) { border-color: #cbb48e !important; }
+html[data-app-theme='medieval'] :is(.border, .border-2, .border-gray-100, .border-gray-200, .border-gray-300):not(:where(.theme-sidebar *, .hh-card-forest *)) { border-color: #b59b72; }
+
+/* modals: parchment on a dim backdrop */
+html[data-app-theme='medieval'] .fixed.inset-0.bg-black\/50 { background-color: rgba(44, 29, 12, 0.6); }
+html[data-app-theme='medieval'] [role='dialog'] {
+  color: var(--th-ink) !important; background-color: #fbf6e8 !important; background-image: none !important;
+  border: 2px solid #b59b72 !important; outline: 1.5px solid #cbb48e; outline-offset: -7px; border-radius: 16px !important;
+  box-shadow: 0 6px 0 #d5c3a1, 0 18px 40px rgba(44, 29, 12, 0.5) !important;
+}
+html[data-app-theme='medieval'] [role='dialog'] :is(h1, h2, h3, h4, p, span, label, li, td, th, dt, dd, small, legend, div):not(:where(button *, .theme-btn-primary *)) { color: var(--th-ink) !important; }
+html[data-app-theme='medieval'] [role='dialog'] :is(.text-gray-500, .text-gray-400, .text-gray-600) { color: #6b4a2e !important; }
+html[data-app-theme='medieval'] [role='dialog'] h3 { font-weight: 900; letter-spacing: 0.03em; }
+html[data-app-theme='medieval'] [role='dialog'] :is(.bg-white, .bg-gray-50, .bg-gray-100) { background-color: #f3e9cc !important; box-shadow: none !important; }
+
+/* the guild badge on a card */
+html[data-app-theme='medieval'] .theme-badge { border: 2px solid #5c4332; }
+
+/* ======================================================================== */
+/* 5. JADE - Jade Sovereign                                                 */
+/* ======================================================================== */
+
+html[data-app-theme='jade'] { color-scheme: light; }
+html[data-app-theme='jade'].dark { color-scheme: dark; }
+html[data-app-theme='jade'],
+html[data-app-theme='jade'] body { color: var(--text-primary); background: var(--app-bg) !important; }
+html[data-app-theme='jade'] :is(.app-background, .aurora-blob--one, .aurora-blob--two, .aurora-blob--three, .aurora-blob--four, .aurora-bg) { display: none !important; }
+html[data-app-theme='jade'] :is(.aurora-background, .aurora-canvas, .cute-canvas, .kakeibo-dot-canvas, .hh-canvas, .layered-surface, .min-h-screen) { background: transparent !important; background-image: none !important; }
+
+html[data-app-theme='jade'] :is(.theme-sidebar, .theme-header, .theme-bottomnav) {
+  color: var(--sidebar-text) !important; background: var(--sidebar-bg) !important; border-color: var(--sidebar-border) !important; backdrop-filter: none !important;
+}
+html[data-app-theme='jade'] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(a, button, span, p, h1, h2, h3, div, svg, label) { color: var(--sidebar-text) !important; }
+html[data-app-theme='jade'] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(.text-gray-400, .text-gray-300, .text-gray-500) { color: #8fd8b9 !important; }
+html[data-app-theme='jade'] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(.border-b, .border-t, .border-gray-100, .border-gray-200, .border-gray-700) { border-color: var(--sidebar-border) !important; }
+html[data-app-theme='jade'] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(.bg-white, .bg-gray-50, .bg-gray-100, .bg-gray-800, .bg-primary-50) { background: rgba(209, 250, 229, 0.08) !important; }
+html[data-app-theme='jade'] :is(.theme-sidebar, .theme-bottomnav) :is(a, button)[aria-current='page'] { background: var(--sidebar-active-bg) !important; box-shadow: 0 0 0 1px #6EE7B7; font-weight: 800; }
+html[data-app-theme='jade'] :is(.theme-sidebar, .theme-bottomnav) :is(a, button)[aria-current='page'] :where(*, svg) { color: var(--sidebar-active-text) !important; }
+html[data-app-theme='jade'] .theme-sidebar .aurora-nav-item--active::before { background: #34D399; }
+html[data-app-theme='jade'] .theme-bottomnav a[href='/add'] > div > div { background: linear-gradient(135deg, #07805A, #065F46) !important; }
+
+/* cards: crisp, with the emerald bar on top */
+html[data-app-theme='jade'] :is(.theme-card, .shape-card, .aurora-card, .hh-card, .insight-card, .insights-panel, .layered-surface.aurora-panel, .sb-col, .sb-tabs, .recon, .privacy-item, .cute-card, .fintech-panel, .bg-white, .bg-gray-800, .bg-gray-900, .bg-slate-800, .bg-\[\#FFFDF9\], .bg-\[\#FFFDF7\], .bg-\[\#FAF9F6\]):not(:where(button, input, select, textarea, .hh-card-forest, .theme-ticket-card, .theme-sidebar, .theme-header, .theme-bottomnav, [role='dialog'], .fantasy-keep, .theme-keep)) {
+  color: var(--card-text) !important;
+  background-color: var(--card-bg) !important; background-image: none !important;
+  border: var(--card-border) !important; border-top: 3px solid #10B981 !important;
+  border-radius: var(--card-radius) !important; box-shadow: var(--card-shadow) !important;
+}
+html[data-app-theme='jade'] :is(.hh-card-forest, .forest-ticket, [data-forest-ticket], .theme-ticket-card) {
+  color: var(--ticket-text) !important; background: var(--ticket-bg) !important; border: 1px solid #1E463B !important; border-radius: 16px !important; box-shadow: 0 8px 20px rgba(6, 78, 59, 0.25) !important;
+}
+html[data-app-theme='jade'] :is(.hh-card-forest, .theme-ticket-card) :is(h1, h2, h3, h4, p, span, li, label, small, strong, div):not(:where(button *, .hh-badge, .theme-badge)) { color: var(--ticket-text); }
+html[data-app-theme='jade'] :is(.hh-card-forest, .theme-ticket-card) .hh-ticket { border: 1.5px dashed rgba(167, 243, 208, 0.4) !important; }
+
+/* chips and stat boxes: pale mint (dark: deep jade) */
+html[data-app-theme='jade'] :is(.theme-stat-box, .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-green-50, .bg-green-100, .bg-success-50, .bg-success-100, .bg-rose-50, .bg-rose-100, .bg-red-50, .bg-red-100, .bg-danger-100, .bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-yellow-100, .bg-blue-50, .bg-blue-100, .bg-purple-50, .bg-purple-100, .bg-orange-50, .bg-sky-50, .bg-slate-50, .bg-slate-100, .bg-accent-soft, .bg-gray-50\/60, .bg-slate-50\/70, .bg-slate-100\/80, .bg-primary-50\/70, [class*='bg-[#F'], [class*='bg-[#E'], .fintech-method, .botanical-pill, .kakeibo-bookkeeper-card, .kakeibo-desk__bar):not(:where(button.theme-btn-primary, .fantasy-keep, .theme-sidebar *, .theme-header *, .theme-bottomnav *, button[class~='bg-gradient-to-r'], a[class~='bg-gradient-to-r'], button[class~='bg-gradient-to-br'], a[class~='bg-gradient-to-br'], button[class~='bg-gradient-to-b'], a[class~='bg-gradient-to-b'], button[class~='bg-gradient-to-l'], a[class~='bg-gradient-to-l'], button[class~='bg-gradient-to-t'], a[class~='bg-gradient-to-t'], button[class~='bg-gradient-to-tr'], a[class~='bg-gradient-to-tr'], button[class~='bg-gradient-to-tl'], a[class~='bg-gradient-to-tl'], button[class~='bg-gradient-to-bl'], a[class~='bg-gradient-to-bl'], .hh-card-forest *)) {
+  color: var(--stat-neutral-text) !important; background-color: var(--stat-neutral-bg) !important; background-image: none !important; border-color: rgba(16, 185, 129, 0.35) !important;}
+html[data-app-theme='jade'] :is(.theme-stat-box, .bg-gray-50, .bg-gray-100, .bg-primary-50, .bg-emerald-50, .bg-green-50, .bg-rose-50, .bg-red-50, .bg-amber-50, .bg-yellow-50, .bg-blue-50, .bg-slate-50, .bg-slate-100, .fintech-method, .botanical-pill) :where(*, svg):not(:where(.hh-card-forest *, .theme-btn-primary, .theme-btn-primary *, .hh-button, .hh-button *, .hh-badge, .hh-badge *, button[class~='bg-primary-50'], [class~='bg-primary-100'], [class~='bg-primary-500'], [class~='bg-primary-600'], [class~='bg-primary-700'], [class~='bg-primary-800'], [class~='bg-primary-900'], button[class~='bg-primary-50'], [class~='bg-primary-100'], [class~='bg-primary-500'], [class~='bg-primary-600'], [class~='bg-primary-700'], [class~='bg-primary-800'], [class~='bg-primary-900'] *, button[class~='bg-emerald-50'], [class~='bg-emerald-100'], [class~='bg-emerald-200'], [class~='bg-emerald-500'], [class~='bg-emerald-600'], [class~='bg-emerald-700'], [class~='bg-emerald-800'], [class~='bg-emerald-900'], button[class~='bg-emerald-50'], [class~='bg-emerald-100'], [class~='bg-emerald-200'], [class~='bg-emerald-500'], [class~='bg-emerald-600'], [class~='bg-emerald-700'], [class~='bg-emerald-800'], [class~='bg-emerald-900'] *, button[class~='bg-green-50'], [class~='bg-green-100'], [class~='bg-green-200'], [class~='bg-green-500'], [class~='bg-green-600'], [class~='bg-green-700'], [class~='bg-green-800'], [class~='bg-green-900'], button[class~='bg-green-50'], [class~='bg-green-100'], [class~='bg-green-200'], [class~='bg-green-500'], [class~='bg-green-600'], [class~='bg-green-700'], [class~='bg-green-800'], [class~='bg-green-900'] *, button[class~='bg-accent'], [class~='bg-accent-soft'], [class~='bg-accent-600'], [class~='bg-accent-500'], button[class~='bg-accent'], [class~='bg-accent-soft'], [class~='bg-accent-600'], [class~='bg-accent-500'] *, button[class~='bg-gradient-to-r'], button[class~='bg-gradient-to-br'], a[class~='bg-gradient-to-br'], button[class~='bg-gradient-to-b'], a[class~='bg-gradient-to-b'], button[class~='bg-gradient-to-l'], a[class~='bg-gradient-to-l'], button[class~='bg-gradient-to-t'], a[class~='bg-gradient-to-t'], button[class~='bg-gradient-to-tr'], a[class~='bg-gradient-to-tr'], button[class~='bg-gradient-to-tl'], a[class~='bg-gradient-to-tl'], button[class~='bg-gradient-to-bl'], a[class~='bg-gradient-to-bl'], button[class~='bg-gradient-to-r'], button[class~='bg-gradient-to-br'], a[class~='bg-gradient-to-br'], button[class~='bg-gradient-to-b'], a[class~='bg-gradient-to-b'], button[class~='bg-gradient-to-l'], a[class~='bg-gradient-to-l'], button[class~='bg-gradient-to-t'], a[class~='bg-gradient-to-t'], button[class~='bg-gradient-to-tr'], a[class~='bg-gradient-to-tr'], button[class~='bg-gradient-to-tl'], a[class~='bg-gradient-to-tl'], button[class~='bg-gradient-to-bl'], a[class~='bg-gradient-to-bl'] *, .krpg-page *)) { color: inherit !important; }
+html[data-app-theme='jade'] .theme-stat-box--income { background-color: var(--stat-income-bg) !important; color: var(--stat-income-text) !important; }
+html[data-app-theme='jade'] .theme-stat-box--expense { background-color: var(--stat-expense-bg) !important; color: var(--stat-expense-text) !important; }
+html[data-app-theme='jade'] .botanical-pill:is([aria-pressed='true'], [aria-selected='true'], .is-active) { background-color: #10B981 !important; color: #052E16 !important; border-color: #047857 !important; }
+html[data-app-theme='jade'] .botanical-pill:is([aria-pressed='true'], [aria-selected='true'], .is-active) :where(*, svg) { color: #052E16 !important; }
+
+/* text */
+html[data-app-theme='jade'] :is(.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-black, .text-neutral-900, .text-primary-900, .text-primary-800, .text-primary-700, [class*='text-[#2'], [class*='text-[#1'], [class*='text-[#3'], [class*='text-[#4'], [class*='text-[#0']):not(:where(.theme-sidebar *, .theme-header *, .theme-bottomnav *, .hh-card-forest *, .theme-ticket-card *, .theme-btn-primary, .theme-btn-primary *, .hh-button, .hh-button *)) { color: var(--text-primary) !important; }
+html[data-app-theme='jade'] :is(.text-gray-500, .text-gray-400, .text-gray-300, .text-slate-500, .text-slate-400, .hh-muted, [class*='text-[#5'], [class*='text-[#6'], [class*='text-[#7'], [class*='text-[#8'], [class*='text-[#9']):not(:where(.theme-sidebar *, .theme-header *, .theme-bottomnav *, .hh-card-forest *, .theme-ticket-card *)) { color: var(--text-muted) !important; }
+html[data-app-theme='jade'] :is(.text-danger-600, .text-danger-500, .text-danger-700, .text-red-600, .text-red-700, .text-rose-600):not(:where(.hh-card-forest *, .theme-sidebar *)) { color: #BE123C !important; }
+html[data-app-theme='jade'].dark :is(.text-danger-600, .text-red-600, .text-rose-600):not(:where(.hh-card-forest *, .theme-sidebar *)) { color: #FDA4AF !important; }
+html[data-app-theme='jade'] :is(.text-success-600, .text-success-700, .text-emerald-600, .text-emerald-700, .text-green-600, .text-green-700):not(:where(.hh-card-forest *, .theme-sidebar *)) { color: #047857 !important; }
+html[data-app-theme='jade'].dark :is(.text-success-600, .text-emerald-600, .text-green-600):not(:where(.hh-card-forest *, .theme-sidebar *)) { color: #6EE7B7 !important; }
+html[data-app-theme='jade'] :is(.text-primary-600, .text-primary-500, .text-blue-600, .text-purple-600, .text-indigo-600):not(:where(.hh-card-forest *, .theme-sidebar *, .theme-btn-primary *)) { color: #047857 !important; }
+html[data-app-theme='jade'].dark :is(.text-primary-600, .text-primary-500):not(:where(.hh-card-forest *, .theme-sidebar *)) { color: #6EE7B7 !important; }
+html[data-app-theme='jade'] :is(main h1, .botanical-title) { color: var(--text-primary) !important; font-weight: 900; letter-spacing: -0.01em; }
+/* tabular numerals on every amount */
+html[data-app-theme='jade'] :is(.tabular-nums, [class*='font-bold'], [class*='font-extrabold'], [class*='text-xl'], [class*='text-2xl'], [class*='text-3xl'], td, .hh-code) { font-variant-numeric: tabular-nums; }
+
+/* buttons */
+html[data-app-theme='jade'] :is(.theme-btn-primary, .hh-button:not(.hh-button-ghost), .hh-badge, button.bg-primary-500, button.bg-primary-600, button.bg-primary-700, a.bg-primary-600, button.bg-emerald-500, button.bg-emerald-600, button.bg-green-500, button.bg-green-600, button.bg-success-600, button.bg-blue-600, button.bg-purple-600, button.bg-teal-600, button.bg-\[\#2F4842\], button.money-fab) {
+  color: #FFFFFF !important; font-weight: 800; background: linear-gradient(135deg, #07805A 0%, #065F46 100%) !important; border: 1.5px solid #34D399 !important; border-radius: 10px !important; box-shadow: 0 4px 12px rgba(4, 120, 87, 0.3) !important;
+}
+html[data-app-theme='jade'] :is(.theme-btn-primary, .hh-button:not(.hh-button-ghost), .hh-badge, button.bg-primary-600, button.bg-emerald-600, button.bg-green-600, button.bg-success-600, button.bg-purple-600) :where(*, svg) { color: #FFFFFF !important; }
+html[data-app-theme='jade'] :is(.hh-card-forest, .theme-ticket-card) .hh-badge { background: #34D399 !important; color: #052E16 !important; }
+html[data-app-theme='jade'] :is(.hh-card-forest, .theme-ticket-card) .hh-badge * { color: #052E16 !important; }
+html[data-app-theme='jade'] :is(button.bg-danger-600, button.bg-red-600, button.bg-rose-600) { color: #fff !important; background: linear-gradient(135deg, #E11D48, #9F1239) !important; border: 1.5px solid #FDA4AF !important; }
+html[data-app-theme='jade'] :is(.theme-btn-ghost, .hh-button-ghost) { color: var(--text-primary) !important; background: transparent !important; border: 1.5px solid #10B981 !important; }
+html[data-app-theme='jade'] :is(.bg-accent) { color: #FFFFFF !important; background: linear-gradient(135deg, #07805A, #065F46) !important; }
+html[data-app-theme='jade'] :is(.bg-accent) :is(*, span) { color: #FFFFFF !important; }
+html[data-app-theme='jade'] button:is(.bg-white, .bg-gray-100, .bg-gray-50, .bg-primary-50, .bg-\[\#FFF6D6\], .bg-\[\#FFFDF9\], .shape-card, .botanical-pill):not(:where(.theme-btn-primary, .theme-sidebar *, .fantasy-keep)) {
+  color: var(--stat-neutral-text) !important; background-color: var(--stat-neutral-bg) !important; background-image: none !important; border: 1.5px solid rgba(16, 185, 129, 0.45) !important;
+}
+
+/* forms */
+html[data-app-theme='jade'] :is(input, select, textarea):not(:where([type='checkbox'], [type='radio'], [type='range'], [type='color'])) {
+  color: var(--input-text) !important; background: var(--input-bg) !important; border: 1.5px solid var(--input-border) !important; border-radius: 10px;
+}
+html[data-app-theme='jade'] :is(input, textarea)::placeholder { color: var(--text-muted) !important; opacity: 1; }
+html[data-app-theme='jade'] :is(input, select, textarea):focus { outline: 3px solid rgba(16, 185, 129, 0.55); outline-offset: 1px; }
+html[data-app-theme='jade'] label { color: var(--text-secondary); }
+html[data-app-theme='jade'] table { color: var(--text-primary); }
+html[data-app-theme='jade'] thead :is(th, tr) { color: var(--stat-neutral-text) !important; background: var(--stat-neutral-bg) !important; }
+html[data-app-theme='jade'] :is(tbody tr, .divide-y > *) { border-color: rgba(16, 185, 129, 0.25) !important; }
+
+/* modals */
+html[data-app-theme='jade'] .fixed.inset-0.bg-black\/50 { background-color: rgba(6, 40, 30, 0.65); }
+html[data-app-theme='jade'] [role='dialog'] {
+  color: var(--card-text) !important; background-color: var(--card-bg) !important; background-image: none !important;
+  border: var(--card-border) !important; border-top: 3px solid #10B981 !important; border-radius: 14px !important; box-shadow: 0 20px 44px rgba(6, 78, 59, 0.35) !important;
+}
+html[data-app-theme='jade'] [role='dialog'] :is(h1, h2, h3, h4, p, span, label, li, td, th, dt, dd, small, legend, div):not(:where(button *, .theme-btn-primary *)) { color: var(--card-text) !important; }
+html[data-app-theme='jade'] [role='dialog'] :is(.text-gray-500, .text-gray-400, .text-gray-600) { color: var(--text-muted) !important; }
+html[data-app-theme='jade'] [role='dialog'] :is(.bg-white, .bg-gray-50, .bg-gray-100) { background-color: var(--stat-neutral-bg) !important; box-shadow: none !important; }
+
+@media (prefers-reduced-motion: reduce) { .theme-chest__gem { animation: none; } }
+
+
+/* ======================================================================== */
+/* 6. THE CHROME WINS: sidebar, top bar and bottom dock set their own text,   */
+/*    at a specificity no page rule reaches (the nav links carry .text-gray-600) */
+/* ======================================================================== */
+html[data-app-theme='medieval'][data-app-theme] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(a, button, span, p, h1, h2, h3, div, svg, label, small)[class] { color: #f3e9d2 !important; }
+html[data-app-theme='medieval'][data-app-theme] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(.text-gray-400, .text-gray-300, .text-gray-500, .uppercase)[class] { color: #e3d4ac !important; }
+html[data-app-theme='medieval'][data-app-theme] :is(.theme-sidebar, .theme-bottomnav) :is(a, button)[aria-current='page'][class] :where(*, svg), html[data-app-theme='medieval'][data-app-theme] :is(.theme-sidebar, .theme-bottomnav) :is(a, button)[aria-current='page'][class] { color: #1a120b !important; }
+html[data-app-theme='medieval'][data-app-theme] .theme-sidebar :is(.bg-white, .bg-gray-50, .border)[class] :is(span, div, p, svg, a, button) { color: #f3e9d2 !important; }
+html[data-app-theme='jade'][data-app-theme] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(a, button, span, p, h1, h2, h3, div, svg, label, small)[class] { color: #D1FAE5 !important; }
+html[data-app-theme='jade'][data-app-theme] :is(.theme-sidebar, .theme-header, .theme-bottomnav) :is(.text-gray-400, .text-gray-300, .text-gray-500, .uppercase)[class] { color: #8fd8b9 !important; }
+html[data-app-theme='jade'][data-app-theme] :is(.theme-sidebar, .theme-bottomnav) :is(a, button)[aria-current='page'][class] :where(*, svg), html[data-app-theme='jade'][data-app-theme] :is(.theme-sidebar, .theme-bottomnav) :is(a, button)[aria-current='page'][class] { color: #052E16 !important; }
+/* the little controls in the sidebar foot (currency, theme pill) are pale chips: ink on them */
+html[data-app-theme='medieval'][data-app-theme] .theme-sidebar :is(.theme-cycle-pill, .theme-chip) { background: #fbf6e8 !important; border: 2px solid #b59b72 !important; }
+html[data-app-theme='medieval'][data-app-theme] .theme-sidebar :is(.theme-cycle-pill, .theme-chip), html[data-app-theme='medieval'][data-app-theme] .theme-sidebar :is(.theme-cycle-pill, .theme-chip) :is(*, span, svg)[class] { color: #4a3525 !important; }
+html[data-app-theme='jade'][data-app-theme] .theme-sidebar :is(.theme-cycle-pill, .theme-chip) { background: #E2F0EA !important; border: 1.5px solid #6EE7B7 !important; }
+html[data-app-theme='jade'][data-app-theme] .theme-sidebar :is(.theme-cycle-pill, .theme-chip), html[data-app-theme='jade'][data-app-theme] .theme-sidebar :is(.theme-cycle-pill, .theme-chip) :is(*, span, svg)[class] { color: #06281E !important; }
+/* The corporate cycle pill. The name is written in the deep forest green
+   on the light side, where it reads. On the dark side the pill sits on a
+   dark panel, so the green has to be the pale one - the deep green on a
+   dark panel was 1.29:1, which is not readable at all. */
+html[data-app-theme='corporate'] .theme-cycle-pill { color: #1F3A2E; }
+html[data-app-theme='corporate'].dark .theme-cycle-pill { color: #C7E9D4; }
+
+
+/* ======================================================================== */
+/* 7. Loose ends found by the sweep                                          */
+/* ======================================================================== */
+/* the coloured page header bar (bg-accent): its title must read on it, in every theme */
+html[data-app-theme] .bg-accent :is(h1, h2, span, p, svg) { color: inherit !important; }
+html[data-app-theme='jade'] .bg-accent, html[data-app-theme='jade'] .bg-accent :is(h1, h2, span, p) { color: #FFFFFF !important; }
+html[data-app-theme='medieval'] .bg-accent, html[data-app-theme='medieval'] .bg-accent :is(h1, h2, span, p) { color: #2c1d0c !important; }
+html[data-app-theme='medieval'] .bg-accent h1 { text-shadow: none; background: none; border: 0; box-shadow: none; padding: 0; }
+html[data-app-theme='medieval'] .bg-accent .bg-white\/20 { background: rgba(255, 255, 255, 0.5) !important; }
+/* the page header's own inline title plaque must not nest inside the bar */
+html[data-app-theme='medieval'] .theme-header h1, html[data-app-theme='medieval'] header h1 { background: none !important; border: 0 !important; box-shadow: none !important; text-shadow: none !important; padding: 0 !important; display: block !important; }
+/* purple/violet hero bands (advisor) */
+html[data-app-theme='medieval'] .text-purple-100, html[data-app-theme='jade'] .text-purple-100 { color: inherit !important; opacity: 0.85; }
+html[data-app-theme='medieval'] [class*='from-purple'], html[data-app-theme='medieval'] [class*='from-indigo'], html[data-app-theme='medieval'] [class*='from-primary'] { background: linear-gradient(180deg, var(--m-panel-1), var(--m-panel-2)) !important; color: #f3e9d2 !important; }
+html[data-app-theme='medieval'] [class*='from-purple'] :where(*, svg), html[data-app-theme='medieval'] [class*='from-indigo'] :where(*, svg), html[data-app-theme='medieval'] [class*='from-primary'] :where(*, svg) { color: #f3e9d2 !important; }
+html[data-app-theme='jade'] [class*='from-purple'], html[data-app-theme='jade'] [class*='from-indigo'], html[data-app-theme='jade'] [class*='from-primary'] { background: linear-gradient(135deg, #064E3B, #0F2922) !important; color: #ECFDF5 !important; }
+html[data-app-theme='jade'] [class*='from-purple'] :where(*, svg), html[data-app-theme='jade'] [class*='from-indigo'] :where(*, svg), html[data-app-theme='jade'] [class*='from-primary'] :where(*, svg) { color: #ECFDF5 !important; }
+/* the add page's expense/income switch */
+html[data-app-theme='medieval'] .shape-card button[class*='flex-1'], html[data-app-theme='jade'] .shape-card button[class*='flex-1'] { color: inherit !important; }
+/* the dashboard's "safe to spend" titles and the reconcile button sit on dark panels */
+html[data-app-theme='medieval'] :is(.safe-spend__title, .recon__check) { color: #4a3525 !important; }
+/* currency chip and the theme pill in the sidebar foot: the chip is a light surface, so it is ink on paper */
+html[data-app-theme='jade'] .theme-sidebar .theme-chip { background: #E2F0EA !important; border: 1.5px solid #6EE7B7 !important; }
+html[data-app-theme='jade'] .theme-sidebar .theme-chip, html[data-app-theme='jade'] .theme-sidebar .theme-chip * { color: #06281E !important; }
+html[data-app-theme='jade'] .theme-sidebar .theme-chip .text-gray-400 { color: #3F6B5D !important; }
+/* settings/appearance: the page must not scroll sideways (a fixed-width preview row) */
+.theme-miniature-row, [data-miniature] { max-width: 100%; }
+html[data-app-theme] main { overflow-x: clip; }
+
+
+/* ======================================================================== */
+/* 8. Second pass of the sweep                                               */
+/* ======================================================================== */
+/* jade: the little eyebrow badges (hh-badge) are mint on a white card, ink on them.
+   The children INHERIT the badge's own colour: the badge may be on a mint wash
+   (ink) or on an emerald plate (white), and a fixed ink on the child would put
+   dark ink on the emerald plate - 1.96:1. */
+html[data-app-theme='jade'] .hh-badge:not(:where(.hh-card-forest *, .theme-ticket-card *)) { background: #A7F3D0 !important; color: #064E3B !important; border: 1.5px solid #34D399 !important; box-shadow: none !important; }
+html[data-app-theme='jade'] .hh-badge:not(:where(.hh-card-forest *, .theme-ticket-card *)) :where(*, svg) { color: inherit !important; }
+/* jade: the currency chip sits inside the dark sidebar but is drawn as a light chip; it is NOT reached by the
+   generic light-chip rule (excluded as `.theme-sidebar *`), so it is named here */
+html[data-app-theme='jade'] .theme-sidebar [data-currency-badge] { background: #E2F0EA !important; border: 1.5px solid #6EE7B7 !important; }
+html[data-app-theme='jade'] .theme-sidebar [data-currency-badge], html[data-app-theme='jade'] .theme-sidebar [data-currency-badge] :is(span, svg, button) { color: #06281E !important; }
+html[data-app-theme='medieval'] .theme-sidebar [data-currency-badge] { background: #fbf6e8 !important; border: 2px solid #b59b72 !important; }
+html[data-app-theme='medieval'] .theme-sidebar [data-currency-badge], html[data-app-theme='medieval'] .theme-sidebar [data-currency-badge] :is(span, svg, button) { color: #4a3525 !important; }
+/* the advisor's violet hero: any gradient band that is not one of ours becomes the theme's own panel */
+html[data-app-theme='jade'] :is([class~='from-primary-600'], [class~='from-primary-700'], [class~='from-primary-800'], [class~='from-primary-900'], [class~='from-emerald-500'], [class~='from-emerald-600'], [class~='from-emerald-700'], [class~='from-teal-600'], [class~='from-[#2F4842]']) { background-image: linear-gradient(135deg, #064E3B, #0F2922) !important; }
+html[data-app-theme='jade'] :is([class~='from-primary-600'], [class~='from-primary-700'], [class~='from-primary-800'], [class~='from-primary-900'], [class~='from-emerald-500'], [class~='from-emerald-600'], [class~='from-emerald-700'], [class~='from-teal-600'], [class~='from-[#2F4842]']) :where(*, svg) { color: #ECFDF5 !important; }
+html[data-app-theme='medieval'] :is([class~='from-purple-600'], [class~='from-purple-500'], [class~='from-purple-700'], [class~='from-indigo-600'], [class~='from-indigo-500'], [class~='from-violet-600'], [class~='from-primary-600'], [class~='from-primary-700'], [class~='from-emerald-500'], [class~='from-emerald-600'], [class~='from-teal-600'], [class~='from-[#2F4842]'], [class~='from-primary-900/80']) { background-image: linear-gradient(180deg, var(--m-panel-1), var(--m-panel-2)) !important; }
+html[data-app-theme='medieval'] :is([class~='from-purple-600'], [class~='from-purple-500'], [class~='from-purple-700'], [class~='from-indigo-600'], [class~='from-indigo-500'], [class~='from-violet-600'], [class~='from-primary-600'], [class~='from-primary-700'], [class~='from-emerald-500'], [class~='from-emerald-600'], [class~='from-teal-600'], [class~='from-[#2F4842]'], [class~='from-primary-900/80']) :where(*, svg):not(:where(button, button *)) { color: #f3e9d2 !important; }
+html[data-app-theme='medieval'] .text-purple-100, html[data-app-theme='medieval'] .text-purple-200 { color: #f3e9d2 !important; }
+/* the "safe to spend" card and the reconcile button live on a pale pastel gradient; they are ink-on-paper */
+html[data-app-theme='medieval'] [class*='safe-spend'], html[data-app-theme='medieval'] [class*='safe-spend'] :where(*, svg), html[data-app-theme='medieval'] .recon :is(button, span) { color: #4a3525 !important; }
+html[data-app-theme='medieval'] [class*='safe-spend'] { background-color: #f3e9cc !important; background-image: none !important; }
+html[data-app-theme='jade'] [class*='safe-spend'] { background-color: #E2F0EA !important; background-image: none !important; }
+html[data-app-theme='jade'] [class*='safe-spend'], html[data-app-theme='jade'] [class*='safe-spend'] :where(*, svg) { color: #06281E !important; }
+/* white-on-green action text that the generic rule did not reach */
+html[data-app-theme='jade'] :is(a, button):is([class~='bg-gradient-to-r'], [class~='bg-gradient-to-br'], [class~='bg-gradient-to-b'], [class~='bg-gradient-to-l'], [class~='bg-gradient-to-t'], [class~='bg-gradient-to-tr'], [class~='bg-gradient-to-tl'], [class~='bg-gradient-to-bl'], [class~='bg-primary-50'], [class~='bg-primary-100'], [class~='bg-primary-500'], [class~='bg-primary-600'], [class~='bg-primary-700'], [class~='bg-primary-800'], [class~='bg-primary-900']) { color: #FFFFFF !important; }
+html[data-app-theme='jade'] :is(a, button):is([class~='bg-gradient-to-r'], [class~='bg-gradient-to-br'], [class~='bg-gradient-to-b'], [class~='bg-gradient-to-l'], [class~='bg-gradient-to-t'], [class~='bg-gradient-to-tr'], [class~='bg-gradient-to-tl'], [class~='bg-gradient-to-bl']) :where(*, svg) { color: #FFFFFF !important; }
+/* the two-state switch on the add page */
+html[data-app-theme='medieval'] .shape-card button[class*='flex-1']:not([class*='bg-']) { color: #4a3525 !important; }
+html[data-app-theme='jade'] .shape-card button[class*='flex-1']:not([class*='bg-']) { color: #134E3F !important; }
+
+
+/* ======================================================================== */
+/* 9. Primary actions keep their own text, wherever they sit                  */
+/* ======================================================================== */
+html[data-app-theme='jade'] :is(.theme-btn-primary, .hh-button:not(.hh-button-ghost), button.bg-primary-600, button.bg-primary-500, button.bg-primary-700, a.bg-primary-600, button.bg-emerald-600, button.bg-green-600, button.bg-success-600, button.bg-blue-600, button.bg-purple-600, button.bg-accent, button[class~='bg-gradient-to-r'], button[class~='bg-gradient-to-br'], a[class~='bg-gradient-to-br'], button[class~='bg-gradient-to-b'], a[class~='bg-gradient-to-b'], button[class~='bg-gradient-to-l'], a[class~='bg-gradient-to-l'], button[class~='bg-gradient-to-t'], a[class~='bg-gradient-to-t'], button[class~='bg-gradient-to-tr'], a[class~='bg-gradient-to-tr'], button[class~='bg-gradient-to-tl'], a[class~='bg-gradient-to-tl'], button[class~='bg-gradient-to-bl'], a[class~='bg-gradient-to-bl'])[class], html[data-app-theme='jade'] :is(.theme-btn-primary, .hh-button:not(.hh-button-ghost), button.bg-primary-600, button.bg-primary-500, a.bg-primary-600, button.bg-emerald-600, button.bg-green-600, button.bg-accent, button[class~='bg-gradient-to-r'], button[class~='bg-gradient-to-br'], a[class~='bg-gradient-to-br'], button[class~='bg-gradient-to-b'], a[class~='bg-gradient-to-b'], button[class~='bg-gradient-to-l'], a[class~='bg-gradient-to-l'], button[class~='bg-gradient-to-t'], a[class~='bg-gradient-to-t'], button[class~='bg-gradient-to-tr'], a[class~='bg-gradient-to-tr'], button[class~='bg-gradient-to-tl'], a[class~='bg-gradient-to-tl'], button[class~='bg-gradient-to-bl'], a[class~='bg-gradient-to-bl'])[class] :where(*, svg) { color: #FFFFFF !important; }
+html[data-app-theme='medieval'] :is(.theme-btn-primary, .hh-button:not(.hh-button-ghost), button.bg-primary-600, button.bg-primary-500, button.bg-primary-700, a.bg-primary-600, button.bg-emerald-600, button.bg-green-600, button.bg-success-600, button.bg-blue-600, button.bg-purple-600, button[class~='bg-gradient-to-r'], button[class~='bg-gradient-to-br'], a[class~='bg-gradient-to-br'], button[class~='bg-gradient-to-b'], a[class~='bg-gradient-to-b'], button[class~='bg-gradient-to-l'], a[class~='bg-gradient-to-l'], button[class~='bg-gradient-to-t'], a[class~='bg-gradient-to-t'], button[class~='bg-gradient-to-tr'], a[class~='bg-gradient-to-tr'], button[class~='bg-gradient-to-tl'], a[class~='bg-gradient-to-tl'], button[class~='bg-gradient-to-bl'], a[class~='bg-gradient-to-bl'])[class], html[data-app-theme='medieval'] :is(.theme-btn-primary, .hh-button:not(.hh-button-ghost), button.bg-primary-600, button.bg-primary-500, a.bg-primary-600, button.bg-emerald-600, button.bg-green-600, button[class~='bg-gradient-to-r'], button[class~='bg-gradient-to-br'], a[class~='bg-gradient-to-br'], button[class~='bg-gradient-to-b'], a[class~='bg-gradient-to-b'], button[class~='bg-gradient-to-l'], a[class~='bg-gradient-to-l'], button[class~='bg-gradient-to-t'], a[class~='bg-gradient-to-t'], button[class~='bg-gradient-to-tr'], a[class~='bg-gradient-to-tr'], button[class~='bg-gradient-to-tl'], a[class~='bg-gradient-to-tl'], button[class~='bg-gradient-to-bl'], a[class~='bg-gradient-to-bl'])[class] :where(*, svg) { color: #2c1d0c !important; }
+/* the emoji that prefixes a plain-text button is part of its label */
+html[data-app-theme] .hh-button [aria-hidden='true'] { color: inherit !important; }
+
+
+/* ======================================================================== */
+/* 10. Third pass: the surfaces the sweep still found                         */
+/* ======================================================================== */
+/* jade: the little soft chips (bg-primary-50 etc.) carry ink, not white text */
+html[data-app-theme='jade'] :is(.bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-green-50, .bg-green-100, .bg-slate-50, .bg-slate-100):not(.theme-btn-primary):not(.theme-btn-primary *) { color: var(--text-secondary) !important; }
+html[data-app-theme='jade'] :is(.bg-primary-50, .bg-primary-100, .bg-emerald-50, .bg-emerald-100, .bg-green-50, .bg-green-100, .bg-slate-50, .bg-slate-100):not(.theme-btn-primary):not(.theme-btn-primary *) :where(*, svg) { color: var(--text-secondary) !important; }
+/* jade: the sticky page header (bg-primary-600) is a dark emerald bar: its title is white */
+html[data-app-theme='jade'] .bg-primary-600 { color: #FFFFFF !important; background: linear-gradient(135deg, #07805A, #065F46) !important; }
+html[data-app-theme='jade'] .bg-primary-600 :is(h1, h2, h3, p, span, div, svg, label) { color: #FFFFFF !important; }
+/* jade: a coloured bar of any shade (the settings nav, the advisor hero) keeps its own text */
+html[data-app-theme='jade'] .bg-primary-700, html[data-app-theme='jade'] .bg-primary-800 { color: #FFFFFF !important; }
+/* medieval: the same header bar is gold, so the title is ink */
+html[data-app-theme='medieval'] .bg-primary-600 { color: #2c1d0c !important; background: linear-gradient(180deg, #f5d77f, #c59b27) !important; }
+html[data-app-theme='medieval'] .bg-primary-600 :is(h1, h2, h3, p, span, div, svg, label) { color: #2c1d0c !important; }
+/* the tactile pills (household) are a soft green chip */
+html[data-app-theme='corporate'] .tactile-pill { color: #1F3A2E !important; }
+html[data-app-theme='corporate'] .tactile-pill :where(*, svg) { color: #1F3A2E !important; }
+html[data-app-theme='jade'] .tactile-pill { color: #134E3F !important; }
+html[data-app-theme='jade'] .tactile-pill :where(*, svg) { color: #134E3F !important; }
+html[data-app-theme='medieval'] .tactile-pill { color: #4a3525 !important; }
+/* the shop/kanban hero panels: a warm card with its own ink */
+html[data-app-theme='medieval'] :is([class*='from-rose'], [class*='from-pink'], [class*='from-amber'], [class*='from-orange']):is([class*='to-']) { background-image: linear-gradient(180deg, var(--m-panel-1), var(--m-panel-2)) !important; }
+html[data-app-theme='medieval'] :is([class*='from-rose'], [class*='from-pink'], [class*='from-amber'], [class*='from-orange']):is([class*='to-']) :where(*, svg) { color: #f3e9d2 !important; }
+html[data-app-theme='medieval'] :is([class*='from-rose'], [class*='from-pink'], [class*='from-amber'], [class*='from-orange']):is([class*='to-']) :is(.text-\[\#B5654A\], [class*='text-[#B5654A]'], [class*='text-[#5C6460]'], [class*='text-[#E07A5F]']) { color: #e3d4ac !important; }
+/* the advisor's purple hero */
+html[data-app-theme='medieval'] [class*='from-purple'] :where(*, svg) { color: #f3e9d2 !important; }
+/* the legend of the recharts: the swatch colours are the data, the label is ink */
+html[data-app-theme='corporate'] .recharts-legend-item-text { color: var(--text-secondary) !important; }
+html[data-app-theme='jade'] .recharts-legend-item-text { color: var(--text-secondary) !important; }
+html[data-app-theme='medieval'] .recharts-legend-item-text { color: var(--th-ink) !important; }
+/* the small counter on the dashboard avatar */
+html[data-app-theme='jade'] .text-slate-500, html[data-app-theme='jade'] .text-slate-400 { color: var(--text-secondary) !important; }
+/* the add page: the expense / income switch */
+html[data-app-theme='jade'] .shape-card button[class*='flex-1'] { color: var(--text-secondary) !important; }
+html[data-app-theme='medieval'] .shape-card button[class*='flex-1'] { color: var(--th-ink) !important; }
+/* the reconcile button sits on a green plate */
+html[data-app-theme='jade'] .recon__check { color: #FFFFFF !important; }
+html[data-app-theme='medieval'] .recon__check { color: #4a3525 !important; }
+/* the shop / kanban / advisor titles are dark ink on their pale card */
+html[data-app-theme='corporate'] :is([class*='text-[#E07A5F]'], [class*='text-[#B5654A]'], [class*='text-[#5C6460]']) { color: #8A4A33 !important; }
+html[data-app-theme='jade'] :is([class*='text-[#E07A5F]'], [class*='text-[#B5654A]'], [class*='text-[#5C6460]']) { color: #8A4A33 !important; }
+
+
+/* ======================================================================== */
+/* 11. Fourth pass                                                            */
+/* ======================================================================== */
+/* the active tab on /add is a burnt-orange plate with white text: deepen it so the
+   white label clears 4.5:1 instead of 3.4:1 */
+html[data-app-theme] button.bg-\[\#D96B43\] { background-color: #B8562F !important; }
+html[data-app-theme] button.bg-\[\#D96B43\] :where(*, svg) { color: #FFFFFF !important; }
+
+
+/* ======================================================================== */
+/* 12. Fifth pass                                                              */
+/* ======================================================================== */
+/* a pastel gradient tile (sky -> violet) carries a small slate caption: darken it */
+html[data-app-theme='corporate'] :is([class~='from-sky-100'], [class~='from-violet-100'], [class~='from-sky-50'], [class~='from-violet-50']) { color: #475569 !important; }
+html[data-app-theme='corporate'] :is([class~='from-sky-100'], [class~='from-violet-100'], [class~='from-sky-50'], [class~='from-violet-50']) :where(*, svg) { color: #475569 !important; }
+html[data-app-theme='jade'] :is([class~='from-sky-100'], [class~='from-violet-100'], [class~='from-sky-50'], [class~='from-violet-50']) { color: #334155 !important; }
+html[data-app-theme='jade'] :is([class~='from-sky-100'], [class~='from-violet-100'], [class~='from-sky-50'], [class~='from-violet-50']) :where(*, svg) { color: #334155 !important; }
+/* medieval: the advisor hero keeps its midnight panel, so its title is parchment - the
+   gold plate under it is the section ribbon, which takes ink */
+html[data-app-theme='medieval'] [class~='from-purple-600'] h1,
+html[data-app-theme='medieval'] [class~='from-purple-600'] h2,
+html[data-app-theme='medieval'] [class~='from-purple-600'] h3 { color: #f3e9d2 !important; }
+html[data-app-theme='medieval'] :is(h1, h2, h3) { text-shadow: -1.5px -1.5px 0 #5c4332, 1.5px -1.5px 0 #5c4332, -1.5px 1.5px 0 #5c4332, 1.5px 1.5px 0 #5c4332, 0 2.5px 0 #5c4332; }
+/* jade: a chip that carries its own ink colour (bg-[#FFF6D6] with text-[#2C221E]) keeps it */
+html[data-app-theme='jade'] :is([class~='bg-[#FFF6D6]'], [class~='bg-[#FFFDF9]'], [class~='bg-[#FFE8D6]'], [class~='bg-[#E8F5EE]']) { color: #2C221E !important; }
+html[data-app-theme='jade'] :is([class~='bg-[#FFF6D6]'], [class~='bg-[#FFFDF9]'], [class~='bg-[#FFE8D6]'], [class~='bg-[#E8F5EE]']) :where(*, svg) { color: #2C221E !important; }
+/* the burnt-orange plate of /add: its label is white on a deeper orange */
+html[data-app-theme] button[class~='bg-[#D96B43]'] { background-color: #B8562F !important; }
+html[data-app-theme] button[class~='bg-[#D96B43]'] :where(*, svg) { color: #FFFFFF !important; }
+
+
+/* ======================================================================== */
+/* 13. Sixth pass                                                              */
+/* ======================================================================== */
+/* medieval: a page title that sits inside a DARK hero panel (the advisor) must not
+   become a gold plaque - it is the panel that is dark, so the title is parchment on it */
+html[data-app-theme='medieval'] :is([class~='from-purple-600'], [class~='from-purple-500'], [class~='from-purple-700']) :is(h1, h2, h3) {
+  display: inline-block; padding: 0; font-weight: 900; letter-spacing: 0.04em;
+  color: #f3e9d2 !important;
+  background: none !important; border: 0 !important; box-shadow: none !important;
+  text-shadow: -1.5px -1.5px 0 #5c4332, 1.5px -1.5px 0 #5c4332, -1.5px 1.5px 0 #5c4332, 1.5px 1.5px 0 #5c4332, 0 2.5px 0 #5c4332;
+}
+/* medieval: a warm cream hero header (shopping / kanban) is paper: its title is ink */
+html[data-app-theme='medieval'] :is([class~='from-[#FFF6F4]'], [class~='from-[#FFF6D6]'], [class~='from-[#FFFDF9]'], [class~='from-rose-100'], [class~='from-amber-50']) :is(h1, h2, h3, p, span) { color: #4a3525 !important; }
+html[data-app-theme='medieval'] :is([class~='from-[#FFF6F4]'], [class~='from-[#FFF6D6]'], [class~='from-[#FFFDF9]'], [class~='from-rose-100'], [class~='from-amber-50']) :is([class*='text-[#5C6460]'], [class*='text-[#B5654A]'], [class*='text-[#E07A5F]']) { color: #8a5a33 !important; }
+html[data-app-theme='medieval'] :is([class~='from-[#FFF6F4]'], [class~='from-[#FFF6D6]'], [class~='from-[#FFFDF9]'], [class~='from-rose-100'], [class~='from-amber-50']) :is(h1, h2, h3) { text-shadow: none !important; }
+/* jade / corporate: the reconcile button is a filled green plate: white label */
+html[data-app-theme='jade'] .recon__check, html[data-app-theme='corporate'] .recon__check { color: #FFFFFF !important; }
+html[data-app-theme='jade'] .recon__check :where(*, svg), html[data-app-theme='corporate'] .recon__check :where(*, svg) { color: #FFFFFF !important; }
+/* the settings nav tiles (jade): an emerald plate with a white label */
+html[data-app-theme='jade'] [class~='bg-primary-600'] { color: #FFFFFF !important; }
+html[data-app-theme='jade'] [class~='bg-primary-600'] :where(*, svg) { color: #FFFFFF !important; }
+
+
+/* ======================================================================== */
+/* 14. Seventh pass                                                             */
+/* ======================================================================== */
+/* the burnt-orange plate on /add: the button's own label (a text node, not a child) */
+html[data-app-theme] button[class~='bg-[#D96B43]'] { color: #FFFFFF !important; }
+/* a green "Normal priority" chip: the green ink must be dark enough on the pale green */
+html[data-app-theme='corporate'] .bg-green-50, html[data-app-theme='jade'] .bg-green-50 { color: #166534 !important; }
+html[data-app-theme='corporate'] .bg-green-50 :is(*, svg), html[data-app-theme='jade'] .bg-green-50 :is(*, svg) { color: #166534 !important; }
+html[data-app-theme='medieval'] .bg-green-50 { color: #2f6b2a !important; }
+/* the small warm captions on a cream card */
+html[data-app-theme='corporate'] :is([class*='text-[#8A7F72]'], [class*='text-[#9A5B4C]']) { color: #6B6257 !important; }
+html[data-app-theme='jade'] :is([class*='text-[#8A7F72]'], [class*='text-[#9A5B4C]']) { color: #55604F !important; }
+
+
+/* ======================================================================== */
+/* 15. Eighth pass                                                              */
+/* ======================================================================== */
+/* the small emoji inside a tactile pill takes the pill's ink */
+html[data-app-theme='corporate'] .tactile-pill :is(*, svg) { color: #1F3A2E !important; }
+html[data-app-theme='jade'] .tactile-pill :is(*, svg) { color: #134E3F !important; }
+html[data-app-theme='medieval'] .tactile-pill :is(*, svg) { color: #4a3525 !important; }
+/* the shop / kanban banner title sits on a CREAM plate: it is ink, not parchment */
+html[data-app-theme='medieval'] :is([class~='from-[#FFF6F4]'], [class~='from-[#FFF6D6]'], [class~='from-[#FFFDF9]']) h1,
+html[data-app-theme='medieval'] :is([class~='from-[#FFF6F4]'], [class~='from-[#FFF6D6]'], [class~='from-[#FFFDF9]']) h2 { color: #4a3525 !important; text-shadow: none !important; background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+html[data-app-theme='medieval'] :is([class~='from-[#FFF6F4]'], [class~='from-[#FFF6D6]'], [class~='from-[#FFFDF9]']) h1 :is(*, svg),
+html[data-app-theme='medieval'] :is([class~='from-[#FFF6F4]'], [class~='from-[#FFF6D6]'], [class~='from-[#FFFDF9]']) h2 :is(*, svg) { color: #4a3525 !important; }
+/* the pale-blue sparkle on a cream card */
+html[data-app-theme='corporate'] :is([class*='text-[#8EC9E0]'], [class*='text-[#E07A5F]']) { color: #8A4A2E !important; }
+html[data-app-theme='jade'] :is([class*='text-[#8EC9E0]'], [class*='text-[#E07A5F]']) { color: #8A4A2E !important; }
+
+
+/* ======================================================================== */
+/* 16. Ninth pass: the panels that are dark by name, not by "has a gradient"  */
+/* ======================================================================== */
+/* the reconcile button: a green plate in every theme, so it carries white text */
+html[data-app-theme='medieval'] .recon__check { color: #FFFFFF !important; background: linear-gradient(180deg, #d4af37, #aa771c) !important; }
+html[data-app-theme='medieval'] .recon__check :where(*, svg) { color: #1a120b !important; }
+html[data-app-theme='jade'] .recon__check { color: #FFFFFF !important; }
+html[data-app-theme='corporate'] .recon__check { color: #FFFFFF !important; }
+
+
+/* ======================================================================== */
+/* 17. Tenth pass                                                                */
+/* ======================================================================== */
+/* jade: the pastel gradient tile (sky -> violet) is a LIGHT plate, so its caption is ink.
+   The dark: variants of the same tile are only active in dark mode. */
+html[data-app-theme='jade'] :is([class~='from-sky-100'], [class~='from-violet-100']) { color: #334155 !important; }
+html[data-app-theme='jade'] :is([class~='from-sky-100'], [class~='from-violet-100']) :where(*, svg) { color: #334155 !important; }
+html[data-app-theme='corporate'] :is([class~='from-sky-100'], [class~='from-violet-100']) { color: #475569 !important; }
+html[data-app-theme='corporate'] :is([class~='from-sky-100'], [class~='from-violet-100']) :where(*, svg) { color: #475569 !important; }
+/* the emoji that opens a tactile pill is a glyph, not a label: give it the pill's ink */
+html[data-app-theme] .tactile-pill > span:first-child { color: inherit !important; }
+/* medieval: the page title inside a CREAM banner (household / shopping) is ink on paper.
+   The RPG gold plaque is for the title on the canvas, not inside a light banner.
+   This rule has to outrank the plaque rule, which is
+   `html[data-app-theme='medieval'] :is(main h1, ...)` - and :is() takes the
+   specificity of its HIGHEST argument, so that rule weighs (0,2,2) and a
+   plain `header h1` rule of (0,1,3) would lose to it. Hence the doubled
+   attribute selector here: (0,3,2) beats it. */
+html[data-app-theme='medieval'][data-app-theme] header h1,
+html[data-app-theme='medieval'][data-app-theme] .botanical-header h1,
+html[data-app-theme='medieval'][data-app-theme] .sb-header h1 { color: #4a3525 !important; text-shadow: none !important; background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+html[data-app-theme='medieval'][data-app-theme] header h1 :where(*, svg),
+html[data-app-theme='medieval'][data-app-theme] .botanical-header h1 :where(*, svg) { color: #4a3525 !important; }

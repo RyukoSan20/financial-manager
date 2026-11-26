@@ -83,84 +83,108 @@ export const COLOR_SCHEMES = {
     },    accent: '#047857',
     onAccent: '#ffffff',
   },
+  // Matcha Latte.
+  //
+  // The tailwind blue was a saturated #2563eb at 600. This is a
+  // green-tinted blue, so the accent reads as a drink rather than as
+  // a link.
   blue: {
     id: 'blue',
     labelKey: 'appearance.blue_label',
     descriptionKey: 'appearance.blue_description',
     shades: {
-      50: '#eff6ff',
-      100: '#dbeafe',
-      200: '#bfdbfe',
-      300: '#93c5fd',
-      400: '#60a5fa',
-      500: '#3b82f6',
-      600: '#2563eb',
-      700: '#1d4ed8',
-      800: '#1e40af',
-      900: '#1e3a8a',
+      50: '#F4F8F6',
+      100: '#E3F2EA',
+      200: '#CBE3D8',
+      300: '#A6CDBB',
+      400: '#7FAE99',
+      500: '#5F8F7A',
+      600: '#4A7260',
+      700: '#3C5B4D',
+      800: '#2F4842',
+      900: '#22362F',
     },
-    accent: '#2563eb',
-    onAccent: '#ffffff',
+    accent: '#4A7260',
+    onAccent: '#F4F8F6',
   },
+  // Lavender Milk.
+  //
+  // The tailwind violet peaked at #7c3aed, which is a very strong
+  // purple. This is the same family with the saturation taken out
+  // and a warm grey in the dark end, so it reads as milk with a
+  // little lavender in it.
   violet: {
     id: 'violet',
     labelKey: 'appearance.violet_label',
     descriptionKey: 'appearance.violet_description',
     shades: {
-      50: '#f5f3ff',
-      100: '#ede9fe',
-      200: '#ddd6fe',
-      300: '#c4b5fd',
-      400: '#a78bfa',
-      500: '#8b5cf6',
-      600: '#7c3aed',
-      700: '#6d28d9',
-      800: '#5b21b6',
-      900: '#4c1d95',
+      50: '#F8F6FC',
+      100: '#F0EBFA',
+      200: '#E0D7F2',
+      300: '#C9BBE4',
+      400: '#AE9BD2',
+      500: '#9280BB',
+      600: '#75649E',
+      700: '#5E507D',
+      800: '#493D61',
+      900: '#362E48',
     },
-    accent: '#7c3aed',
-    onAccent: '#ffffff',
+    accent: '#75649E',
+    onAccent: '#F8F6FC',
   },
   // Amber used to be a muddy brown (#b45309) on every button. It is
   // now the forest with a warm lime, so a reader who chose it keeps
   // the warmth and loses the mud.
+  // Honey Biscuit.
+  //
+  // This one was the forest with a warm lime, which made it
+  // indistinguishable from the default scheme - two of the six
+  // choices looked identical. It is a warm biscuit brown now, with
+  // the cream of a bakery rather than the green of a tree.
   amber: {
     id: 'amber',
     labelKey: 'appearance.amber_label',
     descriptionKey: 'appearance.amber_description',
     shades: {
-      50: '#FAF9F6',
-      100: '#F4F1EA',
-      200: '#D8F3DC',
-      300: '#A8CFC0',
-      400: '#52796F',
-      500: '#3D5A52',
-      600: '#2F4842',
-      700: '#263B35',
-      800: '#1E2B27',
-      900: '#16211E',
+      50: '#FFFAEB',
+      100: '#FFF6D6',
+      200: '#F2E2B4',
+      300: '#E3C98D',
+      400: '#D2AC62',
+      500: '#BC8F44',
+      600: '#9C7234',
+      700: '#7C582A',
+      800: '#5F4322',
+      900: '#46311B',
     },
-    accent: '#2F4842',
-    onAccent: '#FAF9F6',
+    accent: '#9C7234',
+    onAccent: '#FFFAEB',
   },
+  // Sakura Wood.
+  //
+  // This was the tailwind rose scale, whose 600 is #e11d48 - a
+  // saturated crimson. As an accent on a header it was a bar of
+  // traffic-light red across the top of the page. The scale is now
+  // a wood-and-blush one: the light end is the same, the dark end is
+  // a warm brown with a red in it rather than a pure red.
   rose: {
     id: 'rose',
     labelKey: 'appearance.rose_label',
     descriptionKey: 'appearance.rose_description',
     shades: {
-      50: '#fff1f2',
-      100: '#ffe4e6',
-      200: '#fecdd3',
-      300: '#fda4af',
-      400: '#fb7185',
-      500: '#f43f5e',
-      600: '#e11d48',
-      700: '#be123c',
-      800: '#9f1239',
-      900: '#881337',
+      50: '#FFF7F5',
+      100: '#FDE8E4',
+      200: '#F6CFC6',
+      300: '#E9A899',
+      400: '#D96B43',
+      500: '#C05A38',
+      600: '#A64A2E',
+      700: '#8A3E28',
+      800: '#6E3222',
+      900: '#52271C',
     },
-    accent: '#be123c',
-    onAccent: '#ffffff',
+    accent: '#A64A2E',
+    onAccent: '#FFF7F5',
   },
   slate: {
     id: 'slate',

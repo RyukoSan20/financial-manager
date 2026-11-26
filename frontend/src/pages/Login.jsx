@@ -28,6 +28,16 @@ import { formatNative } from '../utils/format';
 import { computeBill, largestRemainderSplit } from '../utils/receiptBill';
 import { amountsFromSplit, dailyFromSplit } from '../utils/budgetRecipes';
 import { ShieldCheck, Lock, Mail, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import ClampShoujoMascot from '../components/mascot/ClampShoujoMascot';
+import PixelArtBusinessIcon from '../components/ui/PixelArtBusinessIcon';
+import OrganicWaveDivider from '../components/editorial/OrganicWaveDivider';
+import CampusPillNav from '../components/login/CampusPillNav';
+import KakeiboMiniGamesSection from '../components/login/KakeiboMiniGamesSection';
+import MascotGreeterCard from '../components/login/MascotGreeterCard';
+import { CampusHeading, MemphisBeads, PolaroidSnap } from '../components/login/CampusKit.jsx';
+import { FriendSnapLookbook, PetitGuildParade } from '../components/login/FriendSnapSections';
+import { campusCopy } from '../components/login/campusCopy.js';
+import snap1Url from '../assets/editorial/snap-1.jpg';
 
 // The switch. It is read in ONE place, so it cannot be honoured on
 // one screen and ignored on another by a mistake.
@@ -139,16 +149,41 @@ const LoginPreview = ({ W }) => {
 
   return (
     <div className="login-gateway__preview" aria-label={W.preview_title}>
-      <div style={{ width: '100%', maxWidth: '38rem' }}>
+      <div style={{ width: '100%' }}>
         <p className="login-gateway__preview-head">{W.preview_badge}</p>
         <h2 className="login-gateway__preview-title">{W.preview_title}</h2>
         <p className="login-gateway__preview-lead">{W.preview_lead}</p>
 
-        <div className="login-gateway__cards">
+        <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-12" data-testid="login-sim-row">
+        {/* The companion studio sits BESIDE the simulator cards, in the
+            same 12-column row, so the right of the Mone card is no
+            longer an empty stretch of page. */}
+        <div
+          className="login-gateway__mascot lg:col-span-5 self-start grid grid-cols-1 md:grid-cols-12 gap-4 items-center p-5 rounded-[24px] border-2 border-[#4A3540] bg-gradient-to-br from-[#FFFDF9] via-[#FFF6F4] to-[#F3F8F4] shadow-[0_6px_0_#E2D6C3]"
+          data-testid="login-mascot"
+        >
+          {/* The studio. The character's name, the dock of six, the
+              three questions and the ask line fill the left of the
+              card, and the character stands on a stage at the right.
+              Before this the character stood alone in a wide white
+              box, and clicking it dropped a floating board over the
+              simulator cards below. Nothing floats now: the whole
+              conversation is part of the card. */}
+          <ClampShoujoMascot
+            size={145}
+            mood="happy"
+            interactive
+            inline
+            className="md:col-span-12 shoujo-studio--narrow"
+            label={W.preview_title}
+          />
+        </div>
+
+        <div className="login-gateway__cards lg:col-span-7" data-testid="login-sim-cards">
           {/* The budget. */}
-          <section className="login-gateway__card--glass">
+          <section className="login-gateway__card--glass login-gateway__card--mint">
             <h3 className="login-gateway__card-title">
-              <ShieldCheck size={16} aria-hidden="true" />
+              <PixelArtBusinessIcon name="ledger_green" size={22} />
               {W.budget_title}
             </h3>
             <p className="login-gateway__muted">{W.budget_lead}</p>
@@ -199,9 +234,9 @@ const LoginPreview = ({ W }) => {
           </section>
 
           {/* The shared receipt. */}
-          <section className="login-gateway__card--glass">
+          <section className="login-gateway__card--glass login-gateway__card--oat">
             <h3 className="login-gateway__card-title">
-              <Lock size={16} aria-hidden="true" />
+              <PixelArtBusinessIcon name="receipt" size={22} />
               {W.split_title}
             </h3>
             <p className="login-gateway__muted">{W.split_lead}</p>
@@ -249,10 +284,7 @@ const LoginPreview = ({ W }) => {
               </span>
               <select
                 className="login-gateway__input"
-                style={{
-                  background: 'rgba(255,255,255,0.94)',
-                  color: '#10161a',
-                }}
+                style={{ background: '#FFFFFF', color: '#1F2421' }}
                 value={taxRuleId}
                 onChange={(e) => setTaxRuleId(e.target.value)}
                 aria-label={W.split_tax_label}
@@ -292,6 +324,35 @@ const LoginPreview = ({ W }) => {
               <span className="login-gateway__line-amount">{money(bill.total)}</span>
             </div>
           </section>
+
+          {/* The three things the application is for, as a third tile.
+              Drawn icons rather than emoji, so the same picture shows
+              on every machine. */}
+          <section
+            className="login-gateway__card--glass login-gateway__card--lavender"
+            data-testid="login-scenarios"
+          >
+            <h3 className="login-gateway__card-title">
+              <PixelArtBusinessIcon name="coffee" size={22} />
+              {W.scenarios_title}
+            </h3>
+            <ul className="login-gateway__scenarios">
+              {[
+                ['coffee', W.scenario_coffee_title, W.scenario_coffee_lead],
+                ['home', W.scenario_household_title, W.scenario_household_lead],
+                ['money_bag_rp', W.scenario_goal_title, W.scenario_goal_lead],
+              ].map(([icon, title, lead]) => (
+                <li className="login-gateway__scenario" key={icon}>
+                  <PixelArtBusinessIcon name={icon} size={30} />
+                  <span>
+                    <strong>{title}</strong>
+                    <span className="login-gateway__muted">{lead}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
         </div>
 
         {/* What is true about the data. */}
@@ -317,13 +378,14 @@ const LoginPreview = ({ W }) => {
               <Lock size={14} aria-hidden="true" />
               <span>
                 {W.trust_notice}{' '}
-                <Link to="/privacy" style={{ color: '#ccff00', fontWeight: 600 }}>
+                <Link to="/privacy" style={{ color: '#2F4842', fontWeight: 600 }}>
                   {W.trust_link}
                 </Link>
               </span>
             </li>
           </ul>
         </section>
+
       </div>
     </div>
   );
@@ -337,7 +399,7 @@ export const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginMethod, setLoginMethod] = useState('email');
   const { login, googleLogin, guestLogin, isSupabase } = useAuth();
-  const { language } = useTranslation();
+  const { t, language } = useTranslation();
   const K = batch3[language]?.login;
   const W = batch3[language]?.login_gateway || batch3.id.login_gateway;
   const navigate = useNavigate();
@@ -399,10 +461,10 @@ export const Login = () => {
         <div className="w-full max-w-md">
           {/* Logo & Title */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-2">FinManager</h1>
-            <p className="text-primary-100">{K.tagline}</p>
+            <h1 className="text-4xl font-bold text-[#2C221E] mb-2">FinManager</h1>
+            <p className="text-[#5C6460]">{K.tagline}</p>
             {isSupabase && (
-              <span className="inline-block mt-2 px-2 py-1 bg-white/20 rounded-full text-xs text-white">
+              <span className="inline-block mt-2 px-2 py-1 bg-[#E3F2EA] rounded-full text-xs text-[#1B3B32]">
                 {K.powered_by}
               </span>
             )}
@@ -559,7 +621,7 @@ export const Login = () => {
             <button
               onClick={handleGuestLogin}
               disabled={loading}
-              className="text-white/80 hover:text-white text-sm underline underline-offset-4"
+              className="text-[#5C6460] hover:text-[#1F2421] text-sm underline underline-offset-4"
             >
               {K.guest}
             </button>
@@ -570,131 +632,239 @@ export const Login = () => {
   }
 
   // The gateway.
+  //
+  // Five sections the reader moves down through, rather than one
+  // screen that asks for a password. Section one carries the form
+  // AND the first photograph, so the top of the page is never the
+  // empty white rectangle it used to be.
+  const C = campusCopy(language);
+
   return (
-    <div className="login-gateway">
-      <div className="login-gateway__form">
-        <div style={{ width: '100%', maxWidth: '27rem', margin: '0 auto' }}>
-          <Link to="/" className="login-gateway__brand">
-            <img
-              src={`${import.meta.env.BASE_URL}assets/generated/brand/logo-dynamic-glow.svg`}
-              alt=""
-              aria-hidden="true"
-              width="40"
-              height="40"
-            />
-            <span className="login-gateway__brand-name">FinManager</span>
-          </Link>
+    <div className="login-gateway campus-page" data-testid="login-campus-page">
+      <CampusPillNav language={language} onGuest={handleGuestLogin} busy={loading} />
 
-          <h1 className="login-gateway__title" style={{ marginTop: '1.75rem' }}>
-            {W.title_lead}{' '}
-            <em>{W.title_accent}</em>
-          </h1>
-          <p className="login-gateway__lead">{W.lead}</p>
+      {/* ---------------------------------------------------------------
+          Section 1 - the desk. Hero, auth card, and the snaps beside
+          them, all above the fold.
+          --------------------------------------------------------------- */}
+      <section
+        id="Masuk"
+        className="campus-section relative overflow-visible bg-[#F7F2E7] px-4 pb-10 pt-6 sm:pt-8"
+        data-testid="campus-hero-section"
+      >
+        <MemphisBeads seed={0} />
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* The form side. */}
+          <div className="lg:col-span-5">
+            {/* No wordmark here: the sticky navbar directly above
+                already carries it, and two FinManagers stacked within
+                90px of each other read as a rendering fault. */}
+            <p className="campus-overline mt-1 inline-flex items-center gap-1.5 rounded-full border-2 border-[#4A3540] bg-[#FFF6D6] px-4 py-1 text-[11px] font-extrabold tracking-[0.12em] text-[#2C221E] shadow-[0_3px_0_#4A3540]">
+              <span aria-hidden="true" className="campus-star">✦</span>
+              {C.hero_badge}
+            </p>
 
-          <div className="login-gateway__card" style={{ marginTop: '1.75rem' }}>
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="login-gateway__google"
-            >
-              <GoogleMark />
-              {W.google}
-            </button>
+            {/* The headline. Espresso ink, with the marker stroke
+                under the part that names what the app does. */}
+            <h1 className="login-gateway__title mt-3" data-testid="login-hero-title">
+              {C.hero_lead}{' '}
+              <em className="cute-underline">{C.hero_accent}</em>{' '}
+              {C.hero_tail}
+            </h1>
+            <p className="login-gateway__lead">{W.lead}</p>
 
-            <p className="login-gateway__or">{W.google_divider}</p>
+            <div className="login-gateway__card mt-5 rounded-[24px] border-2 border-[#4A3540] bg-white p-5 shadow-[0_8px_0_#E2D6C3] sm:p-6">
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="login-gateway__google"
+              >
+                <GoogleMark />
+                {W.google}
+              </button>
 
-            {error && (
-              <div className="login-gateway__error" role="alert">
-                {error}
-              </div>
-            )}
+              {/* The one-tap way in, said plainly rather than hidden
+                  under the form as a small underlined link. */}
+              <button
+                type="button"
+                onClick={handleGuestLogin}
+                disabled={loading}
+                className="login-gateway__guest"
+                data-testid="login-guest-cta"
+              >
+                <PixelArtBusinessIcon name="ledger_green" size={18} badge={false} />
+                {W.guest_cta}
+              </button>
 
-            <form onSubmit={handleSubmit}>
-              <div className="login-gateway__field">
-                <label className="login-gateway__label" htmlFor="login-email">
-                  {W.email_label}
-                </label>
-                <input
-                  id="login-email"
-                  className="login-gateway__input"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={W.email_placeholder}
-                  autoComplete="email"
-                  required
-                />
-              </div>
+              <p className="login-gateway__or">{W.google_divider}</p>
 
-              <div className="login-gateway__field">
-                <label className="login-gateway__label" htmlFor="login-password">
-                  {K.password}
-                </label>
-                <span className="login-gateway__password">
+              {error && (
+                <div className="login-gateway__error" role="alert">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit}>
+                <div className="login-gateway__field">
+                  <label className="login-gateway__label" htmlFor="login-email">
+                    {W.email_label}
+                  </label>
                   <input
-                    id="login-password"
+                    id="login-email"
                     className="login-gateway__input"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={W.password_placeholder}
-                    autoComplete="current-password"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={W.email_placeholder}
+                    autoComplete="email"
                     required
                   />
-                  <button
-                    type="button"
-                    className="login-gateway__eye"
-                    onClick={() => setShowPassword((current) => !current)}
-                    aria-label={showPassword ? W.hide_password : W.show_password}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </span>
-              </div>
+                </div>
 
-              <p className="login-gateway__muted" style={{ margin: '-0.4rem 0 1.1rem' }}>
-                <strong style={{ color: '#2b3742', fontWeight: 600 }}>
-                  {W.forgot_password}
-                </strong>{' '}
-                {W.forgot_note}
+                <div className="login-gateway__field">
+                  <label className="login-gateway__label" htmlFor="login-password">
+                    {K.password}
+                  </label>
+                  <span className="login-gateway__password">
+                    <input
+                      id="login-password"
+                      className="login-gateway__input"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={W.password_placeholder}
+                      autoComplete="current-password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="login-gateway__eye"
+                      onClick={() => setShowPassword((current) => !current)}
+                      aria-label={showPassword ? W.hide_password : W.show_password}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </span>
+                </div>
+
+                <p className="login-gateway__muted" style={{ margin: '-0.4rem 0 1.1rem' }}>
+                  <strong style={{ color: '#2b3742', fontWeight: 600 }}>
+                    {W.forgot_password}
+                  </strong>{' '}
+                  {W.forgot_note}
+                </p>
+
+                <button type="submit" disabled={loading} className="login-gateway__submit">
+                  {loading ? W.sign_in_loading : W.sign_in}
+                  {!loading && <ArrowRight size={18} aria-hidden="true" />}
+                </button>
+              </form>
+
+              <p className="login-gateway__muted mt-3" style={{ color: '#8b98a3', textAlign: 'center' }}>
+                {W.guest_hint}
               </p>
+            </div>
 
-              <button type="submit" disabled={loading} className="login-gateway__submit">
-                {loading ? W.sign_in_loading : W.sign_in}
-                {!loading && <ArrowRight size={18} aria-hidden="true" />}
-              </button>
-            </form>
-
-            <p className="login-gateway__or">{W.or_guest}</p>
-
-            <button
-              type="button"
-              onClick={handleGuestLogin}
-              disabled={loading}
-              className="login-gateway__guest"
-            >
-              {W.guest}
-            </button>
-            <p className="login-gateway__muted" style={{ color: '#8b98a3', textAlign: 'center' }}>
-              {W.guest_hint}
+            <p className="login-gateway__foot" style={{ marginTop: '1rem' }}>
+              {W.no_account}{' '}
+              <Link to="/register">{W.register}</Link>
+            </p>
+            <p className="login-gateway__foot" style={{ marginTop: '0.4rem', fontSize: '0.8rem' }}>
+              {W.agree_note}
             </p>
           </div>
 
-          <p className="login-gateway__foot" style={{ marginTop: '1.25rem' }}>
-            {W.no_account}{' '}
-            <Link to="/register">{W.register}</Link>
-          </p>
-          <p className="login-gateway__foot" style={{ marginTop: '0.4rem', fontSize: '0.8rem' }}>
-            {W.register_hint}
-          </p>
-          <p className="login-gateway__foot" style={{ marginTop: '0.4rem', fontSize: '0.8rem' }}>
-            {W.agree_note}
-          </p>
+          {/* The collage side, visible without scrolling. */}
+          <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-12 lg:col-span-7">
+            <div className="sm:col-span-6">
+              {/* Eager, because a photograph above the fold that is
+                  lazy is a white rectangle on first paint. */}
+              <PolaroidSnap
+                src={snap1Url}
+                index={0}
+                alt="Dua cangkir kopi di atas meja kayu"
+                number="SNAP #01"
+                caption={C.snap1_caption}
+                tags={['#SplitBill']}
+                tilt="-rotate-[1.5deg]"
+                tape="bg-[#FDE8E4]"
+                loading="eager"
+                testId="hero-polaroid"
+              />
+            </div>
+            <div className="sm:col-span-6 sm:translate-y-3">
+              <MascotGreeterCard />
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <LoginPreview W={W} />
+      {/* -------- the shop game, said out loud -------- */}
+      <section className="px-4 pb-6 bg-[#F7F2E7]" data-testid="login-koban-banner-section">
+        <Link
+          to="/koban-shop"
+          className="group relative mx-auto flex max-w-6xl flex-col items-center gap-4 overflow-visible rounded-[24px] border-2 border-[#4A3540] bg-gradient-to-r from-[#FFF6D6] via-[#FFFDF9] to-[#FDE8E4] p-5 shadow-[0_6px_0_#E2D6C3] transition-transform hover:-translate-y-0.5 sm:flex-row"
+          data-testid="login-koban-banner"
+        >
+          <span aria-hidden="true" className="absolute -top-2 left-8 h-4 w-20 -rotate-2 rounded-sm bg-[#F7C8D8]/80" />
+          <span className="flex -space-x-5">
+            {['koneko', 'minori', 'kogane'].map((id) => (
+              <img
+                key={id}
+                src={`/koban-assets/face/${id}.webp`}
+                alt=""
+                className="h-14 w-14 rounded-full border-2 border-[#4A3540] bg-[#FFFDF9] object-cover"
+                loading="lazy"
+              />
+            ))}
+          </span>
+          <span className="flex-1 text-center sm:text-left">
+            <span className="block text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#B5654A]">
+              {language === 'en' ? 'Mini-game' : 'Mini-game'}
+            </span>
+            <span className="block text-lg font-extrabold text-[#2C221E]">
+              <PixelArtBusinessIcon name="merchant" size={22} badge={false} className="mr-1.5 inline-block align-[-4px]" />
+              {language === 'en' ? 'Play Koban & Co. General Goods' : 'Mainkan Koban & Co. General Goods'}
+            </span>
+            <span className="block text-[12.5px] text-[#5C6460]">
+              {language === 'en'
+                ? 'Run a cozy item shop with the six - craft, sell, and save.'
+                : 'Kelola toko serba ada bersama enam maskot: racik, jual, dan menabung.'}
+            </span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-[#4A3540] bg-[#2F4842] px-5 py-2.5 text-sm font-extrabold text-[#FFFDF9] shadow-[0_4px_0_#1B2E28]">
+            {language === 'en' ? 'Play now' : 'Main sekarang'} <ArrowRight size={16} aria-hidden="true" />
+          </span>
+        </Link>
+      </section>
+
+      {/* -------- wave -> the mini-games -------- */}
+      <OrganicWaveDivider tone="sakura" direction="up" />
+      <KakeiboMiniGamesSection onGuest={handleGuestLogin} busy={loading} />
+
+      {/* -------- diagonal -> the lookbook -------- */}
+      <OrganicWaveDivider tone="matcha" direction="diagonal" />
+      <FriendSnapLookbook />
+
+      {/* -------- scallop -> the simulators and the guild -------- */}
+      <OrganicWaveDivider tone="honey" direction="scallop" />
+      <section
+        id="Simulator"
+        className="campus-section relative overflow-visible bg-[#FFF8E7] px-4 py-10 sm:py-14"
+        data-testid="campus-simulator-section"
+      >
+        <MemphisBeads seed={1} />
+        <div className="relative mx-auto max-w-6xl">
+          <CampusHeading badge={C.sim_badge} title={C.sim_title} lead={C.sim_lead} />
+          <div className="mt-6">
+            <LoginPreview W={W} />
+          </div>
+          <div id="Maskot" className="mt-12 scroll-mt-24">
+            <PetitGuildParade />
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

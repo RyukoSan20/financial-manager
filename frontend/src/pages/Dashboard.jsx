@@ -28,6 +28,7 @@ import ReadinessChecklist from '../components/ReadinessChecklist';
 import InsightsPanel from '../components/insights/InsightsPanel';
 import MonthTimeline from '../components/dashboard/MonthTimeline';
 import SpendingHeatmapCalendar from '../components/analytics/SpendingHeatmapCalendar';
+import OrganicWaveDivider from '../components/editorial/OrganicWaveDivider';
 import FinancialProfileShowcase from '../components/dashboard/FinancialProfileShowcase';
 import { ForestTicketCard } from '../components/ui/Botanical';
 import Onboarding from '../components/dashboard/Onboarding';
@@ -83,11 +84,11 @@ const CHART_COLORS = {
   budget: '#f59e0b',
   safe: '#10b981',
   grid: '#e5e7eb',
-  crosshair: '#94a3b8',
+  crosshair: '#64748b',
   dark: {
     grid: '#374151',
     text: '#9ca3af',
-    crosshair: '#6b7280',
+    crosshair: '#9ca3af',
   }
 };
 
@@ -611,11 +612,19 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         // almost equal amounts comes out of the database with a long
         // tail. Cleaning it first means the axis never says
         // "Rp -0.0000014397338687".
+        //
+        // The scale is taken from the magnitude, with the sign put
+        // back afterwards. Reading the thresholds off the signed value
+        // meant every negative amount fell past all three branches to
+        // the bare rupiah case, so a tick at minus one thousand
+        // printed "Rp -1000" and a rounded minus one printed "Rp -1".
         const value = cleanNumber(price);
-        if (value >= 1000000000) return `${axisSymbol} ${(value / 1000000000).toFixed(1)}B`;
-        if (value >= 1000000) return `${axisSymbol} ${(value / 1000000).toFixed(1)}M`;
-        if (value >= 1000) return `${axisSymbol} ${(value / 1000).toFixed(0)}K`;
-        return `${axisSymbol} ${value}`;
+        const sign = value < 0 ? '-' : '';
+        const n = Math.abs(value);
+        if (n >= 1000000000) return `${sign}${axisSymbol} ${(n / 1000000000).toFixed(1)}B`;
+        if (n >= 1000000) return `${sign}${axisSymbol} ${(n / 1000000).toFixed(1)}jt`;
+        if (n >= 1000) return `${sign}${axisSymbol} ${(n / 1000).toFixed(0)}rb`;
+        return `${sign}${axisSymbol} ${Math.round(n)}`;
       };
       if (chartInstanceRef.current) {
         try { chartInstanceRef.current.remove(); } catch (e) {}
@@ -638,13 +647,29 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         },
         crosshair: {
           mode: CrosshairMode.Normal,
-          vertLine: { color: CHART_COLORS.crosshair, labelBackgroundColor: isDark ? '#4b5563' : '#374151' },
-          horzLine: { color: CHART_COLORS.crosshair, labelBackgroundColor: isDark ? '#4b5563' : '#374151' },
+          // The crosshair follows the mode. It used to be the light
+          // value in both, because the dark half of CHART_COLORS was
+          // never read - the object existed and nothing asked it for.
+          // On a dark page #94a3b8 is a dim line, and the axis text
+          // beside it was #6b7280, which is 3.67:1 on the dark card.
+          vertLine: {
+            color: isDark ? CHART_COLORS.dark.crosshair : CHART_COLORS.crosshair,
+            labelBackgroundColor: isDark ? '#4b5563' : '#374151',
+          },
+          horzLine: {
+            color: isDark ? CHART_COLORS.dark.crosshair : CHART_COLORS.crosshair,
+            labelBackgroundColor: isDark ? '#4b5563' : '#374151',
+          },
         },
         rightPriceScale: { 
           borderColor: gridColor,
           scaleMargins: { top: 0.1, bottom: 0.2 },
-          mode: 1,
+          // Normal, not logarithmic. Mode 1 is PriceScaleMode.Logarithmic,
+          // which cannot represent zero or a negative number - and net
+          // cash flow is routinely both. That is what flattened the
+          // line onto zero and made it fall off a cliff at the right
+          // edge with a nonsense tick beside it.
+          mode: 0,
         },
         localization: {
           priceFormatter: axisFormatter,
@@ -722,7 +747,30 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         expenseSeries.setData(data.map(d => ({ time: d.time, value: d.expense })));
         savingsAreaSeries.setData(data.map(d => ({ time: d.time, value: d.savings })));
       } else {
-        // BASIC: Net savings only with area
+        // BASIC: income and expense alongside the net, so a flat net
+        // line is not the whole story - a reader seeing nothing at
+        // zero still wants to know what came in and what went out.
+        const incomeArea = chart.addSeries(AreaSeries, {
+          color: CHART_COLORS.income + '40',
+          lineColor: CHART_COLORS.income,
+          lineWidth: 2,
+          topColor: CHART_COLORS.income + '40',
+          bottomColor: CHART_COLORS.income + '05',
+          title: t('dashboard.income'),
+          crosshairMarkerVisible: true,
+        });
+        const expenseArea = chart.addSeries(AreaSeries, {
+          color: CHART_COLORS.expense + '40',
+          lineColor: CHART_COLORS.expense,
+          lineWidth: 2,
+          topColor: CHART_COLORS.expense + '40',
+          bottomColor: CHART_COLORS.expense + '05',
+          title: t('dashboard.expense'),
+          crosshairMarkerVisible: true,
+        });
+        incomeArea.setData(data.map(d => ({ time: d.time, value: d.income })));
+        expenseArea.setData(data.map(d => ({ time: d.time, value: d.expense })));
+
         const savingsSeries = chart.addSeries(AreaSeries, {
           color: savingsColor() + '60',
           lineColor: savingsColor(),
@@ -737,7 +785,13 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
         
         // Add baseline at 0
         const baselineSeries = chart.addSeries(LineSeries, {
-          color: '#6b7280',
+          // The zero line is decorative rather than text, so it is not
+          // held to the body-text floor - but it has to be VISIBLE on
+          // the page it is on. It used to be darker in the dark mode
+          // than in the light one, which is backwards: a dim grey line
+          // on a dark card is harder to see than a dim grey line on
+          // cream. The two are now the same weight.
+          color: '#9ca3af',
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           title: 'Baseline',
@@ -904,7 +958,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
   const bgPrimary = isDark ? 'bg-gray-900' : 'bg-gray-50';
   const bgCard = isDark ? 'bg-gray-800' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  // In the dark mode this sits on cards and on raised chips
+  // (`bg-gray-700`), where `text-gray-400` (#9ca3af) is only 4.06:1 -
+  // just under the body-text floor. gray-300 clears it on both.
+  const textSecondary = isDark ? 'text-gray-300' : 'text-gray-600';
   const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
 
   // Loading state
@@ -1160,6 +1217,9 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
           on it. `auto-fit` fits as many cards as there is room for, each
           at least 240px wide, so the cards stay readable and the
           fourth one wraps to the next row when there is no room. */}
+      {/* A wave, so the page has a rhythm instead of a seam. */}
+      <OrganicWaveDivider tone="sage" direction="up" className="-mb-2 mt-2" />
+
       {/* A balanced 12-column Kakeibo bento row. TOTAL SALDO is the
           deep-sage hero ticket on the left (5 of 12); the three
           cashflow cards share the right (7 of 12) as equal white
@@ -1213,6 +1273,10 @@ export const Dashboard = ({ onAddTransaction, onScanReceipt }) => {
                   state: balanceValue < 0 ? 'alert' : 'idle',
                   label: t('dashboard.total_balance'),
                   lines: [t('dashboard.balance_caption')],
+                  // On the hero the companion strolls along the top
+                  // edge of the ticket and can be asked a question.
+                  roaming: true,
+                  interactive: true,
                 }}
               >
                 {/* The amount is one unbroken line: Rp and the digits

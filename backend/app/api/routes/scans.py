@@ -173,6 +173,15 @@ def _create_transaction_for_scan(
     if account is None:
         # There is nowhere to put the money, so there is no transaction
         # to make. The scan itself is still saved.
+        #
+        # This used to be the end of the road for a guest reader, who
+        # was given a user and no account. Now the account is made for
+        # them, so the scan has a home and the reader sees it in their
+        # history.
+        from app.services.account_bootstrap import ensure_account
+
+        account = ensure_account(db, user_id)
+    if account is None:
         logger.warning("Scan saved but no active account to hold the transaction")
         return None
 
@@ -200,6 +209,62 @@ def _create_transaction_for_scan(
     )
     db.add(transaction)
     db.flush()
+
+    # The lines of the receipt.
+    #
+    # The total was written down, but the list of what was bought was
+    # not. So the transaction showed a number and nothing else, and the
+    # reader had no idea what they had actually paid for.
+    #
+    # The lines are written as a breakdown, which is where every other
+    # kind of transaction keeps its lines too.
+    try:
+        from app.services.breakdown_service import set_breakdown
+
+        lines = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "").strip()
+            if not name:
+                continue
+            try:
+                quantity = float(item.get("quantity") or 1)
+                unit_price = float(item.get("unit_price") or item.get("price_per_unit") or 0)
+                total_price = float(item.get("total_price") or item.get("total") or 0)
+            except (TypeError, ValueError):
+                continue
+            if not total_price and unit_price:
+                total_price = unit_price * quantity
+            lines.append(
+                {
+                    "name": name,
+                    "quantity": quantity,
+                    "unit_price": unit_price,
+                    "total_price": total_price,
+                    "category": item.get("category"),
+                }
+            )
+
+        if lines:
+            # A savepoint, not a rollback.
+            #
+            # The lines are a bonus: the transaction itself has already
+            # been written and flushed, and a rollback would take that
+            # with it. So the lines are written inside a savepoint, and
+            # only that savepoint is undone when the write fails.
+            savepoint = db.begin_nested()
+            try:
+                set_breakdown(
+                    db, user_id, "transaction", int(transaction.id), lines, replace=True
+                )
+                savepoint.commit()
+            except Exception:  # noqa: BLE001 - the transaction matters more
+                savepoint.rollback()
+                logger.warning("Could not save the lines of the scan", exc_info=True)
+    except Exception as exc:  # noqa: BLE001 - the lines are a bonus, not a must
+        logger.warning("Could not save the lines of the scan: %s", exc)
+
     return int(transaction.id)
 
 
@@ -350,6 +415,58 @@ async def create_receipt_scan_job(
             transaction_date = transaction_date or receipt.date
             payment_method = payment_method or receipt.payment_method
 
+        # The reading is made complete before the reader ever sees it.
+        #
+        # The three readers - the local engine, the vision model and the
+        # browser - each have their own ways of failing. When they all
+        # fail the reader used to be shown an empty screen and the
+        # purchase was lost. Now the text of the receipt is read one
+        # more time by the fallback, which needs no key and no model,
+        # and the reader always gets something they can correct.
+        from app.services.receipt_fallback_service import merge_receipt_readings
+
+        raw_text_for_fallback = (
+            receipt.text if receipt is not None and receipt.text else result.get("raw_text")
+        )
+        primary_reading = {
+            "merchant_name": merchant,
+            "total_amount": float(amount or 0),
+            "date": transaction_date,
+            "payment_method": payment_method,
+            "items": items or [],
+            "raw_text": raw_text_for_fallback or "",
+            "raw_lines": result.get("raw_lines") or [],
+            "location": result.get("merchant_address"),
+        }
+        reading = merge_receipt_readings(
+            primary_reading,
+            raw_text=raw_text_for_fallback,
+            lines=result.get("raw_lines") or [],
+        )
+        merchant = reading.get("merchant_name")
+        amount = reading.get("total_amount") or 0
+        items = reading.get("items") or []
+        transaction_date = reading.get("date")
+        payment_method = reading.get("payment_method")
+
+        # One row per product.
+        #
+        # The receipt is read by more than one reader, and each of them
+        # can find the same purchase: "Kopi Jago vanila 2 x" on the
+        # line with the price, and "Kopi Jago vanila" on the line with
+        # the name. Put together, the reader was charged twice for two
+        # coffees.
+        #
+        # The lines are settled here, once, at the end. Whatever the
+        # readers said, the reader of the app sees one row per
+        # product.
+        try:
+            from app.services.receipt_line_items import reconcile_line_items
+
+            items = reconcile_line_items(items, total_amount=amount)
+        except Exception as exc:  # noqa: BLE001 - the reading is still worth showing
+            logger.warning("Could not settle the lines of the receipt: %s", exc)
+
         payload = {
             "merchant_name": merchant or "Merchant",
             "amount": str(int(amount)) if amount else "0",
@@ -367,6 +484,11 @@ async def create_receipt_scan_job(
             "raw_text": (receipt.text[:2000] if receipt and receipt.text else None),
             "raw_lines": result.get("raw_lines") or [],
             "merchant_address": result.get("merchant_address"),
+            # The shape the client expects, always complete.
+            "location": reading.get("location"),
+            "category_hint": reading.get("category_hint"),
+            "parse_method": reading.get("parse_method"),
+            "fallback_used": bool(reading.get("fallback_used")),
             "ocr_diagnostics": result.get("ocr_diagnostics") or {},
             "parser_engine": result.get("parser_engine"),
         }

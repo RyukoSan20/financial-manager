@@ -331,6 +331,8 @@ export const Recurring = () => {
           primaryAction={K.createRecurring}
           onPrimary={() => setShowModal(true)}
           mascotMood="idle"
+          chest
+          chestGem="sapphire"
         />
       ) : (
         <div className="grid gap-4">

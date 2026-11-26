@@ -35,12 +35,49 @@
  * what the reader sees. `subs` are the sub-categories under it, each
  * with the words that mean it.
  */
+
+/**
+ * The drawing for a category, by name.
+ *
+ * The categories in the reader's database carry an emoji in their
+ * `icon` column - whatever the phone's font draws for it. The pages
+ * do not show that emoji any more: they look the category up here
+ * and draw the matching icon from the pixel family, so a "Makanan &
+ * Minuman" chip looks the same on every machine and follows the
+ * colour scheme.
+ *
+ * A name that is not known falls back to the ledger, which is what
+ * a category IS in a kakeibo.
+ */
+export function pixelIconForCategory(name = '') {
+  const flat = String(name).toLowerCase();
+  const BY_HINT = [
+    [/makan|minum|kopi|kafe|food|drink|jajan|snack|camilan/, 'food'],
+    [/transport|ojol|bensin|parkir|kendara/, 'smartphone'],
+    [/belanja|shopping|toko|merchant/, 'merchant'],
+    [/tagihan|bill|listrik|air|pulsa|data|internet/, 'clipboard'],
+    [/sehat|health|obat|dokter/, 'calculator'],
+    [/hibur|entertain|film|game|musik/, 'lightbulb'],
+    [/didik|educa|buku|kursus/, 'ledger_blue'],
+    [/sosial|donasi|hadiah|gift/, 'chat_info'],
+    [/gaji|salary|pendapatan|income|bonus/, 'money_bag_rp'],
+    [/freelance|bisnis|usaha|business/, 'briefcase'],
+    [/invest|saham|reksa|dividen/, 'income'],
+    [/transfer|pindah/, 'receipt'],
+    [/rumah|sewa|kos|home/, 'home'],
+  ];
+  for (const [hint, icon] of BY_HINT) {
+    if (hint.test(flat)) return icon;
+  }
+  return 'ledger_green';
+}
+
 export const CATEGORY_DICTIONARY = {
   expense: [
     {
       systemKey: 'food_drink',
       name: 'Makanan & Minuman',
-      icon: '🍔',
+      icon: 'food',
       subs: [
         { key: 'coffee_cafe', name: 'Kopi & Kafe', words: ['kopi', 'coffee', 'cafe', 'kafe', 'warkop', 'espresso', 'latte', 'americano', 'jago', 'kapal', 'teh', 'tea'] },
         { key: 'meals', name: 'Makan Pagi/Siang/Malam', words: ['makan', 'sarapan', 'breakfast', 'lunch', 'dinner', 'nasi', 'nasgor', 'mie ayam', 'bakso', 'soto', 'rendang', 'sate'] },
@@ -54,7 +91,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'transportation',
       name: 'Transportasi',
-      icon: '🚗',
+      icon: 'smartphone',
       subs: [
         { key: 'ride_hailing', name: 'Ojol & Taksi Online', words: ['gojek', 'grab', 'ojek', 'ojol', 'online', 'motor', 'taksi', 'taxi', 'maxim', 'blue bird', 'didi'] },
         { key: 'fuel', name: 'BBM & Bensin', words: ['bensin', 'bbm', 'pertamax', 'pertalite', 'dexlite', 'shell', ' Pertamina', 'solar', 'petronas'] },
@@ -66,7 +103,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'shopping',
       name: 'Belanja',
-      icon: '🛒',
+      icon: 'merchant',
       subs: [
         { key: 'daily_needs', name: 'Kebutuhan Harian / Minimarket', words: ['indomaret', 'alfamart', 'minimarket', 'warung', 'kebutuhan harian', 'sembako'] },
         { key: 'supermarket', name: 'Supermarket & Bulanan', words: ['supermarket', 'carrefour', 'giant', 'transmart', 'tmart', 'hero', 'bulanan'] },
@@ -78,7 +115,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'bills_utilities',
       name: 'Tagihan & Utilitas',
-      icon: '📄',
+      icon: 'clipboard',
       subs: [
         { key: 'electricity', name: 'Listrik & Token PLN', words: ['listrik', 'pln', 'token listrik', 'token pln', 'electric'] },
         { key: 'water', name: 'Air PDAM', words: ['pdam', 'tagihan air', 'water bill', 'air'] },
@@ -91,7 +128,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'health',
       name: 'Kesehatan',
-      icon: '🏥',
+      icon: 'calculator',
       subs: [
         { key: 'medicine', name: 'Obat & Apotek', words: ['apotek', 'obat', 'medicine', 'vitamin', 'suplemen', 'sirup', 'kimia farma', 'guardian', 'watsons'] },
         { key: 'doctor', name: 'Dokter & Rumah Sakit', words: ['dokter', 'klinik', 'puskesmas', 'hospital', 'rumah sakit', 'checkup', 'medical check', 'lab'] },
@@ -102,7 +139,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'entertainment',
       name: 'Hiburan',
-      icon: '🎬',
+      icon: 'lightbulb',
       subs: [
         { key: 'cinema', name: 'Nonton & Bioskop', words: ['bioskop', 'cinema', 'nonton', 'film', 'movie', 'xxi', 'cgv', 'streaming'] },
         { key: 'games', name: 'Game & Hobi', words: ['game', 'gaming', 'ps5', 'playstation', 'xbox', 'steam', 'mobile legend', 'pubg', 'hobi'] },
@@ -113,7 +150,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'education',
       name: 'Pendidikan',
-      icon: '📚',
+      icon: 'ledger_blue',
       subs: [
         { key: 'books', name: 'Buku & Alat Tulis', words: ['buku', 'book', 'alat tulis', 'pulpen', 'kertas', 'spidol', 'buku tulis'] },
         { key: 'courses', name: 'Kursus & Pelatihan', words: ['kursus', 'kelas', 'course', 'les', 'bimbel', 'tutor', 'pelatihan', 'sertifikat'] },
@@ -123,7 +160,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'other_expense',
       name: 'Keluarga & Sosial',
-      icon: '🤝',
+      icon: 'chat_info',
       subs: [
         { key: 'split_bill', name: 'Patungan / Split Bill', words: ['patungan', 'split', 'split bill', 'patungan bill', 'dibagi'] },
         { key: 'gifts', name: 'Hadiah & Kado', words: ['hadiah', 'kado', 'gift', 'present', 'amplop', 'bunga'] },
@@ -137,7 +174,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'salary',
       name: 'Gaji & Upah',
-      icon: '💰',
+      icon: 'money_bag_rp',
       subs: [
         { key: 'monthly_salary', name: 'Gaji Bulanan', words: ['gaji', 'salary', 'payroll', 'slip gaji'] },
         { key: 'allowance', name: 'Tunjangan & THR', words: ['tunjangan', 'thr', 'bonus', 'allowance', 'bonus akhir tahun'] },
@@ -147,7 +184,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'freelance',
       name: 'Bisnis & Toko',
-      icon: '💻',
+      icon: 'briefcase',
       subs: [
         { key: 'goods_sales', name: 'Penjualan Barang Warung/Toko', words: ['penjualan', 'jualan', 'warung', 'toko', 'omzet', 'sales'] },
         { key: 'services', name: 'Jasa & Proyek', words: ['jasa', 'proyek', 'project', 'freelance', 'honor', 'honorarium', 'konsultasi'] },
@@ -157,7 +194,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'investment_income',
       name: 'Investasi & Pasif',
-      icon: '📈',
+      icon: 'income',
       subs: [
         { key: 'dividends', name: 'Dividen Saham', words: ['dividen', 'dividend', 'saham', 'stock'] },
         { key: 'deposit_interest', name: 'Bunga Deposito / Tabungan', words: ['bunga', 'deposito', 'tabungan', 'interest', 'reksa dana'] },
@@ -168,7 +205,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'other_income',
       name: 'Pemasukan Lainnya',
-      icon: '📦',
+      icon: 'ledger_blue',
       subs: [
         { key: 'reimbursement', name: 'Pengembalian Utang / Reimbursement Patungan', words: ['reimbursement', 'pengembalian', 'patungan', 'balik modal', 'refund'] },
         { key: 'cashback', name: 'Hadiah / Cashback', words: ['cashback', 'hadiah', 'reward', 'voucher', 'poin'] },
@@ -181,7 +218,7 @@ export const CATEGORY_DICTIONARY = {
     {
       systemKey: 'transfer',
       name: 'Mutasi Antar-Akun',
-      icon: '🔄',
+      icon: 'receipt',
       subs: [
         { key: 'bank_transfer', name: 'Transfer Antar-Bank', words: ['transfer', 'trf', 'tf', 'mutasi', 'pindah', 'kirim', 'kiriman'] },
         { key: 'ewallet_topup', name: 'Top-Up E-Wallet (GoPay/OVO/DANA)', words: ['topup', 'top up', 'gopay', 'ovo', 'dana', 'linkaja', 'shopeepay', 'isi saldo'] },

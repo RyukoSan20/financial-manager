@@ -1,0 +1,325 @@
+/*
+ * Koban & Co. motion.
+ *
+ * Transform-only keyframes, composited with translate3d, stopped by
+ * the reader's reduced-motion setting and by nothing else.
+ */
+
+
+/*
+ * The pixel-art companions.
+ *
+ * A sprite strip is a row of frames side by side. To play it, the
+ * strip is slid left by exactly one frame width at a time.
+ *
+ * THE PERCENTAGE, WHICH IS THE WHOLE TRICK.
+ *
+ * A background-position percentage is measured against (container -
+ * image), not against the image. With the image scaled to N frames
+ * across, the overflow is N-1 frames wide, so one frame is 1/(N-1) of
+ * the overflow and a shift of one frame is 1/(N-1) as a percentage.
+ *
+ * steps(k) divides the keyframe range into k equal parts. To land on
+ * whole frames, the range must be N frames wide and the step count N:
+ * that advances exactly one frame per step, and the loop closes
+ * because the last position is frame N-1 and the next is frame 0.
+ *
+ * So the range is N/(N-1) of the overflow:
+ *
+ *   2 frames  ->  200%        3 frames  ->  150%
+ *   4 frames  ->  133.3333%
+ *
+ * Getting this wrong is invisible in a screenshot - every frame looks
+ * like frame one, and the strip shows all its frames side by side like
+ * a row of stickers - so it is worth writing down.
+ *
+ * The element carries the strip; an inner element is the window that
+ * clips it.
+ */
+.koban-sprite {
+  position: relative;
+  overflow: hidden;
+  image-rendering: pixelated;
+}
+
+.koban-sprite__strip {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  will-change: background-position;
+}
+
+/* The idle loop: three frames of a breathing bounce. */
+.koban-sprite--idle .koban-sprite__strip { animation: koban-sprite-idle 1.2s steps(3) infinite; }
+@keyframes koban-sprite-idle {
+  from { background-position: 0% 0; }
+  to { background-position: 150% 0; }
+}
+
+/* The walk cycle: four frames. */
+.koban-sprite--walk .koban-sprite__strip { animation: koban-sprite-walk 0.56s steps(4) infinite; }
+@keyframes koban-sprite-walk {
+  from { background-position: 0% 0; }
+  to { background-position: 133.3333% 0; }
+}
+
+/* The celebration: three frames, a little faster than the idle. */
+.koban-sprite--celebrate .koban-sprite__strip { animation: koban-sprite-celebrate 0.72s steps(3) infinite; }
+@keyframes koban-sprite-celebrate {
+  from { background-position: 0% 0; }
+  to { background-position: 150% 0; }
+}
+
+/* The working loop: two frames. */
+.koban-sprite--work .koban-sprite__strip { animation: koban-sprite-work 0.66s steps(2) infinite; }
+@keyframes koban-sprite-work {
+  from { background-position: 0% 0; }
+  to { background-position: 200% 0; }
+}
+
+/*
+ * A companion standing on the floor gets a contact shadow.
+ *
+ * Without it a sprite that is in exactly the right place still reads
+ * as pasted on, because nothing joins it to the boards underneath.
+ */
+.koban-sprite--standing::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 68%;
+  height: 7%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(44, 34, 30, 0.42) 0%, rgba(44, 34, 30, 0) 72%);
+  pointer-events: none;
+}
+
+/*
+ * A scene behind a card.
+ *
+ * The vault card carries the bank as a background, but the card is
+ * opaque and the scene would not show. The scene is drawn on the
+ * card's own top strip instead - a band, like a photograph above a
+ * caption.
+ */
+.koban-vault::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 74px;
+  background-image: url(/koban-assets/tiles/tile_wall_paper.png);
+  background-size: 64px 64px;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.55;
+}
+
+.koban-vault > * {
+  position: relative;
+}
+
+/*
+ * The portrait in the skill dock is a circle. The generator writes a
+ * 1:1 head crop for it, so it is simply the image at 100%.
+ */
+.koban-portrait {
+  background-size: 100% 100%;
+  background-position: 0 0;
+}
+
+/* A companion standing at a post: a slow breath. */
+@keyframes koban-breathe {
+  0%, 100% { transform: translate3d(-50%, -100%, 0) scale(1); }
+  50% { transform: translate3d(-50%, -100%, 0) scale(1.025) translateY(-2px); }
+}
+.koban-chara { animation: koban-breathe 3.6s ease-in-out infinite; will-change: transform; transform-origin: 50% 100%; }
+
+/* A customer: in at the door (left), to a shelf, to the counter, out. */
+@keyframes koban-walk {
+  0% { left: -8%; opacity: 0; transform: translate3d(0, 0, 0); }
+  6% { opacity: 1; }
+  38% { left: var(--walk-to, 50%); transform: translate3d(0, -4px, 0); }
+  48% { left: var(--walk-to, 50%); transform: translate3d(0, 0, 0); }
+  72% { left: 52%; transform: translate3d(0, -4px, 0); }
+  80% { left: 52%; transform: translate3d(0, 0, 0); }
+  94% { opacity: 1; }
+  100% { left: 108%; opacity: 0; }
+}
+.koban-walker { animation-name: koban-walk; animation-timing-function: ease-in-out; animation-iteration-count: 1; animation-fill-mode: both; will-change: left, transform; }
+
+@keyframes koban-bob { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -3px, 0); } }
+.koban-ask { animation: koban-bob 0.9s ease-in-out infinite; display: inline-block; }
+
+@keyframes koban-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.koban-blink { animation: koban-blink 1s steps(2) infinite; }
+
+/* An empty shelf asks for attention. */
+@keyframes koban-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(217, 107, 67, 0.55); } 60% { box-shadow: 0 0 0 8px rgba(217, 107, 67, 0); } }
+.koban-hotspot--empty { animation: koban-pulse 1.6s ease-out infinite; }
+
+/* Fever. */
+@keyframes koban-fever-shimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+.koban-gauge--fever { background: linear-gradient(90deg, #E8B84B, #D96B43, #C9699A, #E8B84B); background-size: 200% 100%; animation: koban-fever-shimmer 1.2s linear infinite; }
+.koban-stage--fever { box-shadow: 0 6px 0 #DFD3C3, 0 0 0 3px #E8B84B inset; }
+.koban-fever-badge { animation: koban-bob 0.8s ease-in-out infinite; }
+
+/* An active skill. */
+@keyframes koban-glow { 0%, 100% { box-shadow: 0 3px 0 #4A3540, 0 0 0 0 rgba(47, 72, 66, 0.4); } 50% { box-shadow: 0 3px 0 #4A3540, 0 0 0 6px rgba(47, 72, 66, 0); } }
+.koban-skill-active { animation: koban-glow 1.4s ease-out infinite; }
+
+/* The battle log lines arrive one after another. */
+@keyframes koban-line-in { from { opacity: 0; transform: translate3d(-6px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+.koban-log-line { animation: koban-line-in 0.3s ease-out both; }
+
+/* A sheet rising. */
+@keyframes koban-sheet-in { from { opacity: 0; transform: translate3d(0, 16px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+.koban-sheet { animation: koban-sheet-in 0.22s ease-out both; }
+
+/*
+ * The shelf hotspots have two placements.
+ *
+ * Desktop: absolute, over the room, at the coordinates the room was
+ * drawn with. Phone: they leave the room and become a row of three
+ * under it. A 358-pixel stage cannot hold a label, a character and a
+ * bubble at once, and the label landing on top of a character's face
+ * is worse than the label being somewhere else.
+ *
+ * The wrapper is the positioning context: on a desktop it is exactly
+ * the size of the room so the absolute hotspots sit over the
+ * furniture; on a phone it is a column and the row follows the room.
+ */
+.koban-stage-wrap {
+  position: relative;
+}
+
+.koban-shelves {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.koban-hotspot {
+  position: absolute;
+  left: var(--sx);
+  top: var(--sy);
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+@media (max-width: 639px) {
+  .koban-stage-wrap {
+    position: static;
+  }
+  .koban-shelves {
+    position: static;
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.4rem 0.35rem 0;
+    pointer-events: auto;
+  }
+  .koban-hotspot {
+    position: static;
+    transform: none;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .koban-hotspot span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .koban-walker {
+    transform: scale(0.85);
+  }
+}
+
+/*
+ * The phone tab bar sits ABOVE the app's own bottom navigation, not
+ * over it.
+ *
+ * The app's bottom bar is 5rem tall (h-20) and is itself fixed. Two
+ * fixed bars cannot share the bottom edge, so the game's bar is
+ * lifted by exactly the app bar's height plus the safe area. The
+ * value is written as plain addition rather than `calc()` with
+ * `env()` because a browser that cannot parse the whole declaration
+ * drops the WHOLE rule and leaves the bar at the very bottom,
+ * underneath the app's navigation, where it cannot be tapped.
+ */
+.koban-tabs--fixed {
+  bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 1023px) {
+  /*
+   * The page ends above the tab bar, not under it.
+   *
+   * The bar is fixed 5rem above the bottom (it sits on the app's own
+   * navigation), so the last 9rem of the page would be behind it.
+   * The padding reserves that space, and the diorama is given a
+   * little more of it, because the bottom of the room is where the
+   * characters stand.
+   */
+  .koban-page {
+    padding-bottom: 11rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .koban-chara, .koban-walker, .koban-ask, .koban-blink, .koban-hotspot--empty, .koban-gauge--fever,
+  .koban-sprite__strip,
+  .koban-fever-badge, .koban-skill-active, .koban-log-line, .koban-sheet { animation: none !important; }
+  .koban-walker { left: var(--walk-to, 50%); opacity: 1; }
+}
+
+/*
+ * Dark mode: the shop keeps its own storybook palette.
+ *
+ * Every Koban card is drawn as cream paper with brown ink. The app's
+ * dark safety net (index.css) turns `bg-white` and `#FFFDF9` into the
+ * dark card and lifts `#2F4842` to a pale sage - but it leaves the
+ * brown ink alone, so in dark mode the headings went dark-on-dark
+ * (contrast 1.06) and the skill labels pale-on-cream (1.71).
+ *
+ * Inside the game the paper stays paper: these selectors carry an
+ * extra class, so they outrank the safety net without !important.
+ * The page around the cards still goes dark; only the ink and the
+ * paper are pinned, so every pair stays the one it was designed as.
+ */
+html.dark .koban-page .bg-white,
+html.dark .koban-sheet.bg-\[\#FFFDF9\],
+html.dark .koban-tabs.bg-\[\#FFFDF9\]\/95 {
+  background-color: #FFFDF9;
+  color: #2C221E;
+}
+html.dark .koban-page .bg-\[\#FFFDF9\] { background-color: #FFFDF9; }
+html.dark .koban-page .bg-\[\#FFFDF9\]\/95 { background-color: rgb(255 253 249 / 0.95); }
+html.dark .koban-tabs.bg-\[\#FFFDF9\]\/95 { background-color: rgb(255 253 249 / 0.95); }
+html.dark .koban-page .text-\[\#2F4842\],
+html.dark .koban-sheet .text-\[\#2F4842\],
+html.dark .koban-tabs .text-\[\#2F4842\] {
+  color: #2F4842;
+}
+html.dark .koban-page .text-\[\#5C6460\],
+html.dark .koban-sheet .text-\[\#5C6460\] {
+  color: #5C6460;
+}
+html.dark .koban-page,
+html.dark .koban-sheet,
+html.dark .koban-tabs {
+  color-scheme: light;
+}
+
+/*
+ * A section title that sits straight on the page, not on a card, has
+ * dark ink on the dark page. Only there does it take the light ink;
+ * inside a card the paper rule above keeps it brown.
+ */
+html.dark .koban-page .koban-section-title h2 { color: #ECEFEC; }
+html.dark .koban-page .koban-section-title p { color: #C2CCC6; }
+html.dark .koban-page .bg-white .koban-section-title h2,
+html.dark .koban-sheet .koban-section-title h2 { color: #2C221E; }
+html.dark .koban-page .bg-white .koban-section-title p,
+html.dark .koban-sheet .koban-section-title p { color: #5C6460; }

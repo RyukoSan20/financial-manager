@@ -17,35 +17,37 @@
 /**
  * The chips of each part of the day.
  *
- * `emoji` is the drawing, `label` is the name, `amount` is the
+ * `icon` names the drawing in the pixel icon family - the same
+ * family the rest of the page uses, so the chips match the page
+ * instead of the phone's emoji font. `label` is the name, `amount` is the
  * figure, `text` is what goes into the quick entry box - which is
  * then read the same way as anything else the reader types.
  */
 export const CHIPS_BY_PART_OF_DAY = {
   morning: [
-    { emoji: '☕', label: 'Kopi', amount: 10000, text: 'Kopi 10rb' },
-    { emoji: '🍜', label: 'Sarapan', amount: 15000, text: 'Sarapan 15rb' },
-    { emoji: '🛵', label: 'Ojol', amount: 12000, text: 'Ojol 12rb' },
+    { icon: 'coffee', label: 'Kopi', amount: 10000, text: 'Kopi 10rb' },
+    { icon: 'food', label: 'Sarapan', amount: 15000, text: 'Sarapan 15rb' },
+    { icon: 'smartphone', label: 'Ojol', amount: 12000, text: 'Ojol 12rb' },
   ],
   midday: [
-    { emoji: '🍚', label: 'Makan Siang', amount: 25000, text: 'Makan siang 25rb' },
-    { emoji: '☕', label: 'Kopi', amount: 10000, text: 'Kopi 10rb' },
-    { emoji: '🍜', label: 'Mie Ayam', amount: 18000, text: 'Mie ayam 18rb' },
+    { icon: 'food', label: 'Makan Siang', amount: 25000, text: 'Makan siang 25rb' },
+    { icon: 'coffee', label: 'Kopi', amount: 10000, text: 'Kopi 10rb' },
+    { icon: 'food', label: 'Mie Ayam', amount: 18000, text: 'Mie ayam 18rb' },
   ],
   afternoon: [
-    { emoji: '☕', label: 'Kopi', amount: 10000, text: 'Kopi 10rb' },
-    { emoji: '🍰', label: 'Camilan', amount: 15000, text: 'Camilan 15rb' },
-    { emoji: '🛵', label: 'Ojol', amount: 12000, text: 'Ojol 12rb' },
+    { icon: 'coffee', label: 'Kopi', amount: 10000, text: 'Kopi 10rb' },
+    { icon: 'food', label: 'Camilan', amount: 15000, text: 'Camilan 15rb' },
+    { icon: 'smartphone', label: 'Ojol', amount: 12000, text: 'Ojol 12rb' },
   ],
   evening: [
-    { emoji: '🍲', label: 'Makan Malam', amount: 30000, text: 'Makan malam 30rb' },
-    { emoji: '🍛', label: 'Pesan Antar', amount: 35000, text: 'Pesan antar 35rb' },
-    { emoji: '🛵', label: 'Ojol', amount: 12000, text: 'Ojol 12rb' },
+    { icon: 'food', label: 'Makan Malam', amount: 30000, text: 'Makan malam 30rb' },
+    { icon: 'food', label: 'Pesan Antar', amount: 35000, text: 'Pesan antar 35rb' },
+    { icon: 'smartphone', label: 'Ojol', amount: 12000, text: 'Ojol 12rb' },
   ],
   night: [
-    { emoji: '🍜', label: 'Mie Instan', amount: 12000, text: 'Mie instan 12rb' },
-    { emoji: '🛵', label: 'Ojol', amount: 12000, text: 'Ojol 12rb' },
-    { emoji: '☕', label: 'Kopi', amount: 10000, text: 'Kopi 10rb' },
+    { icon: 'food', label: 'Mie Instan', amount: 12000, text: 'Mie instan 12rb' },
+    { icon: 'smartphone', label: 'Ojol', amount: 12000, text: 'Ojol 12rb' },
+    { icon: 'coffee', label: 'Kopi', amount: 10000, text: 'Kopi 10rb' },
   ],
 };
 

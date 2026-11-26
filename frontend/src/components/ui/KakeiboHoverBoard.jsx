@@ -25,6 +25,10 @@ import { clsx } from 'clsx';
  * flips to the other side. Measured from the right of the window.
  */
 const EDGE_MARGIN = 280;
+// How close to the top of the window the anchor has to be before the
+// board opens downwards instead of upwards. The board is tall, so it
+// needs more room than its own height would suggest.
+const VERTICAL_MARGIN = 320;
 
 const POSITIONS = {
   top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
@@ -56,6 +60,11 @@ export function KakeiboHoverBoard({
 }) {
   const boardRef = useRef(null);
   const [flip, setFlip] = useState(false);
+  // Whether the board opens downwards instead of upwards. A board
+  // that opens above a character that is near the top of the window
+  // is cut off by the top of the screen - its top half simply is
+  // not there any more.
+  const [flipDown, setFlipDown] = useState(false);
 
   // The board opens away from the edge of the window. The anchor is
   // the nearest positioned ancestor; when there is none, the window
@@ -77,7 +86,16 @@ export function KakeiboHoverBoard({
       // Near the left edge it opens to the right; handled by the
       // alignment classes, so nothing to do here.
     }
-  }, []);
+
+    // The vertical edge. If the anchor is in the upper part of the
+    // window and the board would open above it, it opens below
+    // instead. The threshold is generous on purpose: the board is
+    // tall, and a board that opens upwards from just under the
+    // threshold still loses its top.
+    const anchorTop = rect ? rect.top : 0;
+    const opensUp = position === 'top';
+    setFlipDown(opensUp && anchorTop < VERTICAL_MARGIN);
+  }, [position]);
 
   // The measurement is a layout effect, but the board is also drawn on
   // the server, where a layout effect cannot run. React warns about
@@ -110,9 +128,14 @@ export function KakeiboHoverBoard({
   const base = POSITIONS[position] || POSITIONS.top;
   // The flipped board opens to the left of its anchor rather than
   // centred on it, so it never hangs off the right of the screen.
-  const aligned = flip
+  let aligned = flip
     ? base.replace('left-1/2 -translate-x-1/2', 'right-0 translate-x-0')
     : base;
+  // And a board that would open above a character near the top of the
+  // window opens below it instead.
+  if (flipDown) {
+    aligned = aligned.replace('bottom-full', 'top-full').replace('mb-2', 'mt-2');
+  }
 
   return (
     <div
@@ -123,7 +146,11 @@ export function KakeiboHoverBoard({
       // what it says to a screen reader.
       aria-live="polite"
       className={clsx(
-        'kanahei-board absolute z-40 min-w-[200px] max-w-[260px] whitespace-normal break-words',
+        // z-30, not z-40: a modal backdrop is z-50, and a board at z-40
+        // draws over the backdrop and over the dialog, so the mascot
+        // appeared to float on top of the form it was supposed to be
+        // behind.
+        'kanahei-board absolute z-30 min-w-[200px] max-w-[260px] whitespace-normal break-words',
         'rounded-[18px] border-[1.5px] border-[#4A3F35] dark:border-[#3D5A52]',
         'bg-[#FFFDF9] dark:bg-[#1E2624] text-[#2D312E] dark:text-[#ECEFEC]',
         'px-4 py-3 shadow-[0_10px_26px_-4px_rgba(74,63,53,0.14)]',

@@ -28,6 +28,15 @@ export const BUILT_IN_AVATARS = [
   { key: 'avatar-sun', name: 'Sun' },
   { key: 'avatar-sky', name: 'Sky' },
   { key: 'avatar-rose', name: 'Rose' },
+  // The Petit Chibi Guild. These are ours too, so a reader wearing
+  // one must not be treated as having a foreign picture and quietly
+  // given the default back.
+  { key: 'avatar-petit-mone', name: 'Mone' },
+  { key: 'avatar-petit-kaneru', name: 'Kaneru' },
+  { key: 'avatar-petit-kogane', name: 'Kogane' },
+  { key: 'avatar-petit-zenimaru', name: 'Zenimaru' },
+  { key: 'avatar-petit-minori', name: 'Minori' },
+  { key: 'avatar-petit-koneko', name: 'Koneko' },
 ];
 
 /**

@@ -826,3 +826,148 @@ def get_sample_texts():
             },
         ]
     }
+
+
+# === The reading of a sentence ===
+
+class NlpParseRequest(BaseModel):
+    """A sentence, and the reader's own lists to match it against."""
+
+    text: str
+    # The reader's accounts and categories, when the client has them
+    # already. They are used to match "gopay" to an account and
+    # "makanan" to a category. When they are left out the server looks
+    # them up.
+    accounts: Optional[List[dict]] = None
+    categories: Optional[List[dict]] = None
+    # Whether the reader asked for the refinement pass. The pass always
+    # runs, because it is what matches the account the reader named.
+    refine: bool = True
+
+
+class NlpParseResponse(BaseModel):
+    """What the sentence said."""
+
+    type: str
+    total_amount: float
+    items: List[dict] = []
+    merchant: Optional[str] = None
+    location: Optional[str] = None
+    category: Optional[str] = None
+    category_id: Optional[int] = None
+    account_id: Optional[int] = None
+    account_hint: Optional[str] = None
+    source_account: Optional[str] = None
+    destination_account: Optional[str] = None
+    # The two ends of a transfer, matched to the reader's own
+    # accounts. A transfer needs both of them.
+    source_account_id: Optional[int] = None
+    destination_account_id: Optional[int] = None
+    description: Optional[str] = None
+    confidence: float = 0.0
+    raw_text: str = ""
+    # What the refinement pass changed, so the reader can be told.
+    fixes: List[str] = []
+
+
+@router.post("/parse-nlp", response_model=NlpParseResponse)
+def parse_nlp(
+    request: NlpParseRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Read a sentence about money.
+
+    The sentence may be any free form sentence: "beli 2 kopi susu
+    @18rb sama 1 roti bakar 22rb bayar pakai gopay di blok m", "gajian
+    masuk 8.5jt ke bca", "transfer 500rb dari bca ke ovo". There is no
+    template and no list of forms to pick from.
+
+    The answer is the reading of that sentence: what kind of
+    transaction it is, what it cost, what was bought, where it
+    happened, which account it came from and which category it sits
+    under.
+
+    The text parser and the voice input both come here, so the same
+    sentence reads the same way whichever way it was written.
+    """
+    from app.services.transaction_nlp import (
+        load_reader_context,
+        read_intent,
+        refine_intent,
+    )
+
+    raw = (request.text or "").strip()
+    if not raw:
+        # Nothing was said, so there is nothing to read.
+        #
+        # The voice input sometimes hears nothing at all, and the text
+        # parser can be opened with an empty box. The answer is an empty
+        # reading rather than an error, so the screen has something to
+        # show and the reader can type or speak again.
+        return NlpParseResponse(
+            type="expense",
+            total_amount=0,
+            items=[],
+            raw_text="",
+            fixes=[],
+        )
+
+    # The reader's own accounts and categories. The client may have
+    # them already; when it does not, they are looked up here.
+    accounts = request.accounts
+    categories = request.categories
+    if accounts is None or categories is None:
+        try:
+            context = load_reader_context(db, current_user.id)
+        except Exception as exc:  # noqa: BLE001 - the sentence is still readable
+            logger.warning("Could not load the reader's accounts: %s", exc)
+            context = {"accounts": [], "categories": []}
+        if accounts is None:
+            accounts = context["accounts"]
+        if categories is None:
+            categories = context["categories"]
+
+    intent = read_intent(raw)
+
+    # The refinement pass always runs. It is what matches the account
+    # the reader named, fills in the category, and settles the total
+    # against the lines. It is also the pass behind "Tanya Maskot".
+    intent = refine_intent(
+        intent,
+        accounts=accounts or [],
+        categories=categories or [],
+    )
+
+    logger.info(
+        "NLP read: type=%s total=%s items=%d merchant=%r location=%r "
+        "account=%r fixes=%s",
+        intent.type,
+        intent.total_amount,
+        len(intent.items),
+        intent.merchant,
+        intent.location,
+        intent.account_hint,
+        intent.fixes,
+    )
+
+    return NlpParseResponse(
+        type=intent.type,
+        total_amount=float(intent.total_amount or 0),
+        items=[item.to_dict() for item in intent.items],
+        merchant=intent.merchant,
+        location=intent.location,
+        category=intent.category,
+        category_id=intent.category_id,
+        account_id=intent.account_id,
+        account_hint=intent.account_hint,
+        source_account=intent.source_account,
+        destination_account=intent.destination_account,
+        source_account_id=intent.source_account_id,
+        destination_account_id=intent.destination_account_id,
+        description=intent.description,
+        confidence=float(intent.confidence or 0),
+        raw_text=raw,
+        fixes=list(intent.fixes),
+    )

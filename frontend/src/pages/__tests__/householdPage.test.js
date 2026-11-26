@@ -221,7 +221,8 @@ check('the mascot draws in every state, outfit and frame', () => {
     for (const mode of MODES) {
       for (const initialFrame of [0, 1]) {
         const html = drawn.mascot({ state, mode, initialFrame });
-        assert.ok(html.includes('<svg'), `${state}/${mode}/${initialFrame}`);
+        // The real chibi artwork is an <img>; the named variants are <svg>.
+        assert.ok(html.includes('<svg') || html.includes('/koban-assets/'), `${state}/${mode}/${initialFrame}`);
         assert.ok(html.includes(`data-state="${state}"`));
         assert.ok(html.includes(`data-mode="${mode}"`));
         assert.ok(html.includes(`data-frame="${initialFrame}"`));
@@ -232,14 +233,23 @@ check('the mascot draws in every state, outfit and frame', () => {
   assert.equal(seen.size, 16, 'all sixteen drawings are different');
 });
 
-check('the mascot is drawn as a flat stationery figure, not a pixel grid', () => {
-  // Phase 2: the sixteen-by-sixteen grid was harsh next to a rounded
-  // card, so the mascot is now a clean vector with one warm-brown
-  // outline. The pixel grid is still available as variant="pixel".
+check('the mascot is the real chibi artwork, not a drawn stand-in', () => {
+  // The default companion is one of the six from Koban & Co., drawn
+  // from the real artwork in /koban-assets/ - the motion-sheet pose
+  // for the mood, with the sticker as its fallback - and it can be
+  // picked up and dragged.
   const html = drawn.mascot({});
-  assert.ok(html.includes('viewBox="0 0 120 120"'), 'the vector viewBox');
-  assert.ok(html.includes('data-variant="kanahei"'), 'the flat drawing is the default');
+  assert.ok(html.includes('data-variant="shoujo"'), 'the shoujo companion is the default');
+  assert.ok(/\/koban-assets\/motion\/[a-z]+_[a-z]+\.webp/.test(html), 'the real motion-sheet pose');
+  assert.ok(html.includes('data-testid="draggable-mascot"'), 'the draggable companion');
+  assert.ok(!html.includes('viewBox="0 0 200 220"'), 'no procedural SVG body');
   assert.ok(!html.includes('shape-rendering="crispEdges"'), 'no pixel-grid edges');
+});
+
+check('the flat stationery drawing is still there, by name', () => {
+  const html = drawn.mascot({ variant: 'kanahei' });
+  assert.ok(html.includes('viewBox="0 0 120 120"'), 'the vector viewBox');
+  assert.ok(html.includes('data-variant="kanahei"'), 'asked for by name');
   for (const layer of ['kanahei-shadow', 'kanahei-ears', 'kanahei-body', 'kanahei-face', 'kanahei-prop']) {
     assert.ok(html.includes(`class="${layer}"`), layer);
   }
@@ -254,12 +264,16 @@ check('the old pixel grid is still there, for anyone who asks for it', () => {
   }
 });
 
-check('the mascot is a warm-brown outlined drawing, not rectangles', () => {
+check('the mascot is the real artwork, and the flat drawing is outlined, not rectangles', () => {
+  // The default companion is the real artwork, and its celebrating
+  // pose is the happy pose from the motion sheet.
   const html = drawn.mascot({ state: 'celebrate', mode: 'business' });
-  assert.equal(count(html, '<rect'), 0, 'no pixel rectangles');
-  assert.ok(count(html, '<path') > 0, 'it is drawn with paths');
-  // The outline is one warm brown, used everywhere.
-  assert.ok(html.includes('#4A3F35'), 'the warm stationery brown outline');
+  assert.ok(/_happy\.webp/.test(html), 'the celebrating pose');
+  assert.ok(!html.includes('#000000'), 'no pure black lineart');
+  // The flat drawing keeps its own warm stationery brown.
+  const flat = drawn.mascot({ variant: 'kanahei', state: 'celebrate' });
+  assert.equal(count(flat, '<rect'), 0, 'no pixel rectangles in the flat drawing');
+  assert.ok(flat.includes('#4A3F35'), 'the warm stationery brown outline');
 });
 
 check('the mascot bobs at rest and can be pressed', () => {
@@ -270,8 +284,10 @@ check('the mascot bobs at rest and can be pressed', () => {
 });
 
 check('the family wears the sprout and the business wears the coin', () => {
-  const family = drawn.mascot({ mode: 'family' });
-  const business = drawn.mascot({ mode: 'business' });
+  // The outfit belongs to the flat stationery drawing, which is the
+  // one that has a mode-dependent prop.
+  const family = drawn.mascot({ variant: 'kanahei', mode: 'family' });
+  const business = drawn.mascot({ variant: 'kanahei', mode: 'business' });
   // The sprout is sage green; the business coin is butter gold.
   assert.ok(family.includes('#52796F'));
   assert.ok(business.includes('#F4E285'));

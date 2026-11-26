@@ -349,11 +349,11 @@ export const Goals = () => {
                           <Badge size="sm" variant="warning">{t(`goals.priority_${goal.priority}`)}</Badge>
                         )}
                         {isOnTrack ? (
-                          <span className="text-xs text-[#15803D] flex items-center gap-1">
+                          <span className="text-xs text-[#15803D] dark:text-[#6EE7B7] flex items-center gap-1">
                             <TrendingUp className="w-3 h-3" />
                           </span>
                         ) : (
-                          <span className="text-xs text-[#B45309] flex items-center gap-1">
+                          <span className="text-xs text-[#AD4530] dark:text-[#F2B8A2] flex items-center gap-1">
                             <TrendingDown className="w-3 h-3" />
                           </span>
                         )}

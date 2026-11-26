@@ -45,7 +45,24 @@ INVITE_ALPHABET = string.ascii_uppercase + string.digits
 INVITE_LENGTH = 8
 
 # The application's own drawn faces.
-AVATARS = ("avatar-default", "avatar-sun", "avatar-sky", "avatar-rose")
+# The four plain faces, and the six of the Petit Chibi Guild.
+#
+# This is the whitelist: an avatar the server does not recognise is
+# answered with the default, so a member who picks one of the guild
+# and is not listed here would be quietly handed the green circle
+# back and never know why.
+PLAIN_AVATARS = ("avatar-default", "avatar-sun", "avatar-sky", "avatar-rose")
+
+PETIT_AVATARS = (
+    "avatar-petit-mone",
+    "avatar-petit-kaneru",
+    "avatar-petit-kogane",
+    "avatar-petit-zenimaru",
+    "avatar-petit-minori",
+    "avatar-petit-koneko",
+)
+
+AVATARS = PLAIN_AVATARS + PETIT_AVATARS
 
 NOTE_COLORS = ("lemon", "mint", "sky", "rose", "lilac", "peach")
 
@@ -129,12 +146,19 @@ def display_name(user: Any) -> str:
 
 
 def avatar_of(user: Any) -> str:
-    """The drawn face the reader chose, or the default one."""
+    """
+    The drawn face the reader chose, or the default one.
+
+    The guild names are tested before the plain ones. They are longer
+    and more specific, and a substring test that ran the other way
+    could answer a longer id with a shorter one that happens to sit
+    inside it.
+    """
     value = (getattr(user, "avatar_url", None) or "").lower()
-    for avatar in AVATARS:
+    for avatar in PETIT_AVATARS + PLAIN_AVATARS:
         if avatar in value:
             return avatar
-    return AVATARS[0]
+    return PLAIN_AVATARS[0]
 
 
 def membership_of(db: Session, user_id: int) -> Optional[HouseholdMember]:

@@ -6,7 +6,9 @@ import {
   CheckCircle, XCircle, Clock, 
   Receipt, AlertCircle, RefreshCw, Filter, InboxIcon
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import KanaheiStationeryMascot from '../../components/mascot/KanaheiStationeryMascot';
 import { useTranslation } from '../../i18n';
 import { transactionCategoryName } from '../../utils/categoryName';
 import { amountSign, isIncoming, isOutgoing } from '../../utils/transactionSign';
@@ -14,6 +16,7 @@ import { toast } from '../../contexts/ToastContext';
 
 const FeedPage = () => {
   const { t, language } = useTranslation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("pending");
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -201,14 +204,19 @@ const FeedPage = () => {
     { id: 'all', label: t('feed.all'), icon: InboxIcon, color: 'gray' },
   ];
 
-  const getTabColorClasses = (tabId, isActive) => {
+  // The active tab is the Kakeibo deep sage, not a slate gray. Note
+  // the argument is the tab itself: it used to be handed the id string
+  // and read `.color` off it, which is undefined on a string, so every
+  // tab fell through to gray no matter which one was active.
+  const getTabColorClasses = (tab, isActive) => {
+    if (isActive) return 'bg-[#2F4842] text-[#FAF9F6] shadow-sm';
     const colors = {
-      yellow: isActive ? 'bg-yellow-600 text-white' : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900/40',
-      green: isActive ? 'bg-green-600 text-white' : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/40',
-      red: isActive ? 'bg-red-600 text-white' : 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40',
-      gray: isActive ? 'bg-gray-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
+      yellow: 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900/40',
+      green: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/40',
+      red: 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40',
+      gray: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
     };
-    return colors[tabId.color] || colors.gray;
+    return colors[tab?.color] || colors.gray;
   };
 
   return (
@@ -230,52 +238,28 @@ const FeedPage = () => {
         </Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Kakeibo bento, each with its own ordinal so the
+          four read as a sequence rather than four loose numbers. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card className="!p-4 relative overflow-hidden">
-          {loadingStats && (
-            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center">
-              <Spinner size="sm" />
-            </div>
-          )}
-          <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-            {stats?.pending_count ?? 0}
-          </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('feed.pending')}</div>
-        </Card>
-        <Card className="!p-4 relative overflow-hidden">
-          {loadingStats && (
-            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center">
-              <Spinner size="sm" />
-            </div>
-          )}
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {stats?.approved_today ?? 0}
-          </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('feed.approvedToday')}</div>
-        </Card>
-        <Card className="!p-4 relative overflow-hidden">
-          {loadingStats && (
-            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center">
-              <Spinner size="sm" />
-            </div>
-          )}
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-            {stats?.rejected_today ?? 0}
-          </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('feed.rejectedToday')}</div>
-        </Card>
-        <Card className="!p-4 relative overflow-hidden">
-          {loadingStats && (
-            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center">
-              <Spinner size="sm" />
-            </div>
-          )}
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {formatCurrency(stats?.total_pending_amount ?? 0)}
-          </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('feed.totalPending')}</div>
-        </Card>
+        {[
+          { n: '01', value: stats?.pending_count ?? 0, label: t('feed.pending'), tone: 'text-yellow-600 dark:text-yellow-400', badge: 'bg-[#FDE8E4] text-[#9A5B4C]' },
+          { n: '02', value: stats?.approved_today ?? 0, label: t('feed.approvedToday'), tone: 'text-green-600 dark:text-green-400', badge: 'bg-[#E3F2EA] text-[#2F4842]' },
+          { n: '03', value: stats?.rejected_today ?? 0, label: t('feed.rejectedToday'), tone: 'text-red-600 dark:text-red-400', badge: 'bg-[#FFF6D6] text-[#8A6D1F]' },
+          { n: '04', value: formatCurrency(stats?.total_pending_amount ?? 0), label: t('feed.totalPending'), tone: 'text-gray-900 dark:text-white', badge: 'bg-[#EDE7F6] text-[#5B4B8A]' },
+        ].map((card) => (
+          <Card key={card.n} className="!p-4 relative overflow-hidden" data-testid={`feed-stat-${card.n}`}>
+            {loadingStats && (
+              <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center">
+                <Spinner size="sm" />
+              </div>
+            )}
+            <span className={`inline-flex items-center justify-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide mb-1.5 ${card.badge}`}>
+              {card.n}
+            </span>
+            <div className={`text-2xl font-bold ${card.tone}`}>{card.value}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{card.label}</div>
+          </Card>
+        ))}
       </div>
 
       {/* Tabs */}
@@ -291,7 +275,9 @@ const FeedPage = () => {
             <button
               key={tabId}
               onClick={() => setActiveTab(tabId)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${getTabColorClasses(tabId, isActive)}`}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${getTabColorClasses(tab, isActive)}`}
+              data-testid={`feed-tab-${tabId}`}
+              aria-pressed={isActive}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
@@ -350,7 +336,9 @@ const FeedPage = () => {
         </div>
       ) : transactions.length === 0 ? (
         <Card className="!p-8 text-center">
-          <InboxIcon className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-400 mb-4" />
+          <div className="flex justify-center mb-4" data-testid="feed-empty-mascot">
+            <KanaheiStationeryMascot mood="happy" />
+          </div>
           <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
             {activeTab === 'pending' 
               ? t('feed.empty_pending') 
@@ -365,7 +353,11 @@ const FeedPage = () => {
               ? t('feed.empty_desc_pending') 
               : t('feed.empty_desc_other')}
           </p>
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-2 justify-center flex-wrap">
+            <Button onClick={() => navigate('/add?scan=1')} data-testid="feed-empty-scan-cta">
+              <Receipt className="w-4 h-4 mr-2" />
+              {t('feed.scan_or_import', '+ Scan Struk / Import Email')}
+            </Button>
             <Button variant="outline" onClick={() => setActiveTab('pending')}>
               <Clock className="w-4 h-4 mr-2" />
               {t('feed.view_pending')}
@@ -552,18 +544,33 @@ const FeedPage = () => {
         </div>
       )}
       
-      {/* Quick Tips */}
-      <Card className="!p-4 mt-6 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800">
-        <h3 className="font-medium text-primary-800 dark:text-primary-200 mb-2 flex items-center gap-2">
-          {t('feed.tips_title')}
+      {/* How the review works - four numbered steps rather than a
+          bulleted list, so the order of the work is visible. */}
+      <div className="mt-6" data-testid="feed-workflow-cards">
+        <h3 className="font-semibold text-[#1F2421] dark:text-[#FAF9F6] mb-3">
+          {t('feed.workflow_title', 'Cara Kerja Review Transaksi')}
         </h3>
-        <ul className="text-sm text-primary-700 dark:text-primary-300 space-y-1">
-          <li>{t('feed.tip_filter')}</li>
-          <li>{t('feed.tip_pending')}</li>
-          <li>{t('feed.tip_approve')}</li>
-          <li>{t('feed.tip_reject')}</li>
-        </ul>
-      </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { n: '01', badge: 'bg-[#FDE8E4] text-[#9A5B4C]', title: t('feed.step1_title', 'Scan & Import'), body: t('feed.step1_body', 'Transaksi dari scan struk atau Gmail otomatis masuk ke antrian.') },
+            { n: '02', badge: 'bg-[#E3F2EA] text-[#2F4842]', title: t('feed.step2_title', 'Filter Status'), body: t('feed.step2_body', 'Pantau transaksi di tab Menunggu, Disetujui, atau Ditolak.') },
+            { n: '03', badge: 'bg-[#FFF6D6] text-[#8A6D1F]', title: t('feed.step3_title', 'Periksa Rincian'), body: t('feed.step3_body', 'Cek kecocokan item, kategori, dan nominal sebelum disetujui.') },
+            { n: '04', badge: 'bg-[#EDE7F6] text-[#5B4B8A]', title: t('feed.step4_title', 'Setujui ke Buku Kas'), body: t('feed.step4_body', 'Sekali klik untuk mencatat otomatis ke laporan & saldo akun.') },
+          ].map((step) => (
+            <Card key={step.n} className="!p-4" data-testid={`feed-step-${step.n}`}>
+              <span className={`inline-flex items-center justify-center rounded-lg px-2 py-0.5 text-xs font-bold tracking-wide mb-2 ${step.badge}`}>
+                {step.n}
+              </span>
+              <p className="font-semibold text-sm text-[#1F2421] dark:text-[#FAF9F6] mb-1">
+                {step.title}
+              </p>
+              <p className="text-xs leading-relaxed text-[#5C6460] dark:text-gray-400">
+                {step.body}
+              </p>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

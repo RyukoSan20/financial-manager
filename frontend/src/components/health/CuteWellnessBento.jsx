@@ -33,13 +33,21 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from '../../i18n';
+import { useTheme } from '../../contexts/ThemeContext';
 import FluidProgressBar from '../ui/FluidProgressBar';
 import AnimatedProgressBar from '../ui/AnimatedProgressBar';
 import CountUpNumber from '../ui/CountUpNumber';
 import { moneyLayerOn } from '../../utils/animation';
-import { MascotCompanion } from '../common/MascotCompanion';
-import { readerFlag } from '../../utils/featureFlags';
 import FinancialRatioPills from './FinancialRatioPills';
+import PixelArtBusinessIcon from '../ui/PixelArtBusinessIcon';
+import {
+  AuditFixPills,
+  DailyQuestCard,
+  KakeiboStudioMascots,
+  STATIONERY_CARD,
+  WashiTape,
+  WhatIfSimulator,
+} from './KakeiboWellnessStudio';
 import './wellness.css';
 
 /**
@@ -212,6 +220,27 @@ const ScoreColour = (score) => {
 };
 
 /**
+ * The same verdict, but as a colour that can be READ.
+ *
+ * `ScoreColour` is the fill colour: it is chosen to look right as a
+ * ring and as a bar, where it is a block of colour rather than text.
+ * Used as the colour of small text on its own 12% wash it fails
+ * badly - the amber grade badge measured 2.11:1 on the live site,
+ * which is well under the 4.5:1 floor for body text.
+ *
+ * So the badge takes its text colour from here instead: the same hue,
+ * moved far enough into the colour to be read on a pale wash in the
+ * light mode, and lifted to a light step for the dark mode. One value
+ * per job, which is the rule the accent itself already follows.
+ */
+const ScoreTextColour = (score, isDark) => {
+  if (score >= 80) return isDark ? '#6EE7B7' : '#065F46';
+  if (score >= 60) return isDark ? '#7DD3FC' : '#075985';
+  if (score >= 40) return isDark ? '#FCD34D' : '#92400E';
+  return isDark ? '#FDA4AF' : '#9F1239';
+};
+
+/**
  * The small face.
  *
  * The companion is behind a switch of its own, so a reader who has not
@@ -354,10 +383,14 @@ export default function CuteWellnessBento({
   onRefresh,
   polished = false,
 }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  // The grade badge needs to know which half of the theme it is on,
+  // because its text colour differs between the two (see
+  // ScoreTextColour). The shared context is the one source of truth
+  // for that - a private matchMedia here would drift from the toggle.
+  const { isDarkMode } = useTheme();
 
   const numericScore = Number(score || 0);
-  const mood = numericScore >= 60 ? 'happy' : 'worried';
   const money = moneyLayerOn();
 
   const formatCurrency = (value) => {
@@ -378,9 +411,8 @@ export default function CuteWellnessBento({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* The score. Five columns of the twelve. */}
         <div className="lg:col-span-5">
-          <div className="wellness-card h-full p-5 settle-in">
-            <div className="wellness-card__wash" style={{ background: WASHES.mint }} />
-            <div className="wellness-halo" />
+          <div className={`${STATIONERY_CARD} h-full p-5 settle-in`}>
+            <WashiTape tone="#A8E6CF" />
 
             {/* The score.
 
@@ -427,9 +459,12 @@ export default function CuteWellnessBento({
               <span
                 className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ring-1"
                 style={{
-                  backgroundColor: `rgba(${ScoreColour(numericScore).replace('rgb(', '').replace(')', '')}, 0.12)`,
-                  color: ScoreColour(numericScore),
-                  // The ring is drawn with the same colour, faintly.
+                  // The wash and the ring are the fill colour; the
+                  // words are the readable one. Using the fill colour
+                  // as text on its own 12% wash is what measured
+                  // 2.11:1 on the live site.
+                  backgroundColor: `rgba(${ScoreColour(numericScore).replace('rgb(', '').replace(')', '')}, ${isDarkMode ? 0.22 : 0.12})`,
+                  color: ScoreTextColour(numericScore, isDarkMode),
                   boxShadow: `inset 0 0 0 1px rgba(${ScoreColour(numericScore).replace('rgb(', '').replace(')', '')}, 0.28)`,
                 }}
               >
@@ -456,24 +491,11 @@ export default function CuteWellnessBento({
               )}
             </div>
 
-            {/* The face, and what it says.
-
-                The companion draws nothing until the reader has asked
-                for it, so the card carries its own small face as well.
-                One of the two is always there, and the face always
-                matches the score: a smile when the score is good, a
-                frown when it is not. */}
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              {readerFlag('MASCOT_COMPANION') ? (
-                <MascotCompanion mood={mood} size={52} title={t('health_coach.score')} />
-              ) : (
-                <MiniFace mood={mood} size={52} />
-              )}
-              <span className="text-xs text-gray-600 dark:text-gray-300 min-w-0">
-                {mood === 'happy'
-                  ? t('health_coach.mascot_good')
-                  : t('health_coach.mascot_worried')}
-              </span>
+            {/* The companions. The red drawn face is gone: Minori and
+                Kaneru - the real artwork - react to the score instead,
+                sweating below 60 and cheering from 70. */}
+            <div className="mt-4">
+              <KakeiboStudioMascots score={numericScore} language={language} />
             </div>
           </div>
         </div>
@@ -481,8 +503,8 @@ export default function CuteWellnessBento({
         {/* The four amounts. Seven columns of the twelve, in two
             comfortable rows of two. */}
         <div className="lg:col-span-7">
-          <div className="wellness-card h-full p-5">
-            <div className="wellness-card__wash" style={{ background: WASHES.sky }} />
+          <div className={`${STATIONERY_CARD} h-full p-5`}>
+            <WashiTape tone="#8EC9E0" />
             {/* The four amounts.
 
                 They are one snapshot, so they are one grid of four
@@ -490,7 +512,7 @@ export default function CuteWellnessBento({
                 four drawings floating on the wash of the card, and
                 the eye could not tell they were a set. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="bento-cascade rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10 transition-shadow hover:shadow-md hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 0 }}>
+              <div className="bento-cascade rounded-2xl border-2 border-[#4A3540] bg-white dark:bg-white/5 px-3.5 py-3 shadow-[0_3px_0_#4A3540] transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 0 }}>
                 <MiniStat
                   label={t('health_coach.monthly_income')}
                   value={formatCurrency(monthlyIncome)}
@@ -498,7 +520,7 @@ export default function CuteWellnessBento({
                   illustration={<CoinStack tint="#10b981" />}
                 />
               </div>
-              <div className="bento-cascade rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10 transition-shadow hover:shadow-md hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 1 }}>
+              <div className="bento-cascade rounded-2xl border-2 border-[#4A3540] bg-white dark:bg-white/5 px-3.5 py-3 shadow-[0_3px_0_#4A3540] transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 1 }}>
                 <MiniStat
                   label={t('health_coach.monthly_expense')}
                   value={formatCurrency(monthlyExpense)}
@@ -506,7 +528,7 @@ export default function CuteWellnessBento({
                   illustration={<Sprout tint="#f97316" />}
                 />
               </div>
-              <div className="bento-cascade rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10 transition-shadow hover:shadow-md hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 2 }}>
+              <div className="bento-cascade rounded-2xl border-2 border-[#4A3540] bg-white dark:bg-white/5 px-3.5 py-3 shadow-[0_3px_0_#4A3540] transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 2 }}>
                 <MiniStat
                   label={t('health_coach.total_cash')}
                   value={formatCurrency(totalCash)}
@@ -514,7 +536,7 @@ export default function CuteWellnessBento({
                   illustration={<Wallet tint="#8b5cf6" />}
                 />
               </div>
-              <div className="bento-cascade rounded-xl bg-white/55 dark:bg-white/5 px-3.5 py-3 ring-1 ring-slate-200/50 dark:ring-white/10 transition-shadow hover:shadow-md hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 3 }}>
+              <div className="bento-cascade rounded-2xl border-2 border-[#4A3540] bg-white dark:bg-white/5 px-3.5 py-3 shadow-[0_3px_0_#4A3540] transition-transform hover:-translate-y-0.5 duration-200" style={{ '--stagger-index': 3 }}>
                 <MiniStat
                   label={t('health_coach.total_debt')}
                   value={formatCurrency(totalDebt)}
@@ -527,12 +549,28 @@ export default function CuteWellnessBento({
         </div>
       </div>
 
+      {/* ---- The daily-use row: quests beside the what-if --------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        <div className="lg:col-span-7">
+          <DailyQuestCard language={language} />
+        </div>
+        <div className="lg:col-span-5">
+          <WhatIfSimulator
+            language={language}
+            serverScore={numericScore}
+            savingsRatio={savingsRatio}
+            emergencyFund={emergencyFund}
+            dsrRatio={dsrRatio}
+          />
+        </div>
+      </div>
+
       {/* ---- The bottom row: the ratios beside the audit --------- */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* The ratios, and the refresh. Five columns of the twelve. */}
         <div className="lg:col-span-5">
-          <div className="wellness-card h-full p-5">
-            <div className="wellness-card__wash" style={{ background: WASHES.peach }} />
+          <div className={`${STATIONERY_CARD} h-full p-5`}>
+            <WashiTape tone="#F4E285" />
             <div className="flex items-center gap-3">
               <div className="wellness-drift shrink-0">
                 <Umbrella tint="#0ea5e9" />
@@ -567,13 +605,8 @@ export default function CuteWellnessBento({
             </p>
 
             {onRefresh ? (
-              <button
-                type="button"
-                onClick={onRefresh}
-                className={`mt-4 w-full py-2.5 rounded-2xl font-medium text-white ${
-                  money ? 'money-fab' : ''
-                } bg-primary-600 hover:bg-primary-700 transition-colors`}
-              >
+              <button type="button" onClick={onRefresh} className="theme-btn-primary mt-4 w-full" data-testid="health-refresh">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 4v7h-7" /></svg>
                 {t('health_coach.refresh_data')}
               </button>
             ) : null}
@@ -582,9 +615,10 @@ export default function CuteWellnessBento({
 
         {/* The audit. Seven columns of the twelve. */}
         <div className="lg:col-span-7">
-          <div className="wellness-card p-5 h-full">
-            <div className="wellness-card__wash" style={{ background: WASHES.blush }} />
-            <h2 className="text-lg font-bold font-sans text-[#1F2421] dark:text-[#FAF9F6]">
+          <div className={`${STATIONERY_CARD} p-5 h-full`}>
+            <WashiTape tone="#F7C8D8" />
+            <h2 className="flex items-center gap-2 text-lg font-extrabold font-sans text-[#1F2421] dark:text-[#FAF9F6]">
+              <PixelArtBusinessIcon name="chat_info" size={28} />
               {t('health_coach.ai_audit')}
             </h2>
 
@@ -604,16 +638,24 @@ export default function CuteWellnessBento({
               (audit.monthly_plan && Object.keys(audit.monthly_plan).length > 0)) && (
               <div className="mt-4 grid grid-cols-1 gap-3">
                 {audit.findings?.length > 0 && (
-                  <section className="rounded-xl bg-amber-50/70 dark:bg-amber-900/15 p-3">
+                  <section className="rounded-2xl border-2 border-dashed border-[#E2B86B] bg-amber-50/70 dark:bg-amber-900/15 p-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
                       {t('health_coach.finding_title')}
                     </h3>
                     <ul className="mt-2 space-y-1.5">
                       {audit.findings.slice(0, 3).map((finding, idx) => (
-                        <li key={idx} className="text-xs text-gray-700 dark:text-gray-200">
-                          <span className="font-medium">{finding.title}</span>
-                          <span className="block text-gray-600 dark:text-gray-300">
-                            {finding.description}
+                        <li key={idx} className="flex gap-2.5 text-xs text-gray-700 dark:text-gray-200" data-testid="audit-finding">
+                          <PixelArtBusinessIcon
+                            name={['critical', 'alert'].includes(finding.severity) ? 'ledger_red' : 'lightbulb'}
+                            size={26}
+                            className="shrink-0"
+                          />
+                          <span className="min-w-0">
+                            <span className="font-bold">{String(finding.title || '').replace(/^(?:[\u{1F6A8}\u26A0]|\uFE0F)+\s*/u, '')}</span>
+                            <span className="block text-gray-600 dark:text-gray-300">
+                              {String(finding.description || '').replace(/^(?:[\u{1F6A8}\u26A0]|\uFE0F)+\s*/u, '')}
+                            </span>
+                            <AuditFixPills language={language} category={finding.category} />
                           </span>
                         </li>
                       ))}
@@ -640,7 +682,7 @@ export default function CuteWellnessBento({
                           key={idx}
                           className="text-xs text-gray-700 dark:text-gray-200"
                         >
-                          {String(highlight).replace(/^[✅❌🌟]\s*/u, '')}
+                          {String(highlight).replace(/^(?:[\s✅❌🌟\u{1F6A8}\u26A0]|\uFE0F)+/u, '')}
                         </li>
                       ))}
                     </ul>
@@ -662,14 +704,32 @@ export default function CuteWellnessBento({
                       {t('health_coach.action_title')}
                     </h3>
                     <ul className="mt-2 space-y-1.5">
-                      {audit.immediate_actions.slice(0, 4).map((action, idx) => (
-                        <li
-                          key={idx}
-                          className="text-xs text-gray-700 dark:text-gray-200"
-                        >
-                          {String(action).replace(/^[\u{1F6A8}\u26A0]\s*/u, '')}
-                        </li>
-                      ))}
+                      {audit.immediate_actions.slice(0, 4).map((action, idx) => {
+                        // The server marks urgency with a leading 🚨 or ⚠️. The
+                        // mark becomes a drawn badge; the emoji is not shown.
+                        const raw = String(action);
+                        const urgent = /^\s*\u{1F6A8}/u.test(raw);
+                        const text = raw.replace(/^(?:[\s\u{1F6A8}\u26A0]|\uFE0F)+/u, '');
+                        const lower = text.toLowerCase();
+                        const category = /darurat|emergency/.test(lower)
+                          ? 'emergency_fund'
+                          : /tabungan|saving|50\/30\/20|budget|anggaran/.test(lower)
+                          ? 'savings'
+                          : null;
+                        return (
+                          <li
+                            key={idx}
+                            className="flex gap-2.5 text-xs text-gray-700 dark:text-gray-200"
+                            data-testid="audit-action"
+                          >
+                            <PixelArtBusinessIcon name={urgent ? 'ledger_red' : 'lightbulb'} size={24} className="shrink-0" />
+                            <span className="min-w-0">
+                              {text}
+                              {category ? <AuditFixPills language={language} category={category} /> : null}
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </section>
                 )}
@@ -682,7 +742,7 @@ export default function CuteWellnessBento({
                     <ul className="mt-2 space-y-1.5">
                       {audit.recommendations.map((rec, idx) => (
                         <li key={idx} className="text-xs text-gray-700 dark:text-gray-200">
-                          {String(rec).replace(/^[\u{1F4A1}]\s*/u, '')}
+                          {String(rec).replace(/^(?:[\s\u{1F4A1}\u{1F6A8}\u26A0]|\uFE0F)+/u, '')}
                         </li>
                       ))}
                     </ul>

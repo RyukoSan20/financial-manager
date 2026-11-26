@@ -90,6 +90,23 @@ def run_migrations():
             # ordinary case.
             "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS split_expense_id INTEGER REFERENCES split_expenses(id)",
             "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS split_tx_type VARCHAR(30)",
+            # The tax on a receipt, kept as a number of its own.
+            #
+            # A receipt that is saved writes this column. A database
+            # that was made before the column was added answered
+            # "column tax_total of relation receipt_scans does not
+            # exist" and the receipt was lost with nothing said to the
+            # reader.
+            #
+            # It is added the way the others are: only when it is
+            # missing. The migration adds it too, so this is the
+            # second hand, and the one that works when the migration
+            # could not run.
+            "ALTER TABLE receipt_scans ADD COLUMN IF NOT EXISTS tax_total NUMERIC(20,2)",
+            # The same for the lines of a receipt, which carry a flag
+            # saying whether the line is a discount rather than a thing
+            # bought.
+            "ALTER TABLE receipt_items ADD COLUMN IF NOT EXISTS is_discount BOOLEAN DEFAULT FALSE",
         ):
             try:
                 conn.execute(text(statement))

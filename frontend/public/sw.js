@@ -11,7 +11,7 @@
 // The SW file itself is served with no-store by nginx, and CACHE_NAME is
 // bumped on every release so old caches are purged on activate.
 
-const CACHE_NAME = 'finmanager-v23';
+const CACHE_NAME = 'finmanager-v24';
 const OFFLINE_FALLBACK = '/index.html';
 
 const PRECACHE_URLS = ['/manifest.json'];
@@ -46,13 +46,34 @@ self.addEventListener('message', (event) => {
 });
 
 // --- Helper: never let a fetch rejection escape (this caused "TypeError: Failed to fetch") ---
+//
+// The status that is given here matters.
+//
+// It used to be 503, which reads as "the server is down". Nothing had
+// gone wrong with the server: the browser simply could not reach it
+// for a moment. A reader watching the console saw a 503 on the page
+// they were trying to open, and it was blamed on the server.
+//
+// 504 says what actually happened: the gateway could not get an answer
+// in time. The retry in the app is keyed on 503 and 429, so 503 would
+// also have sent every one of these down the retry path for a request
+// that was never going to succeed.
+const OFFLINE_STATUS = 504;
+
 function networkOnly(request) {
   return fetch(request).catch(
     () =>
-      new Response(JSON.stringify({ error: 'offline', message: 'Koneksi jaringan terputus' }), {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      new Response(
+        JSON.stringify({
+          error: 'offline',
+          message: 'Koneksi jaringan terputus',
+          offline: true,
+        }),
+        {
+          status: OFFLINE_STATUS,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
   );
 }
 
@@ -74,6 +95,12 @@ self.addEventListener('fetch', (event) => {
   // Navigation (SPA routes): network first, and on failure re-fetch index.html
   // from the network. We intentionally do NOT serve a cached index.html, because
   // a cached copy pins the app to an old bundle hash forever.
+  //
+  // The page that is shown when there is no network at all carries the
+  // same status as the rest of the offline answers: 504, not 503. The
+  // console of the reader used to show a 503 on the page they were
+  // opening, and it read as "the server is down" when nothing had
+  // happened to the server.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(() =>
@@ -84,7 +111,10 @@ self.addEventListener('fetch', (event) => {
                 '<body style="font-family:sans-serif;text-align:center;padding:3rem">' +
                 '<h1>Offline</h1><p>Tidak ada koneksi ke server. Coba muat ulang nanti.</p>' +
                 '</body></html>',
-              { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+              {
+                status: OFFLINE_STATUS,
+                headers: { 'Content-Type': 'text/html; charset=utf-8' },
+              }
             )
         )
       )

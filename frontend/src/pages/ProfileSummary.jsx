@@ -32,25 +32,18 @@ import { getUserAvatarUrl, builtInAvatarOptions } from '../utils/avatarHelper';
 import { amountSign, isIncoming, isOutgoing } from '../utils/transactionSign';
 import { useTranslation } from '../i18n';
 import { useOnDataMutated } from '../utils/dataSyncBus';
+import DraggableSparkleMascot from '../components/mascot/DraggableSparkleMascot';
 
-const StatTile = ({ icon: Icon, label, value, tone = 'neutral', sublabel }) => {
-  const tones = {
-    neutral: 'bg-gray-50 text-gray-700 border-gray-100',
-    income: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    expense: 'bg-rose-50 text-rose-700 border-rose-100',
-    primary: 'bg-primary-50 text-primary-700 border-primary-100',
-  };
-  return (
-    <div className={`rounded-xl border p-3 ${tones[tone]}`}>
-      <div className="flex items-center gap-1.5 text-xs opacity-80">
-        <Icon className="w-3.5 h-3.5" />
-        <span>{label}</span>
-      </div>
-      <p className="text-lg font-bold mt-1 break-words">{value}</p>
-      {sublabel && <p className="text-xs opacity-70 mt-0.5">{sublabel}</p>}
+const StatTile = ({ icon: Icon, label, value, tone = 'neutral', sublabel }) => (
+  <div className={`theme-stat-box${tone === 'income' ? ' theme-stat-box--income' : tone === 'expense' ? ' theme-stat-box--expense' : ''}`} data-tone={tone}>
+    <div className="flex items-center gap-1.5 text-xs font-semibold">
+      <Icon className="w-3.5 h-3.5" />
+      <span>{label}</span>
     </div>
-  );
-};
+    <p className="text-lg font-extrabold mt-1 break-words tabular-nums">{value}</p>
+    {sublabel && <p className="text-xs mt-0.5 opacity-80">{sublabel}</p>}
+  </div>
+);
 
 const ProfileSummary = () => {
   const { t } = useTranslation();
@@ -121,7 +114,7 @@ const ProfileSummary = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="theme-page-shell min-h-screen flex items-center justify-center">
         <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
           <Loader2 className="w-5 h-5 animate-spin" />
           <span>{t('profile.loading')}</span>
@@ -132,13 +125,13 @@ const ProfileSummary = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
-        <div className="max-w-sm w-full bg-white dark:bg-gray-800 rounded-xl p-5 text-center border border-gray-200 dark:border-gray-700">
+      <div className="theme-page-shell min-h-screen flex items-center justify-center p-6">
+        <div className="theme-card max-w-sm w-full p-5 text-center">
           <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
           <p className="text-gray-700 dark:text-gray-300 mb-4">{error}</p>
           <button
             onClick={load}
-            className="px-4 py-2 bg-primary-700 text-white rounded-lg text-sm font-medium hover:bg-primary-800"
+            className="theme-btn-primary"
           >
             {t('profile.retry')}
           </button>
@@ -152,27 +145,31 @@ const ProfileSummary = () => {
   const { identity, stats, history, recent_transactions, login_history } = data;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
+    <div className="theme-page-shell min-h-screen pb-24" data-testid="profile-summary-page">
       {/* Header */}
-      <div className="bg-primary-700 text-white px-4 py-4 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 -ml-2 rounded-lg hover:bg-white/10"
-            aria-label={t('common.back')}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-lg font-bold leading-tight">{t('profile.summary_title')}</h1>
-            <p className="text-xs text-primary-100">{t('profile.summary_subtitle')}</p>
-          </div>
+      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 pt-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="theme-btn-ghost !px-3 !py-2"
+          aria-label={t('common.back')}
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div className="min-w-0">
+          <h1 className="theme-section-title text-lg font-bold leading-tight">{t('profile.summary_title')}</h1>
+          <p className="mt-1 text-xs opacity-75">{t('profile.summary_subtitle')}</p>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-4 space-y-4">
+      <div className="mx-auto max-w-5xl space-y-4 p-4 pt-10">
+        {/* The member row: the identity card, and the pass beside it */}
+        <div className="grid gap-4 lg:grid-cols-2" data-testid="profile-top-row">
         {/* Identity card */}
-        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+        <section className="theme-card relative p-5 pt-6" data-testid="profile-identity-card">
+          {/* The companion perches on the top edge of the card. */}
+          <div className="absolute -top-9 right-5" data-testid="profile-companion">
+            <DraggableSparkleMascot persona="koneko" size={72} hint={t('profile.drag_me', 'Geser aku!')} label="Koneko" />
+          </div>
           <div className="flex items-start gap-4">
             {/* The picture of the reader.
 
@@ -188,7 +185,7 @@ const ProfileSummary = () => {
               <img
                 src={getUserAvatarUrl(identity)}
                 alt={identity.display_name}
-                className="w-16 h-16 rounded-full object-cover border-2 border-primary-100 bg-primary-50"
+                className="w-16 h-16 rounded-full object-cover border-2 border-[#E5E7EB] bg-[#F7F6F2]"
                 onError={(e) => {
                   // The drawn picture is the last line of defence: if
                   // even that fails, the initials are shown.
@@ -213,7 +210,7 @@ const ProfileSummary = () => {
                 type="button"
                 onClick={() => setShowAvatarPicker((v) => !v)}
                 aria-expanded={showAvatarPicker}
-                className="text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline inline-flex items-center gap-1 whitespace-nowrap"
+                className="theme-badge !normal-case !tracking-normal hover:brightness-95 whitespace-nowrap"
               >
                 <Palette className="w-3.5 h-3.5" aria-hidden="true" />
                 {t('profile.change_avatar', 'Ubah Ikon Avatar')}
@@ -222,18 +219,18 @@ const ProfileSummary = () => {
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="font-bold text-gray-900 dark:text-white truncate">
+                <h2 className="font-bold truncate pr-16">
                   {identity.display_name}
                 </h2>
                 {identity.is_verified && (
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                 )}
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+              <p className="text-sm opacity-70 truncate">
                 {identity.email}
               </p>
               {identity.username && (
-                <p className="text-xs text-gray-400 dark:text-gray-300 mt-0.5">
+                <p className="text-xs opacity-60 mt-0.5">
                   @{identity.username}
                 </p>
               )}
@@ -247,8 +244,8 @@ const ProfileSummary = () => {
               we do not control. The reader picks one and it is
               theirs, here and in the sidebar and in the header. */}
           {showAvatarPicker ? (
-            <div className="mt-4 rounded-xl bg-gray-50 dark:bg-white/5 p-3 border border-gray-100 dark:border-white/10">
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2.5">
+            <div className="theme-stat-box mt-4" data-testid="avatar-picker">
+              <p className="text-xs font-semibold mb-2.5">
                 {t('profile.choose_avatar', 'Pilih ikon avatar')}
               </p>
               <div className="flex flex-wrap gap-2.5">
@@ -312,8 +309,27 @@ const ProfileSummary = () => {
           </div>
         </section>
 
+        {/* The member pass: a perforated forest-green ticket, like the invite ticket of the household */}
+        <section className="theme-ticket-card hh-card-forest p-5" data-testid="profile-pass-card">
+          <div className="hh-ticket px-6 py-5 text-center">
+            <p className="text-[11px] font-extrabold tracking-[0.2em] opacity-90">
+              {t('profile.pass_label', 'KARTU ANGGOTA')}
+            </p>
+            <p className="hh-code mt-2 text-3xl sm:text-4xl" data-pass-code>
+              {`FM-${String(identity.username || identity.initials || 'USER').toUpperCase().slice(0, 8)}`}
+            </p>
+            <span className="theme-badge hh-badge mt-4 !px-4 !py-2 !text-xs" data-testid="profile-rank">
+              {identity.is_verified ? t('profile.pass_verified', 'Anggota Terverifikasi') : t('profile.pass_member', 'Anggota')}
+            </span>
+          </div>
+          <p className="mt-3 text-xs opacity-80">
+            {identity.member_since ? `${t('profile.member_since')} ${identity.member_since.display}` : t('profile.pass_hint', 'Kartu ini milikmu.')}
+          </p>
+        </section>
+        </div>
+
         {/* Stats */}
-        <section className="grid grid-cols-2 gap-3">
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3" data-testid="profile-stats">
           <StatTile
             icon={TrendingUp}
             label={t('profile.total_income')}
@@ -354,9 +370,9 @@ const ProfileSummary = () => {
         </section>
 
         {/* Activity history */}
-        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <section className="theme-card overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-            <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <h3 className="font-bold flex items-center gap-2">
               <History className="w-4 h-4 text-gray-400" />
               {t('profile.history')}
             </h3>
@@ -414,9 +430,9 @@ const ProfileSummary = () => {
 
         {/* Recent transactions */}
         {recent_transactions?.length > 0 && (
-          <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <section className="theme-card overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h3 className="font-bold flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-gray-400" />
                 {t('profile.recent_transactions')}
               </h3>
@@ -459,9 +475,9 @@ const ProfileSummary = () => {
 
         {/* Login history */}
         {login_history?.length > 0 && (
-          <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <section className="theme-card overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h3 className="font-bold flex items-center gap-2">
                 <Camera className="w-4 h-4 text-gray-400" />
                 {t('profile.login_history')}
               </h3>
@@ -487,12 +503,13 @@ const ProfileSummary = () => {
         {/* Action */}
         <button
           onClick={() => navigate('/settings/profile')}
-          className="w-full flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700"
+          className="theme-btn-primary w-full !justify-between !py-3.5"
+          data-testid="profile-edit"
         >
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+          <span className="text-sm">
             {t('profile.edit_profile')}
           </span>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
+          <ChevronRight className="w-4 h-4" />
         </button>
       </div>
     </div>

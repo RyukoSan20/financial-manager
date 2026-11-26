@@ -7,6 +7,7 @@ import { formatCurrency } from '../utils/format';
 import { useTranslation } from '../i18n';
 import { toast } from '../contexts/ToastContext';
 import { ask } from '../contexts/ConfirmContext';
+import { MerchantChest } from '../components/ui/FantasyKit';
 
 const MerchantManager = () => {
   // The number at the top of the page is the day's takings. It has to
@@ -114,7 +115,7 @@ const MerchantManager = () => {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="theme-btn-primary"
         >
           <Plus size={20} />
           <span>{t('merchant_manager.add_store')}</span>
@@ -123,16 +124,17 @@ const MerchantManager = () => {
 
       {merchants.length === 0 ? (
         // Empty State
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-8 text-center">
-          <ShoppingBag className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h2 className="text-xl font-semibold mb-2">{t('merchant_manager.empty_title')}</h2>
-          <p className="text-gray-500 mb-4">{t('merchant_manager.empty_desc')}</p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-          >
-            + {t('merchant_manager.add_store')}
-          </button>
+        <div className="theme-card p-8 text-center">
+          <MerchantChest
+            title={t('merchant_manager.empty_title')}
+            hint={t('merchant_manager.empty_desc')}
+            gem="gold"
+            action={(
+              <button onClick={() => setShowCreateModal(true)} className="theme-btn-primary mt-2">
+                + {t('merchant_manager.add_store')}
+              </button>
+            )}
+          />
         </div>
       ) : (
         // Merchant List & Dashboard

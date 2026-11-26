@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.services.receipt_service import ParsedItem, ParsedReceipt
+from app.services.receipt_line_items import normalize_item_name
 
 logger = logging.getLogger(__name__)
 
@@ -219,18 +220,26 @@ def apply_structured_breakdown(
     if structured.transaction_date and not receipt.transaction_date:
         receipt.transaction_date = structured.transaction_date
 
-    existing = {(i.name or "").strip().upper() for i in receipt.items or []}
+    existing = {normalize_item_name(i.name or "") for i in receipt.items or []}
+    existing.discard("")
 
     for item in structured.items or []:
         name = (item.name or "").strip()
         if not name:
             continue
-        key = name.upper()
+        key = normalize_item_name(name)
+        if not key:
+            continue
         if key in existing:
             # The deterministic parse already found this line; keep its
             # numbers but take the category the model inferred.
-            for parsed in receipt.items:
-                if (parsed.name or "").strip().upper() == key:
+            #
+            # The names are compared after the quantity that was
+            # written next to them is taken away. "Kopi Jago vanila
+            # 2 x" and "Kopi Jago vanila" are the same two coffees,
+            # and the receipt shows both.
+            for parsed in receipt.items or []:
+                if normalize_item_name(parsed.name or "") == key:
                     if not getattr(parsed, "category", None) and item.category:
                         parsed.category = item.category
                     break

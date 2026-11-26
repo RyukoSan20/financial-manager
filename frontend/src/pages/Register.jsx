@@ -93,14 +93,17 @@ export const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-600 p-4">
+    /* The same warm editorial canvas as the sign-in page. It used to
+       be a primary-colour gradient, which made registering look like
+       a different application from signing in. */
+    <div className="min-h-screen flex items-center justify-center bg-[#FAF9F6] text-[#1F2421] p-4">
       <div className="w-full max-w-md">
         {/* Logo & Title */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">FinManager</h1>
-          <p className="text-primary-100">{K.tagline}</p>
+          <h1 className="text-4xl font-bold text-[#1F2421] mb-2">FinManager</h1>
+          <p className="text-[#5C6460]">{K.tagline}</p>
           {isSupabase && (
-            <span className="inline-block mt-2 px-2 py-1 bg-white/20 rounded-full text-xs text-white">
+            <span className="inline-block mt-2 px-2 py-1 bg-[#E3F2EA] rounded-full text-xs text-[#1B3B32]">
               {K.powered_by}
             </span>
           )}
@@ -228,7 +231,7 @@ export const Register = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 bg-[#2F4842] text-[#FAF9F6] rounded-xl font-semibold hover:bg-[#233833] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

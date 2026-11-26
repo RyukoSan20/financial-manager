@@ -1,21 +1,43 @@
 /**
- * Enhanced Receipt Scanner Modal
- * Features:
- * - Camera capture
- * - File upload
- * - Drag & drop
- * - Real-time OCR preview
- * - Multiple language support
- * - Auto-categorization
+ * The receipt scanner.
+ *
+ * Three things were wrong with this screen, and all three cost the
+ * reader their purchase.
+ *
+ * The camera showed a black rectangle. The stream was attached to the
+ * video element inside the function that started it, but the video
+ * element was not on the page yet, so the stream was attached to
+ * nothing and the reader was left looking at a black box with a
+ * shutter button that could not work.
+ *
+ * There was no way to scan without a camera. A reader on a laptop
+ * with no webcam, or one who says no to the permission prompt, had
+ * nothing at all.
+ *
+ * And the transaction disappeared. The receipt was read, the total was
+ * shown, and then the save failed silently: a reader with no account
+ * had nowhere to put the money. The transaction was never written
+ * down, and the screen said nothing about it.
+ *
+ * So: the camera is attached properly, with a loading state, a
+ * permission error with a retry, and a way to switch between cameras.
+ * There is always a way to pick a file. And the result is always
+ * complete and editable - the shop, the day, the total, the category,
+ * the account, and every line of the bill - so a reader without a
+ * key for the vision model still gets something they can correct.
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Modal, Button, Input, Select } from '../ui';
-import { Camera, Upload, Loader2, AlertCircle, Check, Sparkles, X, RotateCcw, ZoomIn, FileImage, Smartphone, Monitor, Bell } from 'lucide-react';
+import { Modal, Button } from '../ui';
+import {
+  Camera, Upload, Loader2, AlertCircle, Check, Sparkles, X, RotateCcw,
+  FileImage, Smartphone, RefreshCw, CameraOff, ListOrdered,
+} from 'lucide-react';
 import api from '../../services/api';
 import { apiUrl as buildApiUrl } from '../../config/url';
 import { formatCurrency } from '../../utils/format';
 import { ScanDiagnostics, LearnFromScan } from './ScanDiagnostics';
 import { ReceiptBreakdown } from './ReceiptBreakdown';
+import { LineItemEditor } from '../transactions/LineItemEditor';
 import { scanManager, dataUrlToFile } from '../../services/scanManager';
 import { categoryName } from '../../utils/categoryName';
 import { useTranslation } from '../../i18n';
@@ -36,29 +58,39 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
   const [selectedCategory, setSelectedCategory] = useState('');
   const [processingStatus, setProcessingStatus] = useState('');
   const [confidence, setConfidence] = useState(0);
-  
+
   // Editable fields
   const [merchantName, setMerchantName] = useState('');
   const [amount, setAmount] = useState('');
   const [location, setLocation] = useState('');
   const [transactionDate, setTransactionDate] = useState('');
   const [rawText, setRawText] = useState('');
-  
+  // The lines of the bill. This is what makes a receipt a receipt:
+  // not one number, but a list of what was bought.
+  const [items, setItems] = useState([]);
+
   // Image enhancement
-  const [imageMode, setImageMode] = useState('auto'); // auto, document, receipt
   const [rotation, setRotation] = useState(0);
-  
+
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [usingCamera, setUsingCamera] = useState(false);
   const [stream, setStream] = useState(null);
-  // The camera that is running right now, kept in a ref so that it can
-  // be turned off from a cleanup that was set up before it started.
+  // The stream is kept in a ref as well as in the state, so that the
+  // camera can always be turned off, even from a cleanup that was set
+  // up before the camera was ever started.
   const streamRef = useRef(null);
+  // The state of the camera, so the reader is told what is happening:
+  // asking, working, refused, or working with no picture.
+  const [cameraStatus, setCameraStatus] = useState('idle'); // idle | starting | ready | error | unsupported
+  const [cameraError, setCameraError] = useState('');
+  // The cameras on this machine, and which one is in use.
+  const [cameraList, setCameraList] = useState([]);
+  const [activeCamera, setActiveCamera] = useState(0);
   // When true the scan is queued on the server and the user is sent back
   // to what they were doing. The result arrives as a notification.
-  const [backgroundMode, setBackgroundMode] = useState(true);
+  const [backgroundMode, setBackgroundMode] = useState(false);
   // True while a file is being dragged over the drop zone.
   const [isDragging, setIsDragging] = useState(false);
 
@@ -77,57 +109,132 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
         api.accounts.list(),
         api.categories.list('expense'),
       ]);
-      setAccounts(Array.isArray(accRes) ? accRes : []);
+      const accountList = Array.isArray(accRes) ? accRes : [];
+      setAccounts(accountList);
       setCategories(Array.isArray(catRes) ? catRes : []);
-      if (accRes?.length > 0) {
-        setSelectedAccount(accRes[0].id.toString());
+      if (accountList.length > 0 && !selectedAccount) {
+        setSelectedAccount(accountList[0].id.toString());
       }
     } catch (err) {
       console.error('Failed to load data:', err);
     }
   };
 
-  const startCamera = async () => {
+  /**
+   * Attach the camera to the video element.
+   *
+   * The video element has to be on the page and mounted before the
+   * stream can be put on it. That is why this is its own effect: it
+   * runs after the render that put the video there, not in the same
+   * breath as the request for the camera.
+   */
+  useEffect(() => {
+    if (!usingCamera || !stream || !videoRef.current) return;
+    const video = videoRef.current;
+    if (video.srcObject !== stream) {
+      video.srcObject = stream;
+    }
+    // Some browsers need the play() call to be made by hand before
+    // the picture appears. It is harmless when it is not needed.
+    const played = video.play?.();
+    if (played && typeof played.catch === 'function') {
+      played.catch(() => {});
+    }
+  }, [usingCamera, stream]);
+
+  const startCamera = async (deviceIndex = activeCamera) => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraStatus('unsupported');
+      setCameraError(K.cameraUnsupported);
+      return;
+    }
+
+    setCameraStatus('starting');
+    setCameraError('');
+    setError('');
+
     try {
+      // The list of cameras, so the reader can switch between the
+      // front one and the back one.
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter((d) => d.kind === 'videoinput');
+        setCameraList(cameras);
+      } catch {
+        // The list is a nicety. Not being able to read it must not
+        // stop the camera from working.
+        setCameraList([]);
+      }
+
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: {
+          facingMode: { ideal: 'environment' },
+          ...(deviceIndex ? { deviceId: { exact: deviceListId(deviceIndex) } } : {}),
+        },
+        audio: false,
       });
+
       // The stream is kept in a ref as well as in the state, so that
       // the camera can always be turned off, even from a cleanup that
       // was set up before the camera was ever started.
       streamRef.current = mediaStream;
       setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
       setUsingCamera(true);
+      setCameraStatus('ready');
     } catch (err) {
       console.error('Camera error:', err);
-      setError(K.cameraDenied);
+      setUsingCamera(false);
+      setCameraStatus('error');
+      setCameraError(
+        err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
+          ? K.cameraDenied
+          : err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError'
+            ? K.cameraNotFound
+            : K.cameraError
+      );
     }
   };
 
-  const stopCamera = () => {
+  // The device id of a camera in the list, when the list has one.
+  const deviceListId = (index) => cameraList[index]?.deviceId;
+
+  const switchCamera = async () => {
+    if (cameraList.length < 2) return;
+    stopCamera();
+    const next = (activeCamera + 1) % cameraList.length;
+    setActiveCamera(next);
+    await startCamera(next);
+  };
+
+  const stopCamera = useCallback(() => {
     const live = streamRef.current || stream;
     if (live) {
-      live.getTracks().forEach(track => track.stop());
+      live.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       setStream(null);
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setUsingCamera(false);
-  };
+    setCameraStatus('idle');
+  }, [stream]);
 
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
-    
+    if (!videoRef.current.videoWidth) {
+      setCameraError(K.cameraNoPicture);
+      return;
+    }
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
-    
+
     const imageData = canvas.toDataURL('image/jpeg', 0.9);
     setPreview(imageData);
     stopCamera();
@@ -137,13 +244,16 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // The same file can be picked twice in a row, so the input is
+    // cleared before the file is read.
+    e.target.value = '';
     await processFile(file);
   };
 
   const processFile = async (file) => {
     // Validate file
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
-    if (!allowedTypes.includes(file.type)) {
+    if (!allowedTypes.includes(file.type) && !file.type.startsWith('image/')) {
       setError(K.invalidFormat);
       return;
     }
@@ -160,6 +270,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
       setParsedData(null);
       setError('');
     };
+    reader.onerror = () => setError(K.readFailed);
     reader.readAsDataURL(file);
   };
 
@@ -247,10 +358,9 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
 
       setProcessingStatus(K.processingOcr);
 
-      // Try backend OCR endpoint
       const token = localStorage.getItem('token') || localStorage.getItem('sb_token');
       const apiUrl = buildApiUrl('parser/parse-receipt');
-      
+
       const formData = new FormData();
       formData.append('file', imageFile);
 
@@ -262,20 +372,10 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
 
       if (uploadResponse.ok) {
         const data = await uploadResponse.json();
-        setParsedData(data);
-        // The backend reports confidence either as 0-1 or as a 0-100
-        // percentage depending on the parser that produced it. Normalise to
-        // a 0-1 fraction so the UI and the stored value are consistent.
-        const rawConfidence = data.confidence_score;
-        setConfidence(
-          typeof rawConfidence === 'number' && rawConfidence > 1
-            ? rawConfidence / 100
-            : rawConfidence || 0.8
-        );
-        populateFields(data);
+        applyReading(data);
         setStep('edit');
       } else {
-        // Fallback to local OCR
+        // The server could not read it. The browser tries.
         setProcessingStatus(K.localOcr);
         await localOCR();
       }
@@ -294,7 +394,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
     try {
       // Dynamic import Tesseract
       const Tesseract = await import('tesseract.js');
-      
+
       setProcessingStatus(K.doingOcr);
 
       const result = await Tesseract.recognize(preview, 'eng+ind', {
@@ -307,23 +407,26 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
 
       const text = result.data.text;
       setRawText(text);
-      
+
       // Parse the extracted text
       const parsed = parseReceiptText(text);
-      setParsedData(parsed);
-      setConfidence(result.data.confidence / 100);
-      populateFields(parsed);
+      applyReading(parsed);
       setStep('edit');
     } catch (err) {
       console.error('Local OCR Error:', err);
+      // Nothing could read the receipt. The reader still gets a form
+      // they can fill in by hand, rather than an error and a lost
+      // purchase.
       setError(K.ocrFailed);
-      setLoading(false);
+      setParsedData({ confidence_score: 0, items: [] });
+      setItems([]);
+      setStep('edit');
     }
   };
 
   const parseReceiptText = (text) => {
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-    
+    const lines = text.split('\n').map((l) => l.trim()).filter((l) => l);
+
     // Amount patterns
     const amountPatterns = [
       /total[:\s]*[Rr]p\.?\s*([\d.,]+)/i,
@@ -380,6 +483,30 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
       }
     }
 
+    // The lines of the bill. A line with a name and a price on it is
+    // something that was bought.
+    const lineItems = [];
+    for (const line of lines) {
+      if (/total|subtotal|jumlah|kembali|change|tunai|cash|debit|kredit|credit|pajak|tax|diskon/i.test(line)) {
+        continue;
+      }
+      if (/jl\.|jalan|street|alamat/i.test(line)) continue;
+      const priceMatch = line.match(/([\d.,]+)\s*$/);
+      if (!priceMatch) continue;
+      const name = line.slice(0, priceMatch.index).trim();
+      if (!name || name.length < 2) continue;
+      if (!/[a-zA-Z]{3,}/.test(name)) continue;
+      const unitPrice = parseFloat(priceMatch[1].replace(/[.,]/g, '')) || 0;
+      if (unitPrice <= 0) continue;
+      const qtyMatch = name.match(/(\d+)\s*x\s*\w/);
+      lineItems.push({
+        name: name.replace(/\s*\d+\s*x\s*$/, '').trim() || name,
+        quantity: qtyMatch ? parseInt(qtyMatch[1], 10) : 1,
+        unit_price: unitPrice,
+        total_price: unitPrice,
+      });
+    }
+
     return {
       merchant_name: merchant,
       amount: amount.toString(),
@@ -387,15 +514,52 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
       location: location,
       confidence_score: 0.7,
       raw_text: text,
+      items: lineItems,
     };
   };
 
-  const populateFields = (data) => {
+  /**
+   * Put a reading on the screen.
+   *
+   * Every reading comes in the same shape, whichever reader produced
+   * it, so this is the only place that has to know how to open one.
+   */
+  const applyReading = (data) => {
+    if (!data) return;
+    setParsedData(data);
+
+    // The backend reports confidence either as 0-1 or as a 0-100
+    // percentage depending on the parser that produced it. Normalise to
+    // a 0-1 fraction so the UI and the stored value are consistent.
+    const rawConfidence = data.confidence_score ?? data.confidence;
+    setConfidence(
+      typeof rawConfidence === 'number' && rawConfidence > 1
+        ? rawConfidence / 100
+        : rawConfidence || 0.8
+    );
+
+    const readItems = Array.isArray(data.items) ? data.items : [];
+    setItems(
+      readItems.map((item) => ({
+        name: item.name || '',
+        quantity: Number(item.quantity ?? 1) || 1,
+        unit_price: Number(item.unit_price ?? item.price_per_unit ?? 0) || 0,
+        total_price: Number(item.total_price ?? item.total ?? 0) || 0,
+      }))
+    );
+
     setMerchantName(data.merchant_name || '');
-    setAmount(data.amount || '');
-    setLocation(data.location || '');
+    setAmount(
+      data.amount !== undefined && data.amount !== null && data.amount !== ''
+        ? String(data.total_amount ?? data.amount)
+        : ''
+    );
+    setLocation(data.location || data.merchant_address || '');
     setTransactionDate(data.date || new Date().toISOString().split('T')[0]);
+    if (data.raw_text) setRawText(data.raw_text);
   };
+
+  const populateFields = (data) => applyReading(data);
 
   const handleReset = () => {
     setPreview(null);
@@ -408,7 +572,24 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
     setRawText('');
     setError('');
     setConfidence(0);
+    setItems([]);
+    setCameraError('');
   };
+
+  /**
+   * The lines, as they will be saved.
+   *
+   * The total of the lines is what the reader sees, so a line whose
+   * sum does not match the total is worth pointing out - but it is
+   * their receipt, and their total, so their number wins.
+   */
+  const itemsTotal = items.reduce((sum, item) => {
+    const quantity = Number(item.quantity) || 0;
+    const unit = Number(item.unit_price) || 0;
+    return sum + quantity * unit;
+  }, 0);
+
+  const linesDisagree = items.length > 0 && amount && Math.abs(itemsTotal - parseFloat(amount)) > 1;
 
   const handleConfirm = async () => {
     if (!selectedAccount) {
@@ -423,6 +604,13 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
 
     setLoading(true);
     setError('');
+
+    const itemPayload = items.map((item) => ({
+      name: item.name,
+      quantity: Number(item.quantity) || 1,
+      unit_price: Number(item.unit_price) || 0,
+      total_price: Number(item.unit_price || 0) * (Number(item.quantity) || 1),
+    }));
 
     try {
       // When the reader wants to look at the receipt before it is
@@ -442,7 +630,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
           raw_source_text: rawText,
           confidence_score: confidence,
           detection_type: 'receipt_ocr',
-          items: parsedData?.items || [],
+          items: itemPayload,
           // A scan that ran in the background has already written a
           // transaction down, waiting for the review. The review has
           // to know which one it is, or it will make a second and the
@@ -454,7 +642,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
         return;
       }
 
-      await api.transactions.create({
+      const created = await api.transactions.create({
         amount: parseFloat(amount),
         type: 'expense',
         description: merchantName || K.receiptScanDesc,
@@ -466,9 +654,23 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
         raw_source_text: rawText,
         confidence_score: confidence,
         detection_type: 'receipt_ocr',
+        // The lines go down with the transaction, so they are there
+        // in the history and in the review.
+        items: itemPayload,
       });
 
-      onSuccess?.();
+      // The receipt is also queued for the review, so the reader can
+      // look at it there with the rest of the things that need
+      // looking at.
+      try {
+        await api.feed.scanReceipt(preview, parseInt(selectedAccount));
+      } catch (reviewError) {
+        // The transaction is saved either way. The review is a second
+        // copy, and failing to make it must not undo the first one.
+        console.warn('Could not queue the receipt for review:', reviewError);
+      }
+
+      onSuccess?.(created);
       handleReset();
       onClose();
     } catch (err) {
@@ -493,6 +695,55 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
       onClose={() => { handleReset(); onClose(); }}
       title={K.title}
       size="lg"
+      footer={
+        step === 'upload' ? (
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={handleReset}
+              className="flex-1"
+            >
+              {K.cancel}
+            </Button>
+            <Button
+              onClick={processReceipt}
+              disabled={loading}
+              className="flex-1 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : backgroundMode ? (
+                <Upload className="w-4 h-4" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              {backgroundMode ? K.scanInBackground : K.scanReceipt}
+            </Button>
+          </div>
+        ) : step === 'preview' ? (
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setStep('preview')}
+              className="flex-1"
+            >
+              {K.back}
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={loading || !selectedAccount || !amount}
+              className="flex-1 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              {K.save}
+            </Button>
+          </div>
+        ) : null
+      }
     >
       {/* Step 1: Upload */}
       {step === 'upload' && (
@@ -504,10 +755,11 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
                 ref={videoRef}
                 autoPlay
                 playsInline
+                muted
                 className="w-full rounded-lg bg-black"
               />
               <canvas ref={canvasRef} className="hidden" />
-              
+
               <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
                 <Button
                   variant="outline"
@@ -516,6 +768,15 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
                 >
                   <X className="w-4 h-4 mr-2" /> {K.cancel}
                 </Button>
+                {cameraList.length > 1 && (
+                  <Button
+                    variant="outline"
+                    onClick={switchCamera}
+                    className="bg-white/80"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" /> {K.switchCamera}
+                  </Button>
+                )}
                 <Button
                   onClick={capturePhoto}
                   className="bg-primary-600 hover:bg-primary-700"
@@ -529,13 +790,20 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
               {/* Upload Options */}
               <div className="grid grid-cols-2 gap-4">
                 <button
-                  onClick={startCamera}
-                  className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                  onClick={() => startCamera()}
+                  disabled={cameraStatus === 'starting'}
+                  className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors disabled:opacity-60"
                 >
-                  <Smartphone className="w-8 h-8 text-gray-400" />
-                  <span className="text-sm font-medium">{K.camera}</span>
+                  {cameraStatus === 'starting' ? (
+                    <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+                  ) : (
+                    <Smartphone className="w-8 h-8 text-gray-400" />
+                  )}
+                  <span className="text-sm font-medium">
+                    {cameraStatus === 'starting' ? K.cameraStarting : K.camera}
+                  </span>
                 </button>
-                
+
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
@@ -545,13 +813,41 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
                 </button>
               </div>
 
+              {/* The file input is always here, whether or not the
+                  camera works. It is the way in for the reader with no
+                  webcam, and for the reader who says no to the
+                  permission. */}
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                accept="image/*"
+                capture="environment"
                 onChange={handleFileSelect}
                 className="hidden"
               />
+
+              {/* The camera's state, said out loud. */}
+              {cameraStatus === 'error' && cameraError && (
+                <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-lg text-sm">
+                  <CameraOff className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p>{cameraError}</p>
+                    <button
+                      onClick={() => startCamera()}
+                      className="mt-2 inline-flex items-center gap-1 text-sm font-medium underline"
+                    >
+                      <RefreshCw className="w-3 h-3" /> {K.cameraRetry}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {cameraStatus === 'unsupported' && cameraError && (
+                <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-lg text-sm">
+                  <CameraOff className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <p>{cameraError}</p>
+                </div>
+              )}
 
               {/* Drop Zone */}
               <div
@@ -609,11 +905,11 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
                 working, so it is the one thing that is allowed to
                 move on its own. */}
             {loading && <div className="money-scan-line" />}
-            
+
             {/* Controls */}
             <div className="absolute top-2 right-2 flex gap-2">
               <button
-                onClick={() => setRotation(r => (r + 90) % 360)}
+                onClick={() => setRotation((r) => (r + 90) % 360)}
                 className="p-2 bg-white/80 rounded-full hover:bg-white"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -633,34 +929,10 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handleReset}
-              className="flex-1"
-            >
-              {K.cancel}
-            </Button>
-            <Button
-              onClick={processReceipt}
-              disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : backgroundMode ? (
-                <Bell className="w-4 h-4" />
-              ) : (
-                <Sparkles className="w-4 h-4" />
-              )}
-              {backgroundMode ? K.scanInBackground : K.scanReceipt}
-            </Button>
-          </div>
-
           {/* The user can wait for the result here, or let it run in the
-              background. The background mode is the default because a
-              scan takes several seconds. */}
+              background. The background mode is off by default now,
+              because the reader needs to see the lines of the bill
+              before the purchase is written down. */}
           <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
             <input
               type="checkbox"
@@ -686,7 +958,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
         </div>
       )}
 
-      {/* Step 3: Edit Parsed Data */}
+      {/* Step 3: The result, to be read and corrected */}
       {step === 'edit' && (
         <div className="space-y-4">
           {/* Confidence Badge */}
@@ -746,10 +1018,28 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
                 type="text"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium text-lg"
                 placeholder="0"
               />
+            </div>
+
+            {/* The lines of the bill. This is the part that makes the
+                receipt a receipt, and it is editable so a reader can
+                put right what was read wrong. */}
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <ListOrdered className="w-4 h-4 text-gray-400" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {K.rincianBarang}
+                </label>
+              </div>
+              <LineItemEditor items={items} onChange={setItems} currency="IDR" />
+              {linesDisagree && (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  {fill(K.linesDisagree, { lines: formatCurrency(itemsTotal), total: formatCurrency(parseFloat(amount)) })}
+                </p>
+              )}
             </div>
 
             <div>
@@ -774,7 +1064,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
                 type="date"
                 value={transactionDate}
                 onChange={(e) => setTransactionDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               />
             </div>
@@ -786,7 +1076,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
               <select
                 value={selectedAccount}
                 onChange={(e) => setSelectedAccount(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="">{K.pickAccount}</option>
@@ -805,7 +1095,7 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="">{K.pickCategoryOptional}</option>
@@ -816,29 +1106,6 @@ export const ReceiptScannerModal = ({ isOpen, onClose, onSuccess, onReview }) =>
                 ))}
               </select>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setStep('preview')}
-              className="flex-1"
-            >
-              {K.back}
-            </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={loading || !selectedAccount || !amount}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Check className="w-4 h-4" />
-              )}
-              {K.save}
-            </Button>
           </div>
 
           {error && (

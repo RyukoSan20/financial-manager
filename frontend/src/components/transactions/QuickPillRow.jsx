@@ -26,6 +26,8 @@ import { Wallet } from 'lucide-react';
 
 import { useTranslation } from '../../i18n';
 import { categoriesForType } from '../../features/transactions/nlp/categoryTypes';
+import PixelArtBusinessIcon from '../ui/PixelArtBusinessIcon';
+import { pixelIconForCategory } from '../../data/categoryDictionary';
 
 /**
  * How many pills there are.
@@ -122,7 +124,7 @@ export default function QuickPillRow({
           <span className="text-[10px] uppercase tracking-wide text-gray-400 shrink-0">
             {t('quick_pill.quick_category')}
           </span>
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+          <div className="flex flex-wrap items-center gap-1.5 no-scrollbar pb-0.5">
             {categoryPills.map((cat) => {
               const isActive = categoryId === cat.id;
               return (
@@ -138,7 +140,10 @@ export default function QuickPillRow({
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/40 hover:text-primary-700 dark:hover:text-primary-200 hover:shadow-sm hover:-translate-y-0.5'
                   }`}
                 >
-                  <span aria-hidden="true">{cat.icon || '🏷️'}</span>
+                  <PixelArtBusinessIcon
+                    name={pixelIconForCategory(cat.name)}
+                    size={14}
+                  />
                   <span className="whitespace-nowrap">{cat.name}</span>
                 </button>
               );
@@ -154,7 +159,7 @@ export default function QuickPillRow({
             <Wallet className="w-3 h-3" aria-hidden="true" />
             {t('quick_pill.quick_wallet')}
           </span>
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+          <div className="flex flex-wrap items-center gap-1.5 no-scrollbar pb-0.5">
             {accountPills.map((acc) => {
               const isActive = accountId === acc.id;
               return (

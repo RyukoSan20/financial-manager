@@ -100,6 +100,16 @@ DOMAIN_VOCABULARY = [
 ]
 
 
+def _has_digit(text: str) -> bool:
+    """
+    Whether a token holds a number.
+
+    A token with a number in it is never joined to the token next to
+    it, because the two are not one word.
+    """
+    return any(character.isdigit() for character in (text or ""))
+
+
 def _normalize_for_compare(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", (text or "").lower())
 
@@ -227,7 +237,13 @@ def repair_split_words(text: str) -> str:
         if i + 1 < len(tokens):
             pair = tokens[i] + tokens[i + 1]
             joined = _normalize_for_compare(pair)
-            if joined:
+            # A number is never joined to a word.
+            #
+            # "2 kopi" is two coffees, and joining it into "Kopi" threw
+            # the count away - the reader asked for two and got one.
+            # The same goes for a price: "18rb roti" is eighteen
+            # thousand and a roll, not one word.
+            if not (_has_digit(tokens[i]) or _has_digit(tokens[i + 1])) and joined:
                 best, best_score = None, 0.0
                 for vocab in DOMAIN_VOCABULARY:
                     score = _similarity(joined, _normalize_for_compare(vocab))

@@ -32,6 +32,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Users, ChevronDown, Wand2 } from 'lucide-react';
+import PixelArtBusinessIcon from '../ui/PixelArtBusinessIcon';
 
 import { formatCurrency } from '../../utils/format';
 import { CountUpNumber } from '../ui/CountUpNumber';
@@ -281,7 +282,7 @@ export default function ItemizedBillEditor({
             <ChevronDown
               className={`w-4 h-4 transition-transform ${openPanel === 'items' ? '' : '-rotate-90'}`}
             />
-            <span>📦 {t('bill.items')}</span>
+            <span className="inline-flex items-center gap-1.5"><PixelArtBusinessIcon name="ledger_blue" size={16} />{t('bill.items')}</span>
           </button>
           <button
             type="button"
@@ -499,7 +500,7 @@ export default function ItemizedBillEditor({
           className="w-full flex items-center justify-between gap-2 text-left"
         >
           <span className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <span aria-hidden="true">🧮</span>
+            <PixelArtBusinessIcon name="calculator" size={16} />
             {t('bill.calcTitle')}
           </span>
           <ChevronDown

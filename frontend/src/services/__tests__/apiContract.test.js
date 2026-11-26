@@ -103,6 +103,12 @@ checkTrue(
   apiSource.includes('JSON.stringify(body)'),
 );
 
+checkTrue(
+  'a payload passed as `data` is sent as the body, not dropped',
+  apiSource.includes('const { data: axiosPayload, ...finalOptions } = options;') &&
+    /axiosPayload !== undefined && finalOptions\.body === undefined[\s\S]{0,60}finalOptions\.body = axiosPayload/.test(apiSource),
+);
+
 if (failed > 0) {
   console.error(`\n${failed} check(s) failed:\n`);
   for (const f of failures) console.error(`  - ${f}\n`);

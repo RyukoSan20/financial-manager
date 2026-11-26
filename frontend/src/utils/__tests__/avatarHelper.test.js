@@ -96,12 +96,21 @@ check('every one of the four is recognised', () => {
   }
 });
 
-check('there are four to choose from', () => {
+check('there are ten to choose from: four plain, six of the guild', () => {
+  // The four plain faces, plus the six companions of the Petit Chibi
+  // Guild, which a reader can wear as their own face.
   const options = builtInAvatarOptions();
-  assert.equal(options.length, 4, 'there are not four pictures');
+  assert.equal(options.length, 10, `expected ten pictures, found ${options.length}`);
   for (const option of options) {
     assert.ok(option.url.startsWith('/assets/generated/brand/'), option.url);
     assert.ok(option.url.endsWith('.svg'), option.url);
+  }
+  // All six of the guild are really offered, by name.
+  for (const persona of ['mone', 'kaneru', 'kogane', 'zenimaru', 'minori', 'koneko']) {
+    assert.ok(
+      options.some((option) => option.url.includes(`avatar-petit-${persona}`)),
+      `${persona} is not offered`
+    );
   }
 });
 

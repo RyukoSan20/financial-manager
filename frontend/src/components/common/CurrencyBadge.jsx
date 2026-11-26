@@ -26,7 +26,8 @@ export const CurrencyBadge = ({ className = '' }) => {
 
   return (
     <div
-      className={`flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1.5 ${className}`}
+      data-currency-badge
+      className={`theme-chip flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1.5 ${className}`}
       title={state}
     >
       <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">

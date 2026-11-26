@@ -2,9 +2,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { api } from "../services/api";
 import { useTranslation } from "../i18n";
-import { IconText } from "../components/ui/IconText";
+import PixelArtBusinessIcon from "../components/ui/PixelArtBusinessIcon";
+import DraggableSparkleMascot from "../components/mascot/DraggableSparkleMascot";
 import { ShoppingCart } from "lucide-react";
-import { buildFlag } from "../utils/featureFlags";
 import { toast } from '../contexts/ToastContext';
 import ProductSearch from '../components/shopping/ProductSearch';
 import VisualProductCatalogGrid, {
@@ -13,9 +13,9 @@ import VisualProductCatalogGrid, {
 import PartnerMerchantFeedSection from '../components/shopping/PartnerMerchantFeedSection';
 
 const ShoppingTracker = () => {
-  const { t } = useTranslation();
-  // With the polish switch off, the page keeps the drawings it has.
-  const polished = buildFlag("UI_POLISH");
+  const { t, language } = useTranslation();
+  const en = language === 'en';
+  const [seeding, setSeeding] = useState(null);
   const [items, setItems] = useState([]);
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -194,20 +194,103 @@ const ShoppingTracker = () => {
     return styles[name?.toLowerCase()] || { bg: "bg-gray-50", text: "text-gray-600", border: "border-gray-200" };
   };
   
-  return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header.
+  // One-tap starter packs for an empty tracker: real items, written
+  // through the same endpoint the board uses, so the reader can try the
+  // tracker without typing anything.
+  const STARTER_PACKS = [
+    {
+      id: 'kos',
+      icon: 'home',
+      tint: '#FDE8E4',
+      label: en ? 'Monthly boarding-house groceries' : 'Paket Belanja Bulanan Kos',
+      items: [
+        { name: en ? 'Rice 5 kg' : 'Beras 5 kg', price: 75000, quantity: 1 },
+        { name: en ? 'Cooking oil 2 L' : 'Minyak goreng 2 L', price: 38000, quantity: 1 },
+        { name: en ? 'Eggs 1 kg' : 'Telur 1 kg', price: 29000, quantity: 1 },
+        { name: en ? 'Instant noodles (pack of 5)' : 'Mi instan (isi 5)', price: 15500, quantity: 2 },
+        { name: en ? 'Laundry detergent' : 'Deterjen cuci', price: 22000, quantity: 1 },
+      ],
+    },
+    {
+      id: 'kopi',
+      icon: 'coffee',
+      tint: '#FFF6D6',
+      label: en ? 'Thrifty coffee & breakfast stock' : 'Stok Kopi & Sarapan Hemat',
+      items: [
+        { name: en ? 'Ground coffee 250 g' : 'Kopi bubuk 250 g', price: 32000, quantity: 1 },
+        { name: en ? 'Oats 800 g' : 'Oat 800 g', price: 45000, quantity: 1 },
+        { name: en ? 'UHT milk 1 L' : 'Susu UHT 1 L', price: 19000, quantity: 2 },
+        { name: en ? 'Bread (loaf)' : 'Roti tawar', price: 16000, quantity: 2 },
+      ],
+    },
+    {
+      id: 'hadiah',
+      icon: 'money_bag_rp',
+      tint: '#E3F2EA',
+      label: en ? 'Gift & emergency fund' : 'Dana Hadiah & Darurat',
+      items: [
+        { name: en ? 'Birthday gift for a friend' : 'Kado ulang tahun teman', price: 150000, quantity: 1 },
+        { name: en ? 'First-aid kit' : 'Kotak P3K', price: 85000, quantity: 1 },
+        { name: en ? 'Power bank' : 'Power bank', price: 199000, quantity: 1 },
+      ],
+    },
+  ];
 
-          It is sticky, and the card under it was flush against it, so
-          the top of the search box sat behind the bar and the reader
-          could not see what they were typing into. The room between
-          the two is what the search box was missing. */}
-      <div className="bg-primary-600 text-white p-4 sticky top-0 z-10 shadow-md">
-        <h1 className="text-xl font-bold"><IconText name="cart" emoji="🛒" on={polished}>{t('nav.shopping')}</IconText></h1>
+  const seedPack = async (pack) => {
+    setSeeding(pack.id);
+    try {
+      for (const item of pack.items) {
+        await api.request("/shopping/items", {
+          method: "POST",
+          body: JSON.stringify({ ...item, stage: "to_buy", notes: pack.label }),
+        });
+      }
+      toast.success(en ? `${pack.items.length} items added` : `${pack.items.length} barang ditambahkan`);
+      await loadData();
+    } catch (e) {
+      toast.error(e?.message || (en ? "Could not add the pack" : "Gagal menambahkan paket"));
+    } finally {
+      setSeeding(null);
+    }
+  };
+
+  const TAB_ICONS = { tracked: 'clipboard', wishlist: 'coin', find: 'calculator', ai: 'chat_question' };
+  const tabLabel = (raw) => String(raw || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
+
+  return (
+    <div className="kakeibo-dot-canvas min-h-screen pb-24" data-testid="shopping-studio">
+      {/* The header: a stationery banner, with Koneko and Kogane as the
+          reader's shopping advisors, instead of a flat green bar. */}
+      <div className="px-4 pt-4">
+        <header
+          className="relative flex flex-col items-center gap-4 overflow-visible rounded-[24px] border-2 border-[#4A3540] bg-gradient-to-r from-[#FFF6F4] via-[#FFFDF9] to-[#E6F3EC] p-5 shadow-[0_6px_0_#E2D6C3] sm:flex-row"
+          data-testid="shopping-header-banner"
+        >
+          <span aria-hidden="true" className="absolute -top-2.5 left-6 h-4 w-20 -rotate-2 rounded-sm bg-[#F7C8D8]/90" />
+          <span aria-hidden="true" className="absolute right-4 top-3 text-[#E07A5F]">✦</span>
+          <div className="flex shrink-0 items-end">
+            <DraggableSparkleMascot persona="koneko" size={96} mood="happy" hint={en ? '✨ Drag me!' : '✋ Geser aku!'} label="Koneko" />
+            <DraggableSparkleMascot persona="kogane" size={86} mood="thinking" hint={en ? '✨ Drag me!' : '✋ Geser aku!'} label="Kogane" />
+          </div>
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#B5654A]">
+              {en ? 'Personal shopping advisors' : 'Penasihat Belanja Pribadi'}
+            </p>
+            <h1 className="flex items-center justify-center gap-2 text-2xl font-extrabold text-[#2C221E] sm:justify-start">
+              <PixelArtBusinessIcon name="money_bag_rp" size={34} />
+              {t('nav.shopping')}
+            </h1>
+            <p className="mt-1 text-[12.5px] text-[#5C6460]">
+              {en
+                ? 'Koneko keeps the list, Kogane checks the price is fair. Track it, wish for it, then buy it wisely.'
+                : 'Koneko mencatat daftarnya, Kogane menimbang harganya. Catat, simpan di wishlist, lalu beli dengan bijak.'}
+            </p>
+          </div>
+        </header>
       </div>
-      
+
       {/* Budget Card - PRIORITY FIRST! */}
-      <div className="p-4 bg-white m-4 rounded-xl shadow-sm border border-primary-100">
+      <div className="m-4 rounded-[24px] border-2 border-[#4A3540] bg-[#FFFDF9] p-4 shadow-[0_6px_0_#E2D6C3]">
         <div className="flex justify-between items-center mb-2">
           <span className="text-gray-600 font-medium">{t('shopping_tracker.monthly_budget')}</span>
           <span className="font-bold text-lg text-primary-600">{formatCurrency(budget)}</span>
@@ -250,13 +333,13 @@ const ShoppingTracker = () => {
             className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm"
             title={t('shopping_tracker.from_account')}
           >
-            {fetchingBudget ? "..." : "📥"}
+            {fetchingBudget ? "..." : <PixelArtBusinessIcon name="ewallet" size={20} badge={false} />}
           </button>
         </div>
       </div>
       
-      {/* Tabs */}
-      <div className="px-4 flex gap-2 mb-4">
+      {/* Tabs: tactile pills with drawn icons, no emoji. */}
+      <div className="mb-4 flex flex-wrap gap-2 px-4" role="tablist" data-testid="shopping-tabs">
         {[
           { id: "tracked", label: t('shopping_tracker.tab_tracked'), count: items.length },
           { id: "wishlist", label: t('shopping_tracker.tab_wishlist'), count: wishlist.length },
@@ -265,17 +348,21 @@ const ShoppingTracker = () => {
         ].map(tab => (
           <button
             key={tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 ${
-              activeTab === tab.id 
-                ? "bg-primary-600 text-white shadow-md" 
-                : "bg-white text-gray-600"
+            data-testid={`shopping-tab-${tab.id}`}
+            className={`flex items-center gap-2 rounded-full border-2 border-[#4A3540] px-4 py-2 text-sm font-bold shadow-[0_3px_0_#4A3540] transition-transform active:translate-y-0.5 ${
+              activeTab === tab.id
+                ? "bg-[#2F4842] text-[#FFFDF9]"
+                : "bg-[#FFFDF9] text-[#2C221E] hover:-translate-y-0.5"
             }`}
           >
-            {tab.label}
+            <PixelArtBusinessIcon name={TAB_ICONS[tab.id]} size={20} badge={false} />
+            {tabLabel(tab.label)}
             {tab.count !== null && (
-              <span className={`px-2 py-0.5 rounded-full text-xs ${
-                activeTab === tab.id ? "bg-primary-600" : "bg-gray-200"
+              <span className={`rounded-full border border-[#4A3540]/40 px-2 py-0.5 text-xs ${
+                activeTab === tab.id ? "bg-[#FFF6D6] text-[#2C221E]" : "bg-[#FDE8E4]"
               }`}>
                 {tab.count}
               </span>
@@ -283,20 +370,49 @@ const ShoppingTracker = () => {
           </button>
         ))}
       </div>
-      
+
       {/* Tab: Tracked Items */}
       {activeTab === "tracked" && (
         <div className="px-4">
           {loading ? (
             <div className="text-center py-12 text-gray-400">
-              <div className="animate-spin text-4xl mb-4">⏳</div>
+              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-[#E2D6C3] border-t-[#2F4842]" />
               <p>{t('common.loading')}</p>
             </div>
           ) : items.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <p className="text-4xl mb-4">🛒</p>
-              <p>{t('shopping_tracker.empty_tracked')}</p>
-              <p className="text-sm mt-2">{t('shopping_tracker.empty_tracked_desc')}</p>
+            <div
+              className="rounded-[24px] border-2 border-[#4A3540] bg-[#FFFDF9] p-6 text-center shadow-[0_6px_0_#E2D6C3]"
+              data-testid="shopping-empty-templates"
+            >
+              <div className="flex justify-center">
+                <PixelArtBusinessIcon name="money_bag_rp" size={56} />
+              </div>
+              <p className="mt-3 font-extrabold text-[#2C221E]">{t('shopping_tracker.empty_tracked')}</p>
+              <p className="mt-1 text-sm text-[#6B5E57]">{t('shopping_tracker.empty_tracked_desc')}</p>
+              <p className="mt-5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#B5654A]">
+                {en ? 'Start in one tap' : 'Mulai dengan 1 ketukan'}
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {STARTER_PACKS.map((pack) => (
+                  <button
+                    key={pack.id}
+                    type="button"
+                    disabled={seeding !== null}
+                    onClick={() => seedPack(pack)}
+                    data-testid={`shopping-template-${pack.id}`}
+                    className="flex flex-col items-center gap-2 rounded-2xl border-2 border-[#4A3540] p-4 text-sm font-bold text-[#2C221E] shadow-[0_4px_0_#4A3540] transition-transform hover:-translate-y-0.5 active:translate-y-0.5 disabled:opacity-60"
+                    style={{ background: pack.tint }}
+                  >
+                    <PixelArtBusinessIcon name={pack.icon} size={36} />
+                    {pack.label}
+                    <span className="text-[11px] font-semibold text-[#6B5E57]">
+                      {seeding === pack.id
+                        ? (en ? 'Adding…' : 'Menambahkan…')
+                        : `${pack.items.length} ${en ? 'items' : 'barang'} · ${formatCurrency(pack.items.reduce((sum, i) => sum + i.price * i.quantity, 0))}`}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
@@ -333,7 +449,7 @@ const ShoppingTracker = () => {
         <div className="px-4">
           {wishlist.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
-              <p className="text-4xl mb-4">❤️</p>
+              <div className="mb-4 flex justify-center"><PixelArtBusinessIcon name="coin" size={52} /></div>
               <p>{t('shopping_tracker.empty_wishlist')}</p>
               <p className="text-sm mt-2">{t('shopping_tracker.empty_wishlist_desc')}</p>
             </div>
@@ -393,7 +509,7 @@ const ShoppingTracker = () => {
       {activeTab === "ai" && (
         <div className="px-4 pt-4 mt-2">
           <div className="shape-card rounded-xl p-4 border border-primary-100">
-            <h3 className="font-bold text-lg mb-2"><IconText name="search" emoji="🔍" on={polished}>{t('shopping_tracker.ai_price_search')}</IconText></h3>
+            <h3 className="mb-2 flex items-center gap-2 text-lg font-bold"><PixelArtBusinessIcon name="chat_question" size={26} />{t('shopping_tracker.ai_price_search')}</h3>
             <p className="text-sm text-gray-500 mb-4">
               {t('shopping_tracker.ai_price_search_desc')}
             </p>
@@ -412,7 +528,7 @@ const ShoppingTracker = () => {
                 disabled={aiSearching || !aiQuery.trim()}
                 className="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium disabled:opacity-50 shadow-md"
               >
-                {aiSearching ? "⏳" : "🔍"}
+                {aiSearching ? "…" : <PixelArtBusinessIcon name="chat_question" size={20} badge={false} />}
               </button>
             </div>
           </div>
@@ -491,8 +607,8 @@ const ShoppingTracker = () => {
                           title={t('shopping_tracker.click_to_search').replace("%s", mp.name)}
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${style.bg} ${style.text} ${style.border} hover:opacity-80`}
                         >
-                          <span aria-hidden="true">{polished ? null : (mp.icon || "🛒")}
-                            {polished ? <ShoppingCart className="w-3.5 h-3.5" aria-hidden="true" /> : null}
+                          <span aria-hidden="true">{null}
+                            <ShoppingCart className="w-3.5 h-3.5" aria-hidden="true" />
                           </span>
                           {mp.name}
                         </a>
@@ -501,7 +617,7 @@ const ShoppingTracker = () => {
                   </div>
                   
                   <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-sm text-yellow-800">
-                    💡 {aiResults.note || t('shopping_tracker.price_note')}
+                    <PixelArtBusinessIcon name="lightbulb" size={16} badge={false} className="mr-1 inline-block align-[-3px]" />{aiResults.note || t('shopping_tracker.price_note')}
                   </div>
                 </div>
               )}

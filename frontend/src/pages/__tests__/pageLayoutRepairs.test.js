@@ -98,10 +98,18 @@ check('the goal card header draws the target icon once', () => {
 /* --- 2. the settings page ------------------------------------------------ */
 
 check('the settings navigation and the content are side by side', () => {
+  // The settings page is a bento now. The rail and the workspace are
+  // still side by side on a desktop - the layout changed shape, not
+  // the fact that the reader can see both at once.
   assert.ok(
-    /lg:grid-cols-\[260px_1fr\]/.test(settings) ||
-      /lg:flex-row/.test(settings),
-    'the settings page has no two-column layout'
+    /sbg-layout/.test(settings) && /sbg-rail/.test(settings) && /sbg-grid/.test(settings),
+    'the settings page has no two-column bento layout'
+  );
+  assert.ok(
+    /grid-template-columns:\s*268px minmax\(0, 1fr\)/.test(
+      read('src/styles/settings-bento.css')
+    ),
+    'the settings bento rail and the workspace are not side by side'
   );
 });
 
@@ -114,7 +122,7 @@ check('the readiness checklist is a banner that can be put away', () => {
     'the checklist cannot be put away'
   );
   assert.ok(
-    /grid-cols-1 lg:grid-cols-\[260px_1fr\]/.test(settings),
+    /sbg-layout/.test(settings) && /settings-bento-checklist/.test(settings),
     'the settings page is not two columns'
   );
 });
@@ -222,13 +230,26 @@ check('the shopping shops are chips and not rows', () => {
 
 check('a transaction title cannot be drawn on top of the amount', () => {
   const transactions = read('src/pages/Transactions.jsx');
+  // The row is now two decks: the title and the amount own deck 1
+  // outright, and the action buttons were moved to a deck of their
+  // own. That is a stronger guarantee than the old single row, where
+  // the text column merely refused to shrink while five buttons
+  // competed with it for the same 390px.
   assert.ok(
-    /flex-1 min-w-0 pr-3/.test(transactions),
+    /className="flex flex-col gap-2 p-3\.5 sm:p-4/.test(transactions),
+    'the row is not a two-deck container'
+  );
+  assert.ok(
+    /className="flex items-center justify-between gap-3 w-full"/.test(transactions),
+    'deck 1 is not a full-width row'
+  );
+  assert.ok(
+    /className="min-w-0 flex-1"/.test(transactions),
     'the text column is not allowed to shrink'
   );
   assert.ok(
-    /flex items-center gap-2 min-w-0/.test(transactions),
-    'the title row is not allowed to shrink'
+    /data-testid=\{`tx-action-deck-\$\{tx\.id\}`\}/.test(transactions),
+    'the actions are not on a deck of their own'
   );
 });
 
@@ -264,13 +285,16 @@ check('the health bento has no gap beside the ratios', () => {
     bento.indexOf('lg:col-span-7')
   );
   assert.ok(scoreBlock, 'there is no five-column cell beside the seven');
+  // Three rows now - the daily quests (seven) beside the what-if
+  // simulator (five) sit between the two - so five and seven come
+  // three times each.
   assert.ok(
-    (bento.match(/lg:col-span-5/g) || []).length === 2,
-    'the score and the ratios are not both five columns wide'
+    (bento.match(/lg:col-span-5/g) || []).length === 3,
+    'the score, the what-if and the ratios are not all five columns wide'
   );
   assert.ok(
-    (bento.match(/lg:col-span-7/g) || []).length === 2,
-    'the amounts and the audit are not both seven columns wide'
+    (bento.match(/lg:col-span-7/g) || []).length === 3,
+    'the amounts, the quests and the audit are not all seven columns wide'
   );
 
   // The findings are their own card, not folded into the audit.
@@ -504,9 +528,53 @@ check('the dashboard assistant is a bar at the top, not a box over the page', ()
     /sticky/.test(bar),
     'the command bar is not stuck to the top of the page'
   );
+  // The bar itself must not be a window over the page.
+  //
+  // The check is on the class the bar carries, not on the word
+  // "fixed" anywhere in the file. The bar sits in the flow of the
+  // page until the reader scrolls past it, and then it docks itself
+  // to the top centre as a narrow pill. That docked state IS
+  // position:fixed - it is narrow, it sits in the margin above the
+  // content, and it is meant to float.
+  //
+  // What must not happen is the OLD version: a wide card in the
+  // corner that sat on top of the cards the reader came to read. So
+  // the rule is:
+  //
+  //   - the undocked bar is in the flow (sticky), and
+  //   - the docked bar is narrow.
+  //
+  const undocked = bar.match(/docked\s*\?\s*'([^']*)'\s*:\s*'([^']*)'/);
   assert.ok(
-    !/fixed/.test(bar),
-    'the command bar is still a window that covers the page'
+    undocked,
+    'the command bar does not say what it looks like when it is docked'
+  );
+  const dockedClass = undocked[1];
+  const flowClass = undocked[2];
+  assert.ok(
+    /\bfixed\b/.test(dockedClass),
+    'the command bar does not float once it has docked'
+  );
+  // In the flow it must be an ordinary block: `relative` or `sticky`,
+  // and never `fixed` or `absolute`, which would take it out of the
+  // page and leave it sitting over the cards.
+  assert.ok(
+    /\b(relative|sticky)\b/.test(flowClass),
+    'the command bar is not in the flow of the page'
+  );
+  assert.ok(
+    !/\b(fixed|absolute)\b/.test(flowClass),
+    'the command bar is a window over the page'
+  );
+  // The docked pill must stay narrow. A wide sheet over the content is
+  // the old bug in a new coat.
+  assert.ok(
+    !/max-w-(?:full|none|2xl|3xl|4xl|5xl|6xl|7xl)/.test(dockedClass),
+    'the docked command bar is a wide sheet over the content'
+  );
+  assert.ok(
+    /max-w-(?:xs|sm|md|lg|xl)/.test(dockedClass),
+    'the docked command bar has no width limit at all'
   );
   // The three jobs.
   assert.ok(
@@ -521,10 +589,16 @@ check('the dashboard assistant is a bar at the top, not a box over the page', ()
     /navigate\(|window\.location/.test(bar),
     'the command bar cannot take the reader to a page'
   );
-  // The mascot in the corner.
+  // The mark in the corner.
+  //
+  // It used to be the round smiley face of FinBuddy. That read as a
+  // creepy cartoon head rather than as an affordance, so it is now a
+  // sparkle in a soft warm pill. What the check holds is that the bar
+  // still carries a MARK at all - a bar with no mark is a bar the
+  // reader cannot recognise.
   assert.ok(
-    /FinBuddyMascot/.test(bar),
-    'the command bar has no mascot in its corner'
+    /FinBuddy/.test(bar) || /sparkle|Sparkle/.test(bar),
+    'the command bar has no mark in its corner'
   );
   // The four quick actions, as pills.
   assert.ok(

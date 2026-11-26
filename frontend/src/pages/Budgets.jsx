@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { BudgetMethodPanels } from '../components/fintech/BudgetMethodPanels';
 import { useEnvelopeMover } from '../components/fintech/useEnvelopeMover';
 import { resolveBudgetMethod } from '../utils/decisionWidgets';
@@ -28,6 +29,12 @@ import { ask } from '../contexts/ConfirmContext';
 
 export const Budgets = () => {
   const { t, language } = useTranslation();
+  // `/budgets?preset=50-30-20` - sent by the Health Coach's one-tap
+  // fix. It opens the 50/30/20 recipe ready to apply; nothing is
+  // written until the reader presses apply.
+  const location = useLocation();
+  const presetFromCoach = new URLSearchParams(location.search).get('preset') === '50-30-20'
+    || location.state?.preset === '50-30-20';
   // With the polish switch off, the page keeps the header it has.
   const polished = buildFlag('UI_POLISH');
   // Which way the reader runs their money. It is their own
@@ -48,10 +55,24 @@ export const Budgets = () => {
   );
   // Which envelopes carry their leftover over. The reader's own
   // choice, kept with their other preferences.
-  const [carry, setCarry] = useSyncedPreference(
+  const [carry, setCarryValue] = useSyncedPreference(
     'fintech_budget_carry',
     'fintechBudgetCarry',
     {}
+  );
+  // Turning one envelope's rollover on or off.
+  //
+  // The preference is a map of envelope id to boolean. The setter of
+  // a synced preference takes the WHOLE new value, so it cannot be
+  // handed straight to the panel: it was being called with
+  // (id, checked), and the id - a string - was written as the entire
+  // preference. Every checkbox then read as off, because the map it
+  // was looking in had been replaced by a string.
+  const setCarry = useCallback(
+    (id, checked) => {
+      setCarryValue((previous) => ({ ...(previous || {}), [id]: !!checked }));
+    },
+    [setCarryValue]
   );
   const [budgets, setBudgets] = useState([]);
   // Which day of the month it is, and how long the month is. The
@@ -178,7 +199,7 @@ export const Budgets = () => {
   ].filter((row) => row.limit > 0 || row.spent > 0);
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn cute-canvas rounded-3xl p-1">
       {/* Header */}
       <BotanicalPageHeader
         badge={t('budgets.badge')}
@@ -220,33 +241,70 @@ export const Budgets = () => {
         onClick={() => { setEditingBudget(null); setShowModal(true); }}
       />
 
-      {/* Summary */}
+      {/* Summary.
+          The four figures, as cut-outs on a desk rather than as four
+          coloured tiles. They were sky, rose, emerald and violet,
+          which is four rainbows next to each other and no relation
+          to anything. Now they are the same paper, with the accent
+          used only where it means something. */}
       {budgets.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card tier="tile" hue="sky" className="!p-4">
-            <p className="text-sm text-gray-500">{t('budgets.total_budget')}</p>
-            <p className="text-xl font-bold text-gray-900 mt-1">
-              {formatCurrency(budgets.reduce((sum, b) => sum + parseFloat(b.amount), 0))}
-            </p>
-          </Card>
-          <Card tier="tile" hue="rose" className="!p-4">
-            <p className="text-sm text-gray-500">{t('budgets.total_spent')}</p>
-            <p className="text-xl font-bold text-danger-600 mt-1">
-              {formatCurrency(budgets.reduce((sum, b) => sum + parseFloat(b.spent || 0), 0))}
-            </p>
-          </Card>
-          <Card tier="tile" hue="emerald" className="!p-4">
-            <p className="text-sm text-gray-500">{t('budgets.total_remaining')}</p>
-            <p className="text-xl font-bold text-success-600 mt-1">
-              {formatCurrency(budgets.reduce((sum, b) => sum + (parseFloat(b.amount) - parseFloat(b.spent || 0)), 0))}
-            </p>
-          </Card>
-          <Card tier="tile" hue="violet" className="!p-4">
-            <p className="text-sm text-gray-500">{t('budgets.avg_utilization')}</p>
-            <p className="text-xl font-bold text-gray-900 mt-1">
-              {Math.round(budgets.reduce((sum, b) => sum + (parseFloat(b.spent || 0) / parseFloat(b.amount) * 100), 0) / budgets.length)}%
-            </p>
-          </Card>
+          {[
+            {
+              label: t('budgets.total_budget'),
+              value: formatCurrency(budgets.reduce((sum, b) => sum + parseFloat(b.amount), 0)),
+              tone: 'cute-card--butter',
+              valueClass: 'text-[#2C221E]',
+              badge: '01',
+              badgeClass: 'bg-[#FFF6D6] text-[#8A6D1F]',
+              offset: '',
+            },
+            {
+              label: t('budgets.total_spent'),
+              value: formatCurrency(budgets.reduce((sum, b) => sum + parseFloat(b.spent || 0), 0)),
+              tone: 'cute-card--sakura',
+              valueClass: 'text-[#B3261E]',
+              badge: '02',
+              badgeClass: 'bg-[#FDE8E4] text-[#9E3B24]',
+              offset: 'md:translate-y-2',
+            },
+            {
+              label: t('budgets.total_remaining'),
+              value: formatCurrency(budgets.reduce((sum, b) => sum + (parseFloat(b.amount) - parseFloat(b.spent || 0)), 0)),
+              tone: 'cute-card--sage',
+              valueClass: 'text-[#2F4842]',
+              badge: '03',
+              badgeClass: 'bg-[#E3F2EA] text-[#2F4842]',
+              offset: '',
+            },
+            {
+              label: t('budgets.avg_utilization'),
+              value: `${Math.round(budgets.reduce((sum, b) => sum + (parseFloat(b.spent || 0) / parseFloat(b.amount) * 100), 0) / budgets.length)}%`,
+              tone: 'cute-card--lavender',
+              valueClass: 'text-[#2C221E]',
+              badge: '04',
+              badgeClass: 'bg-[#EDE7F6] text-[#5B4B8A]',
+              offset: 'md:translate-y-4',
+            },
+          ].map((card) => (
+            <div
+              key={card.badge}
+              className={`cute-card ${card.tone} ${card.offset} !p-4`}
+              data-testid={`budget-stat-${card.badge}`}
+            >
+              <span
+                className={`inline-flex items-center justify-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${card.badgeClass}`}
+              >
+                {card.badge}
+              </span>
+              <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.06em] text-[#5C6460]">
+                {card.label}
+              </p>
+              <p className={`mt-1 text-xl font-extrabold tracking-tight tabular-nums ${card.valueClass}`}>
+                {card.value}
+              </p>
+            </div>
+          ))}
         </div>
       )}
 
@@ -279,9 +337,10 @@ export const Budgets = () => {
 
           {/* The recipes. They are the easier way in for a reader who
               has nothing yet, so they sit under the explanation. */}
-          {useRecipes && (
-            <div className="mt-4">
+          {(useRecipes || presetFromCoach) && (
+            <div className="mt-4" data-testid={presetFromCoach ? 'budget-preset-503020' : undefined}>
               <BudgetRecipeSelector
+                selectedId={presetFromCoach ? 'balanced' : null}
                 total={3000000}
                 onApply={() => {
                   trackEvent('exp_budget_wizard', 'recipe_applied', undefined);
@@ -292,6 +351,16 @@ export const Budgets = () => {
           )}
         </>
       ) : (
+        <>
+        {presetFromCoach && (
+          <div className="mb-4" data-testid="budget-preset-503020">
+            <BudgetRecipeSelector
+              selectedId="balanced"
+              total={3000000}
+              onApply={() => setShowModal(true)}
+            />
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {budgets.map((budget) => {
             const spent = parseFloat(budget.spent || 0);
@@ -421,6 +490,7 @@ export const Budgets = () => {
             );
           })}
         </div>
+        </>
       )}
 
       {/* Add/Edit Modal */}

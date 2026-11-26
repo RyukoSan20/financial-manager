@@ -23,7 +23,12 @@ import { dirname, join } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const componentPath = join(here, '..', 'HonestEmptyState.jsx');
-const source = readFileSync(componentPath, 'utf8');
+const fullSource = readFileSync(componentPath, 'utf8');
+// The guild-hall strongbox (`chest`) is a third presentation that sits
+// OUTSIDE the plain/rich experiment, so the comparison below is read
+// from the source with that block taken out. Taking it out here, and
+// saying so, is the point: the two versions must still match each other.
+const source = fullSource.replace(/\s{2}if \(chest\) \{[\s\S]*?\n\s{2}\}\n/, '');
 
 let passed = 0;
 let failed = 0;

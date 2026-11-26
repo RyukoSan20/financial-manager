@@ -125,6 +125,10 @@ for test_file in \
   src/components/health/__tests__/financialRatioPills.test.js \
   src/components/analytics/__tests__/dateRangeCustomPanel.test.js \
   src/styles/__tests__/motionSystem.test.js \
+  src/pages/__tests__/analyticsLoadingShell.test.js \
+  src/styles/__tests__/themeBothModes.test.js \
+  src/contexts/__tests__/themeModes.test.js \
+  src/pages/__tests__/chartTheme.test.js \
   src/utils/__tests__/eisenhowerPriority.test.js \
   src/components/ui/__tests__/confirmDialog.test.js \
   src/components/split/__tests__/splitMath.test.js \
@@ -160,7 +164,14 @@ for test_file in \
   src/utils/__tests__/avatarHelper.test.js \
   src/utils/__tests__/transactionLabel.test.js \
   src/utils/__tests__/financialProfile.test.js \
-  src/components/ai/__tests__/topBarPosition.test.js
+  src/components/ai/__tests__/topBarPosition.test.js \
+  src/features/koban-shop/__tests__/kobanEngine.test.js \
+  src/features/koban-shop/__tests__/kobanShop.test.js \
+  src/features/koban-shop/__tests__/kobanTilemap.test.js \
+  src/styles/__tests__/multiTheme.test.js \
+  src/features/koban-shop/__tests__/kobanBattle.test.js \
+  src/pages/__tests__/settingsBento.test.js \
+  src/components/mascot/__tests__/realChibiMascot.test.js
 do
   if [ ! -f "$test_file" ]; then
     echo "  SKIP $test_file (not present)"
@@ -204,6 +215,12 @@ else
 fi
 
 echo "--- generated assets -----------------------------------------"
+if [ -d "$ROOT/frontend/public/koban-assets/tiles" ] && [ "$(ls "$ROOT/frontend/public/koban-assets/tiles" | wc -l)" -ge 19 ]; then
+  echo "  -> koban tiles OK"
+else
+  note_failure "koban tiles (run scripts/build_koban_tiles.py)"
+fi
+
 if "$ROOT/backend/venv/bin/python" "$ROOT/scripts/generate_assets.py" --check > /tmp/preflight_assets.log 2>&1; then
   grep -E '^  OK' /tmp/preflight_assets.log
   echo "  -> assets OK"
